@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: fanta-agent
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+fantaagent:
+  data-dir: data
+
+league:
+  participants: 8
+  budget: 500
+  slots:
+    P: 3
+    D: 8
+    C: 8
+    A: 6
+  phases: [P, D, C, A]
+  members:
+    - { id: me, name: "Io",         initial: I, me: true }
+    - { id: p2, name: "Marco",      initial: M, me: false }
+    - { id: p3, name: "Luca",       initial: L, me: false }
+    - { id: p4, name: "Anna",       initial: A, me: false }
+    - { id: p5, name: "Dario",      initial: D, me: false }
+    - { id: p6, name: "Giulia",     initial: G, me: false }
+    - { id: p7, name: "Stefano",    initial: S, me: false }
+    - { id: p8, name: "Federico",   initial: F, me: false }
+  scoring:
+    modifiers-confirmed: false
+    goal-bonus:
+      P: 3.0
+      D: 4.0
+      C: 3.5
+      A: 3.0
+    assist: 1.0
+    penalty-scored: 3.0
+    penalty-missed: -3.0
+    penalty-saved: 3.0
+    yellow-card: -0.5
+    red-card: -1.0
+    goal-conceded: -1.0
+    clean-sheet: 1.0
+    defence-modifier:
+      defenders-counted: 3
+      thresholds:
+        - { min-average: 0.0, bonus: 0.0 }
+        - { min-average: 6.0, bonus: 1.0 }
+        - { min-average: 6.25, bonus: 2.0 }
+        - { min-average: 6.5, bonus: 3.0 }
+        - { min-average: 6.75, bonus: 4.0 }
+    goalkeeper-modifier:
+      defenders-counted: 0
+      thresholds:
+        - { min-average: 0.0, bonus: 0.0 }
+        - { min-average: 6.0, bonus: 0.5 }
+        - { min-average: 6.5, bonus: 1.0 }
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+fantaagent:
+  dev-profile: true
