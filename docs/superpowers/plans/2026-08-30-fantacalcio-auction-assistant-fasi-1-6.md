@@ -4483,7 +4483,13 @@ public final class RosterCompleter {
                 double gain = modifiers.marginalPoints(roster, candidate)
                         - replacement.points(candidate.role());
                 double score = gain / cost;
-                if (score > bestScore) {
+                // A parita' di punteggio vince l'id piu' basso, non l'ordine di
+                // iterazione: la riproducibilita' delle raccomandazioni e' un requisito
+                // della spec e non deve dipendere dal tipo di collezione che il
+                // chiamante passa.
+                if (score > bestScore
+                        || (score == bestScore && best != null
+                            && candidate.playerId().compareTo(best.playerId()) < 0)) {
                     bestScore = score;
                     best = candidate;
                     bestCost = cost;
