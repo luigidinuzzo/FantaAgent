@@ -144,6 +144,31 @@ class RosterCompleterTest {
     }
 
     @Test
+    void breaksTiesByPlayerIdRegardlessOfCollectionOrder() {
+        // Due candidati con punteggio identico (stessi punti, stesso prezzo): l'esito non
+        // deve dipendere dall'ordine in cui il chiamante fornisce i disponibili, altrimenti
+        // la riproducibilita' delle raccomandazioni dipenderebbe dal tipo di collezione usato
+        // dal chiamante, e questo romperebbe la garanzia di record/replay della spec.
+        add("px1", Role.P, 100, 10);
+        add("px2", Role.P, 100, 10);
+        add("d1", Role.D, 100, 10);
+        add("c1", Role.C, 100, 10);
+        add("a1", Role.A, 100, 10);
+
+        List<PlayerProjection> forward = List.copyOf(pool);
+        List<PlayerProjection> reversed = new ArrayList<>(pool);
+        java.util.Collections.reverse(reversed);
+
+        RosterCompleter.Completion forwardResult =
+                completer.complete(emptySquad(), List.of(), forward, prices());
+        RosterCompleter.Completion reversedResult =
+                completer.complete(emptySquad(), List.of(), reversed, prices());
+
+        assertThat(forwardResult.picks()).extracting(PlayerProjection::playerId).contains("px1");
+        assertThat(reversedResult.picks()).extracting(PlayerProjection::playerId).contains("px1");
+    }
+
+    @Test
     void stopsCleanlyWhenThePoolCannotFillEveryRole() {
         add("p1", Role.P, 100, 10);   // manca ogni difensore, centrocampista e attaccante
 

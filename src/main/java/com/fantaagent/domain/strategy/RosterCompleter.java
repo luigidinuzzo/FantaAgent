@@ -73,7 +73,13 @@ public final class RosterCompleter {
                 double gain = modifiers.marginalPoints(roster, candidate)
                         - replacement.points(candidate.role());
                 double score = gain / cost;
-                if (score > bestScore) {
+                // A parita' di punteggio vince l'id piu' basso, non l'ordine di
+                // iterazione: la riproducibilita' delle raccomandazioni e' un requisito
+                // della spec e non deve dipendere dal tipo di collezione che il
+                // chiamante passa.
+                if (score > bestScore
+                        || (score == bestScore && best != null
+                            && candidate.playerId().compareTo(best.playerId()) < 0)) {
                     bestScore = score;
                     best = candidate;
                     bestCost = cost;
@@ -99,6 +105,12 @@ public final class RosterCompleter {
     /**
      * Tenta di sostituire un giocatore scelto con uno non scelto dello stesso ruolo,
      * accettando lo scambio solo se aumenta i punti totali senza sforare il budget.
+     *
+     * <p>Non riapplica qui la riserva "1 credito per slot ancora scoperto" del greedy: la
+     * local search agisce solo dopo che il greedy si e' fermato e scambia sempre uno slot
+     * gia' riempito con un altro giocatore, senza mai aprirne di nuovi. Uno slot rimasto
+     * scoperto era gia' inammissibile per il greedy e resta tale qui; nessuno scambio può
+     * quindi renderlo peggiore di quanto già non fosse.
      */
     private int localSearch(List<PlayerProjection> roster, List<PlayerProjection> picks,
                             Collection<PlayerProjection> available, PriceModel prices, int budget) {
@@ -112,6 +124,10 @@ public final class RosterCompleter {
                 int currentCost = Math.max(1, prices.expectedPrice(current));
                 double currentPoints = modifiers.squadPoints(roster);
 
+                PlayerProjection bestSwap = null;
+                int bestSwapCost = 0;
+                double bestSwapPoints = currentPoints;
+
                 for (PlayerProjection candidate : available) {
                     if (inRoster.contains(candidate.playerId())
                             || candidate.role() != current.role()) {
@@ -124,16 +140,26 @@ public final class RosterCompleter {
                     List<PlayerProjection> swapped = new ArrayList<>(roster);
                     swapped.remove(current);
                     swapped.add(candidate);
-                    if (modifiers.squadPoints(swapped) > currentPoints) {
-                        roster.clear();
-                        roster.addAll(swapped);
-                        picks.set(i, candidate);
-                        inRoster.remove(current.playerId());
-                        inRoster.add(candidate.playerId());
-                        budget -= (candidateCost - currentCost);
-                        improved = true;
-                        break;
+                    double swappedPoints = modifiers.squadPoints(swapped);
+                    // Stesso principio del greedy: a parita' di miglioramento vince l'id
+                    // piu' basso, non il primo candidato incontrato nella collezione.
+                    if (swappedPoints > bestSwapPoints
+                            || (swappedPoints == bestSwapPoints && bestSwap != null
+                                && candidate.playerId().compareTo(bestSwap.playerId()) < 0)) {
+                        bestSwap = candidate;
+                        bestSwapCost = candidateCost;
+                        bestSwapPoints = swappedPoints;
                     }
+                }
+
+                if (bestSwap != null) {
+                    roster.remove(current);
+                    roster.add(bestSwap);
+                    picks.set(i, bestSwap);
+                    inRoster.remove(current.playerId());
+                    inRoster.add(bestSwap.playerId());
+                    budget -= (bestSwapCost - currentCost);
+                    improved = true;
                 }
             }
             if (!improved) {
