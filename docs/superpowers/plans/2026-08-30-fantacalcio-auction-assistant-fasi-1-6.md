@@ -1399,14 +1399,34 @@ class NameResolverTest {
     }
 
     @Test
-    void toleratesSingleCharacterTypos() {
-        assertThat(resolver.resolve("Bastony")).contains("1");
-        assertThat(resolver.resolve("Dimarko")).contains("3");
+    void refusesToGuessOnATypoAndLeavesItForTheReconciliationReport() {
+        // In import nulla verifica il risultato: meglio un nome non risolto, che l'utente
+        // vede nel report e sistema con un alias, che statistiche attribuite a un altro.
+        assertThat(resolver.resolve("Bastony")).isEmpty();
+        assertThat(resolver.resolve("Dimarko")).isEmpty();
+    }
+
+    @Test
+    void refusesShortSurnamesThatDifferByOneCharacter() {
+        // Conte/Conti, Grassi/Grossi: collisioni reali fra cognomi italiani plausibili.
+        NameResolver conte = new NameResolver(List.of(
+                new Player("50", "Conte A.", "Napoli", Role.C, 10)), Map.of());
+        assertThat(conte.resolve("Conti")).isEmpty();
     }
 
     @Test
     void returnsEmptyWhenNoConfidentMatchExists() {
         assertThat(resolver.resolve("Cristiano Ronaldo")).isEmpty();
+    }
+
+    @Test
+    void refusesWhenTwoPlayersNormaliseToTheSameName() {
+        // Due "Rossi M." distinti nel listone: rispondere sarebbe una scelta arbitraria
+        // fra i due, e nessuno se ne accorgerebbe.
+        NameResolver duplicates = new NameResolver(List.of(
+                new Player("60", "Rossi M.", "Empoli", Role.C, 5),
+                new Player("61", "Rossi M.", "Genoa", Role.D, 6)), Map.of());
+        assertThat(duplicates.resolve("Rossi M.")).isEmpty();
     }
 
     @Test
@@ -1446,13 +1466,22 @@ import java.util.Set;
  * Risolve un nome grezzo proveniente da una fonte statistica sull'id del listone.
  *
  * <p>Strategia, in ordine: alias esplicito, match esatto normalizzato, match sul solo
- * cognome quando è univoco, distanza di edit 1 quando il candidato è unico. Se nessun
- * criterio produce un candidato univoco la risoluzione fallisce: un match sbagliato è
- * peggio di un match mancante, perché assegna statistiche altrui a un giocatore.
+ * cognome quando è univoco. Se nessun criterio produce un candidato univoco la
+ * risoluzione fallisce e il nome finisce nel report di riconciliazione, dove l'utente
+ * lo risolve aggiungendo un alias prima dell'asta.
+ *
+ * <p><b>Nessun matching fuzzy qui, deliberatamente.</b> In fase di import nulla verifica
+ * il risultato: un match sbagliato attacca le statistiche di un giocatore a un altro e
+ * corrompe in silenzio ogni proiezione costruita sopra. A distanza di edit 1 cognomi
+ * italiani corti collidono con facilità — Conte/Conti, Grassi/Grossi — e il codice non
+ * ha modo di accorgersene. Il matching approssimato vive invece in
+ * {@code domain.search.PlayerSearch}, dove è utile e innocuo perché l'utente legge il
+ * nome proposto prima di agire.
  */
 public final class NameResolver {
 
     private final Map<String, String> byNormalizedName = new HashMap<>();
+    private final Set<String> ambiguousNames = new HashSet<>();
     private final Map<String, String> bySurname = new HashMap<>();
     private final Set<String> ambiguousSurnames = new HashSet<>();
     private final Map<String, String> aliases = new HashMap<>();
@@ -1460,10 +1489,13 @@ public final class NameResolver {
     public NameResolver(Collection<Player> players, Map<String, String> aliases) {
         for (Player p : players) {
             String normalized = normalize(p.name());
-            byNormalizedName.put(normalized, p.id());
+            String previousName = byNormalizedName.putIfAbsent(normalized, p.id());
+            if (previousName != null && !previousName.equals(p.id())) {
+                ambiguousNames.add(normalized);
+            }
             String surname = surnameOf(normalized);
-            String previous = bySurname.putIfAbsent(surname, p.id());
-            if (previous != null && !previous.equals(p.id())) {
+            String previousSurname = bySurname.putIfAbsent(surname, p.id());
+            if (previousSurname != null && !previousSurname.equals(p.id())) {
                 ambiguousSurnames.add(surname);
             }
         }
@@ -1487,9 +1519,11 @@ public final class NameResolver {
         if (alias != null) {
             return Optional.of(alias);
         }
-        String exact = byNormalizedName.get(normalized);
-        if (exact != null) {
-            return Optional.of(exact);
+        if (!ambiguousNames.contains(normalized)) {
+            String exact = byNormalizedName.get(normalized);
+            if (exact != null) {
+                return Optional.of(exact);
+            }
         }
         String surname = surnameOf(normalized);
         if (!ambiguousSurnames.contains(surname)) {
@@ -1498,21 +1532,7 @@ public final class NameResolver {
                 return Optional.of(bySurnameMatch);
             }
         }
-        return uniqueCloseMatch(normalized);
-    }
-
-    private Optional<String> uniqueCloseMatch(String normalized) {
-        String found = null;
-        for (Map.Entry<String, String> entry : byNormalizedName.entrySet()) {
-            if (editDistanceAtMostOne(normalized, entry.getKey())
-                    || editDistanceAtMostOne(normalized, surnameOf(entry.getKey()))) {
-                if (found != null && !found.equals(entry.getValue())) {
-                    return Optional.empty();
-                }
-                found = entry.getValue();
-            }
-        }
-        return Optional.ofNullable(found);
+        return Optional.empty();
     }
 
     /** Primo token del nome normalizzato: nel listone il cognome precede l'iniziale. */
@@ -1521,40 +1541,6 @@ public final class NameResolver {
         return space < 0 ? normalized : normalized.substring(0, space);
     }
 
-    /** Vero se le stringhe differiscono per al più una sostituzione, inserimento o cancellazione. */
-    static boolean editDistanceAtMostOne(String a, String b) {
-        if (a.equals(b)) {
-            return true;
-        }
-        int la = a.length();
-        int lb = b.length();
-        if (Math.abs(la - lb) > 1) {
-            return false;
-        }
-        int i = 0;
-        int j = 0;
-        boolean usedEdit = false;
-        while (i < la && j < lb) {
-            if (a.charAt(i) == b.charAt(j)) {
-                i++;
-                j++;
-                continue;
-            }
-            if (usedEdit) {
-                return false;
-            }
-            usedEdit = true;
-            if (la > lb) {
-                i++;
-            } else if (lb > la) {
-                j++;
-            } else {
-                i++;
-                j++;
-            }
-        }
-        return true;
-    }
 }
 ```
 
@@ -5608,20 +5594,17 @@ public final class TextNormalizer {
 ```
 
 In `src/main/java/com/fantaagent/ingestion/NameResolver.java` sostituire il corpo di
-`normalize` e di `editDistanceAtMostOne` con una delega, eliminando la duplicazione:
+`normalize` con una delega, eliminando la duplicazione:
 
 ```java
     public static String normalize(String raw) {
         return com.fantaagent.domain.search.TextNormalizer.normalize(raw);
     }
-
-    static boolean editDistanceAtMostOne(String a, String b) {
-        return com.fantaagent.domain.search.TextNormalizer.editDistanceAtMostOne(a, b);
-    }
 ```
 
 Rimuovere da `NameResolver` gli import ora inutilizzati `java.text.Normalizer` e
-`java.util.Locale`.
+`java.util.Locale`. Nota: `NameResolver` non fa matching approssimato — quello vive
+solo qui, in `PlayerSearch`, dove l'utente legge il nome proposto prima di agire.
 
 - [ ] **Step 4: Implementare `PlayerSearch`**
 
