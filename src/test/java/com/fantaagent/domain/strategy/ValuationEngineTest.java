@@ -256,4 +256,103 @@ class ValuationEngineTest {
 
         assertThat(averageMillis).isLessThan(80L);
     }
+
+    /**
+     * Il test sopra usa un fixture di 8 giocatori e non dice nulla sul requisito reale:
+     * il budget di 80 ms riguarda un catalogo da ~600 giocatori a metà asta, quando il
+     * completamento della rosa (chiamato ~8 volte per ricerca binaria, 3 ricerche per
+     * valutazione) ha davvero molti candidati da confrontare a ogni passo del greedy e
+     * della local search.
+     */
+    @Test
+    void staysWithinTheLatencyBudgetAtRealisticScale() {
+        LeagueRules realisticRules = new LeagueRules(8, 500,
+                Map.of(Role.P, 3, Role.D, 8, Role.C, 8, Role.A, 6),
+                List.of(Role.P, Role.D, Role.C, Role.A));
+
+        List<Participant> realisticParticipants = new ArrayList<>();
+        realisticParticipants.add(new Participant("me", "Io", 'I', true));
+        for (int i = 1; i <= 7; i++) {
+            realisticParticipants.add(new Participant("riv" + i, "Rivale " + i, (char) ('A' + i), false));
+        }
+        List<String> rivalIds = realisticParticipants.stream()
+                .map(Participant::id)
+                .filter(id -> !id.equals("me"))
+                .toList();
+
+        Random random = new Random(20260830L);
+        List<PlayerProjection> bigPool = new ArrayList<>();
+        Map<String, Double> bigPriors = new HashMap<>();
+        Map<String, Role> bigRoles = new HashMap<>();
+
+        // Proporzioni del listone reale: ~60 portieri, ~200 difensori, ~200
+        // centrocampisti, ~140 attaccanti, per un totale di circa 600 giocatori.
+        seedRealisticGroup(bigPool, bigPriors, bigRoles, random, Role.P, "gk", 60, 150.0);
+        seedRealisticGroup(bigPool, bigPriors, bigRoles, random, Role.D, "df", 200, 320.0);
+        seedRealisticGroup(bigPool, bigPriors, bigRoles, random, Role.C, "mf", 200, 380.0);
+        seedRealisticGroup(bigPool, bigPriors, bigRoles, random, Role.A, "fw", 140, 420.0);
+
+        Map<Role, Double> flatBias = new EnumMap<>(Role.class);
+        for (Role role : Role.values()) {
+            flatBias.put(role, 1.0);
+        }
+        PriceModel bigPrices = new PriceModel(bigPriors, 1.0, flatBias);
+
+        // Stato di metà asta: i migliori giocatori di ogni ruolo (i primi generati,
+        // quindi i piu' quotati) sono gia' stati venduti, distribuiti sui 7 rivali —
+        // "me" non ha ancora comprato nulla. Sold totali: 8 + 23 + 22 + 17 = 70.
+        Map<Role, Integer> soldPerRole = Map.of(Role.P, 8, Role.D, 23, Role.C, 22, Role.A, 17);
+        List<AuctionEvent> events = new ArrayList<>();
+        long seq = 1;
+        Map<Role, String> prefixOf = Map.of(Role.P, "gk", Role.D, "df", Role.C, "mf", Role.A, "fw");
+        for (Role role : List.of(Role.P, Role.D, Role.C, Role.A)) {
+            String prefix = prefixOf.get(role);
+            int count = soldPerRole.get(role);
+            for (int i = 0; i < count; i++) {
+                String playerId = prefix + i;
+                String buyer = rivalIds.get(i % rivalIds.size());
+                int price = Math.max(1, (int) Math.round(bigPriors.get(playerId)));
+                events.add(new AuctionEvent.PlayerPurchased(seq++, T, playerId, buyer, price));
+            }
+        }
+        AuctionState state = AuctionProjector.project(realisticRules, realisticParticipants,
+                bigRoles::get, events);
+
+        // Obiettivo: il primo difensore ancora libero dopo quelli gia' venduti — un
+        // titolare di fascia medio-alta, non il migliore in assoluto ne' uno scarto.
+        PlayerProjection target = bigPool.stream()
+                .filter(pp -> pp.playerId().equals("df" + soldPerRole.get(Role.D)))
+                .findFirst().orElseThrow();
+
+        List<PlayerProjection> available = bigPool.stream()
+                .filter(pp -> !state.soldPlayerIds().contains(pp.playerId()))
+                .toList();
+        ValuationContext ctx = new ValuationContext(state, target, List.of(), available, bigPrices, 40);
+
+        for (int i = 0; i < 3; i++) {
+            engine.evaluate(ctx); // riscaldamento della JIT
+        }
+        long start = System.nanoTime();
+        int runs = 10;
+        for (int i = 0; i < runs; i++) {
+            engine.evaluate(ctx);
+        }
+        long averageMillis = (System.nanoTime() - start) / runs / 1_000_000;
+
+        assertThat(averageMillis).isLessThan(80L);
+    }
+
+    private static void seedRealisticGroup(List<PlayerProjection> poolOut, Map<String, Double> priorsOut,
+                                           Map<String, Role> rolesOut, Random random, Role role,
+                                           String prefix, int count, double topPoints) {
+        for (int i = 0; i < count; i++) {
+            double points = Math.max(5.0, topPoints * (1.0 - (double) i / count) + random.nextInt(21) - 10);
+            double price = Math.max(1.0, Math.round(points / 8.0 + random.nextInt(5)));
+            String id = prefix + i;
+            PlayerProjection projection = new PlayerProjection(id, role, 6.0, 0.0, 30.0, points, 30.0);
+            poolOut.add(projection);
+            priorsOut.put(id, price);
+            rolesOut.put(id, role);
+        }
+    }
 }

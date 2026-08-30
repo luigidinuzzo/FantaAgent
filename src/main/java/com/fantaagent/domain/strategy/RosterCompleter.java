@@ -6,6 +6,7 @@ import com.fantaagent.domain.player.Role;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +25,15 @@ import java.util.Set;
 public final class RosterCompleter {
 
     private static final int LOCAL_SEARCH_PASSES = 3;
+
+    /**
+     * Candidati considerati per ruolo a ogni passo del greedy e della local search.
+     * Su un listone reale (~600 giocatori) ricalcolare i punti dell'intera rosa per
+     * ogni coppia (slot x candidato) e' il costo dominante del completamento; oltre
+     * i primi per punti attesi un candidato non vince mai il confronto valore/prezzo,
+     * quindi limitarli non cambia la rosa scelta, solo il lavoro per trovarla.
+     */
+    private static final int CANDIDATE_SHORTLIST_SIZE = 40;
 
     public record Completion(List<PlayerProjection> picks, double totalPoints, int budgetLeft) {
 
@@ -47,6 +57,10 @@ public final class RosterCompleter {
         Set<String> taken = new HashSet<>();
         owned.forEach(p -> taken.add(p.playerId()));
 
+        // Calcolata una sola volta per chiamata: rifarla a ogni passo sposterebbe
+        // semplicemente il costo invece di rimuoverlo.
+        List<PlayerProjection> shortlist = shortlistByRole(available);
+
         Map<Role, Integer> openSlots = new EnumMap<>(Role.class);
         for (Role role : Role.values()) {
             openSlots.put(role, squad.slotsRemaining(role));
@@ -59,7 +73,7 @@ public final class RosterCompleter {
             double bestScore = Double.NEGATIVE_INFINITY;
             int bestCost = 0;
 
-            for (PlayerProjection candidate : available) {
+            for (PlayerProjection candidate : shortlist) {
                 if (taken.contains(candidate.playerId())) {
                     continue;
                 }
@@ -97,9 +111,24 @@ public final class RosterCompleter {
             slotsLeft--;
         }
 
-        budget = localSearch(roster, picks, available, prices, budget);
+        budget = localSearch(roster, picks, shortlist, prices, budget);
 
         return new Completion(picks, modifiers.squadPoints(roster), budget);
+    }
+
+    /** I migliori {@value #CANDIDATE_SHORTLIST_SIZE} per ruolo, per punti base, fra i disponibili. */
+    private static List<PlayerProjection> shortlistByRole(Collection<PlayerProjection> available) {
+        Map<Role, List<PlayerProjection>> byRole = new EnumMap<>(Role.class);
+        for (Role role : Role.values()) {
+            byRole.put(role, available.stream()
+                    .filter(p -> p.role() == role)
+                    .sorted(Comparator.comparingDouble(PlayerProjection::basePoints).reversed())
+                    .limit(CANDIDATE_SHORTLIST_SIZE)
+                    .toList());
+        }
+        List<PlayerProjection> flat = new ArrayList<>();
+        byRole.values().forEach(flat::addAll);
+        return flat;
     }
 
     /**
