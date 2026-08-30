@@ -3653,10 +3653,12 @@ class ModifierCalculatorTest {
 
     @Test
     void theGoalkeeperModifierDependsOnTheKeepersOwnRating() {
+        // 6.0 e 6.2 lasciano la media di reparto sotto 6.0 in entrambi i casi
+        // (con tre riempitivi a 5.9): cosi' varia solo il gradino del portiere.
         List<PlayerProjection> weak = List.of(player("gk", Role.P, 6.0, 150));
-        List<PlayerProjection> strong = List.of(player("gk", Role.P, 6.3, 150));
+        List<PlayerProjection> strong = List.of(player("gk", Role.P, 6.2, 150));
 
-        // stessi riempitivi in difesa; cambia solo il gradino del portiere: 38 * 1.0
+        // difesa invariata; cambia solo il gradino del portiere: 38 * 1.0
         assertThat(calculator.modifierPoints(strong) - calculator.modifierPoints(weak))
                 .isCloseTo(38.0, within(0.001));
     }
@@ -3676,12 +3678,13 @@ class ModifierCalculatorTest {
 
     @Test
     void marginalPointsIncludeTheModifierDelta() {
+        // media attuale (6.4 + 6.8 + 6.8 + riempitivo 5.9) / 4 = 6.475 -> gradino 6.0
         List<PlayerProjection> squad = List.of(
-                player("gk", Role.P, 6.0, 150),
-                player("d1", Role.D, 6.4, 150),
-                player("d2", Role.D, 6.4, 150));
-        // terzo difensore: sostituisce il riempitivo 5.9 e porta la media a 6.3
-        PlayerProjection third = player("d3", Role.D, 6.4, 120);
+                player("gk", Role.P, 6.4, 150),
+                player("d1", Role.D, 6.8, 150),
+                player("d2", Role.D, 6.8, 150));
+        // il terzo sostituisce il riempitivo e porta la media a 6.7 -> gradino 6.5
+        PlayerProjection third = player("d3", Role.D, 6.8, 120);
 
         double marginal = calculator.marginalPoints(squad, third);
 
@@ -4241,12 +4244,14 @@ class RosterCompleterTest {
     }
 
     @Test
-    void prefersTheBestPointsPerCreditRatio() {
-        add("p1", Role.P, 1, 1);
-        add("d1", Role.D, 1, 1);
-        add("c1", Role.C, 1, 1);
+    void prefersTheBestPointsPerCreditRatioWhenTheBudgetIsTight() {
+        // Gli altri ruoli assorbono 90 crediti dei 100 disponibili: il rapporto
+        // valore/prezzo conta solo quando il budget e' davvero vincolante.
+        add("p1", Role.P, 1, 30);
+        add("d1", Role.D, 1, 30);
+        add("c1", Role.C, 1, 30);
         add("cheapStriker", Role.A, 90, 10);   // 9 punti per credito
-        add("dearStriker", Role.A, 100, 50);   // 2 punti per credito
+        add("dearStriker", Role.A, 100, 50);   // 2 punti per credito, non finanziabile
 
         RosterCompleter.Completion completion =
                 completer.complete(emptySquad(), List.of(), pool, prices());
@@ -4258,7 +4263,7 @@ class RosterCompleterTest {
 
     @Test
     void neverSpendsSoMuchThatASlotCannotBeFilled() {
-        add("p1", Role.P, 500, 99);   // costoso e allettante
+        add("p1", Role.P, 500, 99);   // costoso e allettante: comprarlo lascerebbe 1 credito per 3 slot
         add("d1", Role.D, 10, 1);
         add("c1", Role.C, 10, 1);
         add("a1", Role.A, 10, 1);
@@ -4266,7 +4271,10 @@ class RosterCompleterTest {
         RosterCompleter.Completion completion =
                 completer.complete(emptySquad(), List.of(), pool, prices());
 
-        assertThat(completion.picks()).hasSize(4);
+        // La guardia di ammissibilita' esclude p1 a ogni passo: meglio tre slot coperti
+        // che una rosa incompletabile. Il portiere resta scoperto e questo e' corretto.
+        assertThat(completion.picks()).extracting(PlayerProjection::playerId)
+                .containsExactlyInAnyOrder("d1", "c1", "a1");
         assertThat(completion.budgetLeft()).isGreaterThanOrEqualTo(0);
     }
 
@@ -4937,20 +4945,35 @@ class ValuationEngineTest {
         return new ValuationContext(state, target, owned, available, prices(), 0);
     }
 
-    private void seedPool() {
+    private PlayerProjection p(String id) {
+        return pool.stream().filter(x -> x.playerId().equals(id)).findFirst().orElseThrow();
+    }
+
+    /**
+     * Ogni ruolo ha un'opzione economica e una costosa: senza questo gradiente il
+     * surplus non degrada al crescere del prezzo e il prezzo massimo sarebbe deciso
+     * dal solo vincolo di budget.
+     */
+    private void seedGradientRoles() {
         add("gk", Role.P, 100, 10);
+        add("gkTop", Role.P, 200, 40);
         add("mid", Role.C, 100, 10);
+        add("midTop", Role.C, 200, 40);
         add("fw", Role.A, 100, 10);
+        add("fwTop", Role.A, 200, 40);
+    }
+
+    private void seedPool() {
+        seedGradientRoles();
         add("bestDef", Role.D, 300, 20);
         add("okDef", Role.D, 280, 18);
-        add("poorDef", Role.D, 50, 5);
     }
 
     @Test
     void neverRecommendsMoreThanTheHardCap() {
         seedPool();
         AuctionState state = state(List.of());
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state));
 
         assertThat(rec.hardCap()).isEqualTo(state.mySquad().maxSpendableNow());
         assertThat(rec.maxBid()).isLessThanOrEqualTo(rec.hardCap());
@@ -4959,25 +4982,26 @@ class ValuationEngineTest {
     @Test
     void aPlayerWithACloseAlternativeIsNotWorthMuchMoreThanThatAlternative() {
         seedPool();
-        // bestDef vale 300, okDef 280 a 18: il vantaggio reale è piccolo
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        // bestDef vale 300, okDef 280 a 18: il vantaggio reale e' piccolo, e ogni
+        // credito speso in piu' costringe a declassare portiere, centrocampo o attacco
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
-        assertThat(rec.maxBid()).isLessThan(60);
+        assertThat(rec.maxBid()).isLessThan(50);
         assertThat(rec.drivers()).anySatisfy(d ->
                 assertThat(d.label()).containsIgnoringCase("alternativa"));
     }
 
     @Test
     void aPlayerWithNoRealAlternativeIsWorthMuchMore() {
-        add("gk", Role.P, 100, 10);
-        add("mid", Role.C, 100, 10);
-        add("fw", Role.A, 100, 10);
+        seedGradientRoles();
         PlayerProjection unique = add("uniqueDef", Role.D, 400, 20);
-        add("poorDef", Role.D, 20, 1);
+        add("poorDef", Role.D, 20, 1);   // unica alternativa: perde 380 punti
 
         PriceRecommendation scarce = engine.evaluate(context(unique, state(List.of())));
 
-        assertThat(scarce.maxBid()).isGreaterThan(50);
+        // Stesso budget e stesso gradiente del test precedente: cambia solo quanto
+        // costa rinunciare al giocatore. E' questo che il motore deve saper distinguere.
+        assertThat(scarce.maxBid()).isGreaterThan(70);
     }
 
     @Test
@@ -4986,7 +5010,7 @@ class ValuationEngineTest {
         AuctionState state = state(List.of(
                 new AuctionEvent.PlayerPurchased(1, T, "bestDef", "me", 20)));
 
-        PriceRecommendation rec = engine.evaluate(context(pool.get(4), state));
+        PriceRecommendation rec = engine.evaluate(context(p("okDef"), state));
 
         assertThat(rec.maxBid()).isZero();
         assertThat(rec.walkAwayReason()).containsIgnoringCase("slot");
@@ -4998,7 +5022,7 @@ class ValuationEngineTest {
         AuctionState state = state(List.of(
                 new AuctionEvent.PlayerPurchased(1, T, "gk", "me", 97)));
 
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state));
 
         assertThat(rec.hardCap()).isEqualTo(1);
         assertThat(rec.maxBid()).isLessThanOrEqualTo(1);
@@ -5007,7 +5031,7 @@ class ValuationEngineTest {
     @Test
     void reportsTheMarginAgainstTheExpectedMarketPrice() {
         seedPool();
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
         assertThat(rec.expectedPrice()).isEqualTo(20);
         assertThat(rec.margin()).isEqualTo(rec.maxBid() - rec.expectedPrice());
@@ -5016,7 +5040,7 @@ class ValuationEngineTest {
     @Test
     void alwaysExposesBetweenThreeAndFiveDrivers() {
         seedPool();
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
         assertThat(rec.drivers()).hasSizeBetween(3, 5);
         assertThat(rec.drivers()).allSatisfy(d -> {
@@ -5028,7 +5052,7 @@ class ValuationEngineTest {
     @Test
     void confidenceIsLowWhenNoSalesHaveBeenObserved() {
         seedPool();
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
         assertThat(rec.confidence().marketFactor()).isLessThan(0.2);
         assertThat(rec.confidence().stars()).isLessThanOrEqualTo(3);
@@ -5042,7 +5066,7 @@ class ValuationEngineTest {
                 new AuctionEvent.PlayerPurchased(1, T, "gk", "me", 50),
                 new AuctionEvent.PlayerPurchased(2, T, "mid", "me", 45)));
 
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state));
 
         // 5 crediti, 2 slot residui: si puo' spendere al massimo 4 su questo giocatore
         assertThat(state.mySquad().budgetRemaining()).isEqualTo(5);
@@ -5365,7 +5389,7 @@ Aggiungere in coda a `ValuationEngineTest`:
     void staysWithinTheLatencyBudget() {
         seedPool();
         AuctionState state = state(List.of());
-        ValuationContext ctx = context(pool.get(3), state);
+        ValuationContext ctx = context(p("bestDef"), state);
 
         engine.evaluate(ctx); // riscaldamento della JIT
         long start = System.nanoTime();
