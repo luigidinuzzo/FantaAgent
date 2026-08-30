@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Asta</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+
+<header class="status">
+  <div>FASE <b th:text="${status.phase}">P</b> ·
+    <span th:text="${status.soldInPhase}">0</span> venduti</div>
+  <div>TU <b th:text="${status.myBudget}">500</b> crediti ·
+    <span th:text="${status.myComposition}">0P 0D 0C 0A</span> ·
+    <span th:text="${status.mySlotsLeft}">25</span> slot</div>
+  <form hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
+    <button type="submit">fase successiva →</button>
+  </form>
+</header>
+
+<div class="resume" th:if="${resume}">
+  Asta in corso: <b th:text="${resume.purchases}">47</b> acquisti,
+  fase <b th:text="${resume.phase}">D</b> — ripreso dal log su disco.
+</div>
+
+<div class="layout">
+
+  <section id="main" th:fragment="main">
+    <form id="cmdForm" hx-post="/command" hx-target="#main" hx-swap="outerHTML">
+      <input id="cmd" name="cmd" autocomplete="off" autofocus
+             placeholder="giocatore  prezzo  iniziale"
+             hx-get="/fragments/main" hx-trigger="keyup changed delay:120ms"
+             hx-target="#main" hx-swap="outerHTML">
+    </form>
+
+    <p class="message" th:if="${panel.message}" th:text="${panel.message}"></p>
+
+    <ul class="results" th:if="${!panel.results.isEmpty()}">
+      <li th:each="p, it : ${panel.results}" th:classappend="${it.first} ? 'sel' : ''">
+        <span th:text="${p.name}">Nome</span>
+        <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
+      </li>
+    </ul>
+
+    <article class="card" th:if="${panel.analysis}">
+      <h2>
+        <span th:text="${panel.analysis.player.name}">Nome</span>
+        <span class="dim"
+              th:text="${panel.analysis.player.role} + ' · ' + ${panel.analysis.player.team}"></span>
+      </h2>
+
+      <div class="numbers">
+        <div><label>MERCATO</label>
+          <b th:text="${panel.analysis.recommendation.expectedPrice}">38</b></div>
+        <div><label>MAX BID</label>
+          <b class="big" th:text="${panel.analysis.recommendation.maxBid}">47</b>
+          <span class="margin" th:text="${panel.analysis.marginLabel}">+9</span></div>
+        <div><label>VERDETTO</label>
+          <b th:text="${panel.analysis.verdict}">PRENDI</b></div>
+        <div><label>CONFIDENZA</label>
+          <b th:text="${panel.analysis.recommendation.confidence.stars} + '/5'">3/5</b></div>
+      </div>
+
+      <ul class="drivers">
+        <li th:each="d : ${panel.analysis.recommendation.drivers}">
+          <b th:text="${d.label}">Budget</b>
+          <span th:text="${d.explanation}">…</span>
+        </li>
+      </ul>
+
+      <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
+    </article>
+  </section>
+
+  <aside class="board">
+    <h3>TABELLONE</h3>
+    <table>
+      <tr th:each="row : ${board}" th:classappend="${row.me} ? 'me' : ''">
+        <td th:text="${row.name}">Marco</td>
+        <td th:text="${row.budget}">289</td>
+        <td th:text="${row.composition}">1P 3D 0C 0A</td>
+        <td th:text="${row.slotsLeft} + ' sl'">21 sl</td>
+      </tr>
+    </table>
+
+    <div id="targets" th:fragment="targets">
+      <h3 th:if="${targets}">TARGET</h3>
+      <table th:if="${targets}">
+        <tr th:each="t : ${targets}">
+          <td th:text="${t.player.name}">Bastoni</td>
+          <td th:text="${t.recommendation.expectedPrice}">38</td>
+          <td th:text="${t.recommendation.maxBid}">47</td>
+          <td th:text="${t.margin}"
+              th:classappend="${t.margin} >= 0 ? 'pos' : 'neg'">+9</td>
+        </tr>
+      </table>
+    </div>
+  </aside>
+
+</div>
+
+<form id="undoForm" hx-post="/undo" hx-target="#main" hx-swap="outerHTML" hidden></form>
+<script th:src="@{/app.js}"></script>
+</body>
+</html>
