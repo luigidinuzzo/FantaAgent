@@ -1807,18 +1807,33 @@ public class ListoneImporter {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("quotazione non numerica: " + priceRaw);
         }
-        return new Player(id, name, team, role, Math.max(1, price));
+        if (price < 1) {
+            // Non silenziamo: il contratto dell'importer e' che ogni anomalia sia
+            // visibile nel report, e una quotazione a zero e' un dato da guardare.
+            throw new IllegalArgumentException("quotazione non positiva: " + priceRaw);
+        }
+        return new Player(id, name, team, role, price);
     }
 
     private static String stringValue(Cell cell) {
         if (cell == null) {
             return "";
         }
-        if (cell.getCellType() == CellType.NUMERIC) {
-            double d = cell.getNumericCellValue();
-            return d == Math.rint(d) ? String.valueOf((long) d) : String.valueOf(d);
-        }
-        return cell.toString();
+        CellType type = cell.getCellType() == CellType.FORMULA
+                ? cell.getCachedFormulaResultType()
+                : cell.getCellType();
+        return switch (type) {
+            // Una cella formula espone la formula, non il valore: leggiamo il risultato
+            // memorizzato, altrimenti un listone con colonne calcolate verrebbe scartato
+            // riga per riga la sera prima dell'asta.
+            case NUMERIC -> {
+                double d = cell.getNumericCellValue();
+                yield d == Math.rint(d) ? String.valueOf((long) d) : String.valueOf(d);
+            }
+            case STRING -> cell.getStringCellValue();
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case BLANK, _ -> "";
+        };
     }
 }
 ```
