@@ -3568,9 +3568,21 @@ public class JsonlAuctionEventStore implements AuctionEventStore {
         }
         try {
             List<AuctionEvent> events = new ArrayList<>();
-            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
-                if (!line.isBlank()) {
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (line.isBlank()) {
+                    continue;
+                }
+                try {
                     events.add(MAPPER.readValue(line, EventDto.class).toDomain());
+                } catch (IllegalStateException e) {
+                    // Un tipo di evento sconosciuto e' un log corrotto o scritto da una
+                    // versione diversa: va detto quale file e quale riga, perche' capita
+                    // durante l'asta e va risolto in fretta.
+                    throw new IllegalStateException(
+                            "log eventi non interpretabile in " + file + " alla riga "
+                            + (i + 1) + ": " + e.getMessage(), e);
                 }
             }
             return List.copyOf(events);
