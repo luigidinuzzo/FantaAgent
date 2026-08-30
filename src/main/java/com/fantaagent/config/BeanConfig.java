@@ -44,6 +44,14 @@ public class BeanConfig {
         return loaded.catalog();
     }
 
+    @Bean
+    public com.fantaagent.application.port.out.AuctionEventStore auctionEventStore(
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:data}") String dataDir,
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.auction-id:current}") String auctionId) {
+        return new com.fantaagent.adapter.out.file.JsonlAuctionEventStore(
+                java.nio.file.Path.of(dataDir, "auctions", auctionId, "events.jsonl"));
+    }
+
     private static ModifierTable toTable(LeagueProperties.Table table) {
         return new ModifierTable(table.defendersCounted(),
                 table.thresholds().stream()
