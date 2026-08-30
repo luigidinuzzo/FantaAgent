@@ -47,7 +47,7 @@ class ValuationEngineTest {
 
     private final ModifierCalculator modifiers = new ModifierCalculator(SCORING, REPLACEMENT);
     private final ValuationEngine engine = new ValuationEngine(
-            new RosterCompleter(modifiers, REPLACEMENT), modifiers, REPLACEMENT);
+            new RosterCompleter(modifiers, REPLACEMENT), modifiers);
 
     private final List<PlayerProjection> pool = new ArrayList<>();
     private final Map<String, Double> priors = new HashMap<>();
@@ -129,17 +129,31 @@ class ValuationEngineTest {
                 assertThat(d.label()).containsIgnoringCase("alternativa"));
     }
 
+    /**
+     * Isola la scarsita' dalla qualita' del giocatore: stesso target (stessi punti base,
+     * stesso prezzo di listino), stesso budget, stesso gradiente sugli altri ruoli in
+     * entrambi i contesti. L'unica differenza e' quanto vale l'alternativa nel ruolo D:
+     * un'alternativa quasi equivalente (280 punti) contro una pessima (20 punti). Se il
+     * motore misura davvero la scarsita' e non solo la qualita' assoluta del target, il
+     * prezzo massimo nel caso senza alternativa deve essere molto piu' alto.
+     */
     @Test
-    void aPlayerWithNoRealAlternativeIsWorthMuchMore() {
+    void scarceAlternativeIsWorthAtLeastOneAndAHalfTimesTheCloseAlternativeCase() {
         seedGradientRoles();
-        PlayerProjection unique = add("uniqueDef", Role.D, 400, 20);
-        add("poorDef", Role.D, 20, 1);   // unica alternativa: perde 380 punti
+        PlayerProjection closeCaseTarget = add("def", Role.D, 300, 20);
+        add("okDef", Role.D, 280, 18);
+        PriceRecommendation closeCase = engine.evaluate(context(closeCaseTarget, state(List.of())));
 
-        PriceRecommendation scarce = engine.evaluate(context(unique, state(List.of())));
+        pool.clear();
+        priors.clear();
+        roles.clear();
+        seedGradientRoles();
+        PlayerProjection scarceCaseTarget = add("def", Role.D, 300, 20);
+        add("poorDef", Role.D, 20, 1);   // unica alternativa: perde 280 punti
+        PriceRecommendation scarceCase = engine.evaluate(context(scarceCaseTarget, state(List.of())));
 
-        // Stesso budget e stesso gradiente del test precedente: cambia solo quanto
-        // costa rinunciare al giocatore. E' questo che il motore deve saper distinguere.
-        assertThat(scarce.maxBid()).isGreaterThan(70);
+        assertThat(scarceCase.maxBid())
+                .isGreaterThanOrEqualTo((int) Math.ceil(closeCase.maxBid() * 1.5));
     }
 
     @Test
@@ -266,6 +280,82 @@ class ValuationEngineTest {
      */
     @Test
     void staysWithinTheLatencyBudgetAtRealisticScale() {
+        RealisticFixture fixture = buildRealisticFixture(20260830L);
+        ValuationContext ctx = new ValuationContext(fixture.state(), fixture.target(),
+                List.of(), fixture.available(), fixture.prices(), 40);
+
+        for (int i = 0; i < 3; i++) {
+            engine.evaluate(ctx); // riscaldamento della JIT
+        }
+        long start = System.nanoTime();
+        int runs = 10;
+        for (int i = 0; i < runs; i++) {
+            engine.evaluate(ctx);
+        }
+        long averageMillis = (System.nanoTime() - start) / runs / 1_000_000;
+
+        assertThat(averageMillis).isLessThan(80L);
+    }
+
+    /**
+     * La shortlist di {@link RosterCompleter} prefiltra i candidati per contenere il
+     * costo del completamento su un listone reale. Questo test verifica che non cambi
+     * la risposta: confronta il motore con la shortlist attiva contro un motore con la
+     * shortlist disattivata (dimensione {@code Integer.MAX_VALUE}, quindi tutti i
+     * candidati visibili) sullo stesso fixture realistico. I prezzi sono generati con
+     * dispersione deliberata del rapporto valore/prezzo (non punti/8 costante): solo
+     * così un filtro sui soli punti potrebbe davvero scartare l'opzione economica e
+     * dignitosa che il criterio valore/prezzo esiste per trovare, mettendo alla prova
+     * l'unione delle due graduatorie invece di un caso in cui non potrebbe mai sbagliare.
+     */
+    @Test
+    void shortlistDoesNotChangeMaxBidAtRealisticScale() {
+        RealisticFixture fixture = buildRealisticFixture(20260901L);
+        ValuationContext ctx = new ValuationContext(fixture.state(), fixture.target(),
+                List.of(), fixture.available(), fixture.prices(), 40);
+
+        RosterCompleter shortlisted = new RosterCompleter(modifiers, REPLACEMENT);
+        RosterCompleter unlimited = new RosterCompleter(modifiers, REPLACEMENT,
+                Integer.MAX_VALUE, Integer.MAX_VALUE);
+        ValuationEngine engineWithShortlist = new ValuationEngine(shortlisted, modifiers);
+        ValuationEngine engineWithoutShortlist = new ValuationEngine(unlimited, modifiers);
+
+        int maxBidWithShortlist = engineWithShortlist.evaluate(ctx).maxBid();
+        int maxBidWithoutShortlist = engineWithoutShortlist.evaluate(ctx).maxBid();
+
+        assertThat(maxBidWithShortlist).isEqualTo(maxBidWithoutShortlist);
+    }
+
+    /**
+     * {@code surplus(prezzo)} nasce da un'euristica greedy + local search e la ricerca
+     * binaria del prezzo massimo ASSUME che sia solo approssimativamente monotona, non
+     * monotona in senso stretto (si veda il javadoc di {@link ValuationEngine}). Questo
+     * test scansiona ogni prezzo intero su un fixture piccolo e verifica empiricamente
+     * l'ipotesi: se fallisse, vorrebbe dire che la ricerca binaria può restituire un
+     * prezzo che non è il vero massimo.
+     */
+    @Test
+    void surplusScansAsApproximatelyMonotoneAcrossEveryPrice() {
+        seedPool();
+        AuctionState state = state(List.of());
+        ValuationContext ctx = context(p("bestDef"), state);
+        int hardCap = state.mySquad().maxSpendableNow();
+
+        double previous = Double.POSITIVE_INFINITY;
+        for (int price = 1; price <= hardCap; price++) {
+            double surplus = engine.surplusAt(ctx, price);
+            assertThat(surplus)
+                    .as("prezzo %d", price)
+                    .isLessThanOrEqualTo(previous);
+            previous = surplus;
+        }
+    }
+
+    private record RealisticFixture(AuctionState state, PlayerProjection target,
+                                    List<PlayerProjection> available, PriceModel prices) {
+    }
+
+    private RealisticFixture buildRealisticFixture(long seed) {
         LeagueRules realisticRules = new LeagueRules(8, 500,
                 Map.of(Role.P, 3, Role.D, 8, Role.C, 8, Role.A, 6),
                 List.of(Role.P, Role.D, Role.C, Role.A));
@@ -280,7 +370,7 @@ class ValuationEngineTest {
                 .filter(id -> !id.equals("me"))
                 .toList();
 
-        Random random = new Random(20260830L);
+        Random random = new Random(seed);
         List<PlayerProjection> bigPool = new ArrayList<>();
         Map<String, Double> bigPriors = new HashMap<>();
         Map<String, Role> bigRoles = new HashMap<>();
@@ -327,19 +417,8 @@ class ValuationEngineTest {
         List<PlayerProjection> available = bigPool.stream()
                 .filter(pp -> !state.soldPlayerIds().contains(pp.playerId()))
                 .toList();
-        ValuationContext ctx = new ValuationContext(state, target, List.of(), available, bigPrices, 40);
 
-        for (int i = 0; i < 3; i++) {
-            engine.evaluate(ctx); // riscaldamento della JIT
-        }
-        long start = System.nanoTime();
-        int runs = 10;
-        for (int i = 0; i < runs; i++) {
-            engine.evaluate(ctx);
-        }
-        long averageMillis = (System.nanoTime() - start) / runs / 1_000_000;
-
-        assertThat(averageMillis).isLessThan(80L);
+        return new RealisticFixture(state, target, available, bigPrices);
     }
 
     private static void seedRealisticGroup(List<PlayerProjection> poolOut, Map<String, Double> priorsOut,
@@ -347,7 +426,14 @@ class ValuationEngineTest {
                                            String prefix, int count, double topPoints) {
         for (int i = 0; i < count; i++) {
             double points = Math.max(5.0, topPoints * (1.0 - (double) i / count) + random.nextInt(21) - 10);
-            double price = Math.max(1.0, Math.round(points / 8.0 + random.nextInt(5)));
+            // Dispersione deliberata del rapporto valore/prezzo: con un prezzo quasi
+            // proporzionale ai punti (es. punti/8 costante), un filtro ordinato per
+            // soli punti non potrebbe mai sbagliare e la shortlist non sarebbe messa
+            // alla prova. Il moltiplicatore va da 0.3x (economico e dignitoso) a 3.0x
+            // (sopravvalutato), includendo anche il caso costoso-e-forte quando i punti
+            // di base sono già alti.
+            double multiplier = 0.3 + random.nextDouble() * 2.7;
+            double price = Math.max(1.0, Math.round(points / 8.0 * multiplier));
             String id = prefix + i;
             PlayerProjection projection = new PlayerProjection(id, role, 6.0, 0.0, 30.0, points, 30.0);
             poolOut.add(projection);

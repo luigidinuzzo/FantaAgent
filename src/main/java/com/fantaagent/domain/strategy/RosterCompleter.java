@@ -27,13 +27,19 @@ public final class RosterCompleter {
     private static final int LOCAL_SEARCH_PASSES = 3;
 
     /**
-     * Candidati considerati per ruolo a ogni passo del greedy e della local search.
-     * Su un listone reale (~600 giocatori) ricalcolare i punti dell'intera rosa per
-     * ogni coppia (slot x candidato) e' il costo dominante del completamento; oltre
-     * i primi per punti attesi un candidato non vince mai il confronto valore/prezzo,
-     * quindi limitarli non cambia la rosa scelta, solo il lavoro per trovarla.
+     * Candidati per ruolo tenuti dalla graduatoria per rapporto valore/prezzo, la
+     * stessa metrica usata dal greedy. Un filtro basato sui soli punti scarterebbe
+     * proprio i profili economici-e-dignitosi che il criterio valore/prezzo esiste per
+     * trovare — motivo per cui la shortlist è un'unione di due graduatorie, non una sola.
      */
-    private static final int CANDIDATE_SHORTLIST_SIZE = 40;
+    static final int DEFAULT_RATIO_SHORTLIST_SIZE = 12;
+
+    /**
+     * Candidati per ruolo tenuti dalla graduatoria per soli punti base, indipendente dal
+     * prezzo: recupera i giocatori costosi ma di fascia alta, che il proxy sul rapporto
+     * valore/prezzo può sottovalutare perché non vede l'effetto sui modificatori.
+     */
+    static final int DEFAULT_POINTS_SHORTLIST_SIZE = 15;
 
     public record Completion(List<PlayerProjection> picks, double totalPoints, int budgetLeft) {
 
@@ -44,10 +50,24 @@ public final class RosterCompleter {
 
     private final ModifierCalculator modifiers;
     private final ReplacementLevels replacement;
+    private final int ratioShortlistSize;
+    private final int pointsShortlistSize;
 
     public RosterCompleter(ModifierCalculator modifiers, ReplacementLevels replacement) {
+        this(modifiers, replacement, DEFAULT_RATIO_SHORTLIST_SIZE, DEFAULT_POINTS_SHORTLIST_SIZE);
+    }
+
+    /**
+     * Visibile al package solo perché i test di correttezza devono poter disattivare la
+     * shortlist (dimensioni {@code Integer.MAX_VALUE}) per confrontare il risultato con
+     * quello senza limiti sui candidati.
+     */
+    RosterCompleter(ModifierCalculator modifiers, ReplacementLevels replacement,
+                    int ratioShortlistSize, int pointsShortlistSize) {
         this.modifiers = modifiers;
         this.replacement = replacement;
+        this.ratioShortlistSize = ratioShortlistSize;
+        this.pointsShortlistSize = pointsShortlistSize;
     }
 
     public Completion complete(Squad squad, List<PlayerProjection> owned,
@@ -59,7 +79,7 @@ public final class RosterCompleter {
 
         // Calcolata una sola volta per chiamata: rifarla a ogni passo sposterebbe
         // semplicemente il costo invece di rimuoverlo.
-        List<PlayerProjection> shortlist = shortlistByRole(available);
+        List<PlayerProjection> shortlist = shortlistByRole(available, prices);
 
         Map<Role, Integer> openSlots = new EnumMap<>(Role.class);
         for (Role role : Role.values()) {
@@ -116,19 +136,56 @@ public final class RosterCompleter {
         return new Completion(picks, modifiers.squadPoints(roster), budget);
     }
 
-    /** I migliori {@value #CANDIDATE_SHORTLIST_SIZE} per ruolo, per punti base, fra i disponibili. */
-    private static List<PlayerProjection> shortlistByRole(Collection<PlayerProjection> available) {
-        Map<Role, List<PlayerProjection>> byRole = new EnumMap<>(Role.class);
-        for (Role role : Role.values()) {
-            byRole.put(role, available.stream()
-                    .filter(p -> p.role() == role)
-                    .sorted(Comparator.comparingDouble(PlayerProjection::basePoints).reversed())
-                    .limit(CANDIDATE_SHORTLIST_SIZE)
-                    .toList());
-        }
+    /**
+     * Unione, per ruolo, dei migliori {@link #ratioShortlistSize} per rapporto
+     * valore/prezzo e dei migliori {@link #pointsShortlistSize} per soli punti base,
+     * deduplicata. Entrambe le graduatorie spezzano i pareggi per id: un ordinamento
+     * stabile su una collezione il cui ordine di iterazione varia (es. uno Set)
+     * altrimenti farebbe dipendere da quell'ordine QUALI giocatori sopravvivono al
+     * taglio, non solo in che ordine compaiono.
+     */
+    private List<PlayerProjection> shortlistByRole(Collection<PlayerProjection> available, PriceModel prices) {
+        Set<String> seen = new HashSet<>();
         List<PlayerProjection> flat = new ArrayList<>();
-        byRole.values().forEach(flat::addAll);
+
+        for (Role role : Role.values()) {
+            List<PlayerProjection> ofRole = available.stream()
+                    .filter(p -> p.role() == role)
+                    .toList();
+
+            List<PlayerProjection> byRatio = ofRole.stream()
+                    .sorted(Comparator
+                            .comparingDouble((PlayerProjection p) -> ratioProxy(p, prices))
+                            .reversed()
+                            .thenComparing(PlayerProjection::playerId))
+                    .limit(ratioShortlistSize)
+                    .toList();
+            List<PlayerProjection> byPoints = ofRole.stream()
+                    .sorted(Comparator
+                            .comparingDouble(PlayerProjection::basePoints)
+                            .reversed()
+                            .thenComparing(PlayerProjection::playerId))
+                    .limit(pointsShortlistSize)
+                    .toList();
+
+            for (PlayerProjection p : byRatio) {
+                if (seen.add(p.playerId())) {
+                    flat.add(p);
+                }
+            }
+            for (PlayerProjection p : byPoints) {
+                if (seen.add(p.playerId())) {
+                    flat.add(p);
+                }
+            }
+        }
         return flat;
+    }
+
+    /** Lo stesso criterio del greedy, senza il termine dei modificatori: dipende dalla rosa. */
+    private double ratioProxy(PlayerProjection candidate, PriceModel prices) {
+        int cost = Math.max(1, prices.expectedPrice(candidate));
+        return (candidate.basePoints() - replacement.points(candidate.role())) / cost;
     }
 
     /**

@@ -14,8 +14,13 @@ import java.util.Optional;
  * Calcola il prezzo massimo come il prezzo oltre il quale acquistare il giocatore
  * smette di migliorare la migliore rosa ancora completabile.
  *
- * <p>{@code surplus(prezzo)} è monotono decrescente, quindi il prezzo massimo si trova
- * per ricerca binaria: circa otto completamenti invece di uno per ogni prezzo possibile.
+ * <p>{@code surplus(prezzo)} è calcolato componendo l'euristica greedy + local search di
+ * {@link RosterCompleter}, quindi è solo approssimativamente monotono non crescente nel
+ * prezzo, non monotono in senso stretto. La ricerca binaria su {@code [1, hardCap]}
+ * ASSUME questa monotonicità approssimata per restare a ~8 completamenti invece di uno
+ * per ogni prezzo possibile: se l'euristica producesse un'inversione locale, il prezzo
+ * trovato potrebbe non essere il vero massimo. Un test a fixture ridotto scansiona
+ * {@code surplus} su ogni prezzo intero per verificare empiricamente questa ipotesi.
  */
 public final class ValuationEngine {
 
@@ -24,13 +29,10 @@ public final class ValuationEngine {
 
     private final RosterCompleter completer;
     private final ModifierCalculator modifiers;
-    private final ReplacementLevels replacement;
 
-    public ValuationEngine(RosterCompleter completer, ModifierCalculator modifiers,
-                           ReplacementLevels replacement) {
+    public ValuationEngine(RosterCompleter completer, ModifierCalculator modifiers) {
         this.completer = completer;
         this.modifiers = modifiers;
-        this.replacement = replacement;
     }
 
     public PriceRecommendation evaluate(ValuationContext ctx) {
@@ -38,25 +40,30 @@ public final class ValuationEngine {
         PlayerProjection target = ctx.target();
         int hardCap = mySquad.maxSpendableNow();
         int expectedPrice = ctx.prices().expectedPrice(target);
+        // Calcolato una sola volta per valutazione: rifarlo a ogni chiamata di surplus()
+        // (circa 27 volte fra le tre ricerche binarie) sposterebbe solo il costo.
+        List<PlayerProjection> availableWithoutTarget = withoutTarget(ctx);
 
         if (!mySquad.hasRoom(target.role())) {
-            return refusal(ctx, expectedPrice, hardCap,
+            return refusal(ctx, expectedPrice, hardCap, availableWithoutTarget,
                     "nessuno slot libero per il ruolo " + target.role());
         }
         if (hardCap < 1) {
-            return refusal(ctx, expectedPrice, 0,
+            return refusal(ctx, expectedPrice, hardCap, availableWithoutTarget,
                     "budget esaurito: ogni slot residuo richiede almeno 1 credito");
         }
 
-        int maxBid = maxBidFor(ctx, hardCap, ctx.prices());
+        int maxBid = maxBidFor(ctx, hardCap, ctx.prices(), availableWithoutTarget);
         String walkAway = maxBid == 0
                 ? "nessun vantaggio nemmeno a 1 credito rispetto alle alternative"
                 : maxBid == hardCap
                         ? "oltre " + hardCap + " non potresti più coprire gli slot residui"
                         : "oltre " + maxBid + " il completamento della rosa perde più di quanto guadagni";
 
-        int low = maxBidFor(ctx, hardCap, ctx.prices().withInflation(1 - STABILITY_PERTURBATION));
-        int high = maxBidFor(ctx, hardCap, ctx.prices().withInflation(1 + STABILITY_PERTURBATION));
+        int low = maxBidFor(ctx, hardCap, ctx.prices().withInflation(1 - STABILITY_PERTURBATION),
+                availableWithoutTarget);
+        int high = maxBidFor(ctx, hardCap, ctx.prices().withInflation(1 + STABILITY_PERTURBATION),
+                availableWithoutTarget);
 
         ConfidenceScore confidence = ConfidenceScore.of(
                 ConfidenceScore.dataFactor(target.observedAppearances()),
@@ -65,20 +72,22 @@ public final class ValuationEngine {
                 ConfidenceScore.stabilityFactor(maxBid, low, high));
 
         return new PriceRecommendation(target.playerId(), expectedPrice, maxBid, hardCap,
-                maxBid - expectedPrice, walkAway, confidence, buildDrivers(ctx, maxBid, hardCap));
+                maxBid - expectedPrice, walkAway, confidence,
+                buildDrivers(ctx, hardCap, availableWithoutTarget));
     }
 
     /** Prezzo intero più alto in [1, hardCap] con surplus positivo; 0 se non esiste. */
-    private int maxBidFor(ValuationContext ctx, int hardCap, PriceModel prices) {
-        double baseline = valueWithout(ctx, prices);
-        if (surplus(ctx, prices, 1, baseline) <= 0) {
+    private int maxBidFor(ValuationContext ctx, int hardCap, PriceModel prices,
+                          List<PlayerProjection> availableWithoutTarget) {
+        double baseline = valueWithout(ctx, prices, availableWithoutTarget);
+        if (surplus(ctx, prices, 1, baseline, availableWithoutTarget) <= 0) {
             return 0;
         }
         int low = 1;
         int high = hardCap;
         while (low < high) {
             int mid = low + (high - low + 1) / 2;
-            if (surplus(ctx, prices, mid, baseline) > 0) {
+            if (surplus(ctx, prices, mid, baseline, availableWithoutTarget) > 0) {
                 low = mid;
             } else {
                 high = mid - 1;
@@ -87,12 +96,14 @@ public final class ValuationEngine {
         return low;
     }
 
-    private double valueWithout(ValuationContext ctx, PriceModel prices) {
+    private double valueWithout(ValuationContext ctx, PriceModel prices,
+                                List<PlayerProjection> availableWithoutTarget) {
         return completer.complete(ctx.state().mySquad(), ctx.ownedByMe(),
-                withoutTarget(ctx), prices).totalPoints();
+                availableWithoutTarget, prices).totalPoints();
     }
 
-    private double surplus(ValuationContext ctx, PriceModel prices, int price, double baseline) {
+    private double surplus(ValuationContext ctx, PriceModel prices, int price, double baseline,
+                           List<PlayerProjection> availableWithoutTarget) {
         PlayerProjection target = ctx.target();
         Squad squadWith = ctx.state().mySquad().with(
                 new Holding(-1L, target.playerId(), target.role(),
@@ -100,9 +111,19 @@ public final class ValuationEngine {
         List<PlayerProjection> ownedWith = new ArrayList<>(ctx.ownedByMe());
         ownedWith.add(target);
 
-        double valueWith = completer.complete(squadWith, ownedWith, withoutTarget(ctx), prices)
+        double valueWith = completer.complete(squadWith, ownedWith, availableWithoutTarget, prices)
                 .totalPoints();
         return valueWith - baseline;
+    }
+
+    /**
+     * Solo per i test: espone {@code surplus(prezzo)} per verificare empiricamente
+     * l'ipotesi di monotonicità approssimata su cui si basa la ricerca binaria.
+     */
+    double surplusAt(ValuationContext ctx, int price) {
+        List<PlayerProjection> availableWithoutTarget = withoutTarget(ctx);
+        double baseline = valueWithout(ctx, ctx.prices(), availableWithoutTarget);
+        return surplus(ctx, ctx.prices(), price, baseline, availableWithoutTarget);
     }
 
     private static List<PlayerProjection> withoutTarget(ValuationContext ctx) {
@@ -111,18 +132,19 @@ public final class ValuationEngine {
                 .toList();
     }
 
-    private PriceRecommendation refusal(ValuationContext ctx, int expectedPrice,
-                                        int hardCap, String reason) {
+    private PriceRecommendation refusal(ValuationContext ctx, int expectedPrice, int hardCap,
+                                        List<PlayerProjection> availableWithoutTarget, String reason) {
         ConfidenceScore confidence = ConfidenceScore.of(
                 ConfidenceScore.dataFactor(ctx.target().observedAppearances()),
                 ConfidenceScore.startingFactor(ctx.target().startingProbability()),
                 ConfidenceScore.marketFactor(ctx.salesInCurrentPhase()),
                 1.0);
         return new PriceRecommendation(ctx.target().playerId(), expectedPrice, 0, hardCap,
-                -expectedPrice, reason, confidence, buildDrivers(ctx, 0, hardCap));
+                -expectedPrice, reason, confidence, buildDrivers(ctx, hardCap, availableWithoutTarget));
     }
 
-    private List<Driver> buildDrivers(ValuationContext ctx, int maxBid, int hardCap) {
+    private List<Driver> buildDrivers(ValuationContext ctx, int hardCap,
+                                      List<PlayerProjection> availableWithoutTarget) {
         List<Driver> drivers = new ArrayList<>();
         PlayerProjection target = ctx.target();
         Squad mySquad = ctx.state().mySquad();
@@ -133,12 +155,11 @@ public final class ValuationEngine {
                         ? String.format("alza il reparto: +%.1f punti stagionali oltre i suoi", modifierDelta)
                         : "nessun effetto rilevante sui modificatori con la rosa attuale"));
 
-        int reserved = Math.max(0, mySquad.slotsRemaining() - 1);
         drivers.add(new Driver("Budget", hardCap,
                 String.format("hardCap %d — restano %d crediti e %d slot da coprire",
                         hardCap, mySquad.budgetRemaining(), mySquad.slotsRemaining())));
 
-        Optional<PlayerProjection> alternative = withoutTarget(ctx).stream()
+        Optional<PlayerProjection> alternative = availableWithoutTarget.stream()
                 .filter(p -> p.role() == target.role())
                 .max(Comparator.comparingDouble(PlayerProjection::basePoints));
         alternative.ifPresent(alt -> {
