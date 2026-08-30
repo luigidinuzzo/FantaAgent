@@ -33,6 +33,11 @@ public record PriceModel(Map<String, Double> priors, double inflationForward, Ma
         roleBias = Map.copyOf(roleBias);
     }
 
+    /** Copia del modello con l'inflazione perturbata: serve al fattore di stabilità. */
+    public PriceModel withInflation(double factor) {
+        return new PriceModel(priors, inflationForward * factor, roleBias);
+    }
+
     public int expectedPrice(PlayerProjection projection) {
         double prior = priors.getOrDefault(projection.playerId(), 1.0);
         double bias = roleBias.getOrDefault(projection.role(), 1.0);
