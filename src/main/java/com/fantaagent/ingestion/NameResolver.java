@@ -2,11 +2,9 @@ package com.fantaagent.ingestion;
 
 import com.fantaagent.domain.player.Player;
 
-import java.text.Normalizer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -54,13 +52,7 @@ public final class NameResolver {
     }
 
     public static String normalize(String raw) {
-        String decomposed = Normalizer.normalize(raw, Normalizer.Form.NFD);
-        String withoutAccents = decomposed.replaceAll("\\p{M}", "");
-        String cleaned = withoutAccents.toLowerCase(Locale.ITALIAN)
-                .replaceAll("[^a-z0-9 ]", "")
-                .replaceAll("\\s+", " ")
-                .trim();
-        return cleaned;
+        return com.fantaagent.domain.search.TextNormalizer.normalize(raw);
     }
 
     public Optional<String> resolve(String rawName) {
