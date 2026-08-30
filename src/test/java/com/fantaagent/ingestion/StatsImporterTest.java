@@ -78,4 +78,24 @@ class StatsImporterTest {
 
         assertThat(result.stats().getFirst().averageRating()).isEqualTo(6.15);
     }
+
+    @Test
+    void mapsEachPenaltyColumnToItsOwnField() throws Exception {
+        // Rs/Rc/Rp -> segnati/sbagliati/parati. Valori tutti diversi apposta: con
+        // valori uguali una trasposizione fra le tre colonne passerebbe inosservata,
+        // e falserebbe i punti attesi di ogni rigorista, cioe' i giocatori piu' cari.
+        Path file = csv("""
+                Nome,Pv,Mv,Gf,Ass,Amm,Esp,Rp,Rc,Rs,Gs,Imb
+                Bastoni,30,6.15,7,0,0,0,3,2,5,0,0
+                """);
+
+        StatsImporter.StatsImport result =
+                new StatsImporter().importFrom(file, "2025-26", resolver);
+
+        SeasonStats stats = result.stats().getFirst();
+        assertThat(stats.penaltiesScored()).isEqualTo(5);   // colonna Rs
+        assertThat(stats.penaltiesMissed()).isEqualTo(2);   // colonna Rc
+        assertThat(stats.penaltiesSaved()).isEqualTo(3);    // colonna Rp
+        assertThat(stats.goals()).isEqualTo(7);
+    }
 }
