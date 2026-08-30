@@ -21,9 +21,11 @@ public class InMemoryPlayerCatalog implements PlayerCatalog {
     public InMemoryPlayerCatalog(List<Player> players, List<SeasonStats> stats) {
         this.byId = players.stream().collect(Collectors.toMap(
                 Player::id, p -> p, (a, b) -> a, LinkedHashMap::new));
-        this.byRole = players.stream().collect(Collectors.groupingBy(Player::role));
+        this.byRole = players.stream().collect(Collectors.groupingBy(Player::role,
+                Collectors.collectingAndThen(Collectors.toList(), List::copyOf)));
         this.statsByPlayer = stats.stream()
-                .collect(Collectors.groupingBy(SeasonStats::playerId));
+                .collect(Collectors.groupingBy(SeasonStats::playerId,
+                        Collectors.collectingAndThen(Collectors.toList(), List::copyOf)));
     }
 
     @Override

@@ -48,4 +48,23 @@ class InMemoryPlayerCatalogTest {
         assertThat(catalog.statsOf("1")).hasSize(1);
         assertThat(catalog.statsOf("2")).isEmpty();
     }
+
+    @Test
+    void byRoleReturnsImmutableList() {
+        assertThatThrownBy(() -> catalog.byRole(Role.D).add(LAUTARO))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void allReturnsImmutableList() {
+        assertThatThrownBy(() -> catalog.all().add(LAUTARO))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void statsOfReturnsImmutableList() {
+        SeasonStats stats = new SeasonStats("1", "2025-26", 30, 6.2, 2, 1, 5, 0, 0, 0, 0, 0, 0);
+        assertThatThrownBy(() -> catalog.statsOf("1").add(stats))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
 }
