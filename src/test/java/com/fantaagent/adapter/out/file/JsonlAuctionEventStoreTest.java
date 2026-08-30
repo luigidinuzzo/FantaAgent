@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JsonlAuctionEventStoreTest {
 
@@ -92,6 +93,22 @@ class JsonlAuctionEventStoreTest {
         store.backup("vuoto");
 
         assertThat(tmp.resolve("events-vuoto.jsonl.bak")).doesNotExist();
+    }
+
+    @Test
+    void loadFailsNamingTheFileAndTheLineOfAnUnknownEventType() throws Exception {
+        Path file = tmp.resolve("events.jsonl");
+        JsonlAuctionEventStore store = new JsonlAuctionEventStore(file);
+        store.append(new AuctionEvent.PlayerPurchased(1, T, "bastoni", "me", 47));
+        // Riga 2 corrotta: tipo di evento sconosciuto, come un log scritto da un'altra versione.
+        Files.writeString(file,
+                "{\"type\":\"NonEsiste\",\"seq\":2,\"at\":\"2026-09-05T20:00:00Z\"}\n",
+                java.nio.file.StandardOpenOption.APPEND);
+
+        assertThatThrownBy(store::load)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(file.toString())
+                .hasMessageContaining("riga 2");
     }
 
     @Test
