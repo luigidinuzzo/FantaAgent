@@ -47,11 +47,16 @@ Questi vincoli valgono per **ogni** task del piano.
   scope di questo piano.
 - **Test:** ogni task termina con test verdi ed esattamente un commit.
   Comando di riferimento: `mvn -q test`.
-- **Lingua:** identificatori, nomi di metodo e chiavi di configurazione in inglese.
-  Tutto il testo che un essere umano legge è in italiano: commenti, messaggi di
-  eccezione, testo della UI, stringhe esplicative dei test. L'applicazione è uno
-  strumento locale per un solo utente italiano e i messaggi di errore che escono
-  a video durante l'asta sono per lui, non per un operatore anglofono.
+- **Lingua**, tre categorie distinte:
+  - identificatori, nomi di metodo e chiavi di configurazione: **inglese**;
+  - messaggi che raggiungono l'utente — validazioni di `AuctionService`, mostrate
+    come toast durante l'asta, e messaggi di `StartupValidator`, letti a terminale
+    all'avvio: **italiano**, perché li legge lui;
+  - messaggi di violazione di invariante nei tipi di dominio (`Player`, `SeasonStats`,
+    `LeagueRules`, `ModifierTable`, `AuctionEvent`, `Squad`): **inglese**, perché
+    segnalano un errore di programmazione, non raggiungono mai l'utente e vengono
+    letti solo in uno stack trace.
+  - commenti e stringhe esplicative dei test: **italiano**.
 
 ---
 
@@ -1275,7 +1280,9 @@ public class InMemoryPlayerCatalog implements PlayerCatalog {
     public InMemoryPlayerCatalog(List<Player> players, List<SeasonStats> stats) {
         this.byId = players.stream().collect(Collectors.toMap(
                 Player::id, p -> p, (a, b) -> a, LinkedHashMap::new));
-        this.byRole = players.stream().collect(Collectors.groupingBy(Player::role));
+        this.byRole = players.stream()
+                .collect(Collectors.groupingBy(Player::role,
+                        Collectors.collectingAndThen(Collectors.toList(), List::copyOf)));
         this.statsByPlayer = stats.stream()
                 .collect(Collectors.groupingBy(SeasonStats::playerId));
     }
