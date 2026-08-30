@@ -6515,9 +6515,12 @@ public class PlayerSearchService {
     private static final int SEARCH_LIMIT = 8;
 
     /**
-     * Quanti candidati valutare per la lista target. Ogni valutazione costa qualche
-     * decina di millisecondi: quindici righe restano sotto il quarto di secondo, che è
-     * accettabile per un pannello aperto su richiesta.
+     * Quanti candidati valutare per la lista target.
+     *
+     * <p>Una valutazione completa costa circa 45 ms su un pool reale, quindi questa
+     * lista sta nell'ordine del mezzo secondo. È accettabile perché il pannello si apre
+     * di proposito fra una chiamata e l'altra, non mentre si rilancia — ma è il punto
+     * più lento dell'applicazione e va misurato, non stimato.
      */
     private static final int TARGET_CANDIDATES = 15;
 
