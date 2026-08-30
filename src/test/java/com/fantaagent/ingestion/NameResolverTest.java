@@ -43,9 +43,30 @@ class NameResolverTest {
     }
 
     @Test
-    void toleratesSingleCharacterTypos() {
-        assertThat(resolver.resolve("Bastony")).contains("1");
-        assertThat(resolver.resolve("Dimarko")).contains("3");
+    void refusesToGuessOnATypoAndLeavesItForTheReconciliationReport() {
+        // Un refuso di un carattere non deve produrre un match: il nome resta irrisolto
+        // e finisce nel report di riconciliazione che l'utente corregge con un alias.
+        assertThat(resolver.resolve("Bastony")).isEmpty();
+        assertThat(resolver.resolve("Dimarko")).isEmpty();
+    }
+
+    @Test
+    void refusesShortSurnamesThatDifferByOneCharacter() {
+        // Cognomi brevi come Conte/Conti collidono a distanza 1: un match approssimato
+        // qui produrrebbe una risposta sicura ma sbagliata, quindi il resolver rifiuta.
+        NameResolver conteOnly = new NameResolver(
+                List.of(new Player("50", "Conte A.", "Napoli", Role.C, 10)), Map.of());
+        assertThat(conteOnly.resolve("Conti")).isEmpty();
+    }
+
+    @Test
+    void refusesWhenTwoPlayersNormaliseToTheSameName() {
+        // Due giocatori distinti con lo stesso nome normalizzato: il nome pieno da solo
+        // non è più un identificatore univoco, quindi il match esatto deve rifiutare.
+        NameResolver collidingNames = new NameResolver(List.of(
+                new Player("60", "Rossi M.", "Empoli", Role.C, 5),
+                new Player("61", "Rossi M.", "Genoa", Role.D, 6)), Map.of());
+        assertThat(collidingNames.resolve("Rossi M.")).isEmpty();
     }
 
     @Test
