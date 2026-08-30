@@ -137,4 +137,20 @@ class ListoneImporterTest {
         assertThat(result.report().rejected()).isEqualTo(1);
         assertThat(result.report().render()).contains("quotazione non positiva");
     }
+
+    @Test
+    void ignoresTrailingBlankRowsInsteadOfReportingThem() throws Exception {
+        // Gli export XLSX lasciano righe in coda con la sola formattazione: segnalarle
+        // riempirebbe il report di rumore e nasconderebbe le anomalie vere.
+        Path file = writeWorkbook(new String[][]{
+                {"Id", "R", "Nome", "Squadra", "Qt.A"},
+                {"1", "D", "Bastoni", "Inter", "20"},
+                {"", "", "", "", ""}});
+
+        ListoneImporter.ListoneImport result = new ListoneImporter().importFrom(file);
+
+        assertThat(result.players()).hasSize(1);
+        assertThat(result.report().rejected()).isZero();
+        assertThat(result.report().clean()).isTrue();
+    }
 }

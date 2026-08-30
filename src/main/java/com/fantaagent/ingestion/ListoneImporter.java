@@ -41,7 +41,11 @@ public class ListoneImporter {
             int rejected = 0;
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
-                if (row == null) {
+                // Una riga assente o interamente vuota non e' un'anomalia da segnalare:
+                // gli export XLSX lasciano righe in coda con la sola formattazione, e
+                // riportarle riempirebbe di rumore proprio il report che deve far
+                // vedere i problemi veri.
+                if (row == null || isBlank(row, columns)) {
                     continue;
                 }
                 try {
@@ -55,6 +59,15 @@ public class ListoneImporter {
         } catch (IOException e) {
             throw new IllegalStateException("impossibile leggere il listone: " + xlsx, e);
         }
+    }
+
+    private static boolean isBlank(Row row, Map<String, Integer> columns) {
+        for (Integer index : columns.values()) {
+            if (!stringValue(row.getCell(index)).isBlank()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Map<String, Integer> readHeader(Row header) {
