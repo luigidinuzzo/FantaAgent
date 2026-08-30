@@ -34,6 +34,16 @@ public class BeanConfig {
                 .toList();
     }
 
+    @Bean
+    public com.fantaagent.application.port.out.PlayerCatalog playerCatalog(
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:data}") String dataDir) {
+        com.fantaagent.ingestion.CatalogLoader.LoadedCatalog loaded =
+                new com.fantaagent.ingestion.CatalogLoader().load(java.nio.file.Path.of(dataDir));
+        org.slf4j.LoggerFactory.getLogger(BeanConfig.class)
+                .info("catalogo caricato:\n{}", loaded.report().render());
+        return loaded.catalog();
+    }
+
     private static ModifierTable toTable(LeagueProperties.Table table) {
         return new ModifierTable(table.defendersCounted(),
                 table.thresholds().stream()
