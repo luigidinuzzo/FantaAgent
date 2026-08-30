@@ -1,0 +1,19 @@
+# Build
+target/
+*.class
+
+# Segreti — mai committare
+.env
+
+# Dati locali dell'asta e file di riferimento forniti dall'utente
+data/auctions/
+data/dossiers/
+data/reference/*.xlsx
+data/reference/*.csv
+data/reference/normalized.json
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
