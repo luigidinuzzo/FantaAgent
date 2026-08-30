@@ -1663,6 +1663,22 @@ class ListoneImporterTest {
     }
 
     @Test
+    void ignoresTrailingBlankRowsInsteadOfReportingThem() throws Exception {
+        // Gli export XLSX lasciano righe in coda con la sola formattazione: segnalarle
+        // riempirebbe il report di rumore e nasconderebbe le anomalie vere.
+        Path file = writeWorkbook(new String[][]{
+                {"Id", "R", "Nome", "Squadra", "Qt.A"},
+                {"1", "D", "Bastoni", "Inter", "20"},
+                {"", "", "", "", ""}});
+
+        ListoneImporter.ListoneImport result = new ListoneImporter().importFrom(file);
+
+        assertThat(result.players()).hasSize(1);
+        assertThat(result.report().rejected()).isZero();
+        assertThat(result.report().clean()).isTrue();
+    }
+
+    @Test
     void failsLoudlyWhenAMandatoryColumnIsMissing() throws Exception {
         Path file = writeWorkbook(new String[][]{
                 {"Id", "Nome", "Squadra", "Qt.A"},
@@ -1756,7 +1772,11 @@ public class ListoneImporter {
             int rejected = 0;
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
-                if (row == null) {
+                // Una riga assente o interamente vuota non e' un'anomalia da segnalare:
+                // gli export XLSX lasciano righe in coda con la sola formattazione, e
+                // riportarle riempirebbe di rumore proprio il report che deve far
+                // vedere i problemi veri.
+                if (row == null || isBlank(row, columns)) {
                     continue;
                 }
                 try {
@@ -1813,6 +1833,15 @@ public class ListoneImporter {
             throw new IllegalArgumentException("quotazione non positiva: " + priceRaw);
         }
         return new Player(id, name, team, role, price);
+    }
+
+    private static boolean isBlank(Row row, Map<String, Integer> columns) {
+        for (Integer index : columns.values()) {
+            if (!stringValue(row.getCell(index)).isBlank()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String stringValue(Cell cell) {
