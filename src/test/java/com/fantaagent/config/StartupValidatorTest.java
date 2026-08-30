@@ -76,7 +76,7 @@ class StartupValidatorTest {
                 new LeagueRules(2, 500, validSlots(), List.of(Role.P, Role.D, Role.C, Role.A)),
                 scoring(true), noMe, false).validate())
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("exactly one");
+                .hasMessageContaining("esattamente un");
     }
 
     @Test

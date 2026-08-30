@@ -43,28 +43,29 @@ public class StartupValidator {
     public void validate() {
         if (participants.size() != rules.participants()) {
             throw new IllegalStateException(
-                    "configured participants (" + participants.size()
-                    + ") do not match league.participants (" + rules.participants() + ")");
+                    "il numero di partecipanti configurati (" + participants.size()
+                    + ") non corrisponde a league.participants (" + rules.participants() + ")");
         }
         Set<Character> initials = new HashSet<>();
         for (Participant p : participants) {
             if (!initials.add(p.initial())) {
                 throw new IllegalStateException(
-                        "duplicate participant initial '" + p.initial() + "'");
+                        "valore duplicato del campo initial tra i partecipanti: '" + p.initial() + "'");
             }
         }
         long owners = participants.stream().filter(Participant::me).count();
         if (owners != 1) {
             throw new IllegalStateException(
-                    "exactly one participant must have me=true, found " + owners);
+                    "deve esserci esattamente un partecipante con me=true, trovati: " + owners);
         }
         if (rules.rosterSize() < 1) {
-            throw new IllegalStateException("roster size must be positive");
+            throw new IllegalStateException("la dimensione della rosa deve essere positiva");
         }
         if (!scoring.modifiersConfirmed() && !devProfile) {
             throw new IllegalStateException(
-                    "league.scoring.modifiers-confirmed is false: sostituire le tabelle "
-                    + "segnaposto dei modificatori prima di usare l'applicazione in asta");
+                    "la chiave league.scoring.modifiers-confirmed è false: sostituire le tabelle "
+                    + "segnaposto dei modificatori con quelle reali della lega prima di usare "
+                    + "l'applicazione in asta");
         }
     }
 }
