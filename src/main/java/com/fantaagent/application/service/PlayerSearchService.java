@@ -4,6 +4,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.search.PlayerSearch;
+import com.fantaagent.domain.strategy.PriceModel;
 import com.fantaagent.domain.strategy.PriceRecommendation;
 
 import java.util.Comparator;
@@ -57,6 +58,9 @@ public class PlayerSearchService {
     public List<TargetRow> targets(int limit) {
         AuctionState state = auction.state();
         Set<String> sold = state.soldPlayerIds();
+        // Costruito una sola volta e riusato su tutti i candidati: rifarlo per ciascuno
+        // ripeterebbe una scansione dell'intero catalogo TARGET_CANDIDATES volte.
+        PriceModel prices = analysis.priceModelFor(state);
 
         return projections.all().stream()
                 .filter(p -> p.role() == state.currentPhase())
@@ -66,7 +70,7 @@ public class PlayerSearchService {
                 .limit(TARGET_CANDIDATES)
                 .map(p -> new TargetRow(
                         catalog.byId(p.playerId()).orElseThrow(),
-                        analysis.analyze(p.playerId(), state)))
+                        analysis.analyze(p.playerId(), state, prices)))
                 .sorted(Comparator.comparingInt(TargetRow::margin).reversed())
                 .limit(limit)
                 .toList();

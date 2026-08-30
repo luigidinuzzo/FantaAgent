@@ -32,15 +32,31 @@ public class PlayerAnalysisService {
     }
 
     public PriceRecommendation analyze(String playerId) {
-        return engine.evaluate(context(playerId, auction.state()));
+        AuctionState state = auction.state();
+        return analyze(playerId, state, priceModelFor(state));
     }
 
     /** Riusa lo stato già proiettato: serve alla lista target, che valuta molti giocatori. */
     public PriceRecommendation analyze(String playerId, AuctionState state) {
-        return engine.evaluate(context(playerId, state));
+        return analyze(playerId, state, priceModelFor(state));
     }
 
-    private ValuationContext context(String playerId, AuctionState state) {
+    /**
+     * Riusa sia lo stato sia il modello di prezzo già costruiti: {@code targets()} valuta
+     * molti candidati sullo stesso stato e altrimenti ricalcolerebbe il modello — che
+     * scansiona l'intero catalogo — una volta per candidato.
+     */
+    public PriceRecommendation analyze(String playerId, AuctionState state, PriceModel prices) {
+        return engine.evaluate(context(playerId, state, prices));
+    }
+
+    /** Costruisce il modello di prezzo per uno stato, da riusare su più valutazioni. */
+    public PriceModel priceModelFor(AuctionState state) {
+        return PriceModel.build(rules, state, projections.all(),
+                id -> catalog.byId(id).map(Player::listPrice).orElse(1));
+    }
+
+    private ValuationContext context(String playerId, AuctionState state, PriceModel prices) {
         PlayerProjection target = projections.of(playerId);
         Set<String> sold = state.soldPlayerIds();
 
@@ -50,9 +66,6 @@ public class PlayerAnalysisService {
         List<PlayerProjection> available = projections.all().stream()
                 .filter(p -> !sold.contains(p.playerId()))
                 .toList();
-
-        PriceModel prices = PriceModel.build(rules, state, projections.all(),
-                id -> catalog.byId(id).map(Player::listPrice).orElse(1));
 
         return new ValuationContext(state, target, owned, available, prices,
                 auction.salesInCurrentPhase());
