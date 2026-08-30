@@ -4820,8 +4820,10 @@ public record ConfidenceScore(
     /** 1 quando perturbare i prezzi non muove il prezzo massimo, 0 quando lo stravolge. */
     public static double stabilityFactor(int maxBid, int low, int high) {
         int reference = Math.max(1, maxBid);
+        // La confidenza si azzera quando l'intervallo del prezzo massimo sotto
+        // perturbazione dei prezzi e' largo quanto il prezzo massimo stesso.
         double spread = (double) Math.abs(high - low) / reference;
-        return Math.min(1.0, Math.max(0.0, 1.0 - spread / 2.0));
+        return Math.min(1.0, Math.max(0.0, 1.0 - spread));
     }
 
     private static double clamp(double factor) {
