@@ -47,7 +47,11 @@ Questi vincoli valgono per **ogni** task del piano.
   scope di questo piano.
 - **Test:** ogni task termina con test verdi ed esattamente un commit.
   Comando di riferimento: `mvn -q test`.
-- **Lingua:** identificatori e messaggi di log in inglese; testo della UI in italiano.
+- **Lingua:** identificatori, nomi di metodo e chiavi di configurazione in inglese.
+  Tutto il testo che un essere umano legge è in italiano: commenti, messaggi di
+  eccezione, testo della UI, stringhe esplicative dei test. L'applicazione è uno
+  strumento locale per un solo utente italiano e i messaggi di errore che escono
+  a video durante l'asta sono per lui, non per un operatore anglofono.
 
 ---
 
