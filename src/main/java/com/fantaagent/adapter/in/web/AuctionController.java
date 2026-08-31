@@ -12,6 +12,7 @@ import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
 import com.fantaagent.domain.search.CommandParser;
 import com.fantaagent.domain.search.ParsedCommand;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +40,16 @@ public class AuctionController {
      * restituire il solo pannello principale.
      */
     private static final String UPDATE_VIEW = "fragments/update :: update";
+
+    /**
+     * Nome dell'evento HTMX emesso, via header di risposta HX-Trigger, ogni volta
+     * che una richiesta cambia davvero lo stato dell'asta (acquisto registrato,
+     * annullamento effettivo, fase avanzata). #phaseTable lo ascolta per
+     * ricaricarsi da sé dopo che l'assegnazione è già stata applicata: il batch
+     * costa circa 380 ms da rendere, troppo per infilarlo nella risposta composita
+     * che serve invece #main/#status/#board/#resume all'istante.
+     */
+    private static final String STATE_CHANGED_EVENT = "fantaStateChanged";
 
     private final AuctionService auction;
     private final PlayerAnalysisService analysis;
@@ -74,9 +85,11 @@ public class AuctionController {
     }
 
     @PostMapping("/command")
-    public String command(@RequestParam(defaultValue = "") String cmd, Model model) {
+    public String command(@RequestParam(defaultValue = "") String cmd, Model model,
+                          HttpServletResponse response) {
         ParsedCommand parsed = CommandParser.parse(cmd);
         String message = null;
+        boolean purchased = false;
 
         if (parsed.isPurchase()) {
             List<Player> matches = search.search(parsed.term());
@@ -96,6 +109,7 @@ public class AuctionController {
                                 parsed.price().orElseThrow());
                         message = "✓ " + player.name() + " → " + buyer.get().name()
                                 + " " + parsed.price().orElseThrow() + " · Ctrl+Z per annullare";
+                        purchased = true;
                     } catch (IllegalArgumentException e) {
                         message = "✗ " + e.getMessage();
                     }
@@ -103,6 +117,9 @@ public class AuctionController {
             }
         }
 
+        if (purchased) {
+            response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
+        }
         populateShell(model);
         model.addAttribute("panel",
                 searchPanel(parsed.isPurchase() ? "" : parsed.term(), message));
@@ -116,7 +133,7 @@ public class AuctionController {
      */
     @PostMapping("/assign")
     public String assign(@RequestParam String playerId, @RequestParam String participantId,
-                         @RequestParam int price, Model model) {
+                         @RequestParam int price, Model model, HttpServletResponse response) {
         String message;
         try {
             auction.recordPurchase(playerId, participantId, price);
@@ -126,6 +143,7 @@ public class AuctionController {
                     .findFirst().orElseThrow();
             message = "✓ " + player.name() + " → " + buyer.name()
                     + " " + price + " · Ctrl+Z per annullare";
+            response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
         } catch (IllegalArgumentException e) {
             message = "✗ " + e.getMessage();
         }
@@ -136,18 +154,21 @@ public class AuctionController {
     }
 
     @PostMapping("/undo")
-    public String undo(Model model) {
-        String message = auction.undoLast()
-                ? "↩ ultimo acquisto annullato"
-                : "niente da annullare";
+    public String undo(Model model, HttpServletResponse response) {
+        boolean undone = auction.undoLast();
+        String message = undone ? "↩ ultimo acquisto annullato" : "niente da annullare";
+        if (undone) {
+            response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
+        }
         populateShell(model);
         model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, message));
         return UPDATE_VIEW;
     }
 
     @PostMapping("/phase/next")
-    public String nextPhase(Model model) {
+    public String nextPhase(Model model, HttpServletResponse response) {
         auction.advancePhase();
+        response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
         populateShell(model);
         model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null,
                 "fase avanzata a " + auction.state().currentPhase()));

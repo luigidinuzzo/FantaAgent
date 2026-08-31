@@ -108,9 +108,21 @@
          a ogni ricerca/comando, e questa tabella non deve sparire mentre l'utente
          digita. Si carica da sola all'apertura della pagina (hx-trigger="load") così
          la pagina resta veloce e la tabella (fino a ~1,5 s per 25 righe) arriva subito
-         dopo, senza bloccare il primo render. -->
-    <div id="phaseTable" hx-get="/fragments/phase-players?offset=0" hx-trigger="load"
-         hx-swap="outerHTML"></div>
+         dopo, senza bloccare il primo render.
+         Il secondo trigger, "fantaStateChanged from:body", la ricarica da sola dopo
+         ogni acquisto/annullamento/cambio fase: l'evento è emesso via header
+         HX-Trigger da /command, /undo, /phase/next e /assign (si veda
+         AuctionController#STATE_CHANGED_EVENT) e sale fino al body per bubbling,
+         così questo elemento — che sta fuori da #main e non riceve mai quello swap
+         — lo intercetta comunque. Ricarica sempre da offset=0: un giocatore appena
+         venduto potrebbe stare in una pagina già scrollata oltre le prime 25 righe,
+         e tracciare "quante pagine ha caricato l'utente" per riproporre lo stesso
+         offset avrebbe richiesto uno stato aggiuntivo nel markup (es. un attributo
+         aggiornato ad ogni "carica altri 25") per un caso — l'utente scrolla molto
+         E compra nel frattempo dalla barra comando — abbastanza raro da non
+         giustificare la complessità: si perde il punto di scroll, non i dati. -->
+    <div id="phaseTable" hx-get="/fragments/phase-players?offset=0"
+         hx-trigger="load, fantaStateChanged from:body" hx-swap="outerHTML"></div>
   </section>
 
   <aside id="board" class="board" th:fragment="board" hx-swap-oob="true">

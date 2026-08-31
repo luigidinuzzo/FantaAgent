@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -146,6 +147,23 @@ class AuctionControllerTest {
     }
 
     @Test
+    void aSuccessfulPurchaseTellsPhaseTableToRefreshItself() throws Exception {
+        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("HX-Trigger", "fantaStateChanged"));
+    }
+
+    @Test
+    void aRejectedPurchaseDoesNotTriggerAPhaseTableRefresh() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
+                .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
+
+        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("HX-Trigger"));
+    }
+
+    @Test
     void assignRecordsAPurchaseForTheChosenParticipantAtTheEnteredPrice() throws Exception {
         mockMvc.perform(post("/assign")
                         .param("playerId", "d1")
@@ -169,6 +187,29 @@ class AuctionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("già stato acquistato")));
+    }
+
+    @Test
+    void aSuccessfulAssignmentTellsPhaseTableToRefreshItself() throws Exception {
+        mockMvc.perform(post("/assign")
+                        .param("playerId", "d1")
+                        .param("participantId", "marco")
+                        .param("price", "47"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("HX-Trigger", "fantaStateChanged"));
+    }
+
+    @Test
+    void aRejectedAssignmentDoesNotTriggerAPhaseTableRefresh() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
+                .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
+
+        mockMvc.perform(post("/assign")
+                        .param("playerId", "d1")
+                        .param("participantId", "marco")
+                        .param("price", "47"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("HX-Trigger"));
     }
 
     @Test
