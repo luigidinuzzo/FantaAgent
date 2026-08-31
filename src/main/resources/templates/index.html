@@ -79,6 +79,21 @@
         </ul>
 
         <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
+
+        <!-- Complementa la barra comando per chi non conosce "bast 47 m": un prezzo
+             condiviso (precompilato con maxBid) e un bottone per partecipante, che
+             assegna QUEL giocatore a QUEL partecipante a quel prezzo. Passa da /assign,
+             che chiama lo stesso AuctionService#recordPurchase del comando. -->
+        <form class="assign-row" hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
+          <input type="hidden" name="playerId" th:value="${panel.analysis.player.id}">
+          <label>PREZZO
+            <input type="number" name="price" min="1" class="assign-price"
+                   th:value="${panel.analysis.recommendation.maxBid}">
+          </label>
+          <button th:each="pt : ${participants}" type="submit" name="participantId"
+                  th:value="${pt.id}" th:text="${pt.name}"
+                  th:classappend="${pt.me} ? 'assign-me' : ''">Nome</button>
+        </form>
       </article>
     </div>
   </section>

@@ -1,6 +1,7 @@
 package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.adapter.in.web.dto.ViewModels;
+import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
@@ -42,12 +43,14 @@ public class AuctionController {
     private final AuctionService auction;
     private final PlayerAnalysisService analysis;
     private final PlayerSearchService search;
+    private final PlayerCatalog catalog;
 
     public AuctionController(AuctionService auction, PlayerAnalysisService analysis,
-                             PlayerSearchService search) {
+                             PlayerSearchService search, PlayerCatalog catalog) {
         this.auction = auction;
         this.analysis = analysis;
         this.search = search;
+        this.catalog = catalog;
     }
 
     @GetMapping("/")
@@ -65,6 +68,7 @@ public class AuctionController {
         // la ricerca sul testo grezzo non trova nulla e il pannello di analisi — con
         // sopra il max bid — sparisce proprio mentre l'utente decide quanto offrire.
         ParsedCommand parsed = CommandParser.parse(q);
+        model.addAttribute("participants", auction.participants());
         model.addAttribute("panel", searchPanel(parsed.term(), null));
         return "index :: main";
     }
@@ -102,6 +106,32 @@ public class AuctionController {
         populateShell(model);
         model.addAttribute("panel",
                 searchPanel(parsed.isPurchase() ? "" : parsed.term(), message));
+        return UPDATE_VIEW;
+    }
+
+    /**
+     * Assegnazione senza barra comando: complementa "bast 47 m" per chi non la
+     * conosce, ma passa dallo stesso {@link AuctionService#recordPurchase} — nessuna
+     * seconda via, più debole, per registrare un acquisto.
+     */
+    @PostMapping("/assign")
+    public String assign(@RequestParam String playerId, @RequestParam String participantId,
+                         @RequestParam int price, Model model) {
+        String message;
+        try {
+            auction.recordPurchase(playerId, participantId, price);
+            Player player = catalog.byId(playerId).orElseThrow();
+            Participant buyer = auction.participants().stream()
+                    .filter(p -> p.id().equals(participantId))
+                    .findFirst().orElseThrow();
+            message = "✓ " + player.name() + " → " + buyer.name()
+                    + " " + price + " · Ctrl+Z per annullare";
+        } catch (IllegalArgumentException e) {
+            message = "✗ " + e.getMessage();
+        }
+
+        populateShell(model);
+        model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, message));
         return UPDATE_VIEW;
     }
 
@@ -155,6 +185,7 @@ public class AuctionController {
                     participant.me()));
         }
         model.addAttribute("board", board);
+        model.addAttribute("participants", auction.participants());
         auction.resumeSummary().ifPresent(summary -> model.addAttribute("resume", summary));
     }
 

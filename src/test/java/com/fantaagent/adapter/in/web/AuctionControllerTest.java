@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.web;
 
+import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
@@ -70,6 +71,9 @@ class AuctionControllerTest {
     @MockitoBean
     private PlayerSearchService searchService;
 
+    @MockitoBean
+    private PlayerCatalog playerCatalog;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -83,6 +87,7 @@ class AuctionControllerTest {
         when(auctionService.salesInCurrentPhase()).thenReturn(0);
         when(searchService.search(anyString())).thenReturn(List.of(BASTONI));
         when(analysisService.analyze("d1")).thenReturn(RECOMMENDATION);
+        when(playerCatalog.byId("d1")).thenReturn(Optional.of(BASTONI));
     }
 
     @Test
@@ -135,6 +140,32 @@ class AuctionControllerTest {
                 .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
 
         mockMvc.perform(post("/command").param("cmd", "bast 47"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("già stato acquistato")));
+    }
+
+    @Test
+    void assignRecordsAPurchaseForTheChosenParticipantAtTheEnteredPrice() throws Exception {
+        mockMvc.perform(post("/assign")
+                        .param("playerId", "d1")
+                        .param("participantId", "marco")
+                        .param("price", "47"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")));
+
+        verify(auctionService).recordPurchase("d1", "marco", 47);
+    }
+
+    @Test
+    void aRejectedAssignmentIsShownAsTheSameItalianToastMessage() throws Exception {
+        org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
+                .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
+
+        mockMvc.perform(post("/assign")
+                        .param("playerId", "d1")
+                        .param("participantId", "marco")
+                        .param("price", "47"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("già stato acquistato")));

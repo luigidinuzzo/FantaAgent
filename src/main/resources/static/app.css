@@ -31,3 +31,14 @@ body { margin:0; background:var(--bg); color:var(--fg);
 
 .settings-link { color: var(--dim); font-size: .8rem; text-decoration: none; }
 .settings-link:hover { color: var(--fg); }
+
+.assign-row { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+              margin-top:1rem; padding-top:.75rem; border-top:1px solid var(--line); }
+.assign-row label { font-size:.7rem; color:var(--dim); letter-spacing:.08em; }
+.assign-price { width:5rem; font:inherit; background:#000; color:var(--fg);
+                border:1px solid var(--line); padding:.3rem; margin-left:.3rem; }
+.assign-row button { font:inherit; background:#1c1c1c; color:var(--fg);
+                      border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
+.assign-row button:hover { background:#2a2a2a; }
+.assign-row button.assign-me { background:var(--pos); color:#022; font-weight:bold;
+                                border-color:var(--pos); }
