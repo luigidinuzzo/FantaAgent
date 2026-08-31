@@ -56,14 +56,25 @@ public record ScoringSettings(
                 List.of(new ModifierTable.Threshold(0.0, 0.0)));
     }
 
+    /** Equivalente a {@link #toScoringRules(double)} con sigma zero (nessuna dispersione di giornata). */
     public ScoringRules toScoringRules() {
+        return toScoringRules(0.0);
+    }
+
+    /**
+     * @param matchdayRatingSigma deviazione standard della media voto di giornata,
+     *                            vedi {@code league.scoring.matchday-rating-sigma}
+     *                            in application.yml; non fa parte delle impostazioni
+     *                            modificabili dall'utente, viene solo dalla configurazione.
+     */
+    public ScoringRules toScoringRules(double matchdayRatingSigma) {
         ModifierTable defence = defenceModifierEnabled
                 ? new ModifierTable(defendersCounted, toDomainThresholds())
                 : neutralTable(defendersCounted);
         return new ScoringRules(confirmed, goalBonus, assist,
                 penaltyScored, penaltyMissed, penaltySaved,
                 yellowCard, redCard, goalConceded, cleanSheet,
-                defence, neutralTable(0));
+                defence, neutralTable(0), matchdayRatingSigma);
     }
 
     /**

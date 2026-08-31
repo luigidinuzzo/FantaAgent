@@ -46,7 +46,7 @@ class ValuationEngineModifierCompositionTest {
 
     private static final ScoringRules SCORING = new ScoringRules(true,
             Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
-            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, DEFENCE, KEEPER);
+            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, DEFENCE, KEEPER, 0.0);
 
     /** Marginale sotto ogni soglia, così un reparto scoperto non falsa il confronto. */
     private static final ReplacementLevels REPLACEMENT = new ReplacementLevels(

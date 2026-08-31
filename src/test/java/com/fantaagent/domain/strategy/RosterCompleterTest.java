@@ -27,7 +27,7 @@ class RosterCompleterTest {
 
     private static final ScoringRules SCORING = new ScoringRules(true,
             Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
-            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, FLAT, FLAT);
+            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, FLAT, FLAT, 0.0);
 
     private static final ReplacementLevels REPLACEMENT = new ReplacementLevels(
             Map.of(Role.P, 0.0, Role.D, 0.0, Role.C, 0.0, Role.A, 0.0),

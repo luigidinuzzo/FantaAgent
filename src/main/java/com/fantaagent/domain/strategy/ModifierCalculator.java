@@ -47,8 +47,9 @@ public final class ModifierCalculator {
         }
         double unitAverage = sum / (defenderRatings.size() + 1);
 
-        double defenceBonus = scoring.defenceModifier().bonusFor(unitAverage);
-        double keeperBonus = scoring.goalkeeperModifier().bonusFor(keeperRating);
+        double sigma = scoring.matchdayRatingSigma();
+        double defenceBonus = scoring.defenceModifier().expectedBonus(unitAverage, sigma);
+        double keeperBonus = scoring.goalkeeperModifier().expectedBonus(keeperRating, sigma);
 
         return ProjectionCalculator.SEASON_MATCHES * (defenceBonus + keeperBonus);
     }

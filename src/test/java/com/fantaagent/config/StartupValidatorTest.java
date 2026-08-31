@@ -38,14 +38,14 @@ class StartupValidatorTest {
         return new ScoringRules(confirmed,
                 Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
                 1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0,
-                ANY_TABLE, ANY_TABLE);
+                ANY_TABLE, ANY_TABLE, 0.0);
     }
 
     private static ScoringRules scoring(boolean confirmed, ModifierTable defence, ModifierTable keeper) {
         return new ScoringRules(confirmed,
                 Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
                 1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0,
-                defence, keeper);
+                defence, keeper, 0.0);
     }
 
     private static List<Participant> participants(int n) {

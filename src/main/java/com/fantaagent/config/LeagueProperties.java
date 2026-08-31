@@ -31,7 +31,8 @@ public record LeagueProperties(
             double cleanSheet,
             Table defenceModifier,
             Table goalkeeperModifier,
-            List<Double> seasonWeights) {
+            List<Double> seasonWeights,
+            double matchdayRatingSigma) {
     }
 
     public record Table(int defendersCounted, List<Row> thresholds) {

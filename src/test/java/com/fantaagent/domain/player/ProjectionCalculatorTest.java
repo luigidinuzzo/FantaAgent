@@ -18,7 +18,7 @@ class ProjectionCalculatorTest {
 
     private final ScoringRules scoring = new ScoringRules(true,
             Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
-            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, ANY, ANY);
+            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, ANY, ANY, 0.0);
 
     private final ProjectionCalculator calculator =
             new ProjectionCalculator(scoring, List.of(0.5, 0.3, 0.2));

@@ -41,6 +41,7 @@ public class SettingsConfig {
     @Bean
     @Primary
     public ScoringRules userScoringRules(ScoringSettingsStore store, LeagueProperties props) {
+        double sigma = props.scoring().matchdayRatingSigma();
         Optional<ScoringSettings> stored = store.load();
         if (stored.isEmpty()) {
             log.info("impostazioni di lega: nessun {} trovato, uso i valori di application.yml",
@@ -58,7 +59,7 @@ public class SettingsConfig {
                 store.file(),
                 settings.defenceModifierEnabled() ? "attivo" : "disattivo",
                 settings.thresholds().size());
-        return settings.toScoringRules();
+        return settings.toScoringRules(sigma);
     }
 
     /** Gli stessi valori che costruirebbe la configurazione di progetto, senza file utente. */
@@ -68,7 +69,8 @@ public class SettingsConfig {
                 s.modifiersConfirmed(), s.goalBonus(), s.assist(),
                 s.penaltyScored(), s.penaltyMissed(), s.penaltySaved(),
                 s.yellowCard(), s.redCard(), s.goalConceded(), s.cleanSheet(),
-                toTable(s.defenceModifier()), toTable(s.goalkeeperModifier()));
+                toTable(s.defenceModifier()), toTable(s.goalkeeperModifier()),
+                s.matchdayRatingSigma());
     }
 
     private static com.fantaagent.domain.league.ModifierTable toTable(LeagueProperties.Table t) {

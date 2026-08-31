@@ -42,7 +42,7 @@ class PlayerSearchServiceLatencyTest {
 
     private static final ScoringRules SCORING = new ScoringRules(true,
             Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
-            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, FLAT, FLAT);
+            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, FLAT, FLAT, 0.0);
 
     private static final LeagueRules RULES = new LeagueRules(8, 500,
             Map.of(Role.P, 3, Role.D, 8, Role.C, 8, Role.A, 6),

@@ -59,6 +59,22 @@ league:
     # passate. ATTENZIONE: quando la stagione in corso sarà completa questa lista va
     # rivista, perché quel file non sarà più un campione parziale ma una stagione piena.
     season-weights: [0.1, 0.5, 0.3, 0.2]
+    # Deviazione standard della media voto di GIORNATA di portiere + migliori difensori
+    # (l'unità su cui è definita la tabella dei modificatori sotto). Le tabelle sono
+    # tarate sulla media stagionale, che oscilla: leggerle in un solo punto conta come
+    # zero ogni giornata sopra la media stagionale che comunque supera una soglia più
+    # alta. Questo valore serve a integrare la tabella sulla distribuzione delle medie
+    # di giornata invece di leggerla in un punto solo (vedi ModifierTable#expectedBonus).
+    # È una STIMA RAGIONATA, non una misura: i voti dei singoli in una giornata
+    # oscillano di circa 0.7, e siccome i quattro giocatori del reparto giocano la
+    # stessa partita (voti fortemente correlati fra loro), la media dei quattro oscilla
+    # meno del singolo ma più della metà — circa 0.55, non 0.35 come sarebbe se fossero
+    # indipendenti. I file sorgente contengono solo medie stagionali, non voti di
+    # giornata, quindi questo numero non può essere calibrato sui dati reali: va
+    # ricalibrato se in futuro si avranno voti giornata per giornata. Mettendolo a 0 si
+    # torna esattamente al comportamento precedente (lettura puntuale della tabella):
+    # il cambiamento è quindi reversibile da configurazione.
+    matchday-rating-sigma: 0.55
     # bonus delle due tabelle sotto: FANTAPUNTI aggiunti al totale di reparto ad ogni
     # giornata quando la media raggiunge la soglia — non un numero di gol.
     defence-modifier:

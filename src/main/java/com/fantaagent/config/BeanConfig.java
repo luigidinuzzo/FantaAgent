@@ -24,7 +24,8 @@ public class BeanConfig {
                 s.modifiersConfirmed(), s.goalBonus(), s.assist(),
                 s.penaltyScored(), s.penaltyMissed(), s.penaltySaved(),
                 s.yellowCard(), s.redCard(), s.goalConceded(), s.cleanSheet(),
-                toTable(s.defenceModifier()), toTable(s.goalkeeperModifier()));
+                toTable(s.defenceModifier()), toTable(s.goalkeeperModifier()),
+                s.matchdayRatingSigma());
     }
 
     @Bean

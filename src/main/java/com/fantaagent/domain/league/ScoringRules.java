@@ -16,7 +16,8 @@ public record ScoringRules(
         double goalConceded,
         double cleanSheet,
         ModifierTable defenceModifier,
-        ModifierTable goalkeeperModifier) {
+        ModifierTable goalkeeperModifier,
+        double matchdayRatingSigma) {
 
     public ScoringRules {
         goalBonus = Map.copyOf(goalBonus);
@@ -24,6 +25,9 @@ public record ScoringRules(
             if (!goalBonus.containsKey(role)) {
                 throw new IllegalArgumentException("missing goal bonus for role " + role);
             }
+        }
+        if (matchdayRatingSigma < 0) {
+            throw new IllegalArgumentException("matchdayRatingSigma must not be negative");
         }
     }
 

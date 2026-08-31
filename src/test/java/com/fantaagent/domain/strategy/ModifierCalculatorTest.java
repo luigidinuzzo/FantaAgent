@@ -26,7 +26,7 @@ class ModifierCalculatorTest {
 
     private final ScoringRules scoring = new ScoringRules(true,
             Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
-            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, DEFENCE, KEEPER);
+            1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, DEFENCE, KEEPER, 0.0);
 
     /** Marginale: portieri 5.9, difensori 5.9 — sotto ogni soglia. */
     private final ReplacementLevels replacement = new ReplacementLevels(
