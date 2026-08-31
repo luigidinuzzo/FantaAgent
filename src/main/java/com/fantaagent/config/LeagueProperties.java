@@ -30,7 +30,8 @@ public record LeagueProperties(
             double goalConceded,
             double cleanSheet,
             Table defenceModifier,
-            Table goalkeeperModifier) {
+            Table goalkeeperModifier,
+            List<Double> seasonWeights) {
     }
 
     public record Table(int defendersCounted, List<Row> thresholds) {

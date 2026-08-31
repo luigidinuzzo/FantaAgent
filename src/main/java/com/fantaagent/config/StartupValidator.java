@@ -36,7 +36,7 @@ public class StartupValidator {
                             @Value("${fantaagent.dev-profile:false}") boolean devProfile,
                             PlayerCatalog catalog,
                             @Value("${league.roster-size:25}") int expectedRosterSize,
-                            @Value("${fantaagent.data-dir:data}") String dataDir) {
+                            @Value("${fantaagent.data-dir:res}") String dataDir) {
         this.rules = rules;
         this.scoring = scoring;
         this.participants = participants;
@@ -91,9 +91,9 @@ public class StartupValidator {
         }
         if (catalog.all().isEmpty() && !devProfile) {
             throw new IllegalStateException(
-                    "catalogo vuoto: nessun file listone*.xlsx trovato in " + dataDir
-                    + "/reference — atteso un listone come " + dataDir
-                    + "/reference/listone-2026.xlsx prima di avviare l'applicazione in asta");
+                    "catalogo vuoto: nessun file Quotazioni_*.xlsx trovato in " + dataDir
+                    + " — atteso un listone come " + dataDir
+                    + "/Quotazioni_Fantacalcio_Stagione_2026_27.xlsx prima di avviare l'applicazione in asta");
         }
     }
 

@@ -14,7 +14,7 @@ management:
         include: health,info
 
 fantaagent:
-  data-dir: data
+  data-dir: res
 
 league:
   participants: 8
@@ -49,7 +49,16 @@ league:
     yellow-card: -0.5
     red-card: -1.0
     goal-conceded: -1.0
-    clean-sheet: 1.0
+    # I file sorgente non hanno una colonna imbattuta: il bonus resta a zero perché
+    # nessuna stagione storica lo alimenta, non perché venga stimato altrove.
+    clean-sheet: 0.0
+    # Pesi delle stagioni nella proiezione, dalla più recente, rinormalizzati su quante
+    # ne sono disponibili per il giocatore. L'ultimo file (2026-27) è la stagione IN
+    # CORSO con solo due giornate giocate: pesa poco apposta, perché dice chi sta
+    # giocando adesso senza dominare la stima delle presenze basata su intere stagioni
+    # passate. ATTENZIONE: quando la stagione in corso sarà completa questa lista va
+    # rivista, perché quel file non sarà più un campione parziale ma una stagione piena.
+    season-weights: [0.1, 0.5, 0.3, 0.2]
     # bonus delle due tabelle sotto: FANTAPUNTI aggiunti al totale di reparto ad ogni
     # giornata quando la media raggiunge la soglia — non un numero di gol.
     defence-modifier:
@@ -74,3 +83,7 @@ spring:
       on-profile: dev
 fantaagent:
   dev-profile: true
+  # I test avviano il contesto Spring col profilo dev: puntare qui una directory
+  # inesistente mantiene il catalogo vuoto e i test rapidi e indipendenti dai 524
+  # giocatori reali, invece di leggere i file veri in res/ ad ogni avvio.
+  data-dir: data

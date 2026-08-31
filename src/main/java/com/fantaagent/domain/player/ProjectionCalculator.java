@@ -14,9 +14,6 @@ public final class ProjectionCalculator {
 
     public static final double SEASON_MATCHES = 38.0;
 
-    /** Pesi delle stagioni, dalla più recente. Rinormalizzati su quelle disponibili. */
-    private static final List<Double> SEASON_WEIGHTS = List.of(0.5, 0.3, 0.2);
-
     /** Prior grezzo di presenze per chi non ha storico, discriminato dalla quotazione. */
     private static final int STARTER_PRICE_THRESHOLD = 12;
     private static final double STARTER_PRIOR_APPEARANCES = 26.0;
@@ -24,8 +21,15 @@ public final class ProjectionCalculator {
 
     private final ScoringRules scoring;
 
-    public ProjectionCalculator(ScoringRules scoring) {
+    /** Pesi delle stagioni, dalla più recente. Rinormalizzati su quelle disponibili. */
+    private final List<Double> seasonWeights;
+
+    public ProjectionCalculator(ScoringRules scoring, List<Double> seasonWeights) {
+        if (seasonWeights == null || seasonWeights.isEmpty()) {
+            throw new IllegalArgumentException("season weights must not be empty");
+        }
         this.scoring = scoring;
+        this.seasonWeights = List.copyOf(seasonWeights);
     }
 
     public PlayerProjection project(Player player, List<SeasonStats> newestFirst,
@@ -34,14 +38,14 @@ public final class ProjectionCalculator {
         double weightedRatingNumerator = 0.0;
         double weightedBonus = 0.0;
 
-        int seasons = Math.min(newestFirst.size(), SEASON_WEIGHTS.size());
+        int seasons = Math.min(newestFirst.size(), seasonWeights.size());
         double weightSum = 0.0;
         for (int i = 0; i < seasons; i++) {
-            weightSum += SEASON_WEIGHTS.get(i);
+            weightSum += seasonWeights.get(i);
         }
         for (int i = 0; i < seasons; i++) {
             SeasonStats s = newestFirst.get(i);
-            double w = SEASON_WEIGHTS.get(i) / weightSum;
+            double w = seasonWeights.get(i) / weightSum;
             weightedAppearances += w * s.appearances();
             weightedRatingNumerator += w * s.appearances() * s.averageRating();
             weightedBonus += w * bonusPoints(s, player.role());

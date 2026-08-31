@@ -11,6 +11,10 @@ data/dossiers/
 data/reference/*.xlsx
 data/reference/*.csv
 data/reference/normalized.json
+res/auctions/
+res/dossiers/
+res/*.xlsx
+res/*.csv
 
 # IDE / OS
 .idea/

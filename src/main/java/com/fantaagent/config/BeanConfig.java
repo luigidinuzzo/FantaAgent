@@ -36,7 +36,7 @@ public class BeanConfig {
 
     @Bean
     public com.fantaagent.application.port.out.PlayerCatalog playerCatalog(
-            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:data}") String dataDir) {
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:res}") String dataDir) {
         com.fantaagent.ingestion.CatalogLoader.LoadedCatalog loaded =
                 new com.fantaagent.ingestion.CatalogLoader().load(java.nio.file.Path.of(dataDir));
         org.slf4j.LoggerFactory.getLogger(BeanConfig.class)
@@ -46,7 +46,7 @@ public class BeanConfig {
 
     @Bean
     public com.fantaagent.application.port.out.AuctionEventStore auctionEventStore(
-            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:data}") String dataDir,
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:res}") String dataDir,
             @org.springframework.beans.factory.annotation.Value("${fantaagent.auction-id:current}") String auctionId) {
         return new com.fantaagent.adapter.out.file.JsonlAuctionEventStore(
                 java.nio.file.Path.of(dataDir, "auctions", auctionId, "events.jsonl"));
@@ -56,8 +56,10 @@ public class BeanConfig {
     public com.fantaagent.application.service.ProjectionRegistry projectionRegistry(
             com.fantaagent.domain.league.LeagueRules rules,
             com.fantaagent.domain.league.ScoringRules scoring,
-            com.fantaagent.application.port.out.PlayerCatalog catalog) {
-        return com.fantaagent.application.service.ProjectionRegistry.build(rules, scoring, catalog);
+            com.fantaagent.application.port.out.PlayerCatalog catalog,
+            LeagueProperties props) {
+        return com.fantaagent.application.service.ProjectionRegistry.build(
+                rules, scoring, catalog, props.scoring().seasonWeights());
     }
 
     @Bean

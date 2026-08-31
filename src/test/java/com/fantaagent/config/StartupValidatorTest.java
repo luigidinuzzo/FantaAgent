@@ -161,7 +161,7 @@ class StartupValidatorTest {
                 rules(validSlots()), scoring(true), participants(8), false,
                 EMPTY_CATALOG, 25, "data").validate())
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("data/reference");
+                .hasMessageContaining("data/Quotazioni");
     }
 
     @Test

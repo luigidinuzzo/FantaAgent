@@ -68,7 +68,7 @@ class PlayerSearchServiceTest {
         AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
                 new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
 
-        ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog);
+        ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
         ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 class ProjectionCalculatorTest {
@@ -19,7 +20,8 @@ class ProjectionCalculatorTest {
             Map.of(Role.P, 3.0, Role.D, 4.0, Role.C, 3.5, Role.A, 3.0),
             1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, ANY, ANY);
 
-    private final ProjectionCalculator calculator = new ProjectionCalculator(scoring);
+    private final ProjectionCalculator calculator =
+            new ProjectionCalculator(scoring, List.of(0.5, 0.3, 0.2));
 
     private static SeasonStats stats(String season, int appearances, double rating,
                                      int goals, int assists, int yellow,
@@ -95,6 +97,14 @@ class ProjectionCalculatorTest {
 
         // 2*3.0 (rigori parati) + 1*-0.5 (giallo) + 30*-1.0 (gol subiti) + 12*1.0 (imbattuto)
         assertThat(p.bonusPerAppearance()).isCloseTo(-12.5 / 30.0, within(0.0005));
+    }
+
+    @Test
+    void rejectsAnEmptyListOfSeasonWeights() {
+        // Il calcolatore riceve i pesi, non li possiede: una lista vuota è un errore di
+        // configurazione da far vedere subito, non da tollerare in silenzio.
+        assertThatThrownBy(() -> new ProjectionCalculator(scoring, List.of()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

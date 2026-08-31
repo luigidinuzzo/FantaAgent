@@ -28,11 +28,11 @@ public class ProjectionRegistry {
     }
 
     public static ProjectionRegistry build(LeagueRules rules, ScoringRules scoring,
-                                           PlayerCatalog catalog) {
+                                           PlayerCatalog catalog, List<Double> seasonWeights) {
         List<Player> players = catalog.all();
         Map<Role, Double> roleAverages =
                 ProjectionCalculator.roleAverageRatings(players, catalog::statsOf);
-        ProjectionCalculator calculator = new ProjectionCalculator(scoring);
+        ProjectionCalculator calculator = new ProjectionCalculator(scoring, seasonWeights);
 
         Map<String, PlayerProjection> byId = new LinkedHashMap<>();
         for (Player player : players) {

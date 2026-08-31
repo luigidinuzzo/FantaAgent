@@ -11,18 +11,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CatalogLoaderTest {
 
     @TempDir
     Path tmp;
-
-    private Path reference() throws Exception {
-        Path reference = tmp.resolve("reference");
-        Files.createDirectories(reference);
-        return reference;
-    }
 
     private void writeListone(Path file, String... playerRow) throws Exception {
         try (XSSFWorkbook wb = new XSSFWorkbook(); OutputStream out = Files.newOutputStream(file)) {
@@ -40,18 +33,37 @@ class CatalogLoaderTest {
         }
     }
 
+    private void writeStats(Path file, String[]... dataRows) throws Exception {
+        try (XSSFWorkbook wb = new XSSFWorkbook(); OutputStream out = Files.newOutputStream(file)) {
+            Sheet sheet = wb.createSheet("Tutti");
+            String[] headers = {"Id", "R", "Rm", "Nome", "Squadra", "Pv", "Mv", "Fm", "Gf", "Gs", "Rp", "Rc",
+                    "R+", "R-", "Ass", "Amm", "Esp", "Au"};
+            Row header = sheet.createRow(0);
+            for (int c = 0; c < headers.length; c++) {
+                header.createCell(c).setCellValue(headers[c]);
+            }
+            for (int r = 0; r < dataRows.length; r++) {
+                Row row = sheet.createRow(r + 1);
+                for (int c = 0; c < dataRows[r].length; c++) {
+                    row.createCell(c).setCellValue(dataRows[r][c]);
+                }
+            }
+            wb.write(out);
+        }
+    }
+
     @Test
     void returnsAnEmptyCatalogWhenNoListoneIsPresent() {
         CatalogLoader.LoadedCatalog result = new CatalogLoader().load(tmp);
 
         assertThat(result.catalog().all()).isEmpty();
-        assertThat(result.report().warnings()).anySatisfy(w -> assertThat(w).contains("listone"));
+        assertThat(result.report().warnings()).anySatisfy(w -> assertThat(w).contains("Quotazioni"));
     }
 
     @Test
-    void loadsAFileNamedListoneXlsxExactly() throws Exception {
-        Path reference = reference();
-        writeListone(reference.resolve("listone.xlsx"), "1", "D", "Bastoni", "Inter", "20");
+    void loadsTheQuotazioniFileDirectlyFromTheDataDir() throws Exception {
+        writeListone(tmp.resolve("Quotazioni_Fantacalcio_Stagione_2026_27.xlsx"),
+                "1", "D", "Bastoni", "Inter", "20");
 
         CatalogLoader.LoadedCatalog result = new CatalogLoader().load(tmp);
 
@@ -59,10 +71,11 @@ class CatalogLoaderTest {
     }
 
     @Test
-    void picksTheLexicographicallyLastListoneWhenSeveralMatch() throws Exception {
-        Path reference = reference();
-        writeListone(reference.resolve("listone-2025.xlsx"), "1", "D", "Vecchio", "Inter", "20");
-        writeListone(reference.resolve("listone-2026.xlsx"), "2", "D", "Nuovo", "Inter", "20");
+    void picksTheLexicographicallyLastQuotazioniFileWhenSeveralMatch() throws Exception {
+        writeListone(tmp.resolve("Quotazioni_Fantacalcio_Stagione_2025_26.xlsx"),
+                "1", "D", "Vecchio", "Inter", "20");
+        writeListone(tmp.resolve("Quotazioni_Fantacalcio_Stagione_2026_27.xlsx"),
+                "2", "D", "Nuovo", "Inter", "20");
 
         CatalogLoader.LoadedCatalog result = new CatalogLoader().load(tmp);
 
@@ -71,35 +84,45 @@ class CatalogLoaderTest {
     }
 
     @Test
-    void resolvesAnAliasFromAliasesYaml() throws Exception {
-        Path reference = reference();
-        writeListone(reference.resolve("listone-2026.xlsx"), "1", "D", "Thuram M.", "Inter", "35");
-        Files.writeString(reference.resolve("aliases.yaml"), "Marcus Thuram: \"1\"\n");
-        Files.writeString(reference.resolve("stats-2025.csv"),
-                "Nome,Pv,Mv,Gf,Ass,Amm,Esp,Rp,Rc,Rs,Gs,Imb\n"
-                + "Marcus Thuram,30,6.50,10,5,2,0,0,0,0,0,0\n");
+    void joinsStatisticheFilesToTheListoneById() throws Exception {
+        writeListone(tmp.resolve("Quotazioni_Fantacalcio_Stagione_2026_27.xlsx"),
+                "1", "D", "Bastoni", "Inter", "20");
+        writeStats(tmp.resolve("Statistiche_Fantacalcio_Stagione_2025_26.xlsx"),
+                new String[]{"1", "D", "Rm", "Bastoni", "Inter", "30", "6.15", "6.30", "2", "0", "0", "0",
+                        "0", "0", "3", "5", "0", "0"});
 
         CatalogLoader.LoadedCatalog result = new CatalogLoader().load(tmp);
 
-        assertThat(result.catalog().statsOf("1")).isNotEmpty();
+        assertThat(result.catalog().statsOf("1")).hasSize(1);
+        assertThat(result.catalog().statsOf("1").getFirst().season()).isEqualTo("2025-26");
     }
 
     @Test
-    void failsLoudlyOnAMalformedAliasesFile() throws Exception {
-        Path reference = reference();
-        writeListone(reference.resolve("listone.xlsx"), "1", "D", "Bastoni", "Inter", "20");
-        Files.writeString(reference.resolve("aliases.yaml"), "- non\n- e un mapping\n");
+    void reportsStatsRowsWhoseIdLeftTheListoneWithoutAborting() throws Exception {
+        writeListone(tmp.resolve("Quotazioni_Fantacalcio_Stagione_2026_27.xlsx"),
+                "1", "D", "Bastoni", "Inter", "20");
+        writeStats(tmp.resolve("Statistiche_Fantacalcio_Stagione_2024_25.xlsx"),
+                new String[]{"99", "A", "Pc", "Trasferito", "Estero", "10", "6.00", "6.00", "1", "0", "0",
+                        "0", "0", "0", "0", "0", "0", "0"});
 
-        assertThatThrownBy(() -> new CatalogLoader().load(tmp))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("aliases.yaml");
+        CatalogLoader.LoadedCatalog result = new CatalogLoader().load(tmp);
+
+        assertThat(result.catalog().statsOf("99")).isEmpty();
+        assertThat(result.report().warnings()).anySatisfy(w -> assertThat(w).contains("99"));
     }
 
     @Test
-    void aMissingAliasesFileIsNotAnError() throws Exception {
-        reference();
-        writeListone(tmp.resolve("reference").resolve("listone.xlsx"), "1", "D", "Bastoni", "Inter", "20");
+    void skipsWithAWarningAStatisticheFileWhoseNameDoesNotFitTheSeasonPattern() throws Exception {
+        writeListone(tmp.resolve("Quotazioni_Fantacalcio_Stagione_2026_27.xlsx"),
+                "1", "D", "Bastoni", "Inter", "20");
+        writeStats(tmp.resolve("Statistiche_SenzaAnno.xlsx"),
+                new String[]{"1", "D", "Rm", "Bastoni", "Inter", "30", "6.15", "6.30", "2", "0", "0", "0",
+                        "0", "0", "3", "5", "0", "0"});
 
-        assertThat(new CatalogLoader().load(tmp).catalog().all()).hasSize(1);
+        CatalogLoader.LoadedCatalog result = new CatalogLoader().load(tmp);
+
+        assertThat(result.catalog().statsOf("1")).isEmpty();
+        assertThat(result.report().warnings())
+                .anySatisfy(w -> assertThat(w).contains("Statistiche_SenzaAnno.xlsx"));
     }
 }
