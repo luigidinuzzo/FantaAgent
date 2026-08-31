@@ -6,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -15,10 +14,10 @@ import java.util.Optional;
 /**
  * Aggancia le impostazioni scelte dall'utente al resto dell'applicazione.
  *
- * <p>Il bean di {@link ScoringRules} definito qui ha la precedenza su quello costruito
- * dalla sola configurazione di progetto: se esiste un file di impostazioni scritto dalla
- * schermata Impostazioni, sono quelle a valere. Altrimenti si ricade sui valori di
- * application.yml, che restano il default del progetto.
+ * <p>Il bean di {@link ScoringRules} definito qui è l'unico dell'applicazione: se
+ * esiste un file di impostazioni scritto dalla schermata Impostazioni, sono quelle a
+ * valere. Altrimenti si ricade sui valori di application.yml, che restano il default
+ * del progetto.
  *
  * <p>Le regole di punteggio sono lette una volta sola, all'avvio, perché da esse
  * discendono i punti attesi di tutti i giocatori, i livelli di rimpiazzo e l'intero
@@ -39,8 +38,7 @@ public class SettingsConfig {
     }
 
     @Bean
-    @Primary
-    public ScoringRules userScoringRules(ScoringSettingsStore store, LeagueProperties props) {
+    public ScoringRules scoringRules(ScoringSettingsStore store, LeagueProperties props) {
         double sigma = props.scoring().matchdayRatingSigma();
         Optional<ScoringSettings> stored = store.load();
         if (stored.isEmpty()) {
