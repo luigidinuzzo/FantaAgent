@@ -156,6 +156,29 @@ class ValuationEngineTest {
                 .isGreaterThanOrEqualTo((int) Math.ceil(closeCase.maxBid() * 1.5));
     }
 
+    /**
+     * Il dominio non conosce i nomi: il motore deve poter risolvere l'id in un nome
+     * leggibile tramite il resolver iniettato, altrimenti il driver "Alternativa" mostra
+     * un id inutile a centro asta. Verifica anche che il driver riporti la differenza
+     * reale in crediti fra il target e l'alternativa, non solo il rapporto in punti.
+     */
+    @Test
+    void alternativeDriverShowsTheResolvedNameAndTheRealCreditDifference() {
+        seedPool();
+        ValuationEngine namedEngine = new ValuationEngine(
+                new RosterCompleter(modifiers, REPLACEMENT), modifiers,
+                id -> id.equals("okDef") ? "Dimarco" : id);
+
+        PriceRecommendation rec = namedEngine.evaluate(context(p("bestDef"), state(List.of())));
+
+        Driver alternativa = rec.drivers().stream()
+                .filter(d -> d.label().equalsIgnoreCase("alternativa"))
+                .findFirst().orElseThrow();
+        assertThat(alternativa.explanation()).contains("Dimarco");
+        assertThat(alternativa.explanation()).doesNotContain("okDef");
+        assertThat(alternativa.explanation()).containsPattern("differenza reale -?\\d+ crediti");
+    }
+
     @Test
     void refusesToBidWhenTheRoleIsAlreadyFull() {
         seedPool();

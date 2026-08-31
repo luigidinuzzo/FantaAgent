@@ -53,12 +53,15 @@ public class BeanConfig {
     @Bean
     public com.fantaagent.domain.strategy.ValuationEngine valuationEngine(
             com.fantaagent.domain.league.ScoringRules scoring,
-            com.fantaagent.application.service.ProjectionRegistry projections) {
+            com.fantaagent.application.service.ProjectionRegistry projections,
+            com.fantaagent.application.port.out.PlayerCatalog catalog) {
         var modifiers = new com.fantaagent.domain.strategy.ModifierCalculator(
                 scoring, projections.replacement());
         var completer = new com.fantaagent.domain.strategy.RosterCompleter(
                 modifiers, projections.replacement());
-        return new com.fantaagent.domain.strategy.ValuationEngine(completer, modifiers);
+        java.util.function.UnaryOperator<String> playerNameResolver = id ->
+                catalog.byId(id).map(com.fantaagent.domain.player.Player::name).orElse(id);
+        return new com.fantaagent.domain.strategy.ValuationEngine(completer, modifiers, playerNameResolver);
     }
 
     @Bean

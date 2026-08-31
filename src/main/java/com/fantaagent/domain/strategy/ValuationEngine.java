@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 /**
  * Calcola il prezzo massimo come il prezzo oltre il quale acquistare il giocatore
@@ -29,10 +30,25 @@ public final class ValuationEngine {
 
     private final RosterCompleter completer;
     private final ModifierCalculator modifiers;
+    private final UnaryOperator<String> playerNameResolver;
 
     public ValuationEngine(RosterCompleter completer, ModifierCalculator modifiers) {
+        this(completer, modifiers, UnaryOperator.identity());
+    }
+
+    /**
+     * @param playerNameResolver risolve un {@code playerId} nel nome da mostrare
+     *                           all'utente, ad esempio per il driver "Alternativa". Il
+     *                           dominio non conosce i nomi dei giocatori: il resolver e'
+     *                           iniettato da chi assembla il motore e ha accesso al
+     *                           catalogo. Di default e' l'identita', cosi' i test e i
+     *                           chiamanti esistenti non cambiano comportamento.
+     */
+    public ValuationEngine(RosterCompleter completer, ModifierCalculator modifiers,
+                           UnaryOperator<String> playerNameResolver) {
         this.completer = completer;
         this.modifiers = modifiers;
+        this.playerNameResolver = playerNameResolver;
     }
 
     public PriceRecommendation evaluate(ValuationContext ctx) {
@@ -164,9 +180,12 @@ public final class ValuationEngine {
                 .max(Comparator.comparingDouble(PlayerProjection::basePoints));
         alternative.ifPresent(alt -> {
             double ratio = target.basePoints() > 0 ? alt.basePoints() / target.basePoints() : 0.0;
-            drivers.add(new Driver("Alternativa", ctx.prices().expectedPrice(alt),
-                    String.format("%s a ~%d crediti rende il %.0f%%",
-                            alt.playerId(), ctx.prices().expectedPrice(alt), ratio * 100)));
+            int altPrice = ctx.prices().expectedPrice(alt);
+            int realDifference = ctx.prices().expectedPrice(target) - altPrice;
+            drivers.add(new Driver("Alternativa", altPrice,
+                    String.format("%s a ~%d crediti rende il %.0f%%, differenza reale %d crediti",
+                            playerNameResolver.apply(alt.playerId()), altPrice, ratio * 100,
+                            realDifference)));
         });
 
         MarketPressure pressure = MarketPressure.from(ctx.state());
