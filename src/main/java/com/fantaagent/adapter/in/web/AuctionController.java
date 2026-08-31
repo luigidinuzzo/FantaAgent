@@ -108,7 +108,7 @@ public class AuctionController {
                         auction.recordPurchase(player.id(), buyer.get().id(),
                                 parsed.price().orElseThrow());
                         message = "✓ " + player.name() + " → " + buyer.get().name()
-                                + " " + parsed.price().orElseThrow() + " · Ctrl+Z per annullare";
+                                + " " + parsed.price().orElseThrow() + " · ↩ annulla o Cmd+Z";
                         purchased = true;
                     } catch (IllegalArgumentException e) {
                         message = "✗ " + e.getMessage();
@@ -142,7 +142,7 @@ public class AuctionController {
                     .filter(p -> p.id().equals(participantId))
                     .findFirst().orElseThrow();
             message = "✓ " + player.name() + " → " + buyer.name()
-                    + " " + price + " · Ctrl+Z per annullare";
+                    + " " + price + " · ↩ annulla o Cmd+Z";
             response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
         } catch (IllegalArgumentException e) {
             message = "✗ " + e.getMessage();
