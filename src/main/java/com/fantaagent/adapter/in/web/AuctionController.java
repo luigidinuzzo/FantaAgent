@@ -160,6 +160,17 @@ public class AuctionController {
         return "index :: targets";
     }
 
+    @GetMapping("/fragments/phase-players")
+    public String phasePlayers(@RequestParam(defaultValue = "0") int offset, Model model) {
+        model.addAttribute("phasePage", search.phasePlayers(offset, PlayerSearchService.PHASE_PAGE_SIZE));
+        model.addAttribute("participants", auction.participants());
+        model.addAttribute("phase", auction.state().currentPhase());
+        // offset == 0: prima apertura o cambio fase, sostituisce l'intero pannello
+        // (intestazione compresa). offset > 0: "carica altri 25", sostituisce solo le
+        // righe già caricate — l'intestazione non deve ricomparire in fondo alla tabella.
+        return offset == 0 ? "fragments/phase-table :: phaseTable" : "fragments/phase-table :: phaseRowsBody";
+    }
+
     private ViewModels.MainPanel searchPanel(String query, String message) {
         List<Player> results = query.isBlank() ? List.of() : search.search(query);
         ViewModels.Analysis analysisView = results.isEmpty()

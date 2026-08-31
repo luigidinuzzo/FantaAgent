@@ -48,3 +48,15 @@ body { margin:0; background:var(--bg); color:var(--fg);
 .assign-row button:hover { background:#2a2a2a; }
 .assign-row button.assign-me { background:var(--pos); color:#022; font-weight:bold;
                                 border-color:var(--pos); }
+
+#phaseTable { margin-top:1.5rem; }
+#phaseTable table { width:100%; border-collapse:collapse; font-size:.85rem; }
+#phaseTable th, #phaseTable td { padding:.3rem .4rem; border-bottom:1px solid var(--line);
+                                  text-align:left; }
+/* Dentro una cella la riga di assegnazione non è più il piede di una card: niente
+   bordo/margine superiore, e più stretta perché condivide la riga con le altre colonne. */
+#phaseTable .assign-row { margin:0; padding:0; border-top:none; flex-wrap:nowrap; gap:.3rem; }
+#phaseTable .assign-price { width:3.5rem; margin-left:0; }
+#phaseTable select { font:inherit; background:#000; color:var(--fg);
+                      border:1px solid var(--line); padding:.3rem; }
+#phaseTable .load-more { width:100%; }

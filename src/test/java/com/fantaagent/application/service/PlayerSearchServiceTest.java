@@ -80,4 +80,65 @@ class PlayerSearchServiceTest {
 
         assertThat(result).extracting(row -> row.player().id()).contains("occasione");
     }
+
+    @Test
+    void phasePlayersOnlyListsAvailablePlayersOfTheCurrentPhaseRankedByExpectedPointsDescending() {
+        List<Player> players = new ArrayList<>();
+        // Quotazioni diverse -> presenze prior diverse -> punti base diversi (senza
+        // storico statistico la proiezione ricade sulla quotazione). "alto" ha la
+        // quotazione più alta quindi i punti base più alti, e deve comparire per primo.
+        players.add(new Player("basso", "Basso", "Squadra", Role.D, 1));
+        players.add(new Player("medio", "Medio", "Squadra", Role.D, 15));
+        players.add(new Player("alto", "Alto", "Squadra", Role.D, 30));
+        // Ruolo diverso dalla fase corrente (D): non deve comparire.
+        players.add(new Player("portiere", "Portiere", "Squadra", Role.P, 30));
+
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        // Già venduto: non deve comparire nemmeno se il ruolo e il resto combaciano.
+        auction.recordPurchase("medio", "marco", 15);
+
+        ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
+        ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
+        RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
+        ValuationEngine engine = new ValuationEngine(completer, modifiers);
+        PlayerAnalysisService analysis =
+                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+        PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
+
+        PlayerSearchService.PhasePage page = search.phasePlayers(0, 10);
+
+        assertThat(page.rows()).extracting(r -> r.player().id()).containsExactly("alto", "basso");
+        assertThat(page.hasMore()).isFalse();
+    }
+
+    @Test
+    void phasePlayersRespectsTheBatchLimitAndReportsWhetherThereIsMore() {
+        List<Player> players = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            players.add(new Player("d" + i, "Difensore " + i, "Squadra", Role.D, 1 + i));
+        }
+
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+
+        ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
+        ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
+        RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
+        ValuationEngine engine = new ValuationEngine(completer, modifiers);
+        PlayerAnalysisService analysis =
+                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+        PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
+
+        PlayerSearchService.PhasePage firstPage = search.phasePlayers(0, 3);
+        assertThat(firstPage.rows()).hasSize(3);
+        assertThat(firstPage.hasMore()).isTrue();
+        assertThat(firstPage.nextOffset()).isEqualTo(3);
+
+        PlayerSearchService.PhasePage secondPage = search.phasePlayers(3, 3);
+        assertThat(secondPage.rows()).hasSize(2);
+        assertThat(secondPage.hasMore()).isFalse();
+    }
 }

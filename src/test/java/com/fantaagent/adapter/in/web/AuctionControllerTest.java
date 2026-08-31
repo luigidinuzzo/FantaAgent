@@ -246,4 +246,42 @@ class AuctionControllerTest {
                 .andExpect(content().string(
                         org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"cmd\""))));
     }
+
+    private static com.fantaagent.domain.player.PlayerProjection projection(String id, double basePoints) {
+        return new com.fantaagent.domain.player.PlayerProjection(
+                id, Role.D, 6.2, 3.0, 20.0, basePoints, 20.0);
+    }
+
+    @Test
+    void theFirstPageOfThePhaseTableShowsTheHeadingAndAsksTheServiceForItsOwnBatchSize() throws Exception {
+        PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
+                BASTONI, RECOMMENDATION, projection("d1", 120.0));
+        when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), false, 1));
+
+        mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("GIOCATORI FASE")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("assegna")));
+
+        verify(searchService).phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
+    }
+
+    @Test
+    void aFollowingPageOfThePhaseTableDoesNotRepeatTheHeading() throws Exception {
+        // offset > 0 arriva dal bottone "carica altri 25": la risposta sostituisce solo
+        // la riga del bottone, quindi non deve ripetere l'intestazione del pannello.
+        PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
+                BASTONI, RECOMMENDATION, projection("d1", 90.0));
+        when(searchService.phasePlayers(25, PlayerSearchService.PHASE_PAGE_SIZE))
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), true, 50));
+
+        mockMvc.perform(get("/fragments/phase-players").param("offset", "25"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("GIOCATORI FASE"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("carica altri 25")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=50")));
+    }
 }

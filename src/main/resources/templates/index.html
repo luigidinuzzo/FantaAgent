@@ -103,6 +103,14 @@
         </form>
       </article>
     </div>
+
+    <!-- Fuori da #main apposta, stessa ragione di #targets: #main viene sostituito
+         a ogni ricerca/comando, e questa tabella non deve sparire mentre l'utente
+         digita. Si carica da sola all'apertura della pagina (hx-trigger="load") così
+         la pagina resta veloce e la tabella (fino a ~1,5 s per 25 righe) arriva subito
+         dopo, senza bloccare il primo render. -->
+    <div id="phaseTable" hx-get="/fragments/phase-players?offset=0" hx-trigger="load"
+         hx-swap="outerHTML"></div>
   </section>
 
   <aside id="board" class="board" th:fragment="board" hx-swap-oob="true">
@@ -122,7 +130,7 @@
        contenuto ad ogni acquisto anche se nessuna risposta lo tocca esplicitamente.
        Qui #targets sopravvive agli swap di stato: solo /fragments/targets lo scrive. -->
   <div id="targets" th:fragment="targets">
-    <h3 th:if="${targets}">TARGET</h3>
+    <h3 th:if="${targets}">TARGET <span class="dim">— dove sta l'affare</span></h3>
     <table th:if="${targets}">
       <tr th:each="t : ${targets}">
         <td th:text="${t.player.name}">Bastoni</td>

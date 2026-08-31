@@ -117,6 +117,76 @@ class PlayerSearchServiceLatencyTest {
         assertThat(millis).isLessThan(1000L);
     }
 
+    /**
+     * Il max bid costa circa 45 ms/giocatore e la fase corrente conta fino a ~200
+     * giocatori (i difensori del fixture qui sotto): renderlo per tutti supererebbe
+     * gli otto secondi, da cui il limite di batch. Misura sulla stessa scala di
+     * {@link #targetsStaysUnderOneSecondAtRealisticScale}.
+     */
+    @Test
+    void phasePlayersStaysUnderOnePointFiveSecondsForOneBatchAtRealisticScale() {
+        List<Participant> participants = new ArrayList<>();
+        participants.add(new Participant("me", "Io", 'I', true));
+        for (int i = 1; i <= 7; i++) {
+            participants.add(new Participant("riv" + i, "Rivale " + i, (char) ('A' + i), false));
+        }
+        List<String> rivalIds = participants.stream()
+                .map(Participant::id)
+                .filter(id -> !id.equals("me"))
+                .toList();
+
+        Random random = new Random(20260831L);
+        List<Player> players = new ArrayList<>();
+        List<SeasonStats> stats = new ArrayList<>();
+        seedGroup(players, stats, random, Role.P, "gk", 60, 40);
+        seedGroup(players, stats, random, Role.D, "df", 200, 25);
+        seedGroup(players, stats, random, Role.C, "mf", 200, 22);
+        seedGroup(players, stats, random, Role.A, "fw", 140, 30);
+
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, stats);
+
+        JsonlAuctionEventStore store = new JsonlAuctionEventStore(tmp.resolve("events-phase.jsonl"));
+        AuctionService auction = new AuctionService(RULES, participants, catalog, store);
+
+        Map<Role, Integer> soldPerRole = Map.of(Role.P, 8, Role.D, 23, Role.C, 22, Role.A, 17);
+        Map<Role, String> prefixOf = Map.of(Role.P, "gk", Role.D, "df", Role.C, "mf", Role.A, "fw");
+        int rival = 0;
+        for (Role role : List.of(Role.P, Role.D, Role.C, Role.A)) {
+            String prefix = prefixOf.get(role);
+            int count = soldPerRole.get(role);
+            for (int i = 0; i < count; i++) {
+                String playerId = prefix + i;
+                int listPrice = players.stream()
+                        .filter(p -> p.id().equals(playerId))
+                        .findFirst().orElseThrow()
+                        .listPrice();
+                auction.recordPurchase(playerId, rivalIds.get(rival % rivalIds.size()), listPrice);
+                rival++;
+            }
+        }
+
+        ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
+        ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
+        RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
+        ValuationEngine engine = new ValuationEngine(completer, modifiers);
+        PlayerAnalysisService analysis =
+                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+        PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
+
+        search.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE); // riscaldamento della JIT
+        search.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
+
+        long start = System.nanoTime();
+        PlayerSearchService.PhasePage page = search.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
+        long millis = (System.nanoTime() - start) / 1_000_000;
+
+        System.out.println("phasePlayers(" + PlayerSearchService.PHASE_PAGE_SIZE
+                + ") su ~600 giocatori a meta' asta: " + millis + " ms");
+
+        assertThat(page.rows()).hasSize(PlayerSearchService.PHASE_PAGE_SIZE);
+        assertThat(millis).isLessThan(1500L);
+    }
+
     private static void seedGroup(List<Player> playersOut, List<SeasonStats> statsOut, Random random,
                                   Role role, String prefix, int count, double topListPrice) {
         for (int i = 0; i < count; i++) {

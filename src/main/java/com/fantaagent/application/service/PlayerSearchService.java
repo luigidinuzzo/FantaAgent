@@ -29,11 +29,34 @@ public class PlayerSearchService {
      */
     private static final int TARGET_CANDIDATES_PER_CRITERION = 8;
 
+    /**
+     * Righe per pagina della tabella di fase: circa 25, misurato in
+     * {@code PlayerSearchServiceLatencyTest} per restare sotto 1,5 s a rosa
+     * realistica — un batch più grande farebbe scattare il taglio (il max bid costa
+     * circa 45 ms/giocatore).
+     */
+    public static final int PHASE_PAGE_SIZE = 25;
+
     public record TargetRow(Player player, PriceRecommendation recommendation) {
 
         public int margin() {
             return recommendation.margin();
         }
+    }
+
+    public record PhaseRow(Player player, PriceRecommendation recommendation,
+                           PlayerProjection projection) {
+
+        public double fantamediaAttesa() {
+            return projection.expectedRating() + projection.bonusPerAppearance();
+        }
+
+        public double titolaritaPercent() {
+            return projection.startingProbability() * 100.0;
+        }
+    }
+
+    public record PhasePage(List<PhaseRow> rows, boolean hasMore, int nextOffset) {
     }
 
     private final PlayerCatalog catalog;
@@ -100,5 +123,35 @@ public class PlayerSearchService {
                 .sorted(Comparator.comparingInt(TargetRow::margin).reversed())
                 .limit(limit)
                 .toList();
+    }
+
+    /**
+     * Giocatori disponibili della fase corrente, ordinati per punti attesi
+     * decrescenti: "qual è il migliore disponibile di questo ruolo", diversa dalla
+     * domanda a cui risponde {@link #targets}, "dove sta l'affare". Il max bid è
+     * calcolato SOLO per le righe della pagina richiesta, riusando lo stesso
+     * {@link PriceModel} costruito una volta per batch — mai un modello per riga,
+     * altrimenti la scansione dell'intero catalogo si ripeterebbe {@code limit} volte.
+     */
+    public PhasePage phasePlayers(int offset, int limit) {
+        AuctionState state = auction.state();
+        Set<String> sold = state.soldPlayerIds();
+
+        List<PlayerProjection> ofPhase = projections.all().stream()
+                .filter(p -> p.role() == state.currentPhase())
+                .filter(p -> !sold.contains(p.playerId()))
+                .sorted(Comparator.comparingDouble(PlayerProjection::basePoints).reversed())
+                .toList();
+
+        List<PlayerProjection> page = ofPhase.stream().skip(Math.max(0, offset)).limit(limit).toList();
+
+        PriceModel prices = analysis.priceModelFor(state);
+        List<PhaseRow> rows = page.stream()
+                .map(p -> new PhaseRow(catalog.byId(p.playerId()).orElseThrow(),
+                        analysis.analyze(p.playerId(), state, prices), p))
+                .toList();
+
+        boolean hasMore = offset + page.size() < ofPhase.size();
+        return new PhasePage(rows, hasMore, offset + page.size());
     }
 }
