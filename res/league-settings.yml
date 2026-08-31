@@ -5,7 +5,7 @@
 
 defence-modifier-enabled: true
 defenders-counted: 3
-confirmed: false
+confirmed: true
 clean-sheet: 1.0
 assist: 1.0
 penalty-scored: 3.0
