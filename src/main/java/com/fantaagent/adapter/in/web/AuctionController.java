@@ -175,7 +175,8 @@ public class AuctionController {
 
         model.addAttribute("status", new ViewModels.StatusBar(
                 state.currentPhase().name(), auction.salesInCurrentPhase(),
-                mine.budgetRemaining(), composition(mine), mine.slotsRemaining()));
+                mine.budgetRemaining(), composition(mine), mine.slotsRemaining(),
+                !state.holdings().isEmpty()));
 
         List<ViewModels.BoardRow> board = new ArrayList<>();
         for (Participant participant : auction.participants()) {

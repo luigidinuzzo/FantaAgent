@@ -14,9 +14,16 @@
   <div>TU <b th:text="${status.myBudget}">500</b> crediti ·
     <span th:text="${status.myComposition}">0P 0D 0C 0A</span> ·
     <span th:text="${status.mySlotsLeft}">25</span> slot</div>
+  <form hx-post="/undo" hx-target="#main" hx-swap="outerHTML">
+    <!-- Sempre presente e mai nascosto: la sua posizione deve restare prevedibile
+         anche quando non c'è nulla da annullare, quindi si disabilita invece di
+         sparire. Stessa via del comando Ctrl+Z/Cmd+Z e dello stesso /undo. -->
+    <button type="submit" th:disabled="${!status.canUndo}">↩ annulla ultimo</button>
+  </form>
   <form hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
     <button type="submit">fase successiva →</button>
   </form>
+  <a th:href="@{/riepilogo}" class="settings-link">riepilogo</a>
   <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
 </header>
 
@@ -129,7 +136,6 @@
 
 </div>
 
-<form id="undoForm" hx-post="/undo" hx-target="#main" hx-swap="outerHTML" hidden></form>
 <script th:src="@{/app.js}"></script>
 </body>
 </html>

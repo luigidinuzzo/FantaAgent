@@ -15,7 +15,7 @@ public final class ViewModels {
     }
 
     public record StatusBar(String phase, int soldInPhase, int myBudget,
-                            String myComposition, int mySlotsLeft) {
+                            String myComposition, int mySlotsLeft, boolean canUndo) {
     }
 
     public record Analysis(Player player, PriceRecommendation recommendation) {

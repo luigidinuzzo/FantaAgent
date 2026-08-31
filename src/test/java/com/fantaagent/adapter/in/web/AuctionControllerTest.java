@@ -181,6 +181,32 @@ class AuctionControllerTest {
     }
 
     @Test
+    void theUndoButtonIsDisabledWhenThereIsNothingToUndo() throws Exception {
+        // Stato senza holdings: state() nel @BeforeEach è già proiettato da una lista
+        // vuota di eventi, quindi canUndo deve risultare false e il bottone disabilitato
+        // — sempre presente, mai nascosto, così la sua posizione resta prevedibile.
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "annulla ultimo")))
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
+                        "(?s).*<button[^>]*disabled[^>]*>↩ annulla ultimo</button>.*")));
+    }
+
+    @Test
+    void theUndoButtonIsEnabledAfterAPurchase() throws Exception {
+        AuctionState afterPurchase = AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.D,
+                List.of(new AuctionEvent.PlayerPurchased(1L, java.time.Instant.now(), "d1", "me", 47)));
+        when(auctionService.state()).thenReturn(afterPurchase);
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.matchesPattern(
+                                "(?s).*<button[^>]*disabled[^>]*>↩ annulla ultimo</button>.*"))));
+    }
+
+    @Test
     void aSuccessfulPurchaseUpdatesTheBoardNotJustTheAnalysisPanel() throws Exception {
         // Simula lo stato dopo l'acquisto: budget di "me" sceso da 100 a 53 (100 - 47).
         // Un test che verificasse solo status 200 non avrebbe scoperto il difetto B,

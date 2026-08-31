@@ -29,6 +29,12 @@ body { margin:0; background:var(--bg); color:var(--fg);
 .board tr.me td { color:#fff; font-weight:bold; }
 .pos { color:var(--pos); } .neg { color:var(--neg); }
 
+.status form { margin:0; }
+.status button { font:inherit; font-size:.85rem; background:#1c1c1c; color:var(--fg);
+                 border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
+.status button:hover:not(:disabled) { background:#2a2a2a; }
+.status button:disabled { color:var(--dim); cursor:default; opacity:.5; }
+
 .settings-link { color: var(--dim); font-size: .8rem; text-decoration: none; }
 .settings-link:hover { color: var(--fg); }
 
