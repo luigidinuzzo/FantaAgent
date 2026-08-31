@@ -106,6 +106,36 @@ public class AuctionService {
         return false;
     }
 
+    /**
+     * Annulla un acquisto specifico, individuato dal suo seq — a differenza di
+     * {@link #undoLast}, che raggiunge solo il più recente. Usato dalla pagina di
+     * riepilogo, dove ogni "✕" rimuove UNA riga precisa, non necessariamente l'ultima
+     * registrata in assoluto.
+     */
+    public void revokePurchase(long targetSeq) {
+        List<AuctionEvent> events = store.load();
+        boolean exists = false;
+        Set<Long> revoked = new HashSet<>();
+        for (AuctionEvent event : events) {
+            if (event instanceof AuctionEvent.PlayerPurchased purchased
+                    && purchased.seq() == targetSeq) {
+                exists = true;
+            }
+            if (event instanceof AuctionEvent.PurchaseRevoked r) {
+                revoked.add(r.targetSeq());
+            }
+        }
+        if (!exists) {
+            throw new IllegalArgumentException("nessun acquisto con id " + targetSeq);
+        }
+        if (revoked.contains(targetSeq)) {
+            throw new IllegalArgumentException("acquisto già annullato");
+        }
+
+        store.append(new AuctionEvent.PurchaseRevoked(store.nextSeq(), Instant.now(), targetSeq));
+        resumeSummary = Optional.empty();
+    }
+
     public void advancePhase() {
         Role current = state().currentPhase();
         rules.nextPhase(current).ifPresent(next -> {

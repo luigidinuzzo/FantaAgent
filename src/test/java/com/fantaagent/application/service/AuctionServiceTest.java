@@ -178,6 +178,39 @@ class AuctionServiceTest {
     }
 
     @Test
+    void revokePurchaseRemovesASpecificPurchaseNotNecessarilyTheLast() {
+        // A differenza di undoLast, che raggiunge solo l'ultimo: qui si rimuove
+        // "gk" (il primo) mentre "gk2" (comprato dopo) resta intatto.
+        service.recordPurchase("gk", "marco", 30);
+        service.recordPurchase("gk2", "me", 25);
+        long targetSeq = service.state().squadOf("marco").holdings().getFirst().seq();
+
+        service.revokePurchase(targetSeq);
+
+        assertThat(service.state().squadOf("marco").spent()).isZero();
+        assertThat(service.state().squadOf("me").spent()).isEqualTo(25);
+        assertThat(service.state().soldPlayerIds()).containsExactly("gk2");
+    }
+
+    @Test
+    void revokePurchaseRejectsASeqThatDoesNotIdentifyAnExistingPurchase() {
+        assertThatThrownBy(() -> service.revokePurchase(999L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("nessun acquisto");
+    }
+
+    @Test
+    void revokePurchaseRejectsAPurchaseAlreadyRevoked() {
+        service.recordPurchase("gk", "marco", 30);
+        long targetSeq = service.state().squadOf("marco").holdings().getFirst().seq();
+        service.revokePurchase(targetSeq);
+
+        assertThatThrownBy(() -> service.revokePurchase(targetSeq))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("già annullato");
+    }
+
+    @Test
     void resolvesParticipantsByInitial() {
         assertThat(service.byInitial('m')).contains(PARTICIPANTS.get(1));
         assertThat(service.byInitial('Z')).isEmpty();

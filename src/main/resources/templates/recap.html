@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Riepilogo asta</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+  <style>
+    .wrap { max-width: 100%; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+    h1 { font-size: 1.3rem; margin: .8rem 0 .6rem; }
+    .nav { display: flex; gap: 1rem; align-items: center; margin-bottom: .5rem; }
+    .nav a { color: var(--dim); font-size: .85rem; text-decoration: none; }
+    .nav a:hover { color: var(--fg); }
+    .banner { padding: .6rem .9rem; margin: .6rem 0; border-left: 3px solid var(--pos); }
+
+    /* Contenitore scorrevole: otto colonne fianco a fianco romperebbero il layout
+       su qualsiasi schermo se non fossero racchiuse in un contenitore con il proprio
+       overflow orizzontale — il resto della pagina non deve scorrere di lato. */
+    .recap-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+    .recap-col { flex: 0 0 15rem; min-width: 15rem; border: 1px solid var(--line);
+                 padding: .75rem; }
+    .recap-col.me { border-color: var(--pos); }
+    .recap-col h2 { font-size: 1rem; margin: 0 0 .2rem; }
+    .recap-col .meta { color: var(--dim); font-size: .8rem; margin-bottom: .6rem; }
+    .recap-role { font-size: .75rem; color: var(--dim); letter-spacing: .06em;
+                  margin: .6rem 0 .2rem; border-top: 1px solid var(--line); padding-top: .4rem; }
+    .recap-role:first-of-type { border-top: none; margin-top: 0; }
+    .recap-player { display: flex; justify-content: space-between; align-items: center;
+                    gap: .4rem; padding: .15rem 0; font-size: .9rem; }
+    .recap-player .price { color: var(--dim); }
+    .recap-player form { margin: 0; }
+    .revoke-btn { font: inherit; font-size: .75rem; background: transparent; color: var(--dim);
+                  border: 1px solid var(--line); padding: .05rem .35rem; cursor: pointer;
+                  border-radius: 2px; }
+    .revoke-btn:hover { color: var(--neg); border-color: var(--neg); }
+    .revoke-btn.confirming { color: #022; background: var(--neg); border-color: var(--neg);
+                              font-weight: bold; }
+    .empty-role { color: var(--dim); font-size: .8rem; font-style: italic; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="nav">
+    <a th:href="@{/}">← asta</a>
+    <a th:href="@{/impostazioni}">impostazioni</a>
+  </div>
+
+  <h1>Riepilogo</h1>
+
+  <p class="banner" th:if="${message}" th:text="${message}"></p>
+
+  <div class="recap-board">
+    <section class="recap-col" th:each="col : ${columns}" th:classappend="${col.me} ? 'me' : ''">
+      <h2 th:text="${col.participantName}">Marco</h2>
+      <div class="meta">
+        <span th:text="${col.budgetRemaining} + ' crediti'">289 crediti</span> ·
+        <span th:text="${col.slotsRemaining} + ' slot'">21 slot</span>
+      </div>
+
+      <div th:each="role : ${roles}">
+        <div class="recap-role" th:text="${role}">P</div>
+        <p class="empty-role" th:if="${col.byRole.get(role).isEmpty()}">—</p>
+        <div class="recap-player" th:each="p : ${col.byRole.get(role)}">
+          <span th:text="${p.name}">Bastoni</span>
+          <span class="price" th:text="${p.price}">47</span>
+          <!-- Due click, decisi con l'utente: il primo trasforma il bottone in
+               "conferma?", il secondo rimuove davvero. Il comportamento vive in
+               recap.js, non qui: il markup espone solo il form e il seq. -->
+          <form method="post" th:action="@{/riepilogo/revoca}">
+            <input type="hidden" name="targetSeq" th:value="${p.seq}">
+            <button type="submit" class="revoke-btn" title="rimuovi">✕</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</div>
+<script th:src="@{/recap.js}"></script>
+</body>
+</html>
