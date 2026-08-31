@@ -719,7 +719,7 @@ Profili Spring: `default`, `offline` (usa `FixtureStrategicAdvisor`), `test`.
 | Livello | Oggetto | Modalità |
 |---|---|---|
 | Dominio e strategia | Motore, proiezioni, modificatori | JUnit puro, senza Spring e senza rete |
-| Property-based | `maxBid <= hardCap` sempre; `surplus` monotono decrescente nel prezzo; `maxBid` non crescente al calare degli slot residui | Generatori di stati d'asta casuali |
+| Property-based | `maxBid <= hardCap` sempre; `surplus` monotono decrescente nel prezzo; `hardCap` non crescente attraverso qualunque acquisto a prezzo >= 1 (invariante vera e strutturale). NOTA: una precedente versione di questa spec affermava che `maxBid` non cresce al calare degli slot residui. E' falso: a budget invariato, meno slot residui significano meno crediti da riservare, quindi il tetto SALE. Sotto riduzione per acquisto la tendenza esiste ma non e' una legge — il motore e' euristico e ogni acquisto toglie anche un concorrente dal pool, il che puo' far salire il surplus del giocatore in esame. Verificato empiricamente: circa il 20% di violazioni a coppie sotto randomizzazione ampia. Resta coperto da un test di regressione su sequenza fissa, non da una property | Generatori di stati d'asta casuali |
 | Golden test | Inizio asta; metà fase D con blocco difensivo avviato; finale con 2 slot e 5 crediti | Scenari fissi con `maxBid` atteso |
 | Modificatori | Un difensore che porta il reparto oltre una soglia deve battere un difensore con `basePoints` superiore che non la fa scattare | E il comportamento distintivo del motore |
 | Projector | Sequenza di eventi -> stato atteso, incluso annullamento | Tabellare |
