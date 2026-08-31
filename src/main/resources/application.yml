@@ -19,6 +19,7 @@ fantaagent:
 league:
   participants: 8
   budget: 500
+  roster-size: 25
   slots:
     P: 3
     D: 8
@@ -49,6 +50,8 @@ league:
     red-card: -1.0
     goal-conceded: -1.0
     clean-sheet: 1.0
+    # bonus delle due tabelle sotto: FANTAPUNTI aggiunti al totale di reparto ad ogni
+    # giornata quando la media raggiunge la soglia — non un numero di gol.
     defence-modifier:
       defenders-counted: 3
       thresholds:

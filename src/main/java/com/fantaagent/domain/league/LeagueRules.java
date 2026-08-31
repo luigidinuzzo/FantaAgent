@@ -12,9 +12,9 @@ public record LeagueRules(int participants, int budget, Map<Role, Integer> slots
         if (participants < 2) {
             throw new IllegalArgumentException("participants must be at least 2");
         }
-        if (budget < 1) {
-            throw new IllegalArgumentException("budget must be positive");
-        }
+        // Il budget non è validato qui: "budget positivo" è uno dei controlli bloccanti
+        // di config.StartupValidator (spec §11.3), con messaggio in italiano e nome
+        // della chiave — non un invariante del tipo di dominio.
         slots = Map.copyOf(slots);
         phases = List.copyOf(phases);
         for (Role role : Role.values()) {
