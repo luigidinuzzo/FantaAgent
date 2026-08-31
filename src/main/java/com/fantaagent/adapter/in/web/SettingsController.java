@@ -51,6 +51,7 @@ public class SettingsController {
         model.addAttribute("settings", currentSettings());
         model.addAttribute("locked", auctionStarted());
         model.addAttribute("file", store.file().toString());
+        model.addAttribute("fileGoverns", store.exists());
         return "settings";
     }
 
@@ -77,6 +78,7 @@ public class SettingsController {
 
         model.addAttribute("file", store.file().toString());
         model.addAttribute("locked", auctionStarted());
+        model.addAttribute("fileGoverns", store.exists());
 
         if (auctionStarted()) {
             model.addAttribute("settings", currentSettings());
@@ -117,6 +119,7 @@ public class SettingsController {
         }
 
         store.save(candidate);
+        model.addAttribute("fileGoverns", store.exists());
         model.addAttribute("saved", true);
         return "settings";
     }

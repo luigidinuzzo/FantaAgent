@@ -34,6 +34,11 @@
   <a class="back" th:href="@{/}">← torna all'asta</a>
   <h1>Impostazioni della lega</h1>
 
+  <p class="note" th:if="${fileGoverns}">
+    Questi valori vengono da <span th:text="${file}">…</span> e hanno la precedenza su
+    quelli di <code>application.yml</code>, che vengono ignorati.
+  </p>
+
   <div class="banner ok" th:if="${saved}">
     ✓ Impostazioni salvate in <span th:text="${file}">…</span>.
     <div class="note" style="margin:.4rem 0 0">
@@ -118,9 +123,9 @@
       <input type="text" id="cs" name="cleanSheet" th:value="${settings.cleanSheet}" th:disabled="${locked}">
     </div>
     <p class="note">
-      I file di statistiche di Fantacalcio.it non contengono le porte inviolate: se lasci
-      un valore diverso da zero, il bonus è configurato ma non verrà mai calcolato da
-      quella fonte.
+      I file di statistiche di Fantacalcio.it non contengono le porte inviolate: quando
+      mancano, l'applicazione le stima dalle presenze e dai gol subiti con un modello
+      di Poisson, invece di lasciarle a zero.
     </p>
 
     <h2>CONFERMA</h2>

@@ -1,6 +1,7 @@
 package com.fantaagent.config;
 
 import com.fantaagent.domain.league.ScoringRules;
+import com.fantaagent.domain.player.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,7 +9,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -57,7 +60,54 @@ public class SettingsConfig {
                 store.file(),
                 settings.defenceModifierEnabled() ? "attivo" : "disattivo",
                 settings.thresholds().size());
-        return settings.toScoringRules(sigma);
+        ScoringRules effective = settings.toScoringRules(sigma);
+        warnIfApplicationYmlIsIgnored(store, props, effective);
+        return effective;
+    }
+
+    /**
+     * {@code store.file()} vince sempre su application.yml quando esiste: lo segnala a INFO,
+     * e se i due file darebbero numeri diversi lo segnala anche a WARN con l'elenco dei
+     * valori che differiscono, per non lasciare chi ha modificato application.yml a credere
+     * che quel numero sia in vigore.
+     */
+    private static void warnIfApplicationYmlIsIgnored(
+            ScoringSettingsStore store, LeagueProperties props, ScoringRules effective) {
+        log.info("regole di punteggio in vigore da {}: i valori di scoring in application.yml "
+                + "sono ignorati (application.yml resta letto solo se {} non esiste)",
+                store.file(), store.file());
+        ScoringRules fromYml = fromProperties(props);
+        List<String> differences = scoringDifferences(effective, fromYml);
+        if (!differences.isEmpty()) {
+            log.warn("i valori di scoring in vigore da {} differiscono da quelli di "
+                    + "application.yml (ignorati):\n  - {}",
+                    store.file(), String.join("\n  - ", differences));
+        }
+    }
+
+    private static List<String> scoringDifferences(ScoringRules effective, ScoringRules fromYml) {
+        List<String> differences = new ArrayList<>();
+        diffValue(differences, "assist", effective.assist(), fromYml.assist());
+        diffValue(differences, "rigore segnato", effective.penaltyScored(), fromYml.penaltyScored());
+        diffValue(differences, "rigore sbagliato", effective.penaltyMissed(), fromYml.penaltyMissed());
+        diffValue(differences, "rigore parato", effective.penaltySaved(), fromYml.penaltySaved());
+        diffValue(differences, "ammonizione", effective.yellowCard(), fromYml.yellowCard());
+        diffValue(differences, "espulsione", effective.redCard(), fromYml.redCard());
+        diffValue(differences, "gol subito", effective.goalConceded(), fromYml.goalConceded());
+        diffValue(differences, "porta inviolata", effective.cleanSheet(), fromYml.cleanSheet());
+        for (Role role : Role.values()) {
+            diffValue(differences, "bonus gol " + role,
+                    effective.goalBonus(role), fromYml.goalBonus(role));
+        }
+        return differences;
+    }
+
+    private static void diffValue(List<String> differences, String label,
+                                  double effective, double fromYml) {
+        if (Double.compare(effective, fromYml) != 0) {
+            differences.add(String.format(Locale.ROOT,
+                    "%s: in vigore %.3f, in application.yml %.3f", label, effective, fromYml));
+        }
     }
 
     /** Gli stessi valori che costruirebbe la configurazione di progetto, senza file utente. */
