@@ -31,12 +31,23 @@ public class AuctionService {
     private final PlayerCatalog catalog;
     private final AuctionEventStore store;
 
+    /**
+     * Calcolato una sola volta alla costruzione, dallo stato del log trovato su disco
+     * in quel momento — non ricalcolato ad ogni lettura come {@link #state()}. Se lo
+     * fosse, resterebbe presente per sempre non appena esiste un solo holding, quindi
+     * dal primo acquisto in poi il banner mentirebbe dicendo "ripreso dal log su disco"
+     * anche per acquisti appena fatti in questa sessione. Va invece a vuoto al primo
+     * {@link #recordPurchase} o {@link #undoLast} riusciti in questa sessione.
+     */
+    private Optional<ResumeSummary> resumeSummary;
+
     public AuctionService(LeagueRules rules, List<Participant> participants,
                           PlayerCatalog catalog, AuctionEventStore store) {
         this.rules = rules;
         this.participants = List.copyOf(participants);
         this.catalog = catalog;
         this.store = store;
+        this.resumeSummary = summarize(state());
     }
 
     public AuctionState state() {
@@ -71,6 +82,7 @@ public class AuctionService {
 
         store.append(new AuctionEvent.PlayerPurchased(
                 store.nextSeq(), Instant.now(), playerId, buyer.id(), price));
+        resumeSummary = Optional.empty();
     }
 
     /** @return false se non c'era nulla da annullare */
@@ -87,6 +99,7 @@ public class AuctionService {
                     && !revoked.contains(purchased.seq())) {
                 store.append(new AuctionEvent.PurchaseRevoked(
                         store.nextSeq(), Instant.now(), purchased.seq()));
+                resumeSummary = Optional.empty();
                 return true;
             }
         }
@@ -112,11 +125,14 @@ public class AuctionService {
     }
 
     public Optional<ResumeSummary> resumeSummary() {
-        AuctionState current = state();
-        if (current.holdings().isEmpty()) {
+        return resumeSummary;
+    }
+
+    private static Optional<ResumeSummary> summarize(AuctionState state) {
+        if (state.holdings().isEmpty()) {
             return Optional.empty();
         }
-        return Optional.of(new ResumeSummary(current.holdings().size(), current.currentPhase()));
+        return Optional.of(new ResumeSummary(state.holdings().size(), state.currentPhase()));
     }
 
     public int salesInCurrentPhase() {

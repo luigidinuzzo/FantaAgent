@@ -126,14 +126,46 @@ class AuctionServiceTest {
         assertThat(service.resumeSummary()).isEmpty();
     }
 
+    /**
+     * S6: il banner deve significare "trovato già in corso sul log all'avvio", non
+     * "esiste almeno un holding". Un servizio costruito sopra un log che ha già
+     * acquisti — il caso reale di un riavvio dell'app a metà asta — deve riportarlo;
+     * lo stesso acquisto fatto DENTRO questa sessione (vedi il test sotto) non deve.
+     */
     @Test
-    void reportsAnAuctionInProgressSoTheUiCanAskBeforeResuming() {
-        service.recordPurchase("gk", "marco", 30);
+    void reportsAnAuctionAlreadyInProgressWhenConstructedOverAnExistingLog() {
+        AuctionService fresh = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        fresh.recordPurchase("gk", "marco", 30);
 
-        assertThat(service.resumeSummary()).hasValueSatisfying(summary -> {
+        AuctionService resumed = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+
+        assertThat(resumed.resumeSummary()).hasValueSatisfying(summary -> {
             assertThat(summary.purchases()).isEqualTo(1);
             assertThat(summary.phase()).isEqualTo(Role.P);
         });
+    }
+
+    @Test
+    void theResumeBannerIsAbsentAfterAPurchaseMadeInThisSession() {
+        service.recordPurchase("gk", "marco", 30);
+
+        assertThat(service.resumeSummary()).isEmpty();
+    }
+
+    @Test
+    void theResumeBannerIsAbsentAfterAnUndoMadeInThisSession() {
+        AuctionService resumed = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        resumed.recordPurchase("gk", "marco", 30);
+        AuctionService resumedAgain = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        assertThat(resumedAgain.resumeSummary()).isPresent();
+
+        resumedAgain.undoLast();
+
+        assertThat(resumedAgain.resumeSummary()).isEmpty();
     }
 
     @Test
