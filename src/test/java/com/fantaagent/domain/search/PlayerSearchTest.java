@@ -79,4 +79,24 @@ class PlayerSearchTest {
     void returnsNothingWhenNoPlayerMatches() {
         assertThat(search.search("zzzzzz", null, 5)).isEmpty();
     }
+
+    /**
+     * S4: word-prefix (700) + phase boost (250) + relevanza massima (200) = 1150,
+     * sopra un vecchio SCORE_EXACT di 1000. Il controller compra il primo risultato
+     * senza conferma, quindi un match esatto a bassa rilevanza in un altro ruolo deve
+     * comunque vincere contro un match più debole ma "di moda" nel ruolo in asta.
+     */
+    @Test
+    void anExactMatchIsUnbeatableEvenByAHighRelevancePhaseBoostedWordPrefixMatch() {
+        List<Player> customPlayers = List.of(
+                new Player("exact", "Thu", "Roma", Role.C, 5),
+                new Player("wordPrefix", "Marco Thuram", "Inter", Role.A, 40));
+        Map<String, Double> customRelevance = Map.of("exact", 1.0, "wordPrefix", 900.0);
+        PlayerSearch customSearch =
+                new PlayerSearch(customPlayers, id -> customRelevance.getOrDefault(id, 0.0));
+
+        List<Player> results = customSearch.search("thu", Role.A, 5);
+
+        assertThat(results.getFirst().id()).isEqualTo("exact");
+    }
 }

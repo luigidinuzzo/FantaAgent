@@ -15,7 +15,6 @@ import java.util.function.ToDoubleFunction;
  */
 public final class PlayerSearch {
 
-    private static final int SCORE_EXACT = 1000;
     private static final int SCORE_PREFIX = 800;
     private static final int SCORE_WORD_PREFIX = 700;
     private static final int SCORE_TYPO = 500;
@@ -23,6 +22,15 @@ public final class PlayerSearch {
     private static final int PHASE_BOOST = 250;
     private static final double RELEVANCE_CAP = 200.0;
     private static final double RELEVANCE_DIVISOR = 3.0;
+
+    /**
+     * Deve restare irraggiungibile da qualunque livello inferiore anche con il boost di
+     * fase e la rilevanza massima insieme (il tier più alto sotto l'esatto, il prefisso,
+     * arriva al più a {@code SCORE_PREFIX + PHASE_BOOST + RELEVANCE_CAP}): il controller
+     * compra il primo risultato senza conferma, quindi un match esatto non deve mai
+     * poter perdere contro un match più debole solo perché più "di moda".
+     */
+    private static final int SCORE_EXACT = SCORE_PREFIX + (int) PHASE_BOOST + (int) RELEVANCE_CAP + 1;
 
     private record Indexed(Player player, String normalizedName) {
     }
