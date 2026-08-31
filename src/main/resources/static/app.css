@@ -28,3 +28,6 @@ body { margin:0; background:var(--bg); color:var(--fg);
 .board td { padding:.2rem .3rem; border-bottom:1px solid var(--line); }
 .board tr.me td { color:#fff; font-weight:bold; }
 .pos { color:var(--pos); } .neg { color:var(--neg); }
+
+.settings-link { color: var(--dim); font-size: .8rem; text-decoration: none; }
+.settings-link:hover { color: var(--fg); }

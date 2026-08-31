@@ -2,8 +2,6 @@ package com.fantaagent.ingestion;
 
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -14,7 +12,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -23,23 +20,22 @@ public class ListoneImporter {
 
     private static final List<String> REQUIRED = List.of("id", "r", "nome", "squadra", "qt.a");
 
+    /** L'export ufficiale antepone una riga di titolo all'intestazione vera e propria. */
+    private static final int MAX_HEADER_SCAN_ROWS = 10;
+
     public record ListoneImport(List<Player> players, ReconciliationReport report) {
     }
 
     public ListoneImport importFrom(Path xlsx) {
         try (InputStream in = Files.newInputStream(xlsx); Workbook wb = new XSSFWorkbook(in)) {
             Sheet sheet = wb.getSheetAt(0);
-            Map<String, Integer> columns = readHeader(sheet.getRow(0));
-            for (String required : REQUIRED) {
-                if (!columns.containsKey(required)) {
-                    throw new IllegalStateException(
-                            "colonna obbligatoria mancante nel listone: " + required.toUpperCase(Locale.ROOT));
-                }
-            }
+            SheetHeaderScanner.HeaderLocation header = findHeader(sheet, xlsx);
+            Map<String, Integer> columns = header.columns();
+            int dataStartRow = header.rowIndex() + 1;
             List<Player> players = new ArrayList<>();
             List<String> warnings = new ArrayList<>();
             int rejected = 0;
-            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+            for (int r = dataStartRow; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 // Una riga assente o interamente vuota non e' un'anomalia da segnalare:
                 // gli export XLSX lasciano righe in coda con la sola formattazione, e
@@ -61,44 +57,55 @@ public class ListoneImporter {
         }
     }
 
+    /**
+     * Trova la riga di intestazione scandendo le prime {@value #MAX_HEADER_SCAN_ROWS}
+     * righe del foglio. Se nessuna le contiene tutte, fallisce in modo chiaro indicando
+     * la prima colonna obbligatoria mancante nella prima riga del foglio.
+     */
+    private static SheetHeaderScanner.HeaderLocation findHeader(Sheet sheet, Path xlsx) {
+        SheetHeaderScanner.HeaderLocation header =
+                SheetHeaderScanner.find(sheet, REQUIRED, MAX_HEADER_SCAN_ROWS);
+        if (header != null) {
+            return header;
+        }
+        Row first = sheet.getRow(0);
+        Map<String, Integer> columns = first == null ? Map.of() : SheetHeaderScanner.readHeader(first);
+        for (String required : REQUIRED) {
+            if (!columns.containsKey(required)) {
+                throw new IllegalStateException(
+                        "colonna obbligatoria mancante nel listone: " + required.toUpperCase(Locale.ROOT));
+            }
+        }
+        throw new IllegalStateException(
+                "intestazione del listone non trovata nelle prime " + MAX_HEADER_SCAN_ROWS
+                + " righe: " + xlsx);
+    }
+
     private static boolean isBlank(Row row, Map<String, Integer> columns) {
         for (Integer index : columns.values()) {
-            if (!stringValue(row.getCell(index)).isBlank()) {
+            if (!SheetHeaderScanner.stringValue(row.getCell(index)).isBlank()) {
                 return false;
             }
         }
         return true;
     }
 
-    private static Map<String, Integer> readHeader(Row header) {
-        if (header == null) {
-            throw new IllegalStateException("il listone non ha una riga di intestazione");
-        }
-        Map<String, Integer> columns = new HashMap<>();
-        for (int c = 0; c < header.getLastCellNum(); c++) {
-            String name = stringValue(header.getCell(c)).toLowerCase(Locale.ROOT).trim();
-            if (!name.isBlank()) {
-                columns.put(name, c);
-            }
-        }
-        return columns;
-    }
-
     private static Player toPlayer(Row row, Map<String, Integer> columns) {
-        String id = stringValue(row.getCell(columns.get("id"))).trim();
+        String id = SheetHeaderScanner.stringValue(row.getCell(columns.get("id"))).trim();
         if (id.isBlank()) {
             throw new IllegalArgumentException("id mancante");
         }
-        String roleRaw = stringValue(row.getCell(columns.get("r"))).trim().toUpperCase(Locale.ROOT);
+        String roleRaw = SheetHeaderScanner.stringValue(row.getCell(columns.get("r")))
+                .trim().toUpperCase(Locale.ROOT);
         Role role;
         try {
             role = Role.valueOf(roleRaw);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("ruolo sconosciuto: " + roleRaw);
         }
-        String name = stringValue(row.getCell(columns.get("nome"))).trim();
-        String team = stringValue(row.getCell(columns.get("squadra"))).trim();
-        String priceRaw = stringValue(row.getCell(columns.get("qt.a"))).trim();
+        String name = SheetHeaderScanner.stringValue(row.getCell(columns.get("nome"))).trim();
+        String team = SheetHeaderScanner.stringValue(row.getCell(columns.get("squadra"))).trim();
+        String priceRaw = SheetHeaderScanner.stringValue(row.getCell(columns.get("qt.a"))).trim();
         int price;
         try {
             price = (int) Math.round(Double.parseDouble(priceRaw.replace(',', '.')));
@@ -111,25 +118,5 @@ public class ListoneImporter {
             throw new IllegalArgumentException("quotazione non positiva: " + priceRaw);
         }
         return new Player(id, name, team, role, price);
-    }
-
-    private static String stringValue(Cell cell) {
-        if (cell == null) {
-            return "";
-        }
-        // Una cella FORMULA nel listone (es. quotazione ricalcolata) va letta dal
-        // suo risultato in cache, non dal testo della formula stessa.
-        CellType type = cell.getCellType() == CellType.FORMULA
-                ? cell.getCachedFormulaResultType()
-                : cell.getCellType();
-        return switch (type) {
-            case NUMERIC -> {
-                double d = cell.getNumericCellValue();
-                yield d == Math.rint(d) ? String.valueOf((long) d) : String.valueOf(d);
-            }
-            case STRING -> cell.getStringCellValue();
-            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-            default -> "";
-        };
     }
 }

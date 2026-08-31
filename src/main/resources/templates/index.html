@@ -17,6 +17,7 @@
   <form hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
     <button type="submit">fase successiva →</button>
   </form>
+  <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
 </header>
 
 <!-- L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap
