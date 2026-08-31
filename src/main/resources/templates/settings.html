@@ -143,6 +143,55 @@
     <button class="save" type="submit" th:disabled="${locked}">Salva impostazioni</button>
   </form>
 
+  <h2>PARTECIPANTI</h2>
+  <p class="note" th:if="${membersFileGoverns}">
+    Questi nomi vengono da <span th:text="${membersFile}">…</span> e hanno la precedenza
+    su quelli di <code>application.yml</code>, che vengono ignorati.
+  </p>
+  <p class="note">
+    L'iniziale è quella usata dal comando rapido (es. <code>bast 47 m</code>) per
+    riconoscere a chi assegnare l'acquisto: deve restare unica. L'id di ciascun
+    partecipante non è modificabile qui: è quello a cui il registro dell'asta lega gli
+    acquisti già registrati.
+  </p>
+
+  <div class="banner ok" th:if="${membersSaved}">
+    ✓ Partecipanti salvati in <span th:text="${membersFile}">…</span>.
+    <div class="note" style="margin:.4rem 0 0">
+      <b>I nuovi nomi valgono dal prossimo avvio.</b> Chiudi e rilancia con
+      <code>./run.sh</code>.
+    </div>
+  </div>
+
+  <div class="banner bad" th:if="${membersErrors}">
+    Partecipanti non salvati:
+    <ul><li th:each="e : ${membersErrors}" th:text="${e}">errore</li></ul>
+  </div>
+
+  <div class="banner warn" th:if="${locked}">
+    L'asta è già iniziata: i partecipanti sono in sola lettura. Gli acquisti già
+    registrati fanno riferimento agli id dei partecipanti: rinominarli o riordinarli ora
+    romperebbe il significato di quanto già registrato. Per correggerli, annulla prima
+    gli acquisti registrati.
+  </div>
+
+  <form method="post" th:action="@{/impostazioni/partecipanti}">
+    <table class="steps">
+      <tr><th>nome</th><th>iniziale</th><th>tu</th></tr>
+      <tr th:each="p : ${members}">
+        <td>
+          <input type="hidden" name="id" th:value="${p.id}">
+          <input type="text" name="name" th:value="${p.name}" th:disabled="${locked}">
+        </td>
+        <td><input type="text" name="initial" maxlength="1" style="width:3rem"
+                    th:value="${p.initial}" th:disabled="${locked}"></td>
+        <td><input type="radio" name="me" th:value="${p.id}"
+                    th:checked="${p.me}" th:disabled="${locked}"></td>
+      </tr>
+    </table>
+    <button class="save" type="submit" th:disabled="${locked}">Salva partecipanti</button>
+  </form>
+
 </div>
 </body>
 </html>

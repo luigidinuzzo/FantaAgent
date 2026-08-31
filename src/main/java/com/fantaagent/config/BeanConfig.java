@@ -15,11 +15,34 @@ public class BeanConfig {
         return new LeagueRules(props.participants(), props.budget(), props.slots(), props.phases());
     }
 
+    /**
+     * Se {@code league-members.yml} esiste, i suoi partecipanti hanno la precedenza su
+     * quelli di application.yml — stesso pattern di {@link SettingsConfig#scoringRules}.
+     * Letto una sola volta all'avvio perché gli id dei partecipanti finiscono nel
+     * registro dell'asta: cambiarli a caldo romperebbe il significato di quanto già
+     * registrato.
+     */
     @Bean
-    public List<Participant> participants(LeagueProperties props) {
-        return props.members().stream()
-                .map(m -> new Participant(m.id(), m.name(), m.initial(), m.me()))
-                .toList();
+    public List<Participant> participants(LeagueProperties props, LeagueMembersSettingsStore store) {
+        java.util.Optional<List<Participant>> stored = store.load();
+        if (stored.isEmpty()) {
+            org.slf4j.LoggerFactory.getLogger(BeanConfig.class)
+                    .info("partecipanti: nessun {} trovato, uso i valori di application.yml",
+                            LeagueMembersSettingsStore.FILE_NAME);
+            return props.members().stream()
+                    .map(m -> new Participant(m.id(), m.name(), m.initial(), m.me()))
+                    .toList();
+        }
+        List<Participant> members = stored.get();
+        List<String> errors = LeagueMembersSettingsValidator.validate(members);
+        if (!errors.isEmpty()) {
+            throw new IllegalStateException(
+                    "partecipanti della lega non validi in " + store.file() + ":\n  - "
+                    + String.join("\n  - ", errors));
+        }
+        org.slf4j.LoggerFactory.getLogger(BeanConfig.class)
+                .info("partecipanti letti da {} ({} partecipanti)", store.file(), members.size());
+        return members;
     }
 
     @Bean

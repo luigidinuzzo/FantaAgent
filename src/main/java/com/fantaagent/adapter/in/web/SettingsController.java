@@ -1,9 +1,12 @@
 package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.config.LeagueMembersSettingsStore;
+import com.fantaagent.config.LeagueMembersSettingsValidator;
 import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.config.ScoringSettingsStore;
 import com.fantaagent.config.ScoringSettingsValidator;
+import com.fantaagent.domain.league.Participant;
 import com.fantaagent.domain.league.ScoringRules;
 import com.fantaagent.domain.player.Role;
 import org.springframework.stereotype.Controller;
@@ -38,12 +41,17 @@ public class SettingsController {
     private final ScoringSettingsStore store;
     private final ScoringRules current;
     private final AuctionService auction;
+    private final LeagueMembersSettingsStore membersStore;
+    private final List<Participant> participants;
 
     public SettingsController(ScoringSettingsStore store, ScoringRules current,
-                              AuctionService auction) {
+                              AuctionService auction, LeagueMembersSettingsStore membersStore,
+                              List<Participant> participants) {
         this.store = store;
         this.current = current;
         this.auction = auction;
+        this.membersStore = membersStore;
+        this.participants = participants;
     }
 
     @GetMapping("/impostazioni")
@@ -52,6 +60,8 @@ public class SettingsController {
         model.addAttribute("locked", auctionStarted());
         model.addAttribute("file", store.file().toString());
         model.addAttribute("fileGoverns", store.exists());
+        populateMembersShell(model);
+        model.addAttribute("members", participants);
         return "settings";
     }
 
@@ -79,6 +89,8 @@ public class SettingsController {
         model.addAttribute("file", store.file().toString());
         model.addAttribute("locked", auctionStarted());
         model.addAttribute("fileGoverns", store.exists());
+        populateMembersShell(model);
+        model.addAttribute("members", participants);
 
         if (auctionStarted()) {
             model.addAttribute("settings", currentSettings());
@@ -122,6 +134,63 @@ public class SettingsController {
         model.addAttribute("fileGoverns", store.exists());
         model.addAttribute("saved", true);
         return "settings";
+    }
+
+    /**
+     * Rinomina i partecipanti senza toccare i loro id: sono gli id, non i nomi, a cui
+     * il registro dell'asta lega gli acquisti già fatti. Per lo stesso motivo il
+     * salvataggio è rifiutato una volta che l'asta è iniziata — vedi la classe.
+     */
+    @PostMapping("/impostazioni/partecipanti")
+    public String saveParticipants(
+            @RequestParam(name = "id") List<String> ids,
+            @RequestParam(name = "name") List<String> names,
+            @RequestParam(name = "initial") List<String> initials,
+            @RequestParam(name = "me", required = false) String ownerId,
+            Model model) {
+
+        model.addAttribute("settings", currentSettings());
+        model.addAttribute("locked", auctionStarted());
+        model.addAttribute("file", store.file().toString());
+        model.addAttribute("fileGoverns", store.exists());
+        populateMembersShell(model);
+
+        if (auctionStarted()) {
+            model.addAttribute("members", participants);
+            model.addAttribute("membersErrors", List.of(
+                    "L'asta è già iniziata: i partecipanti non si possono più cambiare. Gli "
+                    + "acquisti registrati fanno riferimento ai loro id, e rinominarli o "
+                    + "riordinarli ora romperebbe il significato di quanto già registrato. "
+                    + "Annulla gli acquisti registrati se hai davvero bisogno di correggerli."));
+            return "settings";
+        }
+
+        List<Participant> candidate = new ArrayList<>();
+        int rows = Math.min(ids.size(), Math.min(names.size(), initials.size()));
+        for (int i = 0; i < rows; i++) {
+            String id = ids.get(i);
+            String name = names.get(i) == null ? "" : names.get(i).trim();
+            String initialRaw = initials.get(i) == null ? "" : initials.get(i).trim();
+            char initial = initialRaw.isEmpty() ? ' ' : initialRaw.charAt(0);
+            candidate.add(new Participant(id, name, initial, id.equals(ownerId)));
+        }
+
+        List<String> errors = LeagueMembersSettingsValidator.validate(candidate);
+        model.addAttribute("members", candidate);
+        if (!errors.isEmpty()) {
+            model.addAttribute("membersErrors", errors);
+            return "settings";
+        }
+
+        membersStore.save(candidate);
+        model.addAttribute("membersFileGoverns", true);
+        model.addAttribute("membersSaved", true);
+        return "settings";
+    }
+
+    private void populateMembersShell(Model model) {
+        model.addAttribute("membersFile", membersStore.file().toString());
+        model.addAttribute("membersFileGoverns", membersStore.exists());
     }
 
     private boolean auctionStarted() {

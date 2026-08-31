@@ -41,6 +41,12 @@ public class SettingsConfig {
     }
 
     @Bean
+    public LeagueMembersSettingsStore leagueMembersSettingsStore(
+            @Value("${fantaagent.data-dir:res}") String dataDir) {
+        return new LeagueMembersSettingsStore(Path.of(dataDir));
+    }
+
+    @Bean
     public ScoringRules scoringRules(ScoringSettingsStore store, LeagueProperties props) {
         double sigma = props.scoring().matchdayRatingSigma();
         Optional<ScoringSettings> stored = store.load();
