@@ -3,7 +3,12 @@ package com.fantaagent.domain.league;
 import java.util.List;
 
 /**
- * Tabella a gradini che mappa una media voto sul bonus in gol del modificatore.
+ * Tabella a gradini che mappa una media voto sul bonus del modificatore.
+ *
+ * <p>{@code bonus} è espresso in FANTAPUNTI per giornata, non in gol: è il punteggio
+ * aggiunto al totale di reparto ad ogni giornata quando la media raggiunge la soglia,
+ * non un numero di gol attesi. {@link com.fantaagent.domain.strategy.ModifierCalculator}
+ * lo moltiplica per {@code SEASON_MATCHES} per ottenere il contributo stagionale.
  *
  * @param defendersCounted quanti difensori entrano nel calcolo della media di reparto;
  *                         0 per un modificatore che guarda solo il portiere

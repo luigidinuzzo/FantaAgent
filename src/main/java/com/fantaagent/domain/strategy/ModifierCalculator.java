@@ -16,6 +16,11 @@ import java.util.List;
  * contributo di un singolo giocatore è quindi una differenza fra il reparto con e senza
  * di lui. Gli slot scoperti sono riempiti con la media voto del giocatore marginale del
  * ruolo, così che il termine sia definito anche a rosa vuota.
+ *
+ * <p>Il {@code bonus} letto da {@link com.fantaagent.domain.league.ModifierTable} è in
+ * FANTAPUNTI per giornata, non in gol: {@link #modifierPoints} lo moltiplica per
+ * {@code SEASON_MATCHES} per ottenere il contributo stagionale aggiunto al totale del
+ * reparto — non un numero di gol attesi.
  */
 public final class ModifierCalculator {
 

@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.within;
 
 class ModifierCalculatorTest {
 
-    /** Un gradino a 6.0 che vale 1 gol, uno a 6.5 che ne vale 3. */
+    /** Un gradino a 6.0 che vale 1 fantapunto/giornata, uno a 6.5 che ne vale 3. */
     private static final ModifierTable DEFENCE = new ModifierTable(3, List.of(
             new ModifierTable.Threshold(0.0, 0.0),
             new ModifierTable.Threshold(6.0, 1.0),
@@ -47,7 +47,7 @@ class ModifierCalculatorTest {
 
     @Test
     void reachingTheDefenceThresholdIsWorthAWholeStep() {
-        // portiere 6.0 + tre difensori 6.4 -> media (6.0+6.4*3)/4 = 6.3 -> gradino 6.0 = 1 gol
+        // portiere 6.0 + tre difensori 6.4 -> media (6.0+6.4*3)/4 = 6.3 -> gradino 6.0 = 1 fantapunto/giornata
         List<PlayerProjection> squad = List.of(
                 player("gk", Role.P, 6.0, 150),
                 player("d1", Role.D, 6.4, 150),
