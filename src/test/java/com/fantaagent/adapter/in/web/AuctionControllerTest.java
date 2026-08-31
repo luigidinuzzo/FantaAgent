@@ -166,6 +166,21 @@ class AuctionControllerTest {
     }
 
     @Test
+    void typingAPriceStillShowsTheAnalysisPanel() throws Exception {
+        // M5: /fragments/main deve passare da CommandParser come /command. Se cercasse
+        // sul testo grezzo "bast 47" invece che sul solo termine "bast", la ricerca non
+        // troverebbe nulla e il pannello di analisi — con sopra il max bid — sparirebbe
+        // proprio mentre l'utente digita ancora il prezzo.
+        mockMvc.perform(get("/fragments/main").param("cmd", "bast 47"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("47")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("38")));
+
+        verify(searchService).search("bast");
+    }
+
+    @Test
     void theLiveSearchFragmentNeverContainsTheCommandInput() throws Exception {
         // #cmd deve vivere fuori dalla regione sostituita a ogni ricerca: se ricomparisse
         // qui, uno swap durante la digitazione lo svuoterebbe di nuovo (il difetto A).

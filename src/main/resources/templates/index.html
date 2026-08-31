@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Asta</title>
   <link rel="stylesheet" th:href="@{/app.css}">
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script th:src="@{/htmx.min.js}"></script>
 </head>
 <body>
 
@@ -92,20 +92,24 @@
         <td th:text="${row.slotsLeft} + ' sl'">21 sl</td>
       </tr>
     </table>
-
-    <div id="targets" th:fragment="targets">
-      <h3 th:if="${targets}">TARGET</h3>
-      <table th:if="${targets}">
-        <tr th:each="t : ${targets}">
-          <td th:text="${t.player.name}">Bastoni</td>
-          <td th:text="${t.recommendation.expectedPrice}">38</td>
-          <td th:text="${t.recommendation.maxBid}">47</td>
-          <td th:text="${t.margin}"
-              th:classappend="${t.margin} >= 0 ? 'pos' : 'neg'">+9</td>
-        </tr>
-      </table>
-    </div>
   </aside>
+
+  <!-- Fuori da #board apposta: #board viene sostituito out-of-band ad ogni comando
+       (era il difetto S7), quindi un elemento annidato al suo interno perderebbe il
+       contenuto ad ogni acquisto anche se nessuna risposta lo tocca esplicitamente.
+       Qui #targets sopravvive agli swap di stato: solo /fragments/targets lo scrive. -->
+  <div id="targets" th:fragment="targets">
+    <h3 th:if="${targets}">TARGET</h3>
+    <table th:if="${targets}">
+      <tr th:each="t : ${targets}">
+        <td th:text="${t.player.name}">Bastoni</td>
+        <td th:text="${t.recommendation.expectedPrice}">38</td>
+        <td th:text="${t.recommendation.maxBid}">47</td>
+        <td th:text="${t.margin}"
+            th:classappend="${t.margin} >= 0 ? 'pos' : 'neg'">+9</td>
+      </tr>
+    </table>
+  </div>
 
 </div>
 

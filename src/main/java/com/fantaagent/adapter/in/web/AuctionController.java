@@ -60,7 +60,12 @@ public class AuctionController {
     @GetMapping("/fragments/main")
     public String main(@RequestParam(name = "cmd", defaultValue = "") String q, Model model) {
         // La ricerca non cambia stato: nessuna necessità di aggiornare status/board.
-        model.addAttribute("panel", searchPanel(q, null));
+        // Deve passare dallo stesso CommandParser di /command: appena l'utente digita
+        // anche il prezzo ("bast 47") il termine di ricerca è solo "bast", altrimenti
+        // la ricerca sul testo grezzo non trova nulla e il pannello di analisi — con
+        // sopra il max bid — sparisce proprio mentre l'utente decide quanto offrire.
+        ParsedCommand parsed = CommandParser.parse(q);
+        model.addAttribute("panel", searchPanel(parsed.term(), null));
         return "index :: main";
     }
 

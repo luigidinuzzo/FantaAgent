@@ -16,7 +16,16 @@ document.addEventListener('keydown', (e) => {
 
   if (e.ctrlKey && e.key.toLowerCase() === 'l') {
     e.preventDefault();
-    htmx.ajax('GET', '/fragments/targets', { target: '#targets', swap: 'outerHTML' });
+    const targets = document.getElementById('targets');
+    // Toggle: se il pannello ha già contenuto (h3 + tabella caricati da una
+    // apertura precedente), Ctrl+L lo richiude senza un'altra chiamata di rete;
+    // altrimenti lo popola. #targets vive fuori da #board (era il difetto S7),
+    // quindi il contenuto sopravvive agli swap di stato fra un'apertura e l'altra.
+    if (targets && targets.childElementCount > 0) {
+      targets.innerHTML = '';
+    } else {
+      htmx.ajax('GET', '/fragments/targets', { target: '#targets', swap: 'outerHTML' });
+    }
   }
 });
 
