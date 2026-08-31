@@ -20,7 +20,11 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Dopo ogni scambio HTMX il focus torna alla barra, pronta per il comando successivo.
+// #cmd non è più dentro la regione che gli swap sostituiscono (era il difetto A),
+// quindi digitare non lo perde più di focus da solo. Questo listener resta perché
+// serve ancora un caso reale: cliccare "fase successiva →" sposta il focus sul
+// bottone, e quel bottone vive dentro #status che viene rimpiazzato out-of-band a
+// ogni comando — senza questo listener il focus resterebbe perso sul <body>.
 document.body.addEventListener('htmx:afterSwap', () => {
   const cmd = document.getElementById('cmd');
   if (cmd) { cmd.focus(); }

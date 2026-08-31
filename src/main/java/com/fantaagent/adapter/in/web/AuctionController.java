@@ -26,6 +26,19 @@ public class AuctionController {
 
     private static final int TARGET_ROWS = 10;
 
+    /**
+     * Le viste che cambiano stato aggiornano tre regioni in una sola risposta:
+     * #main come swap normale, #status e #board come out-of-band (i loro tag
+     * portano hx-swap-oob="true"). #resume è incluso a sua volta: l'elemento è
+     * sempre presente nel markup (nascosto con l'attributo hidden quando non
+     * c'e' un'asta ripresa) proprio perché uno swap out-of-band può sostituire
+     * solo un elemento che la risposta contiene davvero — se th:if lo rimuovesse
+     * dal markup, un banner già mostrato non potrebbe più essere ripulito.
+     * La ricerca dal vivo (GET /fragments/main) non cambia stato e continua a
+     * restituire il solo pannello principale.
+     */
+    private static final String UPDATE_VIEW = "fragments/update :: update";
+
     private final AuctionService auction;
     private final PlayerAnalysisService analysis;
     private final PlayerSearchService search;
@@ -46,7 +59,7 @@ public class AuctionController {
 
     @GetMapping("/fragments/main")
     public String main(@RequestParam(name = "cmd", defaultValue = "") String q, Model model) {
-        populateShell(model);
+        // La ricerca non cambia stato: nessuna necessità di aggiornare status/board.
         model.addAttribute("panel", searchPanel(q, null));
         return "index :: main";
     }
@@ -84,7 +97,7 @@ public class AuctionController {
         populateShell(model);
         model.addAttribute("panel",
                 searchPanel(parsed.isPurchase() ? "" : parsed.term(), message));
-        return "index :: main";
+        return UPDATE_VIEW;
     }
 
     @PostMapping("/undo")
@@ -94,7 +107,7 @@ public class AuctionController {
                 : "niente da annullare";
         populateShell(model);
         model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, message));
-        return "index :: main";
+        return UPDATE_VIEW;
     }
 
     @PostMapping("/phase/next")
@@ -103,7 +116,7 @@ public class AuctionController {
         populateShell(model);
         model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null,
                 "fase avanzata a " + auction.state().currentPhase()));
-        return "index :: main";
+        return UPDATE_VIEW;
     }
 
     @GetMapping("/fragments/targets")

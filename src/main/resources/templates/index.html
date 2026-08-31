@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<header class="status">
+<header id="status" class="status" th:fragment="status" hx-swap-oob="true">
   <div>FASE <b th:text="${status.phase}">P</b> ·
     <span th:text="${status.soldInPhase}">0</span> venduti</div>
   <div>TU <b th:text="${status.myBudget}">500</b> crediti ·
@@ -19,14 +19,21 @@
   </form>
 </header>
 
-<div class="resume" th:if="${resume}">
-  Asta in corso: <b th:text="${resume.purchases}">47</b> acquisti,
-  fase <b th:text="${resume.phase}">D</b> — ripreso dal log su disco.
+<!-- L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap
+     out-of-band può solo sostituire un elemento che il markup contiene davvero.
+     Se th:if lo rimuovesse quando resume è assente, un banner mostrato prima
+     resterebbe visibile in pagina senza che nessuna risposta possa più ripulirlo.
+     Nascondiamo invece il contenuto con l'attributo hidden. -->
+<div id="resume" class="resume" th:fragment="resume" hx-swap-oob="true" th:hidden="${resume == null}">
+  Asta in corso: <b th:text="${resume?.purchases}">47</b> acquisti,
+  fase <b th:text="${resume?.phase}">D</b> — ripreso dal log su disco.
 </div>
 
 <div class="layout">
 
-  <section id="main" th:fragment="main">
+  <!-- La barra comando vive fuori da #main: non viene mai sostituita da uno swap,
+       quindi non si svuota mentre l'utente sta ancora digitando (era il difetto A). -->
+  <section>
     <form id="cmdForm" hx-post="/command" hx-target="#main" hx-swap="outerHTML">
       <input id="cmd" name="cmd" autocomplete="off" autofocus
              placeholder="giocatore  prezzo  iniziale"
@@ -34,46 +41,48 @@
              hx-target="#main" hx-swap="outerHTML">
     </form>
 
-    <p class="message" th:if="${panel.message}" th:text="${panel.message}"></p>
+    <div id="main" th:fragment="main">
+      <p class="message" th:if="${panel.message}" th:text="${panel.message}"></p>
 
-    <ul class="results" th:if="${!panel.results.isEmpty()}">
-      <li th:each="p, it : ${panel.results}" th:classappend="${it.first} ? 'sel' : ''">
-        <span th:text="${p.name}">Nome</span>
-        <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
-      </li>
-    </ul>
-
-    <article class="card" th:if="${panel.analysis}">
-      <h2>
-        <span th:text="${panel.analysis.player.name}">Nome</span>
-        <span class="dim"
-              th:text="${panel.analysis.player.role} + ' · ' + ${panel.analysis.player.team}"></span>
-      </h2>
-
-      <div class="numbers">
-        <div><label>MERCATO</label>
-          <b th:text="${panel.analysis.recommendation.expectedPrice}">38</b></div>
-        <div><label>MAX BID</label>
-          <b class="big" th:text="${panel.analysis.recommendation.maxBid}">47</b>
-          <span class="margin" th:text="${panel.analysis.marginLabel}">+9</span></div>
-        <div><label>VERDETTO</label>
-          <b th:text="${panel.analysis.verdict}">PRENDI</b></div>
-        <div><label>CONFIDENZA</label>
-          <b th:text="${panel.analysis.recommendation.confidence.stars} + '/5'">3/5</b></div>
-      </div>
-
-      <ul class="drivers">
-        <li th:each="d : ${panel.analysis.recommendation.drivers}">
-          <b th:text="${d.label}">Budget</b>
-          <span th:text="${d.explanation}">…</span>
+      <ul class="results" th:if="${!panel.results.isEmpty()}">
+        <li th:each="p, it : ${panel.results}" th:classappend="${it.first} ? 'sel' : ''">
+          <span th:text="${p.name}">Nome</span>
+          <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
         </li>
       </ul>
 
-      <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
-    </article>
+      <article class="card" th:if="${panel.analysis}">
+        <h2>
+          <span th:text="${panel.analysis.player.name}">Nome</span>
+          <span class="dim"
+                th:text="${panel.analysis.player.role} + ' · ' + ${panel.analysis.player.team}"></span>
+        </h2>
+
+        <div class="numbers">
+          <div><label>MERCATO</label>
+            <b th:text="${panel.analysis.recommendation.expectedPrice}">38</b></div>
+          <div><label>MAX BID</label>
+            <b class="big" th:text="${panel.analysis.recommendation.maxBid}">47</b>
+            <span class="margin" th:text="${panel.analysis.marginLabel}">+9</span></div>
+          <div><label>VERDETTO</label>
+            <b th:text="${panel.analysis.verdict}">PRENDI</b></div>
+          <div><label>CONFIDENZA</label>
+            <b th:text="${panel.analysis.recommendation.confidence.stars} + '/5'">3/5</b></div>
+        </div>
+
+        <ul class="drivers">
+          <li th:each="d : ${panel.analysis.recommendation.drivers}">
+            <b th:text="${d.label}">Budget</b>
+            <span th:text="${d.explanation}">…</span>
+          </li>
+        </ul>
+
+        <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
+      </article>
+    </div>
   </section>
 
-  <aside class="board">
+  <aside id="board" class="board" th:fragment="board" hx-swap-oob="true">
     <h3>TABELLONE</h3>
     <table>
       <tr th:each="row : ${board}" th:classappend="${row.me} ? 'me' : ''">

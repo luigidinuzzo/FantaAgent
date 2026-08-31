@@ -3,6 +3,7 @@ package com.fantaagent.adapter.in.web;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.auction.AuctionProjector;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.league.LeagueRules;
@@ -146,5 +147,31 @@ class AuctionControllerTest {
         mockMvc.perform(post("/undo")).andExpect(status().isOk());
 
         verify(auctionService).undoLast();
+    }
+
+    @Test
+    void aSuccessfulPurchaseUpdatesTheBoardNotJustTheAnalysisPanel() throws Exception {
+        // Simula lo stato dopo l'acquisto: budget di "me" sceso da 100 a 53 (100 - 47).
+        // Un test che verificasse solo status 200 non avrebbe scoperto il difetto B,
+        // per cui il tabellone restava indietro di un acquisto intero.
+        AuctionState afterPurchase = AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.D,
+                List.of(new AuctionEvent.PlayerPurchased(1L, java.time.Instant.now(), "d1", "me", 47)));
+        when(auctionService.state()).thenReturn(afterPurchase);
+
+        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("53")));
+
+        verify(auctionService).recordPurchase("d1", "me", 47);
+    }
+
+    @Test
+    void theLiveSearchFragmentNeverContainsTheCommandInput() throws Exception {
+        // #cmd deve vivere fuori dalla regione sostituita a ogni ricerca: se ricomparisse
+        // qui, uno swap durante la digitazione lo svuoterebbe di nuovo (il difetto A).
+        mockMvc.perform(get("/fragments/main").param("cmd", "bast"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"cmd\""))));
     }
 }

@@ -1,0 +1,14 @@
+<!--
+  File separato apposta: qui vive SOLO il fragment "update", che assembla in una
+  sola risposta le tre regioni che uno swap di stato deve aggiornare insieme
+  (main + status + board, più resume se presente). Componendolo qui — e non
+  dentro index.html — un GET "/" a pagina intera non lo attraversa mai, quindi
+  non rischia di duplicare header/tabellone sulla pagina normale: index.html
+  resta la sola sorgente del markup, questo file lo referenzia per id.
+-->
+<th:block xmlns:th="http://www.thymeleaf.org" th:fragment="update">
+  <th:block th:insert="~{index :: #main}"></th:block>
+  <th:block th:insert="~{index :: #status}"></th:block>
+  <th:block th:insert="~{index :: #board}"></th:block>
+  <th:block th:insert="~{index :: #resume}"></th:block>
+</th:block>
