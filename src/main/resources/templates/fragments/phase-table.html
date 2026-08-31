@@ -14,17 +14,19 @@
 <div id="phaseTable" th:fragment="phaseTable">
   <h3>GIOCATORI FASE <span th:text="${phase}">D</span>
     <span class="dim">— il migliore disponibile, per punti attesi</span></h3>
-  <table>
-    <thead>
-      <tr>
-        <th>Nome</th><th>Squadra</th><th>Valore</th><th>Max bid</th>
-        <th>Fantamedia attesa</th><th>Titolarità</th><th></th>
-      </tr>
-    </thead>
-    <tbody id="phaseRows">
-      <th:block th:replace="~{::phaseRowsBody}"></th:block>
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th><th>Squadra</th><th>Valore</th><th>Max bid</th>
+          <th>Fantamedia attesa</th><th>Titolarità</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="phaseRows">
+        <th:block th:replace="~{::phaseRowsBody}"></th:block>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <th:block th:fragment="phaseRowsBody">

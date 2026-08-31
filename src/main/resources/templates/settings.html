@@ -6,16 +6,16 @@
   <link rel="stylesheet" th:href="@{/app.css}">
   <style>
     .wrap { max-width: 46rem; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
-    h1 { font-size: 1.3rem; margin: .8rem 0 .2rem; }
-    h2 { font-size: .95rem; color: var(--dim); letter-spacing: .06em;
+    h1 { font-size: var(--fs-lg); margin: .8rem 0 .2rem; }
+    h2 { font-size: var(--fs-md); color: var(--dim); letter-spacing: .06em;
          margin: 1.6rem 0 .5rem; border-top: 1px solid var(--line); padding-top: .8rem; }
-    .note { color: var(--dim); font-size: .85rem; line-height: 1.5; margin: .3rem 0 .8rem; }
+    .note { color: var(--dim); font-size: var(--fs-sm); line-height: 1.5; margin: .3rem 0 .8rem; }
     .grid { display: grid; grid-template-columns: 14rem 7rem; gap: .35rem 1rem; align-items: center; }
-    .grid label { font-size: .9rem; }
+    .grid label { font-size: var(--fs-sm); }
     input[type=text], input[type=number] { width: 100%; padding: .35rem .5rem; font: inherit;
       background: #000; color: var(--fg); border: 1px solid var(--line); }
     table.steps { border-collapse: collapse; margin-top: .4rem; }
-    table.steps th { font-size: .75rem; color: var(--dim); text-align: left;
+    table.steps th { font-size: var(--fs-xs); color: var(--dim); text-align: left;
       font-weight: normal; padding: 0 .6rem .3rem 0; }
     table.steps td { padding: .15rem .6rem .15rem 0; }
     table.steps input { width: 7rem; }
@@ -25,13 +25,14 @@
     .warn { background: #2a2410; border-color: #d4a017; }
     .banner ul { margin: .4rem 0 0; padding-left: 1.1rem; }
     button.save { margin-top: 1.4rem; padding: .6rem 1.4rem; font: inherit; cursor: pointer; }
-    a.back { color: var(--dim); font-size: .85rem; }
+    a.back { color: var(--dim); font-size: var(--fs-sm); }
   </style>
 </head>
 <body>
 <div class="wrap">
 
   <a class="back" th:href="@{/}">← torna all'asta</a>
+  <a class="back" th:href="@{/riepilogo}" style="margin-left:1rem">riepilogo</a>
   <h1>Impostazioni della lega</h1>
 
   <p class="note" th:if="${fileGoverns}">
@@ -81,17 +82,19 @@
              th:value="${settings.defendersCounted}" th:disabled="${locked}">
     </div>
 
-    <table class="steps">
-      <tr><th>da media</th><th>bonus</th></tr>
-      <tr th:each="s : ${settings.thresholds}">
-        <td><input type="text" name="minAverage" th:value="${s.minAverage}" th:disabled="${locked}"></td>
-        <td><input type="text" name="bonus" th:value="${s.bonus}" th:disabled="${locked}"></td>
-      </tr>
-      <tr th:each="i : ${#numbers.sequence(1, 4)}">
-        <td><input type="text" name="minAverage" value="" placeholder="es. 6,75" th:disabled="${locked}"></td>
-        <td><input type="text" name="bonus" value="" placeholder="es. 2,5" th:disabled="${locked}"></td>
-      </tr>
-    </table>
+    <div class="table-scroll">
+      <table class="steps">
+        <tr><th>da media</th><th>bonus</th></tr>
+        <tr th:each="s : ${settings.thresholds}">
+          <td><input type="text" name="minAverage" th:value="${s.minAverage}" th:disabled="${locked}"></td>
+          <td><input type="text" name="bonus" th:value="${s.bonus}" th:disabled="${locked}"></td>
+        </tr>
+        <tr th:each="i : ${#numbers.sequence(1, 4)}">
+          <td><input type="text" name="minAverage" value="" placeholder="es. 6,75" th:disabled="${locked}"></td>
+          <td><input type="text" name="bonus" value="" placeholder="es. 2,5" th:disabled="${locked}"></td>
+        </tr>
+      </table>
+    </div>
     <p class="note">Le righe lasciate vuote vengono ignorate. Per togliere una soglia,
       svuota la sua casella «da media».</p>
 
@@ -176,19 +179,21 @@
   </div>
 
   <form method="post" th:action="@{/impostazioni/partecipanti}">
-    <table class="steps">
-      <tr><th>nome</th><th>iniziale</th><th>tu</th></tr>
-      <tr th:each="p : ${members}">
-        <td>
-          <input type="hidden" name="id" th:value="${p.id}">
-          <input type="text" name="name" th:value="${p.name}" th:disabled="${locked}">
-        </td>
-        <td><input type="text" name="initial" maxlength="1" style="width:3rem"
-                    th:value="${p.initial}" th:disabled="${locked}"></td>
-        <td><input type="radio" name="me" th:value="${p.id}"
-                    th:checked="${p.me}" th:disabled="${locked}"></td>
-      </tr>
-    </table>
+    <div class="table-scroll">
+      <table class="steps">
+        <tr><th>nome</th><th>iniziale</th><th>tu</th></tr>
+        <tr th:each="p : ${members}">
+          <td>
+            <input type="hidden" name="id" th:value="${p.id}">
+            <input type="text" name="name" th:value="${p.name}" th:disabled="${locked}">
+          </td>
+          <td><input type="text" name="initial" maxlength="1" style="width:3rem"
+                      th:value="${p.initial}" th:disabled="${locked}"></td>
+          <td><input type="radio" name="me" th:value="${p.id}"
+                      th:checked="${p.me}" th:disabled="${locked}"></td>
+        </tr>
+      </table>
+    </div>
     <button class="save" type="submit" th:disabled="${locked}">Salva partecipanti</button>
   </form>
 

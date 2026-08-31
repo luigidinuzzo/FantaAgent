@@ -115,14 +115,16 @@
 
   <aside id="board" class="board" th:fragment="board" hx-swap-oob="true">
     <h3>TABELLONE</h3>
-    <table>
-      <tr th:each="row : ${board}" th:classappend="${row.me} ? 'me' : ''">
-        <td th:text="${row.name}">Marco</td>
-        <td th:text="${row.budget}">289</td>
-        <td th:text="${row.composition}">1P 3D 0C 0A</td>
-        <td th:text="${row.slotsLeft} + ' sl'">21 sl</td>
-      </tr>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <tr th:each="row : ${board}" th:classappend="${row.me} ? 'me' : ''">
+          <td th:text="${row.name}">Marco</td>
+          <td th:text="${row.budget}">289</td>
+          <td th:text="${row.composition}">1P 3D 0C 0A</td>
+          <td th:text="${row.slotsLeft} + ' sl'">21 sl</td>
+        </tr>
+      </table>
+    </div>
   </aside>
 
   <!-- Fuori da #board apposta: #board viene sostituito out-of-band ad ogni comando
@@ -131,15 +133,17 @@
        Qui #targets sopravvive agli swap di stato: solo /fragments/targets lo scrive. -->
   <div id="targets" th:fragment="targets">
     <h3 th:if="${targets}">TARGET <span class="dim">— dove sta l'affare</span></h3>
-    <table th:if="${targets}">
-      <tr th:each="t : ${targets}">
-        <td th:text="${t.player.name}">Bastoni</td>
-        <td th:text="${t.recommendation.expectedPrice}">38</td>
-        <td th:text="${t.recommendation.maxBid}">47</td>
-        <td th:text="${t.margin}"
-            th:classappend="${t.margin} >= 0 ? 'pos' : 'neg'">+9</td>
-      </tr>
-    </table>
+    <div class="table-scroll" th:if="${targets}">
+      <table>
+        <tr th:each="t : ${targets}">
+          <td th:text="${t.player.name}">Bastoni</td>
+          <td th:text="${t.recommendation.expectedPrice}">38</td>
+          <td th:text="${t.recommendation.maxBid}">47</td>
+          <td th:text="${t.margin}"
+              th:classappend="${t.margin} >= 0 ? 'pos' : 'neg'">+9</td>
+        </tr>
+      </table>
+    </div>
   </div>
 
 </div>
