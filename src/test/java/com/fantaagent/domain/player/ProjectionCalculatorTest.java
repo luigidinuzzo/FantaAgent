@@ -99,6 +99,84 @@ class ProjectionCalculatorTest {
         assertThat(p.bonusPerAppearance()).isCloseTo(-12.5 / 30.0, within(0.0005));
     }
 
+    private static SeasonStats keeperStats(int appearances, int goalsConceded, int cleanSheets) {
+        return new SeasonStats("1", "2025-26", appearances, 6.0,
+                0, 0, 0, 0, 0, 0, 0, goalsConceded, cleanSheets);
+    }
+
+    @Test
+    void estimatesCleanSheetsWithThePoissonModelWhenTheSourceHasNone() {
+        // Carnesecchi 2025-26: 37 presenze, 35 gol subiti, nessuna colonna imbattuta nella fonte.
+        Player keeper = new Player("1", "Carnesecchi", "Atalanta", Role.P, 20);
+        SeasonStats season = keeperStats(37, 35, 0);
+
+        PlayerProjection p = calculator.project(keeper, List.of(season), 6.0);
+
+        // porte inviolate stimate = 37 * e^(-35/37) ≈ 14.37; bonus = 35*-1.0 + 14.37*1.0
+        double expectedCleanSheets = 14.3675;
+        double expectedBonusPerAppearance = (35 * -1.0 + expectedCleanSheets * 1.0) / 37.0;
+        assertThat(p.bonusPerAppearance()).isCloseTo(expectedBonusPerAppearance, within(0.001));
+    }
+
+    @Test
+    void estimatesCleanSheetsForAnotherRealGoalkeeperLine() {
+        // Svilar 2025-26: 38 presenze, 31 gol subiti.
+        Player keeper = new Player("1", "Svilar", "Roma", Role.P, 20);
+        SeasonStats season = keeperStats(38, 31, 0);
+
+        PlayerProjection p = calculator.project(keeper, List.of(season), 6.0);
+
+        double expectedCleanSheets = 16.807;
+        double expectedBonusPerAppearance = (31 * -1.0 + expectedCleanSheets * 1.0) / 38.0;
+        assertThat(p.bonusPerAppearance()).isCloseTo(expectedBonusPerAppearance, within(0.001));
+    }
+
+    @Test
+    void estimatesZeroCleanSheetsWithZeroAppearancesWithoutDivisionByZero() {
+        Player keeper = new Player("1", "Esordiente", "Lecce", Role.P, 5);
+        SeasonStats season = keeperStats(0, 0, 0);
+
+        PlayerProjection p = calculator.project(keeper, List.of(season), 6.0);
+
+        assertThat(p.bonusPerAppearance()).isNotNaN();
+        assertThat(p.bonusPerAppearance()).isEqualTo(0.0);
+    }
+
+    @Test
+    void estimatesExactlyTenCleanSheetsWhenNoGoalsAreConceded() {
+        Player keeper = new Player("1", "Impenetrabile", "Inter", Role.P, 20);
+        SeasonStats season = keeperStats(10, 0, 0);
+
+        PlayerProjection p = calculator.project(keeper, List.of(season), 6.0);
+
+        // e^0 = 1: 10 presenze senza gol subiti danno esattamente 10 porte inviolate stimate.
+        assertThat(p.bonusPerAppearance()).isCloseTo(10.0 / 10.0, within(1e-9));
+    }
+
+    @Test
+    void usesTheStoredCleanSheetCountInsteadOfTheEstimateWhenTheSourceHasOne() {
+        Player keeper = new Player("1", "Portiere", "Inter", Role.P, 20);
+        // Con 37 presenze e 35 gol subiti la stima sarebbe ~14.37: la fonte dichiara 20.
+        SeasonStats season = keeperStats(37, 35, 20);
+
+        PlayerProjection p = calculator.project(keeper, List.of(season), 6.0);
+
+        double expectedBonusPerAppearance = (35 * -1.0 + 20 * 1.0) / 37.0;
+        assertThat(p.bonusPerAppearance()).isCloseTo(expectedBonusPerAppearance, within(1e-9));
+    }
+
+    @Test
+    void doesNotApplyTheCleanSheetTermToOutfieldPlayers() {
+        Player defender = new Player("1", "Difensore", "Inter", Role.D, 15);
+        // Un giocatore di movimento non ha "gol subiti" nel nostro dominio dei bonus di ruolo,
+        // ma il campo esiste nel record: verifichiamo che per un ruolo diverso da P non pesi.
+        SeasonStats season = keeperStats(30, 35, 0);
+
+        PlayerProjection p = calculator.project(defender, List.of(season), 6.0);
+
+        assertThat(p.bonusPerAppearance()).isEqualTo(0.0);
+    }
+
     @Test
     void rejectsAnEmptyListOfSeasonWeights() {
         // Il calcolatore riceve i pesi, non li possiede: una lista vuota è un errore di

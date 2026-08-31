@@ -82,11 +82,29 @@ public final class ProjectionCalculator {
                 + s.yellowCards() * scoring.yellowCard()
                 + s.redCards() * scoring.redCard();
         if (role == Role.P) {
+            double cleanSheets = s.cleanSheets() > 0 ? s.cleanSheets() : estimatedCleanSheets(s);
             total += s.penaltiesSaved() * scoring.penaltySaved()
                     + s.goalsConceded() * scoring.goalConceded()
-                    + s.cleanSheets() * scoring.cleanSheet();
+                    + cleanSheets * scoring.cleanSheet();
         }
         return total;
+    }
+
+    /**
+     * Stima le porte inviolate quando la fonte non le riporta (l'export di Fantacalcio.it
+     * non ha quella colonna). Usa il modello di Poisson standard per il punteggio delle
+     * partite di calcio: se i gol subiti per partita seguono una Poisson di media
+     * (goalsConceded / appearances), la probabilità di subire zero gol in una partita è
+     * e^(-goalsConceded / appearances), e il numero atteso di porte inviolate sull'intera
+     * stagione è le presenze moltiplicate per quella probabilità. È una stima, non una
+     * misura: va usata solo quando il dato reale manca.
+     */
+    private static double estimatedCleanSheets(SeasonStats s) {
+        if (s.appearances() <= 0) {
+            return 0.0;
+        }
+        double concededPerAppearance = s.goalsConceded() / (double) s.appearances();
+        return s.appearances() * Math.exp(-concededPerAppearance);
     }
 
     private static double priorAppearances(Player player) {

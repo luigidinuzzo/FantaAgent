@@ -39,8 +39,8 @@ league:
     modifiers-confirmed: false
     goal-bonus:
       P: 3.0
-      D: 4.0
-      C: 3.5
+      D: 3.0
+      C: 3.0
       A: 3.0
     assist: 1.0
     penalty-scored: 3.0
@@ -51,7 +51,7 @@ league:
     goal-conceded: -1.0
     # I file sorgente non hanno una colonna imbattuta: il bonus resta a zero perché
     # nessuna stagione storica lo alimenta, non perché venga stimato altrove.
-    clean-sheet: 0.0
+    clean-sheet: 1.0
     # Pesi delle stagioni nella proiezione, dalla più recente, rinormalizzati su quante
     # ne sono disponibili per il giocatore. L'ultimo file (2026-27) è la stagione IN
     # CORSO con solo due giornate giocate: pesa poco apposta, perché dice chi sta
