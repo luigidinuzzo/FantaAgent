@@ -191,6 +191,31 @@ public class AuctionController {
         return UPDATE_VIEW;
     }
 
+    /**
+     * Porta l'asta su una fase qualunque, anche indietro: si puo' avere avanzato per
+     * sbaglio, o voler tornare su un ruolo. Nessun dato si perde — la fase e' gia' un
+     * evento del registro, quindi spostarsi significa appenderne un altro.
+     */
+    @PostMapping("/phase/select")
+    public String selectPhase(@RequestParam Role role, Model model,
+                              HttpServletResponse response) {
+        String message;
+        try {
+            boolean moved = auction.selectPhase(role);
+            if (moved) {
+                response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
+                message = "fase impostata su " + role;
+            } else {
+                message = "sei già in fase " + role;
+            }
+        } catch (IllegalArgumentException e) {
+            message = "✗ " + e.getMessage();
+        }
+        populateShell(model);
+        model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, message));
+        return UPDATE_VIEW;
+    }
+
     @GetMapping("/fragments/targets")
     public String targets(Model model) {
         model.addAttribute("targets", search.targets(TARGET_ROWS));
@@ -225,6 +250,7 @@ public class AuctionController {
                 state.currentPhase().name(), auction.salesInCurrentPhase(),
                 mine.budgetRemaining(), composition(mine), mine.slotsRemaining(),
                 !state.holdings().isEmpty()));
+        model.addAttribute("phases", state.rules().phases());
 
         List<ViewModels.BoardRow> board = new ArrayList<>();
         for (Participant participant : auction.participants()) {

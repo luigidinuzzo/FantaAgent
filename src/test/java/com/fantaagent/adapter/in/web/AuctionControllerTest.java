@@ -218,6 +218,39 @@ class AuctionControllerTest {
     }
 
     @Test
+    void selectingAPhaseAsksTheServiceForThatExactRoleAndRefreshesTheTable() throws Exception {
+        when(auctionService.selectPhase(Role.P)).thenReturn(true);
+
+        mockMvc.perform(post("/phase/select").param("role", "P"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("HX-Trigger", "fantaStateChanged"));
+
+        verify(auctionService).selectPhase(Role.P);
+    }
+
+    @Test
+    void selectingThePhaseAlreadyInUseNeitherMovesNorClaimsToHaveMoved() throws Exception {
+        when(auctionService.selectPhase(Role.P)).thenReturn(false);
+
+        mockMvc.perform(post("/phase/select").param("role", "P"))
+                .andExpect(status().isOk())
+                .andExpect(header().doesNotExist("HX-Trigger"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("sei già in fase")));
+    }
+
+    @Test
+    void theStatusBarOffersEveryPhaseAndMarksTheCurrentOne() throws Exception {
+        mockMvc.perform(get("/asta"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("vai a")))
+                // La fase corrente e' P: il suo bottone e' segnato e disabilitato,
+                // gli altri restano cliccabili — anche quelli precedenti.
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
+                        "(?s).*<button[^>]*value=\"P\"[^>]*disabled[^>]*>.*")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("value=\"A\"")));
+    }
+
+    @Test
     void undoIsExposed() throws Exception {
         when(auctionService.undoLast()).thenReturn(true);
 

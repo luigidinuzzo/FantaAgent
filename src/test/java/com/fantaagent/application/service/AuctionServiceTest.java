@@ -193,6 +193,38 @@ class AuctionServiceTest {
     }
 
     @Test
+    void selectPhaseGoesBackwardsAsWellAsForwards() {
+        service.advancePhase(); // P -> D
+        service.advancePhase(); // D -> C
+        assertThat(service.state().currentPhase()).isEqualTo(Role.C);
+
+        assertThat(service.selectPhase(Role.P)).isTrue();
+
+        assertThat(service.state().currentPhase()).isEqualTo(Role.P);
+    }
+
+    @Test
+    void goingBackToAnEarlierPhaseLosesNoPurchase() {
+        service.recordPurchase("gk", "marco", 30);
+        service.advancePhase(); // P -> D
+
+        service.selectPhase(Role.P);
+
+        assertThat(service.state().squadOf("marco").spent()).isEqualTo(30);
+        assertThat(service.state().soldPlayerIds()).containsExactly("gk");
+    }
+
+    @Test
+    void selectPhaseWritesNothingWhenAlreadyOnThatPhase() {
+        assertThat(service.state().currentPhase()).isEqualTo(Role.P);
+
+        assertThat(service.selectPhase(Role.P)).isFalse();
+
+        assertThat(service.state().currentPhase()).isEqualTo(Role.P);
+        assertThat(tmp.resolve("events.jsonl")).doesNotExist();
+    }
+
+    @Test
     void backsUpTheLogBeforeChangingPhase() {
         service.recordPurchase("gk", "marco", 30);
 

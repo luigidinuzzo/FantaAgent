@@ -112,3 +112,9 @@ table.auctions th { text-align:left; font-weight:normal; color:var(--dim);
                     font-size:var(--fs-xs); padding:0 .6rem .3rem 0; }
 table.auctions td { padding:.35rem .6rem .35rem 0; border-bottom:1px solid var(--line); }
 table.auctions tr.sel td { color:#fff; }
+
+/* Scelta della fase: quattro bottoni, quello corrente marcato e spento. */
+.phase-picker { display:flex; align-items:center; gap:.3rem; }
+.phase-picker .dim { font-size:var(--fs-xs); letter-spacing:.08em; }
+.status .phase-picker button { padding:.3rem .5rem; min-width:2rem; }
+.status .phase-picker button.current { background:#2a2a2a; color:#fff; border-color:var(--fg); }

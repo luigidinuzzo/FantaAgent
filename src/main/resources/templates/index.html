@@ -23,6 +23,18 @@
   <form hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
     <button type="submit">fase successiva →</button>
   </form>
+  <!-- Spostamento su una fase qualunque, avanti o indietro: si puo' avere avanzato per
+       sbaglio, o voler tornare su un ruolo gia' passato. Nessun dato si perde, perche'
+       la fase e' gia' un evento del registro e spostarsi significa appenderne un altro.
+       La fase corrente resta segnata e il suo bottone disabilitato: cliccarla non
+       scriverebbe nulla, e un bottone che non fa nulla e' peggio di uno spento. -->
+  <form class="phase-picker" hx-post="/phase/select" hx-target="#main" hx-swap="outerHTML">
+    <span class="dim">vai a</span>
+    <button th:each="r : ${phases}" type="submit" name="role" th:value="${r}"
+            th:text="${r}" th:disabled="${r.name() == status.phase}"
+            th:classappend="${r.name() == status.phase} ? 'current' : ''"
+            th:attrappend="aria-current=${r.name() == status.phase} ? 'true' : null">D</button>
+  </form>
   <a th:href="@{/riepilogo}" class="settings-link">riepilogo</a>
   <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
 </header>
