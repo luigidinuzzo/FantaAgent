@@ -68,6 +68,6 @@ public class PlayerAnalysisService {
                 .toList();
 
         return new ValuationContext(state, target, owned, available, prices,
-                auction.salesInCurrentPhase());
+                auction.salesInCurrentPhase(state));
     }
 }

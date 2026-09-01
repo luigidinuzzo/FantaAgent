@@ -80,8 +80,8 @@ public class AuctionService {
                     + " ha già coperto tutti gli slot " + player.role());
         }
 
-        store.append(new AuctionEvent.PlayerPurchased(
-                store.nextSeq(), Instant.now(), playerId, buyer.id(), price));
+        store.appendWithNextSeq(seq -> new AuctionEvent.PlayerPurchased(
+                seq, Instant.now(), playerId, buyer.id(), price));
         resumeSummary = Optional.empty();
     }
 
@@ -97,8 +97,8 @@ public class AuctionService {
         for (int i = events.size() - 1; i >= 0; i--) {
             if (events.get(i) instanceof AuctionEvent.PlayerPurchased purchased
                     && !revoked.contains(purchased.seq())) {
-                store.append(new AuctionEvent.PurchaseRevoked(
-                        store.nextSeq(), Instant.now(), purchased.seq()));
+                store.appendWithNextSeq(seq -> new AuctionEvent.PurchaseRevoked(
+                        seq, Instant.now(), purchased.seq()));
                 resumeSummary = Optional.empty();
                 return true;
             }
@@ -132,16 +132,19 @@ public class AuctionService {
             throw new IllegalArgumentException("acquisto già annullato");
         }
 
-        store.append(new AuctionEvent.PurchaseRevoked(store.nextSeq(), Instant.now(), targetSeq));
+        store.appendWithNextSeq(seq -> new AuctionEvent.PurchaseRevoked(seq, Instant.now(), targetSeq));
         resumeSummary = Optional.empty();
     }
 
-    public void advancePhase() {
+    /** @return false se non c'era una fase successiva (si è già all'ultima) */
+    public boolean advancePhase() {
         Role current = state().currentPhase();
-        rules.nextPhase(current).ifPresent(next -> {
+        Optional<Role> next = rules.nextPhase(current);
+        next.ifPresent(role -> {
             store.backup("fine-" + current.name());
-            store.append(new AuctionEvent.PhaseAdvanced(store.nextSeq(), Instant.now(), next));
+            store.appendWithNextSeq(seq -> new AuctionEvent.PhaseAdvanced(seq, Instant.now(), role));
         });
+        return next.isPresent();
     }
 
     /**
@@ -166,9 +169,18 @@ public class AuctionService {
     }
 
     public int salesInCurrentPhase() {
-        AuctionState current = state();
-        return (int) current.holdings().stream()
-                .filter(h -> h.role() == current.currentPhase())
+        return salesInCurrentPhase(state());
+    }
+
+    /**
+     * Come {@link #salesInCurrentPhase()}, ma riusa uno stato già proiettato invece di
+     * rileggere e rifoldare il log — usato da chi ha già uno stato a disposizione (es.
+     * {@link PlayerAnalysisService#analyze(String, AuctionState, com.fantaagent.domain.strategy.PriceModel)})
+     * per non pagare una proiezione in più per ogni riga valutata.
+     */
+    public int salesInCurrentPhase(AuctionState state) {
+        return (int) state.holdings().stream()
+                .filter(h -> h.role() == state.currentPhase())
                 .count();
     }
 

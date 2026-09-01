@@ -2,7 +2,9 @@ package com.fantaagent.application.service;
 
 import com.fantaagent.adapter.out.file.InMemoryPlayerCatalog;
 import com.fantaagent.adapter.out.file.JsonlAuctionEventStore;
+import com.fantaagent.application.port.out.AuctionEventStore;
 import com.fantaagent.application.port.out.PlayerCatalog;
+import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.ModifierTable;
 import com.fantaagent.domain.league.Participant;
@@ -19,6 +21,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongFunction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -140,5 +144,73 @@ class PlayerSearchServiceTest {
         PlayerSearchService.PhasePage secondPage = search.phasePlayers(3, 3);
         assertThat(secondPage.rows()).hasSize(2);
         assertThat(secondPage.hasMore()).isFalse();
+    }
+
+    /**
+     * S8: {@code phasePlayers} costruiva un {@link com.fantaagent.domain.strategy.PriceModel}
+     * una sola volta per batch, ma valutava ogni riga passando lo stato SOLO fino a
+     * {@code PlayerAnalysisService#analyze}, che poi richiamava
+     * {@code AuctionService#salesInCurrentPhase()} senza argomenti — quello richiama
+     * {@code state()}, che rilegge e rifolda l'intero log a ogni riga. Con un batch di
+     * N righe il log veniva quindi caricato N+1 volte (una per la pagina, una per
+     * riga), non una sola. Un {@link AuctionEventStore} che conta le {@code load()}
+     * verifica che il numero di caricamenti resti basso e indipendente dalla
+     * dimensione del batch.
+     */
+    @Test
+    void phasePlayersLoadsTheEventLogOnceRegardlessOfTheBatchSize() {
+        List<Player> players = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            players.add(new Player("d" + i, "Difensore " + i, "Squadra", Role.D, 1 + i));
+        }
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+
+        JsonlAuctionEventStore delegate = new JsonlAuctionEventStore(tmp.resolve("events.jsonl"));
+        AtomicInteger loadCalls = new AtomicInteger();
+        AuctionEventStore countingStore = new AuctionEventStore() {
+            @Override
+            public void append(AuctionEvent event) {
+                delegate.append(event);
+            }
+
+            @Override
+            public List<AuctionEvent> load() {
+                loadCalls.incrementAndGet();
+                return delegate.load();
+            }
+
+            @Override
+            public long nextSeq() {
+                return delegate.nextSeq();
+            }
+
+            @Override
+            public AuctionEvent appendWithNextSeq(LongFunction<AuctionEvent> eventFactory) {
+                return delegate.appendWithNextSeq(eventFactory);
+            }
+
+            @Override
+            public void backup(String label) {
+                delegate.backup(label);
+            }
+        };
+
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog, countingStore);
+
+        ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
+        ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
+        RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
+        ValuationEngine engine = new ValuationEngine(completer, modifiers);
+        PlayerAnalysisService analysis =
+                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+        PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
+
+        loadCalls.set(0);
+        PlayerSearchService.PhasePage page = search.phasePlayers(0, 12);
+
+        assertThat(page.rows()).hasSize(12);
+        // Una lettura sola per l'intera pagina: non una per riga (sarebbero 12+), e
+        // non zero (lo stato deve comunque riflettere il log).
+        assertThat(loadCalls.get()).isEqualTo(1);
     }
 }

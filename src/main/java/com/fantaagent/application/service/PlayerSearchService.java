@@ -30,10 +30,13 @@ public class PlayerSearchService {
     private static final int TARGET_CANDIDATES_PER_CRITERION = 8;
 
     /**
-     * Righe per pagina della tabella di fase: circa 25, misurato in
-     * {@code PlayerSearchServiceLatencyTest} per restare sotto 1,5 s a rosa
-     * realistica — un batch più grande farebbe scattare il taglio (il max bid costa
-     * circa 45 ms/giocatore).
+     * Righe per pagina della tabella di fase: 25, misurato in
+     * {@code PlayerSearchServiceLatencyTest} — su un fixture realistico (~600
+     * giocatori, a metà asta) {@code phasePlayers(25)} costa 341 ms, circa 12
+     * ms/riga. Un batch che coprisse in un colpo solo l'intera fase D (192
+     * difensori disponibili su quel fixture) costerebbe circa 2,3 s: sotto la soglia
+     * misurata, ma comunque un'attesa intera per una tabella che l'utente vuole
+     * vedere subito — da cui il taglio a pagine da 25.
      */
     public static final int PHASE_PAGE_SIZE = 25;
 
@@ -129,9 +132,16 @@ public class PlayerSearchService {
      * Giocatori disponibili della fase corrente, ordinati per punti attesi
      * decrescenti: "qual è il migliore disponibile di questo ruolo", diversa dalla
      * domanda a cui risponde {@link #targets}, "dove sta l'affare". Il max bid è
-     * calcolato SOLO per le righe della pagina richiesta, riusando lo stesso
-     * {@link PriceModel} costruito una volta per batch — mai un modello per riga,
-     * altrimenti la scansione dell'intero catalogo si ripeterebbe {@code limit} volte.
+     * calcolato SOLO per le righe della pagina richiesta, riusando sia lo stesso
+     * {@link AuctionState} sia lo stesso {@link PriceModel} costruiti una volta per
+     * batch — mai un modello per riga, altrimenti la scansione dell'intero catalogo si
+     * ripeterebbe {@code limit} volte, e mai una riproiezione del log per riga,
+     * altrimenti ogni riga potrebbe finire valutata contro uno stato diverso da quello
+     * usato per la pagina e il modello di prezzo. Lo stato è letto una sola volta qui e
+     * passato per intero fino a {@link PlayerAnalysisService#analyze(String, AuctionState, PriceModel)},
+     * che a sua volta lo passa ad {@link AuctionService#salesInCurrentPhase(AuctionState)}
+     * invece di richiamare la versione senza argomenti (che rileggerebbe e rifolderebbe
+     * il log da capo).
      */
     public PhasePage phasePlayers(int offset, int limit) {
         AuctionState state = auction.state();
