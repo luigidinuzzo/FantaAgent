@@ -101,7 +101,6 @@ select:focus-visible, textarea:focus-visible {
 #phaseTable .assign-price { width:3.5rem; margin-left:0; }
 #phaseTable select { font:inherit; background:#000; color:var(--fg);
                       border:1px solid var(--line); padding:.3rem; }
-#phaseTable .load-more { width:100%; }
 
 /* Home: la schermata che chiede quale asta aprire. */
 .home { max-width:46rem; margin:0 auto; padding:1rem 1.5rem 3rem; }
@@ -311,3 +310,17 @@ body.projected { font-size:1.25rem; }
                         border-bottom:1px solid var(--pos); margin:0 0 1rem;
                         font-size:1.15rem; }
 .battitore-phase-done button { font-size:1.15rem; padding:.5rem 1rem; }
+
+/* Navigazione fra le pagine della tabella di fase. I bottoni restano al loro posto
+   anche quando non sono utilizzabili: disabilitarli invece di nasconderli tiene la
+   barra di larghezza costante, così in asta si clicca "successivi" senza guardare e
+   senza che l'altro bottone sia scivolato sotto il puntatore. */
+.phase-nav { display:flex; align-items:center; gap:1rem; padding:.6rem 0 0;
+             border-top:1px solid var(--line); margin-top:.4rem; }
+.phase-nav button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c;
+                    color:var(--fg); border:1px solid var(--line);
+                    padding:.35rem .9rem; cursor:pointer; }
+.phase-nav button:hover:not(:disabled) { background:#2a2a2a; }
+.phase-nav button:disabled { color:var(--line); cursor:default; }
+.phase-nav span { font-size:var(--fs-sm); }
+.phase-count { margin-left:.6rem; }

@@ -226,15 +226,19 @@ public class AuctionController {
         return "index :: targets";
     }
 
+    /**
+     * Una pagina della tabella di fase. Restituisce sempre il pannello intero, non le
+     * sole righe: con "precedente"/"successiva" ogni richiesta SOSTITUISCE la pagina
+     * mostrata invece di accodarsi ad essa, e i bottoni in fondo devono aggiornare i
+     * propri offset insieme alle righe — lasciarli fermi darebbe una tabella nuova con
+     * una navigazione che rimanda ancora alla pagina precedente.
+     */
     @GetMapping("/fragments/phase-players")
     public String phasePlayers(@RequestParam(defaultValue = "0") int offset, Model model) {
         model.addAttribute("phasePage", search.phasePlayers(offset, PlayerSearchService.PHASE_PAGE_SIZE));
         model.addAttribute("participants", auction.participants());
         model.addAttribute("phase", auction.state().currentPhase());
-        // offset == 0: prima apertura o cambio fase, sostituisce l'intero pannello
-        // (intestazione compresa). offset > 0: "carica altri 25", sostituisce solo le
-        // righe già caricate — l'intestazione non deve ricomparire in fondo alla tabella.
-        return offset == 0 ? "fragments/phase-table :: phaseTable" : "fragments/phase-table :: phaseRowsBody";
+        return "fragments/phase-table :: phaseTable";
     }
 
     /**

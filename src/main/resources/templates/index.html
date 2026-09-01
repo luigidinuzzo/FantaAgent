@@ -157,13 +157,9 @@
          HX-Trigger da /command, /undo, /phase/next e /assign (si veda
          AuctionController#STATE_CHANGED_EVENT) e sale fino al body per bubbling,
          così questo elemento — che sta fuori da #main e non riceve mai quello swap
-         — lo intercetta comunque. Ricarica sempre da offset=0: un giocatore appena
-         venduto potrebbe stare in una pagina già scrollata oltre le prime 25 righe,
-         e tracciare "quante pagine ha caricato l'utente" per riproporre lo stesso
-         offset avrebbe richiesto uno stato aggiuntivo nel markup (es. un attributo
-         aggiornato ad ogni "carica altri 25") per un caso — l'utente scrolla molto
-         E compra nel frattempo dalla barra comando — abbastanza raro da non
-         giustificare la complessità: si perde il punto di scroll, non i dati. -->
+         — lo intercetta comunque. Qui l'offset è 0 perché è il primo caricamento;
+         da lì in poi è il fragment sostituito a portare con sé l'offset della
+         pagina mostrata, quindi un acquisto non riporta più alla prima pagina. -->
     <div id="phaseTable" hx-get="/fragments/phase-players?offset=0"
          hx-trigger="load, fantaStateChanged from:body" hx-swap="outerHTML"></div>
   </section>

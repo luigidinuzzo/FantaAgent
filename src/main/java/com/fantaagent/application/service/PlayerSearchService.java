@@ -60,7 +60,40 @@ public class PlayerSearchService {
         }
     }
 
-    public record PhasePage(List<PhaseRow> rows, boolean hasMore, int nextOffset) {
+    /**
+     * Una pagina della tabella di fase, con quanto serve a muoversi avanti E indietro.
+     *
+     * <p>Porta {@code offset} e {@code total} invece del solo "c'e' altro": con un
+     * bottone "indietro" la vista deve sapere dove si trova, non solo dove puo'
+     * andare, e il numero di pagina va calcolato in un posto solo — farlo nel template
+     * significherebbe riscrivere l'aritmetica dei bordi in Thymeleaf, dove sbagliarla
+     * non fa fallire alcun test.
+     */
+    public record PhasePage(List<PhaseRow> rows, int offset, int pageSize, int total) {
+
+        public boolean hasPrevious() {
+            return offset > 0;
+        }
+
+        public boolean hasNext() {
+            return offset + rows.size() < total;
+        }
+
+        public int previousOffset() {
+            return Math.max(0, offset - pageSize);
+        }
+
+        public int nextOffset() {
+            return offset + rows.size();
+        }
+
+        public int pageNumber() {
+            return pageSize <= 0 ? 1 : offset / pageSize + 1;
+        }
+
+        public int pageCount() {
+            return pageSize <= 0 ? 1 : Math.max(1, (total + pageSize - 1) / pageSize);
+        }
     }
 
     private final PlayerCatalog catalog;
@@ -177,21 +210,55 @@ public class PlayerSearchService {
         AuctionState state = auction.state();
         Set<String> sold = state.soldPlayerIds();
 
-        List<PlayerProjection> ofPhase = projections.all().stream()
+        record Candidate(PlayerProjection projection, Player player) {
+        }
+
+        /*
+         * Ordinati per quotazione Fantacalcio.it decrescente: e' l'ordine in cui i
+         * giocatori vengono chiamati in asta e in cui l'occhio li cerca sul listone,
+         * quindi i piu' rilevanti stanno in cima. I due criteri successivi non sono
+         * decorativi: le quotazioni pari sono frequentissime (decine di giocatori a 1),
+         * e senza un ordine totale due richieste della stessa pagina potrebbero
+         * disporre gli stessi giocatori in ordine diverso — uno finirebbe su due pagine
+         * e un altro su nessuna. I punti attesi decidono fra pari quotazione, l'id
+         * decide fra pari punti, e a quel punto l'ordine e' riproducibile.
+         */
+        List<Candidate> ofPhase = projections.all().stream()
                 .filter(p -> p.role() == state.currentPhase())
                 .filter(p -> !sold.contains(p.playerId()))
-                .sorted(Comparator.comparingDouble(PlayerProjection::basePoints).reversed())
+                .map(p -> new Candidate(p, catalog.byId(p.playerId()).orElseThrow()))
+                .sorted(Comparator.comparingInt((Candidate c) -> c.player().listPrice()).reversed()
+                        .thenComparing(Comparator.comparingDouble(
+                                (Candidate c) -> c.projection().basePoints()).reversed())
+                        .thenComparing(c -> c.player().id()))
                 .toList();
 
-        List<PlayerProjection> page = ofPhase.stream().skip(Math.max(0, offset)).limit(limit).toList();
+        int total = ofPhase.size();
+        int start = clampToPageStart(offset, limit, total);
+        List<Candidate> page = ofPhase.stream().skip(start).limit(limit).toList();
 
         PriceModel prices = analysis.priceModelFor(state, current);
         List<PhaseRow> rows = page.stream()
-                .map(p -> new PhaseRow(catalog.byId(p.playerId()).orElseThrow(),
-                        analysis.analyze(p.playerId(), state, prices, current), p))
+                .map(c -> new PhaseRow(c.player(),
+                        analysis.analyze(c.player().id(), state, prices, current), c.projection()))
                 .toList();
 
-        boolean hasMore = offset + page.size() < ofPhase.size();
-        return new PhasePage(rows, hasMore, offset + page.size());
+        return new PhasePage(rows, start, limit, total);
+    }
+
+    /**
+     * Riporta un offset dentro i limiti, allineato all'inizio di una pagina.
+     *
+     * <p>Serve perche' l'offset sopravvive agli acquisti: si sta guardando l'ultima
+     * pagina, si compra, e i giocatori rimasti non arrivano piu' fin li'. Senza questa
+     * correzione la tabella si ricaricherebbe vuota — un vuoto muto che sembra un
+     * errore di caricamento invece di "sei oltre la fine". Meglio l'ultima pagina piena.
+     */
+    private static int clampToPageStart(int offset, int limit, int total) {
+        if (offset <= 0 || total == 0 || limit <= 0) {
+            return 0;
+        }
+        int lastPageStart = ((total - 1) / limit) * limit;
+        return Math.min(offset, lastPageStart);
     }
 }

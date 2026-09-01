@@ -434,7 +434,7 @@ class AuctionControllerTest {
         PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
                 BASTONI, RECOMMENDATION, projection("d1", 120.0));
         when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
-                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), false, 1));
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 0, 25, 1));
 
         mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
                 .andExpect(status().isOk())
@@ -445,20 +445,59 @@ class AuctionControllerTest {
         verify(searchService).phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
     }
 
+    /**
+     * Ogni pagina sostituisce il pannello intero, intestazione compresa: con i bottoni
+     * avanti/indietro non si accoda piu' nulla alla pagina precedente.
+     */
     @Test
-    void aFollowingPageOfThePhaseTableDoesNotRepeatTheHeading() throws Exception {
-        // offset > 0 arriva dal bottone "carica altri 25": la risposta sostituisce solo
-        // la riga del bottone, quindi non deve ripetere l'intestazione del pannello.
+    void everyPageOfThePhaseTableReplacesTheWholePanel() throws Exception {
         PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
                 BASTONI, RECOMMENDATION, projection("d1", 90.0));
         when(searchService.phasePlayers(25, PlayerSearchService.PHASE_PAGE_SIZE))
-                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), true, 50));
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 25, 25, 60));
 
         mockMvc.perform(get("/fragments/phase-players").param("offset", "25"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("GIOCATORI FASE")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("pagina")))
+                // indietro alla prima pagina, avanti alla terza
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=0")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=26")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("GIOCATORI FASE"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("carica altri 25")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=50")));
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("carica altri"))));
+    }
+
+    /**
+     * Il pannello ricaricato dopo un acquisto deve richiedere la pagina MOSTRATA, non
+     * la prima: l'hx-get che il fragment porta con se' e' quello che l'evento
+     * fantaStateChanged fara' scattare, e se puntasse a offset=0 ogni acquisto
+     * riporterebbe l'utente in cima all'elenco.
+     */
+    @Test
+    void thePhaseTableReloadsItselfOnTheSamePageAfterAPurchase() throws Exception {
+        PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
+                BASTONI, RECOMMENDATION, projection("d1", 90.0));
+        when(searchService.phasePlayers(50, PlayerSearchService.PHASE_PAGE_SIZE))
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 50, 25, 60));
+
+        mockMvc.perform(get("/fragments/phase-players").param("offset", "50"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
+                        "(?s).*id=\"phaseTable\"[^>]*hx-get=\"[^\"]*offset=50\".*")));
+    }
+
+    /** Agli estremi i bottoni restano al loro posto, disabilitati invece che spariti. */
+    @Test
+    void thePaginationKeepsBothButtonsAtTheEdges() throws Exception {
+        PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
+                BASTONI, RECOMMENDATION, projection("d1", 90.0));
+        when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 0, 25, 1));
+
+        mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("precedenti")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("successivi")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled")));
     }
 }
