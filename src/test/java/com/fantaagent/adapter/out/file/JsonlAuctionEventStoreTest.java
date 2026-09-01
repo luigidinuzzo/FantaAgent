@@ -111,6 +111,51 @@ class JsonlAuctionEventStoreTest {
                 .hasMessageContaining("riga 2");
     }
 
+    /**
+     * S9: nextSeq() è leggi-l'ultimo-poi-più-uno, senza lock — due chiamate in overlap
+     * possono calcolare lo stesso seq, e l'ultimo append vince silenziosamente
+     * sull'altro nella proiezione (che chiave le mappe sul seq), pur restando
+     * entrambi nel log su disco. Il refresh in background del pannello di fase e le
+     * nuove vie di scrittura (/assign, /riepilogo/revoca) rendono le scritture in
+     * overlap una situazione ordinaria, non più un caso limite da laboratorio.
+     * {@code appendWithNextSeq} deve garantire seq tutti distinti anche con molte
+     * scritture concorrenti dallo stesso processo.
+     */
+    @Test
+    void appendWithNextSeqAssignsDistinctSeqsUnderConcurrentWrites() throws Exception {
+        Path file = tmp.resolve("events.jsonl");
+        JsonlAuctionEventStore store = new JsonlAuctionEventStore(file);
+
+        int writers = 20;
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(writers);
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(writers);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        List<java.util.concurrent.Future<AuctionEvent>> results = new java.util.ArrayList<>();
+        try {
+            for (int i = 0; i < writers; i++) {
+                String playerId = "p" + i;
+                results.add(pool.submit(() -> {
+                    ready.countDown();
+                    go.await();
+                    return store.appendWithNextSeq(
+                            seq -> new AuctionEvent.PlayerPurchased(seq, T, playerId, "me", 1));
+                }));
+            }
+            ready.await();
+            go.countDown();
+        } finally {
+            pool.shutdown();
+        }
+
+        List<Long> assignedSeqs = new java.util.ArrayList<>();
+        for (java.util.concurrent.Future<AuctionEvent> result : results) {
+            assignedSeqs.add(result.get().seq());
+        }
+
+        assertThat(assignedSeqs).doesNotHaveDuplicates().hasSize(writers);
+        assertThat(store.load()).hasSize(writers);
+    }
+
     @Test
     void survivesAProcessRestartAfterEveryAppend() {
         Path file = tmp.resolve("events.jsonl");

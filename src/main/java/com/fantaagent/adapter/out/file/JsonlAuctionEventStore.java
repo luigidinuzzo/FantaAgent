@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.LongFunction;
 
 /**
  * Log append-only degli eventi d'asta, una riga JSON per evento.
@@ -34,12 +35,38 @@ public class JsonlAuctionEventStore implements AuctionEventStore {
 
     private final Path file;
 
+    /**
+     * Protegge la sequenza "leggi-l'ultimo-seq, poi appendi" da letture e scritture in
+     * overlap: senza un lock, due chiamate concorrenti a {@link #appendWithNextSeq}
+     * potrebbero calcolare lo stesso seq (entrambe leggono lo stesso ultimo evento
+     * prima che l'altra scriva) e una delle due scritture sparirebbe silenziosamente
+     * dalla proiezione, che chiave le mappe sul seq — pur restando nel log su disco.
+     * Un lock in-process basta: questa è un'app locale a processo singolo, non c'è un
+     * secondo processo con cui coordinarsi.
+     */
+    private final Object writeLock = new Object();
+
     public JsonlAuctionEventStore(Path file) {
         this.file = file;
     }
 
     @Override
     public void append(AuctionEvent event) {
+        synchronized (writeLock) {
+            appendLocked(event);
+        }
+    }
+
+    @Override
+    public AuctionEvent appendWithNextSeq(LongFunction<AuctionEvent> eventFactory) {
+        synchronized (writeLock) {
+            AuctionEvent event = eventFactory.apply(nextSeqLocked());
+            appendLocked(event);
+            return event;
+        }
+    }
+
+    private void appendLocked(AuctionEvent event) {
         try {
             Path parent = file.getParent();
             if (parent != null) {
@@ -90,6 +117,12 @@ public class JsonlAuctionEventStore implements AuctionEventStore {
 
     @Override
     public long nextSeq() {
+        synchronized (writeLock) {
+            return nextSeqLocked();
+        }
+    }
+
+    private long nextSeqLocked() {
         List<AuctionEvent> events = load();
         return events.isEmpty() ? 1L : events.getLast().seq() + 1L;
     }
