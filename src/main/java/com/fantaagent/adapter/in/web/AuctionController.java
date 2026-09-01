@@ -238,13 +238,17 @@ public class AuctionController {
     }
 
     /**
-     * Il popup del battitore per un giocatore. Non cambia stato: il countdown e i
+     * Il popup del battitore per un giocatore, versione PRIVATA: porta con se' il max
+     * bid, e va servita solo alla schermata d'asta sul portatile di chi conduce. La
+     * pagina proiettata usa /battitore/popup, che monta un modello senza valutazioni.
+     *
+     * <p>Non cambia stato: il countdown e i
      * rilanci vivono interamente nel browser e non toccano il registro. Un rilancio non
      * e' un fatto dell'asta — solo l'aggiudicazione lo e', e quella passa dallo stesso
      * /assign di sempre. Scrivere sul registro ad ogni tap significherebbe riempirlo di
      * eventi che non e' possibile annullare in modo sensato.
      */
-    @GetMapping("/battitore")
+    @GetMapping("/asta/battitore")
     public String bidder(@RequestParam String playerId, Model model) {
         Optional<Player> player = catalog.byId(playerId);
         if (player.isEmpty()) {

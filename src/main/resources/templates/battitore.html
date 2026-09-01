@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Battitore</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+  <script th:src="@{/htmx.min.js}"></script>
+</head>
+<!--
+  La pagina da proiettare sullo schermo condiviso.
+
+  Non contiene NESSUNA valutazione: niente max bid, prezzo atteso, punti attesi,
+  fantamedia, titolarita', margine o verdetto. Il vincolo e' imposto a monte, in
+  BattitoreController, che non ha nemmeno il servizio per calcolarli; qui non c'e'
+  quindi alcun ramo condizionale da ricordarsi di scrivere bene.
+
+  Cio' che si vede — chi ha comprato chi, a che prezzo, con quanti crediti e slot
+  residui — e' esattamente cio' che ogni partecipante annota da se' sul proprio
+  foglio mentre l'asta va avanti. Proiettarlo non regala informazione a nessuno: la
+  rende solo esatta e uguale per tutti.
+
+  Tipi grandi di proposito: si legge da qualche metro di distanza, non da 60 cm.
+-->
+<body class="projected">
+<div class="battitore">
+
+  <header class="battitore-head">
+    <h1>BATTITORE</h1>
+    <div class="battitore-phase">FASE <b th:text="${phase}">D</b></div>
+    <!-- Piccolo e in fondo: serve a chi conduce, non al pubblico. -->
+    <a class="battitore-exit" th:href="@{/asta}">← la mia asta</a>
+  </header>
+
+  <!--
+    La barra di ricerca. hx-trigger su keyup con un ritardo breve, come la barra
+    comando della schermata d'asta: si digita il nome e le righe compaiono sotto.
+    Nessun prezzo da inserire qui — quello lo decide il popup, rilancio dopo rilancio.
+  -->
+  <div class="battitore-search">
+    <input id="battitoreSearch" name="q" autocomplete="off" autofocus
+           placeholder="cerca un giocatore nel listone…"
+           hx-get="/battitore/cerca" hx-trigger="keyup changed delay:150ms"
+           hx-target="#results" hx-swap="outerHTML">
+  </div>
+
+  <div id="results" th:fragment="results" class="battitore-results">
+    <!-- Nome, ruolo, squadra e quotazione: i quattro dati del listone cartaceo. -->
+    <button type="button" class="battitore-result" th:each="p : ${results}"
+            th:hx-get="@{/battitore/popup(playerId=${p.id})}"
+            hx-target="#bidderMount" hx-swap="innerHTML">
+      <span class="battitore-result-name" th:text="${p.name}">Dimarco</span>
+      <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
+      <span class="battitore-result-price" th:text="${p.listPrice}">12</span>
+    </button>
+  </div>
+
+  <div id="board" th:fragment="board" class="battitore-board-wrap">
+    <p class="battitore-message" th:if="${message}" th:text="${message}"></p>
+
+    <div class="recap-board">
+      <section class="recap-col" th:each="col : ${columns}">
+        <h2 th:text="${col.participantName}">Marco</h2>
+        <div class="meta">
+          <span th:text="${col.budgetRemaining} + ' crediti'">289 crediti</span> ·
+          <span th:text="${col.slotsRemaining} + ' slot'">21 slot</span>
+        </div>
+
+        <div th:each="role : ${roles}">
+          <div class="recap-role" th:text="${role}">P</div>
+          <p class="empty-role" th:if="${col.byRole.get(role).isEmpty()}">—</p>
+          <div class="recap-player" th:each="p : ${col.byRole.get(role)}">
+            <span th:text="${p.name}">Bastoni</span>
+            <span class="price" th:text="${p.price}">47</span>
+            <!-- Due click come nel riepilogo privato, e per un motivo in piu': qui il
+                 puntatore si muove davanti a tutti e un click di troppo cambierebbe in
+                 silenzio i crediti di un partecipante. Il bottone e' type="button" e
+                 diventa type="submit" solo dopo la conferma (recap.js): se lo script
+                 non si carica il bottone non risponde, invece di rimuovere. -->
+            <form method="post" th:action="@{/battitore/revoca}"
+                  hx-post="/battitore/revoca" hx-target="#board" hx-swap="outerHTML">
+              <input type="hidden" name="targetSeq" th:value="${p.seq}">
+              <button type="button" class="revoke-btn" title="rimuovi">✕</button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+</div>
+
+<!-- Stesso innesto della schermata d'asta, ultimo figlio del body e fuori da ogni
+     regione soggetta a swap: un <dialog> modale non deve stare dentro un elemento
+     che htmx puo' sostituire mentre e' aperto. -->
+<div id="bidderMount"></div>
+
+<script th:src="@{/recap.js}"></script>
+<script th:src="@{/bidder.js}"></script>
+</body>
+</html>

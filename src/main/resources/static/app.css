@@ -220,3 +220,85 @@ table.auctions tr.sel td { color:#fff; }
                  border:1px solid var(--line); padding:.4rem .7rem; cursor:pointer; }
 .bidder-resume:hover { color:var(--fg); }
 .bidder-error { flex:1 1 100%; margin:0; color:var(--neg); }
+
+/* ---------------------------------------------------------------------------
+   La pagina BATTITORE, proiettata sullo schermo condiviso.
+
+   Si legge da qualche metro, non da sessanta centimetri: tutta la pagina parte da
+   una base tipografica più grande invece di ingrandire un elemento per volta, così
+   la gerarchia resta quella già calibrata altrove e non va ritarata a mano.
+
+   Nessuna regola qui mostra una valutazione, perché nessun dato di valutazione
+   arriva a questa pagina: il vincolo è imposto in BattitoreController, che non ha
+   il servizio per calcolarle. Il foglio di stile non è il posto dove si difende un
+   segreto — è solo il posto dove si smetterebbe di sembrare che lo sia.
+   --------------------------------------------------------------------------- */
+
+body.projected { font-size:1.25rem; }
+.battitore { padding:1rem 1.5rem 3rem; }
+
+.battitore-head { display:flex; align-items:baseline; gap:1.5rem;
+                  border-bottom:1px solid var(--line); padding-bottom:.6rem;
+                  margin-bottom:1rem; }
+.battitore-head h1 { font-size:2rem; margin:0; letter-spacing:.1em; }
+.battitore-phase { font-size:1.4rem; color:var(--dim); }
+.battitore-phase b { color:var(--fg); }
+/* Piccolo e spinto a destra: è un comando per chi conduce, non un'informazione
+   per la stanza. */
+.battitore-exit { margin-left:auto; font-size:var(--fs-sm); color:var(--dim);
+                  text-decoration:none; }
+.battitore-exit:hover { color:var(--fg); }
+
+.battitore-search input { width:100%; font:inherit; font-size:1.6rem;
+                          background:#000; color:var(--fg);
+                          border:1px solid var(--line); padding:.6rem .8rem; }
+.battitore-search input:focus { outline:2px solid var(--focus); outline-offset:2px; }
+
+.battitore-results { display:flex; flex-wrap:wrap; gap:.5rem; margin:.7rem 0 1.5rem; }
+/* Ogni risultato è un bottone, non una riga cliccabile: arriva al fuoco con Tab e
+   si attiva con Invio senza che si debba scriverne il comportamento. */
+.battitore-result { display:flex; align-items:baseline; gap:.7rem; font:inherit;
+                    font-size:1.15rem; background:#1c1c1c; color:var(--fg);
+                    border:1px solid var(--line); padding:.5rem .9rem; cursor:pointer;
+                    text-align:left; }
+.battitore-result:hover { background:#2a2a2a; border-color:var(--focus); }
+.battitore-result-name { font-weight:bold; }
+.battitore-result-price { color:var(--dim); }
+
+.battitore-message { padding:.5rem .9rem; margin:0 0 .8rem;
+                     border-left:3px solid var(--pos); background:#10240f; }
+
+/* Il tabellone riusa le classi del riepilogo privato: stesse regole, un solo
+   posto dove correggerle. Qui cambiano solo le misure, perché va letto da lontano. */
+.battitore-board-wrap .recap-board { display:flex; gap:1rem; overflow-x:auto;
+                                     padding-bottom:1rem; }
+.battitore-board-wrap .recap-col { flex:0 0 17rem; min-width:17rem;
+                                   border:1px solid var(--line); padding:.8rem; }
+.battitore-board-wrap .recap-col h2 { font-size:1.35rem; margin:0 0 .2rem; }
+.battitore-board-wrap .recap-col .meta { color:var(--dim); font-size:1rem;
+                                         margin-bottom:.6rem; }
+.battitore-board-wrap .recap-role { font-size:.9rem; color:var(--dim);
+                                    letter-spacing:.06em; margin:.6rem 0 .2rem;
+                                    border-top:1px solid var(--line); padding-top:.4rem; }
+.battitore-board-wrap .recap-role:first-of-type { border-top:none; margin-top:0; }
+.battitore-board-wrap .recap-player { display:flex; justify-content:space-between;
+                                      align-items:center; gap:.4rem; padding:.2rem 0;
+                                      font-size:1.1rem; }
+.battitore-board-wrap .recap-player .price { color:var(--dim); }
+.battitore-board-wrap .recap-player form { margin:0; }
+.battitore-board-wrap .empty-role { color:var(--dim); font-size:1rem; font-style:italic;
+                                    margin:.1rem 0; }
+.battitore-board-wrap .revoke-btn { font:inherit; font-size:.85rem; background:transparent;
+                                    color:var(--dim); border:1px solid var(--line);
+                                    padding:.05rem .4rem; cursor:pointer; border-radius:2px; }
+.battitore-board-wrap .revoke-btn:hover { color:var(--neg); border-color:var(--neg); }
+.battitore-board-wrap .revoke-btn.confirming { color:#022; background:var(--neg);
+                                               border-color:var(--neg); font-weight:bold; }
+
+/* Il popup proiettato: più grande, e con una sola cella di numeri perché il max bid
+   non esiste su questa pagina — non è nascosto, non arriva proprio dal server. */
+.bidder-public { width:min(38rem, 94vw); }
+.bidder-public #bidderClock { font-size:7rem; }
+.bidder-numbers-solo { grid-template-columns:1fr; }
+.bidder-public #bidderPrice { font-size:4rem; }
+.bidder-public .bidder-bid { font-size:1.6rem; }

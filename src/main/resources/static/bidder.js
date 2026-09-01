@@ -180,9 +180,10 @@
     var mount = $(MOUNT_ID);
     if (mount) { mount.innerHTML = ''; }
     assignInFlight = false;
-    /* Il fuoco torna alla barra comando, da cui si riprende a cercare. */
-    var cmd = $('cmd');
-    if (cmd) { cmd.focus(); }
+    /* Il fuoco torna alla barra di ricerca della pagina da cui si e' aperto il
+       popup: "cmd" sulla schermata d'asta, "battitoreSearch" su quella proiettata. */
+    var back = $('cmd') || $('battitoreSearch');
+    if (back) { back.focus(); }
   }
 
   function showError(text) {
@@ -302,17 +303,23 @@
     }
 
     /*
-      L'aggiudicazione ha risposto dentro #main. /assign risponde 200 anche quando
-      rifiuta l'acquisto (budget insufficiente, slot pieno): affidarsi al codice HTTP
+      L'aggiudicazione ha risposto: dentro #main sulla schermata d'asta, dentro #board
+      su quella proiettata. Entrambi gli endpoint rispondono 200 anche quando RIFIUTANO
+      l'acquisto (budget insufficiente, slot pieno): affidarsi al codice HTTP
       chiuderebbe il popup su un acquisto mai registrato, perdendo il prezzo raggiunto
-      e lasciando l'errore scritto dietro a un popup che nel frattempo e' sparito.
-      L'unico segnale affidabile e' il messaggio stesso, che AuctionController scrive
-      con ✓ o ✗ in testa.
+      e lasciando l'errore scritto dietro a un popup nel frattempo sparito. L'unico
+      segnale affidabile e' il messaggio stesso, che entrambi i controller scrivono con
+      ✓ o ✗ in testa.
+
+      Non si filtra su un id preciso: il popup e' lo stesso su due pagine, e legare
+      questo ramo a "main" lo avrebbe lasciato muto proprio sulla pagina proiettata,
+      dove il popup sarebbe rimasto aperto dopo ogni aggiudicazione riuscita.
     */
-    if (assignInFlight && target && target.id === 'main') {
+    if (assignInFlight && target && target.id !== MOUNT_ID) {
+      var message = target.querySelector('.message, .battitore-message');
+      if (!message) { return; }
       assignInFlight = false;
-      var message = target.querySelector('.message');
-      var text = message ? message.textContent.trim() : '';
+      var text = message.textContent.trim();
       if (text.charAt(0) === '✗') {
         showError(text);
       } else {

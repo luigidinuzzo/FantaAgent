@@ -1,0 +1,152 @@
+package com.fantaagent.adapter.in.web;
+
+import com.fantaagent.adapter.in.web.dto.ViewModels;
+import com.fantaagent.application.port.out.PlayerCatalog;
+import com.fantaagent.application.service.AuctionRuntime;
+import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.AuctionSettingsHolder;
+import com.fantaagent.domain.player.Player;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * La pagina BATTITORE: quella che si proietta sullo schermo che guardano tutti.
+ *
+ * <p><b>Il vincolo che governa questo file.</b> Nulla che esca da qui puo' contenere
+ * una valutazione: ne' max bid, ne' prezzo atteso, ne' punti attesi, fantamedia,
+ * titolarita', margine o verdetto. Non e' una questione di quanto si sceglie di
+ * mostrare nel template — e' che i modelli montati qui non hanno un campo dove quei
+ * numeri possano stare. {@link ViewModels.PublicBidder} non contiene la
+ * raccomandazione, e la ricerca restituisce {@link Player}, che porta solo nome,
+ * squadra, ruolo e quotazione del listone: dati che ogni partecipante ha gia' stampati
+ * davanti. Nemmeno guardando il sorgente della pagina si trova altro.
+ *
+ * <p>Per questo il controller non riceve
+ * {@link com.fantaagent.application.service.PlayerAnalysisService}: non ha modo di
+ * calcolare una raccomandazione neppure volendo, e chi in futuro volesse mostrarne una
+ * dovrebbe prima iniettarlo, cioe' compiere un gesto visibile in revisione invece che
+ * aggiungere una riga a un template.
+ *
+ * <p>Cio' che invece si mostra — giocatori acquistati, prezzi pagati, crediti e slot
+ * residui — e' pubblico per natura: sono i numeri che in asta ogni partecipante tiene
+ * a mano sul proprio foglio.
+ */
+@Controller
+public class BattitoreController {
+
+    /** Poche righe: la lista sta su uno schermo condiviso, non e' un catalogo da sfogliare. */
+    private static final int SEARCH_ROWS = 8;
+
+    private final AuctionService auction;
+    private final PlayerSearchService search;
+    private final PlayerCatalog catalog;
+    private final AuctionRuntime runtime;
+    private final AuctionSettingsHolder auctionSettings;
+
+    public BattitoreController(AuctionService auction, PlayerSearchService search,
+                               PlayerCatalog catalog, AuctionRuntime runtime,
+                               AuctionSettingsHolder auctionSettings) {
+        this.auction = auction;
+        this.search = search;
+        this.catalog = catalog;
+        this.runtime = runtime;
+        this.auctionSettings = auctionSettings;
+    }
+
+    @GetMapping("/battitore")
+    public String page(Model model) {
+        if (!runtime.hasAuction()) {
+            return "redirect:/";
+        }
+        populate(model, null);
+        model.addAttribute("results", List.<Player>of());
+        return "battitore";
+    }
+
+    /**
+     * Cerca nel listone. Restituisce {@link Player} e nient'altro: nome, squadra, ruolo
+     * e quotazione, gli stessi quattro dati che stanno sul listone cartaceo.
+     */
+    @GetMapping("/battitore/cerca")
+    public String find(@RequestParam(name = "q", defaultValue = "") String query, Model model) {
+        List<Player> results = query.isBlank()
+                ? List.of()
+                : search.search(query).stream().limit(SEARCH_ROWS).toList();
+        model.addAttribute("results", results);
+        return "battitore :: results";
+    }
+
+    /** Il popup, senza alcuna valutazione: vedi il commento in testa alla classe. */
+    @GetMapping("/battitore/popup")
+    public String popup(@RequestParam String playerId, Model model) {
+        Optional<Player> player = catalog.byId(playerId);
+        if (player.isEmpty()) {
+            return "fragments/empty :: empty";
+        }
+        AuctionSettings settings = auctionSettings.get();
+        model.addAttribute("bidder", new ViewModels.PublicBidder(player.get(),
+                settings.bidTimerSeconds(), settings.beepEnabled()));
+        model.addAttribute("participants", auction.participants());
+        return "fragments/bidder-public :: bidder";
+    }
+
+    /**
+     * Registra l'aggiudicazione dalla pagina proiettata.
+     *
+     * <p>Endpoint distinto da /assign solo perche' deve rendere una pagina diversa:
+     * l'acquisto passa dallo stesso {@link AuctionService#recordPurchase}, con la stessa
+     * validazione e gli stessi messaggi di rifiuto. La regola che conta e' che esista
+     * una sola via per REGISTRARE un acquisto, non una sola per disegnarlo.
+     */
+    @PostMapping("/battitore/assegna")
+    public String assign(@RequestParam String playerId, @RequestParam String participantId,
+                         @RequestParam int price, Model model) {
+        String message;
+        try {
+            auction.recordPurchase(playerId, participantId, price);
+            Player player = catalog.byId(playerId).orElseThrow();
+            message = "✓ " + player.name() + " → " + nameOf(participantId) + " " + price;
+        } catch (IllegalArgumentException e) {
+            message = "✗ " + e.getMessage();
+        }
+        populate(model, message);
+        return "battitore :: board";
+    }
+
+    @PostMapping("/battitore/revoca")
+    public String revoke(@RequestParam long targetSeq, Model model) {
+        String message;
+        try {
+            auction.revokePurchase(targetSeq);
+            message = "↩ acquisto rimosso";
+        } catch (IllegalArgumentException e) {
+            message = "✗ " + e.getMessage();
+        }
+        populate(model, message);
+        return "battitore :: board";
+    }
+
+    private String nameOf(String participantId) {
+        return auction.participants().stream()
+                .filter(p -> p.id().equals(participantId))
+                .findFirst()
+                .map(com.fantaagent.domain.league.Participant::name)
+                .orElse(participantId);
+    }
+
+    private void populate(Model model, String message) {
+        model.addAttribute("columns", RecapView.columns(auction));
+        model.addAttribute("roles", RecapView.ROLE_ORDER);
+        model.addAttribute("participants", auction.participants());
+        model.addAttribute("phase", auction.state().currentPhase());
+        model.addAttribute("message", message);
+    }
+}

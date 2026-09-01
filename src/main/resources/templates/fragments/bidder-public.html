@@ -1,0 +1,82 @@
+<!--
+  Il battitore nella versione PROIETTATA, per lo schermo che guardano tutti.
+
+  Rispetto a fragments/bidder.html manca una cosa sola, ed e' quella che conta: non
+  c'e' il max bid. Non e' nascosto con un th:if — non arriva proprio, perche' il
+  modello che alimenta questo file (ViewModels.PublicBidder) non ha un campo dove
+  possa stare. Nemmeno leggendo il sorgente della pagina si trova.
+
+  Per la stessa ragione mancano data-max-bid e data-hard-cap sul dialog, e con essi
+  l'avviso "OLTRE IL MAX": bidder.js li legge come zero e semplicemente non mostra
+  quel segnale. Il countdown, i rilanci e l'aggiudicazione restano identici.
+
+  Gli id degli elementi sono gli stessi dell'altro fragment, di proposito: bidder.js
+  e' uno solo e serve entrambe le pagine. Rinominarne uno qui lo romperebbe in
+  silenzio proprio sulla pagina proiettata, cioe' davanti a tutti.
+-->
+<th:block xmlns:th="http://www.thymeleaf.org">
+
+<dialog id="bidderDialog" class="bidder bidder-public" th:fragment="bidder"
+        th:attr="data-player-id=${bidder.player.id},
+                 data-seconds=${bidder.timerSeconds},
+                 data-beep=${bidder.beepEnabled}"
+        aria-labelledby="bidderName">
+
+  <header class="bidder-head">
+    <div>
+      <b id="bidderName" th:text="${bidder.player.name}">Dimarco</b>
+      <span class="dim"
+            th:text="${bidder.player.role} + ' · ' + ${bidder.player.team}">D · Inter</span>
+    </div>
+    <button type="button" id="bidderClose" class="bidder-close"
+            aria-label="chiudi senza aggiudicare">✕</button>
+  </header>
+
+  <div class="bidder-clock" id="bidderClockBox">
+    <span class="bidder-clock-icon" aria-hidden="true">⏱</span>
+    <span id="bidderClock" role="timer" aria-live="assertive"
+          th:text="${bidder.timerSeconds}">5</span>
+  </div>
+
+  <!-- Una sola cella, a tutta larghezza: l'offerta. Il quotato del listone accanto,
+       perche' e' stampato sul foglio che ha in mano ogni partecipante. -->
+  <div class="bidder-numbers bidder-numbers-solo">
+    <div>
+      <label>OFFERTA</label>
+      <b class="big" id="bidderPrice">1</b>
+      <span class="dim" th:text="'listone ' + ${bidder.player.listPrice}">listone 12</span>
+    </div>
+  </div>
+
+  <div class="bidder-controls" id="bidderControls">
+    <button type="button" id="bidderBid" class="bidder-bid">
+      BID <small>spazio</small>
+    </button>
+    <button type="button" class="bidder-step" data-step="5">+5</button>
+    <button type="button" class="bidder-step" data-step="10">+10</button>
+    <label class="bidder-jump">porta a
+      <input type="number" id="bidderJump" min="1" inputmode="numeric"
+             aria-label="porta l'offerta a una cifra precisa">
+    </label>
+  </div>
+
+  <!-- Aggiudica sulla pagina proiettata: stesso AuctionService#recordPurchase di
+       /assign, resa diversa perche' qui non esiste un #main da sostituire. -->
+  <form id="bidderAssign" class="bidder-assign" hidden
+        hx-post="/battitore/assegna" hx-target="#board" hx-swap="outerHTML">
+    <input type="hidden" name="playerId" th:value="${bidder.player.id}">
+    <label>A CHI
+      <select name="participantId" id="bidderWho">
+        <option th:each="pt : ${participants}" th:value="${pt.id}" th:text="${pt.name}"
+                th:selected="${pt.me}">Nome</option>
+      </select>
+    </label>
+    <label>CREDITI
+      <input type="number" name="price" id="bidderFinalPrice" min="1" value="1">
+    </label>
+    <button type="submit" class="bidder-confirm">ASSEGNA</button>
+    <button type="button" id="bidderResume" class="bidder-resume">riprendi rilanci</button>
+  </form>
+</dialog>
+
+</th:block>

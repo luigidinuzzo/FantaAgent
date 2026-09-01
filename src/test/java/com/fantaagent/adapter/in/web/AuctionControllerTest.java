@@ -105,7 +105,7 @@ class AuctionControllerTest {
      */
     @Test
     void ilBattitorePortaMaxBidEdurataDelCountdown() throws Exception {
-        mockMvc.perform(get("/battitore").param("playerId", "d1"))
+        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-max-bid=\"47\"")))
@@ -117,7 +117,7 @@ class AuctionControllerTest {
     /** La tendina dell'aggiudicazione deve elencare tutti i partecipanti, non solo me. */
     @Test
     void ilBattitoreElencaTuttiIpartecipanti() throws Exception {
-        mockMvc.perform(get("/battitore").param("playerId", "d1"))
+        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Marco")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Io")));
@@ -130,7 +130,7 @@ class AuctionControllerTest {
      */
     @Test
     void aprireIlBattitoreNonRegistraAlcunAcquisto() throws Exception {
-        mockMvc.perform(get("/battitore").param("playerId", "d1"))
+        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk());
 
         verify(auctionService, org.mockito.Mockito.never())
@@ -145,7 +145,7 @@ class AuctionControllerTest {
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {
         when(playerCatalog.byId("ignoto")).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/battitore").param("playerId", "ignoto"))
+        mockMvc.perform(get("/asta/battitore").param("playerId", "ignoto"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("bidderDialog"))));

@@ -69,6 +69,21 @@ public final class ViewModels {
                          int timerSeconds, boolean beepEnabled) {
     }
 
+    /**
+     * Il battitore sulla pagina proiettata sullo schermo condiviso.
+     *
+     * <p>Un record separato da {@link Bidder}, e non lo stesso con un flag "nascondi il
+     * max bid". La differenza e' l'intero punto: qui NON ESISTE un campo in cui il max
+     * bid possa stare, quindi non puo' finire nel markup ne' per una svista in un
+     * template, ne' per un ramo condizionale scritto male, ne' guardando il sorgente
+     * della pagina. Un flag si dimentica; un campo assente no.
+     *
+     * <p>Chi aggiunge qui un campo che viene da una valutazione lo sta proiettando su
+     * uno schermo che guardano tutti gli avversari.
+     */
+    public record PublicBidder(Player player, int timerSeconds, boolean beepEnabled) {
+    }
+
     /** Una riga della pagina di riepilogo: un giocatore posseduto e il prezzo pagato. */
     public record RecapPlayer(long seq, String name, int price) {
     }
