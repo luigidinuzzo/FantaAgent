@@ -55,6 +55,20 @@ public final class ViewModels {
                               boolean selected) {
     }
 
+    /**
+     * Il popup del battitore: chi si sta battendo, il tetto oltre cui non conviene, e
+     * le due preferenze che governano il countdown.
+     *
+     * <p>Il max bid e' calcolato una volta sola, all'apertura, e non si muove piu'
+     * mentre si rilancia. Non e' una svista: e' un tetto che dipende da budget, slot e
+     * alternative ancora disponibili, non da quanto si e' gia' offerto. Ricalcolarlo ad
+     * ogni rilancio mostrerebbe un numero che insegue l'offerta, che e' precisamente il
+     * comportamento da cui questo strumento deve proteggere.
+     */
+    public record Bidder(Player player, PriceRecommendation recommendation,
+                         int timerSeconds, boolean beepEnabled) {
+    }
+
     /** Una riga della pagina di riepilogo: un giocatore posseduto e il prezzo pagato. */
     public record RecapPlayer(long seq, String name, int price) {
     }

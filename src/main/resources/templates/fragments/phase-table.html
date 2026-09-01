@@ -51,6 +51,12 @@
     <td th:text="${#numbers.formatDecimal(r.fantamediaAttesa(), 1, 2)}">6,20</td>
     <td th:text="${#numbers.formatDecimal(r.titolaritaPercent(), 1, 0)} + '%'">82%</td>
     <td>
+      <!-- Due modi, due situazioni diverse: "batti" quando il giocatore va all'asta e
+           il prezzo lo decidera' la stanza; il form qui accanto quando il prezzo e'
+           gia' noto e resta solo da registrarlo. Entrambi finiscono su /assign. -->
+      <button type="button" class="bidder-open bidder-open-row" title="batti l'asta"
+              th:hx-get="@{/battitore(playerId=${r.player.id})}"
+              hx-target="#bidderMount" hx-swap="innerHTML">⏱</button>
       <!-- Stesso /assign dell'articolo di analisi: identica validazione, identici
            messaggi di rifiuto in italiano — nessuna seconda via per registrare un
            acquisto. -->

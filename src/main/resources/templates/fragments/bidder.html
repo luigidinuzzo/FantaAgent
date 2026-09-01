@@ -1,0 +1,111 @@
+<!--
+  Il popup del battitore: si tiene il conto dei rilanci mentre la stanza rilancia, e
+  allo scadere del countdown si aggiudica.
+
+  Due scelte che vale la pena spiegare qui, perche' dal solo markup non si vedono.
+
+  1) E' un <dialog> vero e non un div con uno z-index. Cosi' il fuoco resta dentro al
+     popup, Esc lo chiude, e il resto della pagina diventa inerte senza scriverne una
+     riga: sono garanzie del browser, non nostre, e sono esattamente quelle che servono
+     quando si batte l'asta guardando la stanza invece dello schermo.
+
+  2) Il form di aggiudicazione punta a /assign, lo stesso della barra comando, della
+     scheda di analisi e della tabella di fase. Nessuna quinta via, piu' debole, per
+     registrare un acquisto: identica validazione, identici messaggi di rifiuto.
+
+  I valori di configurazione viaggiano come data-* sul dialog invece che dentro uno
+  <script> generato: il markup resta senza codice, e bidder.js e' un file statico
+  ordinario che il browser puo' mettere in cache.
+-->
+<th:block xmlns:th="http://www.thymeleaf.org">
+
+<dialog id="bidderDialog" class="bidder" th:fragment="bidder"
+        th:attr="data-player-id=${bidder.player.id},
+                 data-max-bid=${bidder.recommendation.maxBid},
+                 data-hard-cap=${bidder.recommendation.hardCap},
+                 data-seconds=${bidder.timerSeconds},
+                 data-beep=${bidder.beepEnabled}"
+        aria-labelledby="bidderName">
+
+  <header class="bidder-head">
+    <div>
+      <b id="bidderName" th:text="${bidder.player.name}">Vlahovic</b>
+      <span class="dim"
+            th:text="${bidder.player.role} + ' · ' + ${bidder.player.team}">A · Juventus</span>
+    </div>
+    <button type="button" id="bidderClose" class="bidder-close"
+            aria-label="chiudi senza aggiudicare">✕</button>
+  </header>
+
+  <!--
+    aria-live="assertive" solo sul valore, non sull'intero riquadro: un lettore di
+    schermo deve annunciare il secondo che cambia, non rileggere tutto il popup ogni
+    volta. role="timer" dice cos'e' quel numero a chi non lo vede.
+  -->
+  <div class="bidder-clock" id="bidderClockBox">
+    <span class="bidder-clock-icon" aria-hidden="true">⏱</span>
+    <span id="bidderClock" role="timer" aria-live="assertive"
+          th:text="${bidder.timerSeconds}">5</span>
+  </div>
+
+  <div class="bidder-numbers">
+    <div>
+      <label>OFFERTA</label>
+      <b class="big" id="bidderPrice">1</b>
+    </div>
+    <div>
+      <label>MAX BID</label>
+      <b class="big" id="bidderMax" th:text="${bidder.recommendation.maxBid}">52</b>
+    </div>
+  </div>
+
+  <!--
+    Il segnale che conta: quando l'offerta supera il tetto. Nascosto con l'attributo
+    hidden, che dal foglio di stile e' display:none !important — vedi il commento in
+    cima ad app.css: senza quella regola una qualunque display su .bidder-over lo
+    renderebbe sempre visibile, e un avviso "OLTRE IL MAX" sempre acceso non e' un
+    avviso, e' rumore.
+  -->
+  <p class="bidder-over" id="bidderOver" hidden role="status">
+    ▲ OLTRE IL MAX — <span id="bidderOverBy">0</span> crediti sopra il tetto
+  </p>
+
+  <div class="bidder-controls" id="bidderControls">
+    <button type="button" id="bidderBid" class="bidder-bid">
+      BID <small>spazio</small>
+    </button>
+    <button type="button" class="bidder-step" data-step="5">+5</button>
+    <button type="button" class="bidder-step" data-step="10">+10</button>
+    <label class="bidder-jump">porta a
+      <input type="number" id="bidderJump" min="1" inputmode="numeric"
+             aria-label="porta l'offerta a una cifra precisa">
+    </label>
+  </div>
+
+  <!--
+    Compare allo scadere. Il prezzo e' gia' compilato con l'offerta raggiunta, quindi
+    a timer scaduto resta da fare una cosa sola: dire chi se l'e' aggiudicato.
+  -->
+  <form id="bidderAssign" class="bidder-assign" hidden
+        hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
+    <input type="hidden" name="playerId" th:value="${bidder.player.id}">
+    <label>A CHI
+      <select name="participantId" id="bidderWho">
+        <option th:each="pt : ${participants}" th:value="${pt.id}" th:text="${pt.name}"
+                th:selected="${pt.me}">Nome</option>
+      </select>
+    </label>
+    <label>CREDITI
+      <input type="number" name="price" id="bidderFinalPrice" min="1" value="1">
+    </label>
+    <button type="submit" class="bidder-confirm">ASSEGNA</button>
+    <!--
+      Qualcuno rilancia sempre mezzo secondo dopo lo scadere. Senza questo bottone
+      l'unico rimedio sarebbe chiudere il popup e ricominciare da capo, perdendo il
+      prezzo a cui si era arrivati.
+    -->
+    <button type="button" id="bidderResume" class="bidder-resume">riprendi rilanci</button>
+  </form>
+</dialog>
+
+</th:block>

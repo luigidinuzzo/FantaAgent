@@ -6,6 +6,8 @@ import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.auction.Squad;
 import com.fantaagent.domain.league.Participant;
@@ -57,15 +59,17 @@ public class AuctionController {
     private final PlayerSearchService search;
     private final PlayerCatalog catalog;
     private final AuctionRuntime runtime;
+    private final AuctionSettingsHolder auctionSettings;
 
     public AuctionController(AuctionService auction, PlayerAnalysisService analysis,
                              PlayerSearchService search, PlayerCatalog catalog,
-                             AuctionRuntime runtime) {
+                             AuctionRuntime runtime, AuctionSettingsHolder auctionSettings) {
         this.auction = auction;
         this.analysis = analysis;
         this.search = search;
         this.catalog = catalog;
         this.runtime = runtime;
+        this.auctionSettings = auctionSettings;
     }
 
     /**
@@ -231,6 +235,26 @@ public class AuctionController {
         // (intestazione compresa). offset > 0: "carica altri 25", sostituisce solo le
         // righe già caricate — l'intestazione non deve ricomparire in fondo alla tabella.
         return offset == 0 ? "fragments/phase-table :: phaseTable" : "fragments/phase-table :: phaseRowsBody";
+    }
+
+    /**
+     * Il popup del battitore per un giocatore. Non cambia stato: il countdown e i
+     * rilanci vivono interamente nel browser e non toccano il registro. Un rilancio non
+     * e' un fatto dell'asta — solo l'aggiudicazione lo e', e quella passa dallo stesso
+     * /assign di sempre. Scrivere sul registro ad ogni tap significherebbe riempirlo di
+     * eventi che non e' possibile annullare in modo sensato.
+     */
+    @GetMapping("/battitore")
+    public String bidder(@RequestParam String playerId, Model model) {
+        Optional<Player> player = catalog.byId(playerId);
+        if (player.isEmpty()) {
+            return "fragments/empty :: empty";
+        }
+        AuctionSettings settings = auctionSettings.get();
+        model.addAttribute("bidder", new ViewModels.Bidder(player.get(),
+                analysis.analyze(playerId), settings.bidTimerSeconds(), settings.beepEnabled()));
+        model.addAttribute("participants", auction.participants());
+        return "fragments/bidder :: bidder";
     }
 
     private ViewModels.MainPanel searchPanel(String query, String message) {

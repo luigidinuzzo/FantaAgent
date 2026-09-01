@@ -4,6 +4,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.auction.AuctionProjector;
 import com.fantaagent.domain.auction.AuctionState;
@@ -94,6 +95,60 @@ class AuctionControllerTest {
         when(searchService.search(anyString())).thenReturn(List.of(BASTONI));
         when(analysisService.analyze("d1")).thenReturn(RECOMMENDATION);
         when(playerCatalog.byId("d1")).thenReturn(Optional.of(BASTONI));
+    }
+
+    /**
+     * Il popup porta con se' il max bid e la durata del countdown: sono i due valori da
+     * cui bidder.js parte, e viaggiano come data-* sul dialog. Se sparissero, il timer
+     * ricadrebbe sul default e il tetto non verrebbe mai segnalato — un popup che si
+     * apre e sembra funzionare, ma che ha perso la sola informazione per cui esiste.
+     */
+    @Test
+    void ilBattitorePortaMaxBidEdurataDelCountdown() throws Exception {
+        mockMvc.perform(get("/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-max-bid=\"47\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-seconds=\"" + AuctionSettings.DEFAULTS.bidTimerSeconds() + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("bidderAssign")));
+    }
+
+    /** La tendina dell'aggiudicazione deve elencare tutti i partecipanti, non solo me. */
+    @Test
+    void ilBattitoreElencaTuttiIpartecipanti() throws Exception {
+        mockMvc.perform(get("/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Marco")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Io")));
+    }
+
+    /**
+     * Aprire il battitore non registra nulla: il countdown e i rilanci vivono nel
+     * browser, e il registro si tocca solo all'aggiudicazione. Se questo test cadesse,
+     * ogni popup aperto per curiosita' lascerebbe un evento nel log dell'asta.
+     */
+    @Test
+    void aprireIlBattitoreNonRegistraAlcunAcquisto() throws Exception {
+        mockMvc.perform(get("/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk());
+
+        verify(auctionService, org.mockito.Mockito.never())
+                .recordPurchase(anyString(), anyString(), anyInt());
+    }
+
+    /**
+     * Un id sconosciuto non deve produrre un popup vuoto ne' un errore 500: restituisce
+     * corpo vuoto, e il punto di innesto resta com'era.
+     */
+    @Test
+    void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {
+        when(playerCatalog.byId("ignoto")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/battitore").param("playerId", "ignoto"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("bidderDialog"))));
     }
 
     @Test

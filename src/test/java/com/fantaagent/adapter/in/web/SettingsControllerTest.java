@@ -66,6 +66,13 @@ class SettingsControllerTest {
     @MockitoBean
     private com.fantaagent.config.ScoringSettingsStore scoringStore;
 
+    /** Finto per la stessa ragione dello store di punteggio: non scrivere nel progetto. */
+    @MockitoBean
+    private com.fantaagent.config.AuctionSettingsStore auctionStore;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.fantaagent.config.AuctionSettingsHolder auctionSettings;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -78,6 +85,66 @@ class SettingsControllerTest {
         when(auctionRuntime.snapshot()).thenAnswer(inv -> snapshot());
         when(scoringStore.file()).thenReturn(Path.of("res/league-settings.yml"));
         when(scoringStore.load()).thenReturn(Optional.empty());
+        when(auctionStore.file()).thenReturn(Path.of("res/auction-settings.yml"));
+        when(auctionStore.load()).thenReturn(Optional.empty());
+        auctionSettings.set(com.fantaagent.config.AuctionSettings.DEFAULTS);
+    }
+
+    /**
+     * Il salvataggio non si limita a scrivere il file: aggiorna anche le impostazioni in
+     * vigore. Senza la seconda meta', il nuovo timer si vedrebbe solo dopo un riavvio —
+     * esattamente cio' che si e' voluto togliere.
+     */
+    @Test
+    void lePreferenzeDelBattitoreSonoInVigoreSubitoDopoIlSalvataggio() throws Exception {
+        mockMvc.perform(post("/impostazioni/asta")
+                        .param("bidTimerSeconds", "9")
+                        .param("beepEnabled", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("già in vigore")));
+
+        verify(auctionStore).save(new com.fantaagent.config.AuctionSettings(9, true));
+        org.assertj.core.api.Assertions.assertThat(auctionSettings.get())
+                .isEqualTo(new com.fantaagent.config.AuctionSettings(9, true));
+    }
+
+    /**
+     * A differenza delle regole di punteggio, queste restano modificabili ad asta
+     * iniziata: non entrano in nessun calcolo, e il momento in cui ci si accorge che il
+     * countdown e' sbagliato e' proprio mentre si batte.
+     */
+    @Test
+    void lePreferenzeDelBattitoreRestanoModificabiliAdAstaIniziata() throws Exception {
+        when(auctionService.state()).thenReturn(AuctionProjector.project(RULES, PARTICIPANTS,
+                id -> Role.D,
+                List.of(new com.fantaagent.domain.auction.AuctionEvent.PlayerPurchased(
+                        1, java.time.Instant.EPOCH, "d1", "me", 10))));
+
+        mockMvc.perform(post("/impostazioni/asta")
+                        .param("bidTimerSeconds", "12")
+                        .param("beepEnabled", "false"))
+                .andExpect(status().isOk());
+
+        verify(auctionStore).save(new com.fantaagent.config.AuctionSettings(12, false));
+    }
+
+    /**
+     * Una durata assurda non deve essere ne' scritta su disco ne' messa in vigore: un
+     * countdown di zero secondi renderebbe il battitore inutilizzabile senza che nulla
+     * spieghi perche'.
+     */
+    @Test
+    void unaDurataNonValidaNonVieneSalvataNeMessaInVigore() throws Exception {
+        mockMvc.perform(post("/impostazioni/asta")
+                        .param("bidTimerSeconds", "0")
+                        .param("beepEnabled", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.containsString("durata del timer")));
+
+        verify(auctionStore, never()).save(any());
+        org.assertj.core.api.Assertions.assertThat(auctionSettings.get())
+                .isEqualTo(com.fantaagent.config.AuctionSettings.DEFAULTS);
     }
 
     /**

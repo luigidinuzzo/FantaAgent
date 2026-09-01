@@ -48,6 +48,33 @@ public class SettingsConfig {
     }
 
     @Bean
+    public AuctionSettingsStore auctionSettingsStore(
+            @Value("${fantaagent.data-dir:res}") String dataDir) {
+        return new AuctionSettingsStore(Path.of(dataDir));
+    }
+
+    /**
+     * Le preferenze del battitore in vigore. Un file assente non e' un errore: significa
+     * che nessuno le ha ancora toccate, e valgono i default. Un file presente ma non
+     * valido lo e', invece, e ferma l'avvio — vale qui la stessa ragione delle regole di
+     * punteggio: partire in silenzio con un valore diverso da quello scritto nel file
+     * lascerebbe l'utente convinto di avere un timer che non ha.
+     */
+    @Bean
+    public AuctionSettingsHolder auctionSettingsHolder(AuctionSettingsStore store) {
+        AuctionSettings settings = store.load().orElse(AuctionSettings.DEFAULTS);
+        List<String> errors = AuctionSettingsValidator.validate(settings);
+        if (!errors.isEmpty()) {
+            throw new IllegalStateException(
+                    "preferenze del battitore non valide in " + store.file() + ":\n  - "
+                    + String.join("\n  - ", errors));
+        }
+        log.info("battitore: countdown di {} s, avviso acustico {}",
+                settings.bidTimerSeconds(), settings.beepEnabled() ? "attivo" : "disattivo");
+        return new AuctionSettingsHolder(settings);
+    }
+
+    @Bean
     public ScoringRules scoringRules(ScoringSettingsStore store, LeagueProperties props) {
         return loadScoringRules(store, props);
     }

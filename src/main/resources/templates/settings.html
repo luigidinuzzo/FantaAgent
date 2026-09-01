@@ -166,6 +166,53 @@
     <button class="save" type="submit" th:disabled="${locked}">Salva impostazioni</button>
   </form>
 
+  <h2>BATTITORE D'ASTA</h2>
+  <p class="note">
+    Il countdown che parte quando apri il battitore su un giocatore, e che si riazzera
+    ad ogni rilancio. Scaduto, compare la scelta di chi se l'è aggiudicato.
+  </p>
+  <p class="note">
+    <b>Questi valori si possono cambiare anche ad asta iniziata</b>, a differenza delle
+    regole di punteggio qui sopra: non entrano in nessun calcolo e non cambiano il
+    significato di un solo acquisto già registrato. È mentre batti che ti accorgi se
+    cinque secondi sono troppi per la tua stanza.
+  </p>
+
+  <div class="banner ok" th:if="${bidderSaved}">
+    ✓ Preferenze del battitore salvate in <span th:text="${bidderFile}">…</span>.
+    <div class="note" style="margin:.4rem 0 0">
+      <b>Sono già in vigore</b>: il prossimo battitore che apri usa la nuova durata,
+      senza riavviare l'applicazione.
+    </div>
+  </div>
+
+  <div class="banner bad" th:if="${bidderErrors}">
+    Preferenze del battitore non salvate:
+    <ul><li th:each="e : ${bidderErrors}" th:text="${e}">errore</li></ul>
+  </div>
+
+  <form method="post" th:action="@{/impostazioni/asta}">
+    <table class="steps">
+      <tr>
+        <td><label for="bidTimerSeconds">durata del countdown (secondi)</label></td>
+        <td>
+          <input type="number" id="bidTimerSeconds" name="bidTimerSeconds"
+                 style="width:5rem"
+                 th:min="${bidderMinSeconds}" th:max="${bidderMaxSeconds}"
+                 th:value="${bidderSettings.bidTimerSeconds}">
+        </td>
+      </tr>
+      <tr>
+        <td><label for="beepEnabled">avviso acustico allo scadere</label></td>
+        <td>
+          <input type="checkbox" id="beepEnabled" name="beepEnabled" value="true"
+                 th:checked="${bidderSettings.beepEnabled}">
+        </td>
+      </tr>
+    </table>
+    <button class="save" type="submit">Salva preferenze del battitore</button>
+  </form>
+
   <h2>PARTECIPANTI</h2>
   <p class="note" th:if="${membersFileGoverns}">
     Questi nomi vengono da <span th:text="${membersFile}">…</span> e hanno la precedenza

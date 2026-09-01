@@ -2,6 +2,10 @@ package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.AuctionSettingsHolder;
+import com.fantaagent.config.AuctionSettingsStore;
+import com.fantaagent.config.AuctionSettingsValidator;
 import com.fantaagent.config.LeagueMembersSettingsStore;
 import com.fantaagent.config.LeagueMembersSettingsValidator;
 import com.fantaagent.config.ScoringSettings;
@@ -52,13 +56,19 @@ public class SettingsController {
     private final AuctionService auction;
     private final LeagueMembersSettingsStore membersStore;
     private final AuctionRuntime runtime;
+    private final AuctionSettingsStore auctionStore;
+    private final AuctionSettingsHolder auctionSettings;
 
     public SettingsController(ScoringSettingsStore store, AuctionService auction,
-                              LeagueMembersSettingsStore membersStore, AuctionRuntime runtime) {
+                              LeagueMembersSettingsStore membersStore, AuctionRuntime runtime,
+                              AuctionSettingsStore auctionStore,
+                              AuctionSettingsHolder auctionSettings) {
         this.store = store;
         this.auction = auction;
         this.membersStore = membersStore;
         this.runtime = runtime;
+        this.auctionStore = auctionStore;
+        this.auctionSettings = auctionSettings;
     }
 
     /** Le regole in vigore adesso, non quelle lette all'avvio. */
@@ -206,6 +216,56 @@ public class SettingsController {
     private void populateMembersShell(Model model) {
         model.addAttribute("membersFile", membersStore.file().toString());
         model.addAttribute("membersFileGoverns", membersStore.exists());
+        populateBidderShell(model);
+    }
+
+    private void populateBidderShell(Model model) {
+        model.addAttribute("bidderSettings", auctionSettings.get());
+        model.addAttribute("bidderFile", auctionStore.file().toString());
+        model.addAttribute("bidderMinSeconds", AuctionSettingsValidator.MIN_SECONDS);
+        model.addAttribute("bidderMaxSeconds", AuctionSettingsValidator.MAX_SECONDS);
+    }
+
+    /**
+     * Le preferenze del battitore, salvabili SEMPRE — anche ad asta iniziata, a
+     * differenza delle regole di punteggio.
+     *
+     * <p>Non e' una svista ne' una scorciatoia: la durata di un countdown non entra in
+     * nessun calcolo e non cambia il significato di un solo numero gia' registrato. Il
+     * momento in cui ci si accorge che cinque secondi sono troppi e' esattamente mentre
+     * si batte l'asta, e obbligare a fermarsi per cambiarli renderebbe la preferenza
+     * inutile proprio quando serve.
+     *
+     * <p>Nessuna chiamata a {@code runtime.rebuild()}, per la stessa ragione: non c'e'
+     * nessuna catena di valutazione che dipenda da questi valori. Ricostruirla sarebbe
+     * lavoro inutile travestito da prudenza.
+     */
+    @PostMapping("/impostazioni/asta")
+    public String saveAuctionSettings(
+            @RequestParam(defaultValue = "5") int bidTimerSeconds,
+            @RequestParam(defaultValue = "false") boolean beepEnabled,
+            Model model) {
+
+        model.addAttribute("settings", currentSettings());
+        model.addAttribute("locked", auctionStarted());
+        model.addAttribute("file", store.file().toString());
+        model.addAttribute("fileGoverns", store.exists());
+        populateMembersShell(model);
+        model.addAttribute("members", participants());
+
+        AuctionSettings candidate = new AuctionSettings(bidTimerSeconds, beepEnabled);
+        List<String> errors = AuctionSettingsValidator.validate(candidate);
+        if (!errors.isEmpty()) {
+            model.addAttribute("bidderSettings", candidate);
+            model.addAttribute("bidderErrors", errors);
+            return "settings";
+        }
+
+        auctionStore.save(candidate);
+        auctionSettings.set(candidate);
+        model.addAttribute("bidderSettings", candidate);
+        model.addAttribute("bidderSaved", true);
+        return "settings";
     }
 
     private boolean auctionStarted() {
