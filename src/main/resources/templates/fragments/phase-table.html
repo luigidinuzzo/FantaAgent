@@ -22,7 +22,12 @@
      hx-trigger="fantaStateChanged from:body" hx-swap="outerHTML">
   <h3>GIOCATORI FASE <span th:text="${phase}">D</span>
     <span class="dim">— il migliore disponibile, per punti attesi</span></h3>
-  <div class="table-scroll">
+  <!-- L'ultimo giocatore del ruolo può essere venduto proprio durante questa fase
+       (es. dalla barra comando, mentre la tabella è aperta): senza questo ramo la
+       tabella si ricaricherebbe su un'intestazione con sotto zero righe, un vuoto
+       muto che sembra un errore di caricamento. -->
+  <p class="empty-role" th:if="${phasePage.rows.isEmpty()}">nessun giocatore disponibile in questo ruolo</p>
+  <div class="table-scroll" th:unless="${phasePage.rows.isEmpty()}">
     <table>
       <thead>
         <tr>

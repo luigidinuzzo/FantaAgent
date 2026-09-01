@@ -65,7 +65,10 @@ select:focus-visible, textarea:focus-visible {
 .status button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
                  border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
 .status button:hover:not(:disabled) { background:#2a2a2a; }
-.status button:disabled { color:var(--dim); cursor:default; opacity:.5; }
+/* Niente opacity qui: sfumerebbe testo E sfondo insieme contro lo sfondo di pagina,
+   portando l'etichetta a circa 2,2:1 — sotto la soglia 4,5:1 di questo progetto.
+   var(--dim) da solo, senza opacity, resta a 4,8:1 su questo sfondo bottone. */
+.status button:disabled { color:var(--dim); cursor:default; }
 
 .settings-link { color:var(--dim); font-size:var(--fs-sm); text-decoration:none; }
 .settings-link:hover { color:var(--fg); }
