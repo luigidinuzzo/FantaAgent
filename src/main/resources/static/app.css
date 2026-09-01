@@ -16,6 +16,13 @@
 body { margin:0; background:var(--bg); color:var(--fg); font-size:var(--fs-base);
        font:16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
+/* [hidden] è solo display:none nel browser stylesheet. Qualunque regola che setta display sullo
+   stesso elemento la sconfigge silenziosamente. Successo con .phase-done: display:flex batteva
+   l'attributo hidden, e il banner restava sempre visibile. Il !important qui è lo strumento
+   giusto — sconfigge i component styles e non per caso: rimuovere questa riga farebbe
+   riapparire ogni elemento che conta su [hidden]. */
+[hidden] { display: none !important; }
+
 h1 { font-size:var(--fs-lg); margin:.8rem 0 .6rem; }
 h2, h3 { font-size:var(--fs-md); margin:0 0 .5rem; }
 
