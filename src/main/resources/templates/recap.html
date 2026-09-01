@@ -65,10 +65,16 @@
           <span class="price" th:text="${p.price}">47</span>
           <!-- Due click, decisi con l'utente: il primo trasforma il bottone in
                "conferma?", il secondo rimuove davvero. Il comportamento vive in
-               recap.js, non qui: il markup espone solo il form e il seq. -->
+               recap.js: qui il bottone è type="button", non type="submit", quindi
+               senza JavaScript (script non caricato, errore prima dell'attach del
+               listener) il bottone non fa nulla — un click, sbagliato o no, non
+               invia mai il form da solo. È recap.js che promuove il bottone a
+               type="submit" solo dopo la conferma, non prima: se lo script manca,
+               il fallimento è "il bottone non risponde", mai "un click rimuove
+               l'acquisto in silenzio". -->
           <form method="post" th:action="@{/riepilogo/revoca}">
             <input type="hidden" name="targetSeq" th:value="${p.seq}">
-            <button type="submit" class="revoke-btn" title="rimuovi">✕</button>
+            <button type="button" class="revoke-btn" title="rimuovi">✕</button>
           </form>
         </div>
       </div>
