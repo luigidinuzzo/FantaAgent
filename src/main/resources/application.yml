@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: fanta-agent
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+fantaagent:
+  data-dir: res
+
+league:
+  participants: 8
+  budget: 500
+  roster-size: 25
+  slots:
+    P: 3
+    D: 8
+    C: 8
+    A: 6
+  phases: [P, D, C, A]
+  members:
+    - { id: me, name: "Io",         initial: I, me: true }
+    - { id: p2, name: "Marco",      initial: M, me: false }
+    - { id: p3, name: "Luca",       initial: L, me: false }
+    - { id: p4, name: "Anna",       initial: A, me: false }
+    - { id: p5, name: "Dario",      initial: D, me: false }
+    - { id: p6, name: "Giulia",     initial: G, me: false }
+    - { id: p7, name: "Stefano",    initial: S, me: false }
+    - { id: p8, name: "Federico",   initial: F, me: false }
+  scoring:
+    modifiers-confirmed: false
+    goal-bonus:
+      P: 3.0
+      D: 3.0
+      C: 3.0
+      A: 3.0
+    assist: 1.0
+    penalty-scored: 3.0
+    penalty-missed: -3.0
+    penalty-saved: 3.0
+    yellow-card: -0.5
+    red-card: -1.0
+    goal-conceded: -1.0
+    # I file sorgente non hanno una colonna imbattuta: il bonus resta a zero perché
+    # nessuna stagione storica lo alimenta, non perché venga stimato altrove.
+    clean-sheet: 1.0
+    # Pesi delle stagioni nella proiezione, dalla più recente, rinormalizzati su quante
+    # ne sono disponibili per il giocatore. L'ultimo file (2026-27) è la stagione IN
+    # CORSO con solo due giornate giocate: pesa poco apposta, perché dice chi sta
+    # giocando adesso senza dominare la stima delle presenze basata su intere stagioni
+    # passate. ATTENZIONE: quando la stagione in corso sarà completa questa lista va
+    # rivista, perché quel file non sarà più un campione parziale ma una stagione piena.
+    season-weights: [0.1, 0.5, 0.3, 0.2]
+    # Deviazione standard della media voto di GIORNATA di portiere + migliori difensori
+    # (l'unità su cui è definita la tabella dei modificatori sotto). Le tabelle sono
+    # tarate sulla media stagionale, che oscilla: leggerle in un solo punto conta come
+    # zero ogni giornata sopra la media stagionale che comunque supera una soglia più
+    # alta. Questo valore serve a integrare la tabella sulla distribuzione delle medie
+    # di giornata invece di leggerla in un punto solo (vedi ModifierTable#expectedBonus).
+    # È una STIMA RAGIONATA, non una misura: i voti dei singoli in una giornata
+    # oscillano di circa 0.7, e siccome i quattro giocatori del reparto giocano la
+    # stessa partita (voti fortemente correlati fra loro), la media dei quattro oscilla
+    # meno del singolo ma più della metà — circa 0.55, non 0.35 come sarebbe se fossero
+    # indipendenti. I file sorgente contengono solo medie stagionali, non voti di
+    # giornata, quindi questo numero non può essere calibrato sui dati reali: va
+    # ricalibrato se in futuro si avranno voti giornata per giornata. Mettendolo a 0 si
+    # torna esattamente al comportamento precedente (lettura puntuale della tabella):
+    # il cambiamento è quindi reversibile da configurazione.
+    matchday-rating-sigma: 0.55
+    # bonus delle due tabelle sotto: FANTAPUNTI aggiunti al totale di reparto ad ogni
+    # giornata quando la media raggiunge la soglia — non un numero di gol.
+    defence-modifier:
+      defenders-counted: 3
+      thresholds:
+        - { min-average: 0.0, bonus: 0.0 }
+        - { min-average: 6.0, bonus: 1.0 }
+        - { min-average: 6.25, bonus: 2.0 }
+        - { min-average: 6.5, bonus: 3.0 }
+        - { min-average: 6.75, bonus: 4.0 }
+    goalkeeper-modifier:
+      defenders-counted: 0
+      thresholds:
+        - { min-average: 0.0, bonus: 0.0 }
+        - { min-average: 6.0, bonus: 0.5 }
+        - { min-average: 6.5, bonus: 1.0 }
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+fantaagent:
+  dev-profile: true
+  # I test avviano il contesto Spring col profilo dev: puntare qui una directory
+  # inesistente mantiene il catalogo vuoto e i test rapidi e indipendenti dai 524
+  # giocatori reali, invece di leggere i file veri in res/ ad ogni avvio.
+  data-dir: data

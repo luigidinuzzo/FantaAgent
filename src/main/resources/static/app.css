@@ -1,0 +1,141 @@
+:root {
+  --bg:#111; --fg:#eee; --dim:#888; --pos:#4ade80; --neg:#f87171; --line:#333;
+  --focus:#7dd3fc;
+  /* Scala tipografica unica: ogni font-size del foglio usa uno di questi token invece
+     di una misura scritta a mano — misure "vicine ma diverse" (.7rem/.75rem,
+     .8rem/.85rem sparsi nel foglio) si leggono come rumore, non come gerarchia. */
+  --fs-xs: .75rem;    /* etichette in maiuscolo, note minori */
+  --fs-sm: .85rem;    /* testo secondario, link di navigazione, tabelle dense */
+  --fs-base: 1rem;    /* corpo del testo */
+  --fs-md: 1.1rem;    /* titoli di colonna/riquadro (h2/h3) */
+  --fs-lg: 1.3rem;    /* titoli di pagina (h1) */
+  --fs-xl: 1.5rem;    /* numero enfatizzato */
+  --fs-xxl: 2.5rem;   /* il numero che conta di più sullo schermo: il max bid */
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font-size:var(--fs-base);
+       font:16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* [hidden] è solo display:none nel browser stylesheet. Qualunque regola che setta display sullo
+   stesso elemento la sconfigge silenziosamente. Successo con .phase-done: display:flex batteva
+   l'attributo hidden, e il banner restava sempre visibile. Il !important qui è lo strumento
+   giusto — sconfigge i component styles e non per caso: rimuovere questa riga farebbe
+   riapparire ogni elemento che conta su [hidden]. */
+[hidden] { display: none !important; }
+
+h1 { font-size:var(--fs-lg); margin:.8rem 0 .6rem; }
+h2, h3 { font-size:var(--fs-md); margin:0 0 .5rem; }
+
+/* Indicatore di fuoco visibile su ogni controllo interattivo: nessuna regola qui
+   rimuove l'outline di default, questa lo sostituisce con uno consistente — stesso
+   colore, stesso spessore, stesso distacco dal bordo — su bottoni, link, campi e
+   select, invece del blu di sistema che varia da browser a browser. */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Qualunque tabella può diventare più larga del suo contenitore (più partecipanti,
+   più colonne, uno schermo stretto): il contenitore scorre di lato, la pagina no. */
+.table-scroll { overflow-x:auto; }
+
+.status { display:flex; gap:2rem; align-items:center; padding:.75rem 1rem;
+          font-size:var(--fs-base);
+          border-bottom:1px solid var(--line); }
+.status b { color:#fff; }
+.layout { display:grid; grid-template-columns:1fr 22rem; gap:1rem; padding:1rem; }
+#cmd { width:100%; padding:.75rem; font:inherit; font-size:var(--fs-xl);
+       background:#000; color:var(--fg); border:1px solid var(--line); }
+.message { padding:.5rem .75rem; background:#1c1c1c; border-left:3px solid var(--pos); }
+.resume { padding:.5rem 1rem; background:#2a2410; border-bottom:1px solid var(--line); }
+.results { list-style:none; padding:0; margin:.5rem 0; }
+.results li { padding:.25rem .5rem; }
+.results li.sel { background:#1e293b; }
+.dim { color:var(--dim); }
+.card { border:1px solid var(--line); padding:1rem; margin-top:1rem; }
+.numbers { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin:1rem 0; }
+.numbers label { display:block; font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
+.numbers b { font-size:var(--fs-xl); }
+.numbers b.big { font-size:var(--fs-xxl); }
+.margin { color:var(--pos); margin-left:.4rem; }
+.drivers { list-style:none; padding:0; }
+.drivers li { padding:.2rem 0; border-top:1px solid var(--line); }
+.drivers b { display:inline-block; min-width:8rem; color:var(--dim); }
+.walkaway { color:var(--dim); font-style:italic; }
+.board table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+.board td { padding:.2rem .3rem; border-bottom:1px solid var(--line); }
+.board tr.me td { color:#fff; font-weight:bold; }
+.pos { color:var(--pos); } .neg { color:var(--neg); }
+
+.status form { margin:0; }
+.status button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
+                 border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
+.status button:hover:not(:disabled) { background:#2a2a2a; }
+/* Niente opacity qui: sfumerebbe testo E sfondo insieme contro lo sfondo di pagina,
+   portando l'etichetta a circa 2,2:1 — sotto la soglia 4,5:1 di questo progetto.
+   var(--dim) da solo, senza opacity, resta a 4,8:1 su questo sfondo bottone. */
+.status button:disabled { color:var(--dim); cursor:default; }
+
+.settings-link { color:var(--dim); font-size:var(--fs-sm); text-decoration:none; }
+.settings-link:hover { color:var(--fg); }
+
+.assign-row { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+              margin-top:1rem; padding-top:.75rem; border-top:1px solid var(--line); }
+.assign-row label { font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
+.assign-price { width:5rem; font:inherit; background:#000; color:var(--fg);
+                border:1px solid var(--line); padding:.3rem; margin-left:.3rem; }
+.assign-row button { font:inherit; background:#1c1c1c; color:var(--fg);
+                      border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
+.assign-row button:hover { background:#2a2a2a; }
+.assign-row button.assign-me { background:var(--pos); color:#022; font-weight:bold;
+                                border-color:var(--pos); }
+
+#phaseTable { margin-top:1.5rem; }
+#phaseTable table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+#phaseTable th, #phaseTable td { padding:.3rem .4rem; border-bottom:1px solid var(--line);
+                                  text-align:left; }
+/* Dentro una cella la riga di assegnazione non è più il piede di una card: niente
+   bordo/margine superiore, e più stretta perché condivide la riga con le altre colonne. */
+#phaseTable .assign-row { margin:0; padding:0; border-top:none; flex-wrap:nowrap; gap:.3rem; }
+#phaseTable .assign-price { width:3.5rem; margin-left:0; }
+#phaseTable select { font:inherit; background:#000; color:var(--fg);
+                      border:1px solid var(--line); padding:.3rem; }
+#phaseTable .load-more { width:100%; }
+
+/* Home: la schermata che chiede quale asta aprire. */
+.home { max-width:46rem; margin:0 auto; padding:1rem 1.5rem 3rem; }
+.home h2 { font-size:var(--fs-md); color:var(--dim); letter-spacing:.06em;
+           margin:1.8rem 0 .5rem; border-top:1px solid var(--line); padding-top:.8rem; }
+.home .note { color:var(--dim); font-size:var(--fs-sm); line-height:1.5; margin:.3rem 0 .9rem; }
+.home form { display:inline-flex; align-items:center; gap:.8rem; margin:0; }
+.home button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
+               border:1px solid var(--line); padding:.35rem .8rem; cursor:pointer; }
+.home button:hover { background:#2a2a2a; }
+.home button.primary { background:var(--pos); color:#022; font-weight:bold;
+                       border-color:var(--pos); font-size:var(--fs-base); padding:.5rem 1.2rem; }
+table.auctions { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+table.auctions th { text-align:left; font-weight:normal; color:var(--dim);
+                    font-size:var(--fs-xs); padding:0 .6rem .3rem 0; }
+table.auctions td { padding:.35rem .6rem .35rem 0; border-bottom:1px solid var(--line); }
+table.auctions tr.sel td { color:#fff; }
+
+/* Scelta della fase: quattro bottoni, quello corrente marcato e spento. */
+.phase-picker { display:flex; align-items:center; gap:.3rem; }
+.phase-picker .dim { font-size:var(--fs-xs); letter-spacing:.08em; }
+.status .phase-picker button { padding:.3rem .5rem; min-width:2rem; }
+.status .phase-picker button.current { background:#2a2a2a; color:#fff; border-color:var(--fg); }
+
+/* Avviso di fase completa: prominente ma non bloccante — si chiude, non intrappola. */
+.phase-done { display:flex; align-items:center; gap:1rem; padding:.7rem 1rem;
+              background:#10240f; border-bottom:1px solid var(--pos);
+              border-left:4px solid var(--pos); }
+.phase-done b { color:#fff; }
+.phase-done form { margin:0; }
+.phase-done button { font:inherit; font-size:var(--fs-sm); background:var(--pos);
+                     color:#022; font-weight:bold; border:1px solid var(--pos);
+                     padding:.35rem .8rem; cursor:pointer; }
+.phase-done .phase-done-close { margin-left:auto; background:transparent; color:var(--dim);
+                                border:1px solid var(--line); font-weight:normal;
+                                padding:.2rem .5rem; }
+.phase-done .phase-done-close:hover { color:var(--fg); }

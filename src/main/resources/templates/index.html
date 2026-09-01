@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Asta</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+  <script th:src="@{/htmx.min.js}"></script>
+</head>
+<body>
+
+<header id="status" class="status" th:fragment="status" hx-swap-oob="true">
+  <div>FASE <b th:text="${status.phase}">P</b> ·
+    <span th:text="${status.soldInPhase}">0</span> venduti</div>
+  <div>TU <b th:text="${status.myBudget}">500</b> crediti ·
+    <span th:text="${status.myComposition}">0P 0D 0C 0A</span> ·
+    <span th:text="${status.mySlotsLeft}">25</span> slot</div>
+  <form hx-post="/undo" hx-target="#main" hx-swap="outerHTML">
+    <!-- Sempre presente e mai nascosto: la sua posizione deve restare prevedibile
+         anche quando non c'è nulla da annullare, quindi si disabilita invece di
+         sparire. Stessa via del comando Ctrl+Z/Cmd+Z e dello stesso /undo. -->
+    <button type="submit" th:disabled="${!status.canUndo}">↩ annulla ultimo</button>
+  </form>
+  <form hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
+    <button type="submit">fase successiva →</button>
+  </form>
+  <!-- Spostamento su una fase qualunque, avanti o indietro: si puo' avere avanzato per
+       sbaglio, o voler tornare su un ruolo gia' passato. Nessun dato si perde, perche'
+       la fase e' gia' un evento del registro e spostarsi significa appenderne un altro.
+       La fase corrente resta segnata e il suo bottone disabilitato: cliccarla non
+       scriverebbe nulla, e un bottone che non fa nulla e' peggio di uno spento. -->
+  <form class="phase-picker" hx-post="/phase/select" hx-target="#main" hx-swap="outerHTML">
+    <span class="dim">vai a</span>
+    <button th:each="r : ${phases}" type="submit" name="role" th:value="${r}"
+            th:text="${r}" th:disabled="${r.name() == status.phase}"
+            th:classappend="${r.name() == status.phase} ? 'current' : ''"
+            th:attrappend="aria-current=${r.name() == status.phase} ? 'true' : null">D</button>
+  </form>
+  <a th:href="@{/riepilogo}" class="settings-link">riepilogo</a>
+  <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
+</header>
+
+<!-- L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap
+     out-of-band può solo sostituire un elemento che il markup contiene davvero.
+     Se th:if lo rimuovesse quando resume è assente, un banner mostrato prima
+     resterebbe visibile in pagina senza che nessuna risposta possa più ripulirlo.
+     Nascondiamo invece il contenuto con l'attributo hidden. -->
+<div id="resume" class="resume" th:fragment="resume" hx-swap-oob="true" th:hidden="${resume == null}">
+  Asta in corso: <b th:text="${resume?.purchases}">47</b> acquisti,
+  fase <b th:text="${resume?.phase}">D</b> — ripreso dal log su disco.
+</div>
+
+<!-- Come #resume: l'elemento c'e' sempre nel markup e si nasconde con l'attributo
+     hidden, perche' uno swap out-of-band puo' solo sostituire un elemento che la
+     risposta contiene davvero — con th:if sull'elemento, un avviso gia' mostrato non
+     potrebbe piu' essere ripulito quando la fase smette di essere completa (es. dopo
+     un annullamento). Arriva in ogni risposta che cambia stato, quindi compare
+     nell'istante in cui l'ultimo slot del ruolo si chiude, non al ricaricamento.
+     Avvisa, non blocca: un modale impedirebbe di correggere un acquisto di quella
+     stessa fase, che e' proprio la ragione per cui si potrebbe volerci restare. -->
+<div id="phaseDone" class="phase-done" th:fragment="phaseDone" hx-swap-oob="true"
+     th:hidden="${phaseDone == null}" th:attr="data-phase=${phaseDone?.phase}"
+     role="status">
+  <span>Fase <b th:text="${phaseDone?.phase}">P</b> completa: nessun partecipante ha
+    più uno slot libero per questo ruolo.</span>
+  <form th:if="${phaseDone != null and phaseDone.nextPhase != null}"
+        hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
+    <button type="submit">vai alla fase <span th:text="${phaseDone?.nextPhase}">D</span> →</button>
+  </form>
+  <button type="button" class="phase-done-close" aria-label="chiudi l'avviso">✕</button>
+</div>
+
+<div class="layout">
+
+  <!-- La barra comando vive fuori da #main: non viene mai sostituita da uno swap,
+       quindi non si svuota mentre l'utente sta ancora digitando (era il difetto A). -->
+  <section>
+    <form id="cmdForm" hx-post="/command" hx-target="#main" hx-swap="outerHTML">
+      <input id="cmd" name="cmd" autocomplete="off" autofocus
+             placeholder="giocatore  prezzo  iniziale"
+             hx-get="/fragments/main" hx-trigger="keyup changed delay:120ms"
+             hx-target="#main" hx-swap="outerHTML">
+    </form>
+
+    <div id="main" th:fragment="main">
+      <p class="message" th:if="${panel.message}" th:text="${panel.message}"></p>
+
+      <ul class="results" th:if="${!panel.results.isEmpty()}">
+        <li th:each="p, it : ${panel.results}" th:classappend="${it.first} ? 'sel' : ''">
+          <span th:text="${p.name}">Nome</span>
+          <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
+        </li>
+      </ul>
+
+      <article class="card" th:if="${panel.analysis}">
+        <h2>
+          <span th:text="${panel.analysis.player.name}">Nome</span>
+          <span class="dim"
+                th:text="${panel.analysis.player.role} + ' · ' + ${panel.analysis.player.team}"></span>
+        </h2>
+
+        <div class="numbers">
+          <div><label>MERCATO</label>
+            <b th:text="${panel.analysis.recommendation.expectedPrice}">38</b></div>
+          <div><label>MAX BID</label>
+            <b class="big" th:text="${panel.analysis.recommendation.maxBid}">47</b>
+            <span class="margin" th:text="${panel.analysis.marginLabel}">+9</span></div>
+          <div><label>VERDETTO</label>
+            <b th:text="${panel.analysis.verdict}">PRENDI</b></div>
+          <div><label>CONFIDENZA</label>
+            <b th:text="${panel.analysis.recommendation.confidence.stars} + '/5'">3/5</b></div>
+        </div>
+
+        <ul class="drivers">
+          <li th:each="d : ${panel.analysis.recommendation.drivers}">
+            <b th:text="${d.label}">Budget</b>
+            <span th:text="${d.explanation}">…</span>
+          </li>
+        </ul>
+
+        <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
+
+        <!-- Complementa la barra comando per chi non conosce "bast 47 m": un prezzo
+             condiviso (precompilato con maxBid) e un bottone per partecipante, che
+             assegna QUEL giocatore a QUEL partecipante a quel prezzo. Passa da /assign,
+             che chiama lo stesso AuctionService#recordPurchase del comando. -->
+        <form class="assign-row" hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
+          <input type="hidden" name="playerId" th:value="${panel.analysis.player.id}">
+          <label>PREZZO
+            <input type="number" name="price" min="1" class="assign-price"
+                   th:value="${panel.analysis.recommendation.maxBid}">
+          </label>
+          <button th:each="pt : ${participants}" type="submit" name="participantId"
+                  th:value="${pt.id}" th:text="${pt.name}"
+                  th:classappend="${pt.me} ? 'assign-me' : ''">Nome</button>
+        </form>
+      </article>
+    </div>
+
+    <!-- Fuori da #main apposta, stessa ragione di #targets: #main viene sostituito
+         a ogni ricerca/comando, e questa tabella non deve sparire mentre l'utente
+         digita. Si carica da sola all'apertura della pagina (hx-trigger="load") così
+         la pagina resta veloce e la tabella (fino a ~1,5 s per 25 righe) arriva subito
+         dopo, senza bloccare il primo render.
+         Il secondo trigger, "fantaStateChanged from:body", la ricarica da sola dopo
+         ogni acquisto/annullamento/cambio fase: l'evento è emesso via header
+         HX-Trigger da /command, /undo, /phase/next e /assign (si veda
+         AuctionController#STATE_CHANGED_EVENT) e sale fino al body per bubbling,
+         così questo elemento — che sta fuori da #main e non riceve mai quello swap
+         — lo intercetta comunque. Ricarica sempre da offset=0: un giocatore appena
+         venduto potrebbe stare in una pagina già scrollata oltre le prime 25 righe,
+         e tracciare "quante pagine ha caricato l'utente" per riproporre lo stesso
+         offset avrebbe richiesto uno stato aggiuntivo nel markup (es. un attributo
+         aggiornato ad ogni "carica altri 25") per un caso — l'utente scrolla molto
+         E compra nel frattempo dalla barra comando — abbastanza raro da non
+         giustificare la complessità: si perde il punto di scroll, non i dati. -->
+    <div id="phaseTable" hx-get="/fragments/phase-players?offset=0"
+         hx-trigger="load, fantaStateChanged from:body" hx-swap="outerHTML"></div>
+  </section>
+
+  <aside id="board" class="board" th:fragment="board" hx-swap-oob="true">
+    <h3>TABELLONE</h3>
+    <div class="table-scroll">
+      <table>
+        <tr th:each="row : ${board}" th:classappend="${row.me} ? 'me' : ''">
+          <td th:text="${row.name}">Marco</td>
+          <td th:text="${row.budget}">289</td>
+          <td th:text="${row.composition}">1P 3D 0C 0A</td>
+          <td th:text="${row.slotsLeft} + ' sl'">21 sl</td>
+        </tr>
+      </table>
+    </div>
+  </aside>
+
+  <!-- Fuori da #board apposta: #board viene sostituito out-of-band ad ogni comando
+       (era il difetto S7), quindi un elemento annidato al suo interno perderebbe il
+       contenuto ad ogni acquisto anche se nessuna risposta lo tocca esplicitamente.
+       Qui #targets sopravvive agli swap di stato: solo /fragments/targets lo scrive. -->
+  <div id="targets" th:fragment="targets">
+    <h3 th:if="${targets}">TARGET <span class="dim">— dove sta l'affare</span></h3>
+    <div class="table-scroll" th:if="${targets}">
+      <table>
+        <tr th:each="t : ${targets}">
+          <td th:text="${t.player.name}">Bastoni</td>
+          <td th:text="${t.recommendation.expectedPrice}">38</td>
+          <td th:text="${t.recommendation.maxBid}">47</td>
+          <td th:text="${t.margin}"
+              th:classappend="${t.margin} >= 0 ? 'pos' : 'neg'">+9</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script th:src="@{/app.js}"></script>
+</body>
+</html>

@@ -47,7 +47,16 @@ Questi vincoli valgono per **ogni** task del piano.
   scope di questo piano.
 - **Test:** ogni task termina con test verdi ed esattamente un commit.
   Comando di riferimento: `mvn -q test`.
-- **Lingua:** identificatori e messaggi di log in inglese; testo della UI in italiano.
+- **Lingua**, tre categorie distinte:
+  - identificatori, nomi di metodo e chiavi di configurazione: **inglese**;
+  - messaggi che raggiungono l'utente — validazioni di `AuctionService`, mostrate
+    come toast durante l'asta, e messaggi di `StartupValidator`, letti a terminale
+    all'avvio: **italiano**, perché li legge lui;
+  - messaggi di violazione di invariante nei tipi di dominio (`Player`, `SeasonStats`,
+    `LeagueRules`, `ModifierTable`, `AuctionEvent`, `Squad`): **inglese**, perché
+    segnalano un errore di programmazione, non raggiungono mai l'utente e vengono
+    letti solo in uno stack trace.
+  - commenti e stringhe esplicative dei test: **italiano**.
 
 ---
 
@@ -1271,7 +1280,9 @@ public class InMemoryPlayerCatalog implements PlayerCatalog {
     public InMemoryPlayerCatalog(List<Player> players, List<SeasonStats> stats) {
         this.byId = players.stream().collect(Collectors.toMap(
                 Player::id, p -> p, (a, b) -> a, LinkedHashMap::new));
-        this.byRole = players.stream().collect(Collectors.groupingBy(Player::role));
+        this.byRole = players.stream()
+                .collect(Collectors.groupingBy(Player::role,
+                        Collectors.collectingAndThen(Collectors.toList(), List::copyOf)));
         this.statsByPlayer = stats.stream()
                 .collect(Collectors.groupingBy(SeasonStats::playerId));
     }
@@ -1388,14 +1399,34 @@ class NameResolverTest {
     }
 
     @Test
-    void toleratesSingleCharacterTypos() {
-        assertThat(resolver.resolve("Bastony")).contains("1");
-        assertThat(resolver.resolve("Dimarko")).contains("3");
+    void refusesToGuessOnATypoAndLeavesItForTheReconciliationReport() {
+        // In import nulla verifica il risultato: meglio un nome non risolto, che l'utente
+        // vede nel report e sistema con un alias, che statistiche attribuite a un altro.
+        assertThat(resolver.resolve("Bastony")).isEmpty();
+        assertThat(resolver.resolve("Dimarko")).isEmpty();
+    }
+
+    @Test
+    void refusesShortSurnamesThatDifferByOneCharacter() {
+        // Conte/Conti, Grassi/Grossi: collisioni reali fra cognomi italiani plausibili.
+        NameResolver conte = new NameResolver(List.of(
+                new Player("50", "Conte A.", "Napoli", Role.C, 10)), Map.of());
+        assertThat(conte.resolve("Conti")).isEmpty();
     }
 
     @Test
     void returnsEmptyWhenNoConfidentMatchExists() {
         assertThat(resolver.resolve("Cristiano Ronaldo")).isEmpty();
+    }
+
+    @Test
+    void refusesWhenTwoPlayersNormaliseToTheSameName() {
+        // Due "Rossi M." distinti nel listone: rispondere sarebbe una scelta arbitraria
+        // fra i due, e nessuno se ne accorgerebbe.
+        NameResolver duplicates = new NameResolver(List.of(
+                new Player("60", "Rossi M.", "Empoli", Role.C, 5),
+                new Player("61", "Rossi M.", "Genoa", Role.D, 6)), Map.of());
+        assertThat(duplicates.resolve("Rossi M.")).isEmpty();
     }
 
     @Test
@@ -1435,13 +1466,22 @@ import java.util.Set;
  * Risolve un nome grezzo proveniente da una fonte statistica sull'id del listone.
  *
  * <p>Strategia, in ordine: alias esplicito, match esatto normalizzato, match sul solo
- * cognome quando è univoco, distanza di edit 1 quando il candidato è unico. Se nessun
- * criterio produce un candidato univoco la risoluzione fallisce: un match sbagliato è
- * peggio di un match mancante, perché assegna statistiche altrui a un giocatore.
+ * cognome quando è univoco. Se nessun criterio produce un candidato univoco la
+ * risoluzione fallisce e il nome finisce nel report di riconciliazione, dove l'utente
+ * lo risolve aggiungendo un alias prima dell'asta.
+ *
+ * <p><b>Nessun matching fuzzy qui, deliberatamente.</b> In fase di import nulla verifica
+ * il risultato: un match sbagliato attacca le statistiche di un giocatore a un altro e
+ * corrompe in silenzio ogni proiezione costruita sopra. A distanza di edit 1 cognomi
+ * italiani corti collidono con facilità — Conte/Conti, Grassi/Grossi — e il codice non
+ * ha modo di accorgersene. Il matching approssimato vive invece in
+ * {@code domain.search.PlayerSearch}, dove è utile e innocuo perché l'utente legge il
+ * nome proposto prima di agire.
  */
 public final class NameResolver {
 
     private final Map<String, String> byNormalizedName = new HashMap<>();
+    private final Set<String> ambiguousNames = new HashSet<>();
     private final Map<String, String> bySurname = new HashMap<>();
     private final Set<String> ambiguousSurnames = new HashSet<>();
     private final Map<String, String> aliases = new HashMap<>();
@@ -1449,10 +1489,13 @@ public final class NameResolver {
     public NameResolver(Collection<Player> players, Map<String, String> aliases) {
         for (Player p : players) {
             String normalized = normalize(p.name());
-            byNormalizedName.put(normalized, p.id());
+            String previousName = byNormalizedName.putIfAbsent(normalized, p.id());
+            if (previousName != null && !previousName.equals(p.id())) {
+                ambiguousNames.add(normalized);
+            }
             String surname = surnameOf(normalized);
-            String previous = bySurname.putIfAbsent(surname, p.id());
-            if (previous != null && !previous.equals(p.id())) {
+            String previousSurname = bySurname.putIfAbsent(surname, p.id());
+            if (previousSurname != null && !previousSurname.equals(p.id())) {
                 ambiguousSurnames.add(surname);
             }
         }
@@ -1476,9 +1519,11 @@ public final class NameResolver {
         if (alias != null) {
             return Optional.of(alias);
         }
-        String exact = byNormalizedName.get(normalized);
-        if (exact != null) {
-            return Optional.of(exact);
+        if (!ambiguousNames.contains(normalized)) {
+            String exact = byNormalizedName.get(normalized);
+            if (exact != null) {
+                return Optional.of(exact);
+            }
         }
         String surname = surnameOf(normalized);
         if (!ambiguousSurnames.contains(surname)) {
@@ -1487,21 +1532,7 @@ public final class NameResolver {
                 return Optional.of(bySurnameMatch);
             }
         }
-        return uniqueCloseMatch(normalized);
-    }
-
-    private Optional<String> uniqueCloseMatch(String normalized) {
-        String found = null;
-        for (Map.Entry<String, String> entry : byNormalizedName.entrySet()) {
-            if (editDistanceAtMostOne(normalized, entry.getKey())
-                    || editDistanceAtMostOne(normalized, surnameOf(entry.getKey()))) {
-                if (found != null && !found.equals(entry.getValue())) {
-                    return Optional.empty();
-                }
-                found = entry.getValue();
-            }
-        }
-        return Optional.ofNullable(found);
+        return Optional.empty();
     }
 
     /** Primo token del nome normalizzato: nel listone il cognome precede l'iniziale. */
@@ -1510,40 +1541,6 @@ public final class NameResolver {
         return space < 0 ? normalized : normalized.substring(0, space);
     }
 
-    /** Vero se le stringhe differiscono per al più una sostituzione, inserimento o cancellazione. */
-    static boolean editDistanceAtMostOne(String a, String b) {
-        if (a.equals(b)) {
-            return true;
-        }
-        int la = a.length();
-        int lb = b.length();
-        if (Math.abs(la - lb) > 1) {
-            return false;
-        }
-        int i = 0;
-        int j = 0;
-        boolean usedEdit = false;
-        while (i < la && j < lb) {
-            if (a.charAt(i) == b.charAt(j)) {
-                i++;
-                j++;
-                continue;
-            }
-            if (usedEdit) {
-                return false;
-            }
-            usedEdit = true;
-            if (la > lb) {
-                i++;
-            } else if (lb > la) {
-                j++;
-            } else {
-                i++;
-                j++;
-            }
-        }
-        return true;
-    }
 }
 ```
 
@@ -1666,6 +1663,22 @@ class ListoneImporterTest {
     }
 
     @Test
+    void ignoresTrailingBlankRowsInsteadOfReportingThem() throws Exception {
+        // Gli export XLSX lasciano righe in coda con la sola formattazione: segnalarle
+        // riempirebbe il report di rumore e nasconderebbe le anomalie vere.
+        Path file = writeWorkbook(new String[][]{
+                {"Id", "R", "Nome", "Squadra", "Qt.A"},
+                {"1", "D", "Bastoni", "Inter", "20"},
+                {"", "", "", "", ""}});
+
+        ListoneImporter.ListoneImport result = new ListoneImporter().importFrom(file);
+
+        assertThat(result.players()).hasSize(1);
+        assertThat(result.report().rejected()).isZero();
+        assertThat(result.report().clean()).isTrue();
+    }
+
+    @Test
     void failsLoudlyWhenAMandatoryColumnIsMissing() throws Exception {
         Path file = writeWorkbook(new String[][]{
                 {"Id", "Nome", "Squadra", "Qt.A"},
@@ -1759,7 +1772,11 @@ public class ListoneImporter {
             int rejected = 0;
             for (int r = 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
-                if (row == null) {
+                // Una riga assente o interamente vuota non e' un'anomalia da segnalare:
+                // gli export XLSX lasciano righe in coda con la sola formattazione, e
+                // riportarle riempirebbe di rumore proprio il report che deve far
+                // vedere i problemi veri.
+                if (row == null || isBlank(row, columns)) {
                     continue;
                 }
                 try {
@@ -1810,18 +1827,42 @@ public class ListoneImporter {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("quotazione non numerica: " + priceRaw);
         }
-        return new Player(id, name, team, role, Math.max(1, price));
+        if (price < 1) {
+            // Non silenziamo: il contratto dell'importer e' che ogni anomalia sia
+            // visibile nel report, e una quotazione a zero e' un dato da guardare.
+            throw new IllegalArgumentException("quotazione non positiva: " + priceRaw);
+        }
+        return new Player(id, name, team, role, price);
+    }
+
+    private static boolean isBlank(Row row, Map<String, Integer> columns) {
+        for (Integer index : columns.values()) {
+            if (!stringValue(row.getCell(index)).isBlank()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static String stringValue(Cell cell) {
         if (cell == null) {
             return "";
         }
-        if (cell.getCellType() == CellType.NUMERIC) {
-            double d = cell.getNumericCellValue();
-            return d == Math.rint(d) ? String.valueOf((long) d) : String.valueOf(d);
-        }
-        return cell.toString();
+        CellType type = cell.getCellType() == CellType.FORMULA
+                ? cell.getCachedFormulaResultType()
+                : cell.getCellType();
+        return switch (type) {
+            // Una cella formula espone la formula, non il valore: leggiamo il risultato
+            // memorizzato, altrimenti un listone con colonne calcolate verrebbe scartato
+            // riga per riga la sera prima dell'asta.
+            case NUMERIC -> {
+                double d = cell.getNumericCellValue();
+                yield d == Math.rint(d) ? String.valueOf((long) d) : String.valueOf(d);
+            }
+            case STRING -> cell.getStringCellValue();
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case BLANK, _ -> "";
+        };
     }
 }
 ```
@@ -1936,6 +1977,26 @@ class StatsImporterTest {
     }
 
     @Test
+    void mapsEachPenaltyColumnToItsOwnField() throws Exception {
+        // Rs/Rc/Rp -> segnati/sbagliati/parati. Valori tutti diversi apposta: con
+        // valori uguali una trasposizione fra le tre colonne passerebbe inosservata,
+        // e falserebbe i punti attesi di ogni rigorista, cioe' i giocatori piu' cari.
+        Path file = csv("""
+                Nome,Pv,Mv,Gf,Ass,Amm,Esp,Rp,Rc,Rs,Gs,Imb
+                Bastoni,30,6.15,7,0,0,0,3,2,5,0,0
+                """);
+
+        StatsImporter.StatsImport result =
+                new StatsImporter().importFrom(file, "2025-26", resolver);
+
+        SeasonStats stats = result.stats().getFirst();
+        assertThat(stats.penaltiesScored()).isEqualTo(5);   // colonna Rs
+        assertThat(stats.penaltiesMissed()).isEqualTo(2);   // colonna Rc
+        assertThat(stats.penaltiesSaved()).isEqualTo(3);    // colonna Rp
+        assertThat(stats.goals()).isEqualTo(7);
+    }
+
+    @Test
     void acceptsCommaAsDecimalSeparator() throws Exception {
         Path file = csv("""
                 Nome,Pv,Mv,Gf,Ass,Amm,Esp,Rp,Rc,Rs,Gs,Imb
@@ -1987,7 +2048,7 @@ public class StatsImporter {
                 .setSkipHeaderRecord(true)
                 .setIgnoreSurroundingSpaces(true)
                 .setTrim(true)
-                .get();
+                .build();
 
         List<SeasonStats> stats = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
@@ -3507,9 +3568,21 @@ public class JsonlAuctionEventStore implements AuctionEventStore {
         }
         try {
             List<AuctionEvent> events = new ArrayList<>();
-            for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
-                if (!line.isBlank()) {
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String line = lines.get(i);
+                if (line.isBlank()) {
+                    continue;
+                }
+                try {
                     events.add(MAPPER.readValue(line, EventDto.class).toDomain());
+                } catch (IllegalStateException e) {
+                    // Un tipo di evento sconosciuto e' un log corrotto o scritto da una
+                    // versione diversa: va detto quale file e quale riga, perche' capita
+                    // durante l'asta e va risolto in fretta.
+                    throw new IllegalStateException(
+                            "log eventi non interpretabile in " + file + " alla riga "
+                            + (i + 1) + ": " + e.getMessage(), e);
                 }
             }
             return List.copyOf(events);
@@ -3653,10 +3726,12 @@ class ModifierCalculatorTest {
 
     @Test
     void theGoalkeeperModifierDependsOnTheKeepersOwnRating() {
+        // 6.0 e 6.2 lasciano la media di reparto sotto 6.0 in entrambi i casi
+        // (con tre riempitivi a 5.9): cosi' varia solo il gradino del portiere.
         List<PlayerProjection> weak = List.of(player("gk", Role.P, 6.0, 150));
-        List<PlayerProjection> strong = List.of(player("gk", Role.P, 6.3, 150));
+        List<PlayerProjection> strong = List.of(player("gk", Role.P, 6.2, 150));
 
-        // stessi riempitivi in difesa; cambia solo il gradino del portiere: 38 * 1.0
+        // difesa invariata; cambia solo il gradino del portiere: 38 * 1.0
         assertThat(calculator.modifierPoints(strong) - calculator.modifierPoints(weak))
                 .isCloseTo(38.0, within(0.001));
     }
@@ -3676,12 +3751,13 @@ class ModifierCalculatorTest {
 
     @Test
     void marginalPointsIncludeTheModifierDelta() {
+        // media attuale (6.4 + 6.8 + 6.8 + riempitivo 5.9) / 4 = 6.475 -> gradino 6.0
         List<PlayerProjection> squad = List.of(
-                player("gk", Role.P, 6.0, 150),
-                player("d1", Role.D, 6.4, 150),
-                player("d2", Role.D, 6.4, 150));
-        // terzo difensore: sostituisce il riempitivo 5.9 e porta la media a 6.3
-        PlayerProjection third = player("d3", Role.D, 6.4, 120);
+                player("gk", Role.P, 6.4, 150),
+                player("d1", Role.D, 6.8, 150),
+                player("d2", Role.D, 6.8, 150));
+        // il terzo sostituisce il riempitivo e porta la media a 6.7 -> gradino 6.5
+        PlayerProjection third = player("d3", Role.D, 6.8, 120);
 
         double marginal = calculator.marginalPoints(squad, third);
 
@@ -4241,12 +4317,14 @@ class RosterCompleterTest {
     }
 
     @Test
-    void prefersTheBestPointsPerCreditRatio() {
-        add("p1", Role.P, 1, 1);
-        add("d1", Role.D, 1, 1);
-        add("c1", Role.C, 1, 1);
+    void prefersTheBestPointsPerCreditRatioWhenTheBudgetIsTight() {
+        // Gli altri ruoli assorbono 90 crediti dei 100 disponibili: il rapporto
+        // valore/prezzo conta solo quando il budget e' davvero vincolante.
+        add("p1", Role.P, 1, 30);
+        add("d1", Role.D, 1, 30);
+        add("c1", Role.C, 1, 30);
         add("cheapStriker", Role.A, 90, 10);   // 9 punti per credito
-        add("dearStriker", Role.A, 100, 50);   // 2 punti per credito
+        add("dearStriker", Role.A, 100, 50);   // 2 punti per credito, non finanziabile
 
         RosterCompleter.Completion completion =
                 completer.complete(emptySquad(), List.of(), pool, prices());
@@ -4258,7 +4336,7 @@ class RosterCompleterTest {
 
     @Test
     void neverSpendsSoMuchThatASlotCannotBeFilled() {
-        add("p1", Role.P, 500, 99);   // costoso e allettante
+        add("p1", Role.P, 500, 99);   // costoso e allettante: comprarlo lascerebbe 1 credito per 3 slot
         add("d1", Role.D, 10, 1);
         add("c1", Role.C, 10, 1);
         add("a1", Role.A, 10, 1);
@@ -4266,7 +4344,10 @@ class RosterCompleterTest {
         RosterCompleter.Completion completion =
                 completer.complete(emptySquad(), List.of(), pool, prices());
 
-        assertThat(completion.picks()).hasSize(4);
+        // La guardia di ammissibilita' esclude p1 a ogni passo: meglio tre slot coperti
+        // che una rosa incompletabile. Il portiere resta scoperto e questo e' corretto.
+        assertThat(completion.picks()).extracting(PlayerProjection::playerId)
+                .containsExactlyInAnyOrder("d1", "c1", "a1");
         assertThat(completion.budgetLeft()).isGreaterThanOrEqualTo(0);
     }
 
@@ -4402,7 +4483,13 @@ public final class RosterCompleter {
                 double gain = modifiers.marginalPoints(roster, candidate)
                         - replacement.points(candidate.role());
                 double score = gain / cost;
-                if (score > bestScore) {
+                // A parita' di punteggio vince l'id piu' basso, non l'ordine di
+                // iterazione: la riproducibilita' delle raccomandazioni e' un requisito
+                // della spec e non deve dipendere dal tipo di collezione che il
+                // chiamante passa.
+                if (score > bestScore
+                        || (score == bestScore && best != null
+                            && candidate.playerId().compareTo(best.playerId()) < 0)) {
                     bestScore = score;
                     best = candidate;
                     bestCost = cost;
@@ -4733,8 +4820,10 @@ public record ConfidenceScore(
     /** 1 quando perturbare i prezzi non muove il prezzo massimo, 0 quando lo stravolge. */
     public static double stabilityFactor(int maxBid, int low, int high) {
         int reference = Math.max(1, maxBid);
+        // La confidenza si azzera quando l'intervallo del prezzo massimo sotto
+        // perturbazione dei prezzi e' largo quanto il prezzo massimo stesso.
         double spread = (double) Math.abs(high - low) / reference;
-        return Math.min(1.0, Math.max(0.0, 1.0 - spread / 2.0));
+        return Math.min(1.0, Math.max(0.0, 1.0 - spread));
     }
 
     private static double clamp(double factor) {
@@ -4937,20 +5026,35 @@ class ValuationEngineTest {
         return new ValuationContext(state, target, owned, available, prices(), 0);
     }
 
-    private void seedPool() {
+    private PlayerProjection p(String id) {
+        return pool.stream().filter(x -> x.playerId().equals(id)).findFirst().orElseThrow();
+    }
+
+    /**
+     * Ogni ruolo ha un'opzione economica e una costosa: senza questo gradiente il
+     * surplus non degrada al crescere del prezzo e il prezzo massimo sarebbe deciso
+     * dal solo vincolo di budget.
+     */
+    private void seedGradientRoles() {
         add("gk", Role.P, 100, 10);
+        add("gkTop", Role.P, 200, 40);
         add("mid", Role.C, 100, 10);
+        add("midTop", Role.C, 200, 40);
         add("fw", Role.A, 100, 10);
+        add("fwTop", Role.A, 200, 40);
+    }
+
+    private void seedPool() {
+        seedGradientRoles();
         add("bestDef", Role.D, 300, 20);
         add("okDef", Role.D, 280, 18);
-        add("poorDef", Role.D, 50, 5);
     }
 
     @Test
     void neverRecommendsMoreThanTheHardCap() {
         seedPool();
         AuctionState state = state(List.of());
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state));
 
         assertThat(rec.hardCap()).isEqualTo(state.mySquad().maxSpendableNow());
         assertThat(rec.maxBid()).isLessThanOrEqualTo(rec.hardCap());
@@ -4959,25 +5063,26 @@ class ValuationEngineTest {
     @Test
     void aPlayerWithACloseAlternativeIsNotWorthMuchMoreThanThatAlternative() {
         seedPool();
-        // bestDef vale 300, okDef 280 a 18: il vantaggio reale è piccolo
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        // bestDef vale 300, okDef 280 a 18: il vantaggio reale e' piccolo, e ogni
+        // credito speso in piu' costringe a declassare portiere, centrocampo o attacco
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
-        assertThat(rec.maxBid()).isLessThan(60);
+        assertThat(rec.maxBid()).isLessThan(50);
         assertThat(rec.drivers()).anySatisfy(d ->
                 assertThat(d.label()).containsIgnoringCase("alternativa"));
     }
 
     @Test
     void aPlayerWithNoRealAlternativeIsWorthMuchMore() {
-        add("gk", Role.P, 100, 10);
-        add("mid", Role.C, 100, 10);
-        add("fw", Role.A, 100, 10);
+        seedGradientRoles();
         PlayerProjection unique = add("uniqueDef", Role.D, 400, 20);
-        add("poorDef", Role.D, 20, 1);
+        add("poorDef", Role.D, 20, 1);   // unica alternativa: perde 380 punti
 
         PriceRecommendation scarce = engine.evaluate(context(unique, state(List.of())));
 
-        assertThat(scarce.maxBid()).isGreaterThan(50);
+        // Stesso budget e stesso gradiente del test precedente: cambia solo quanto
+        // costa rinunciare al giocatore. E' questo che il motore deve saper distinguere.
+        assertThat(scarce.maxBid()).isGreaterThan(70);
     }
 
     @Test
@@ -4986,7 +5091,7 @@ class ValuationEngineTest {
         AuctionState state = state(List.of(
                 new AuctionEvent.PlayerPurchased(1, T, "bestDef", "me", 20)));
 
-        PriceRecommendation rec = engine.evaluate(context(pool.get(4), state));
+        PriceRecommendation rec = engine.evaluate(context(p("okDef"), state));
 
         assertThat(rec.maxBid()).isZero();
         assertThat(rec.walkAwayReason()).containsIgnoringCase("slot");
@@ -4998,7 +5103,7 @@ class ValuationEngineTest {
         AuctionState state = state(List.of(
                 new AuctionEvent.PlayerPurchased(1, T, "gk", "me", 97)));
 
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state));
 
         assertThat(rec.hardCap()).isEqualTo(1);
         assertThat(rec.maxBid()).isLessThanOrEqualTo(1);
@@ -5007,7 +5112,7 @@ class ValuationEngineTest {
     @Test
     void reportsTheMarginAgainstTheExpectedMarketPrice() {
         seedPool();
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
         assertThat(rec.expectedPrice()).isEqualTo(20);
         assertThat(rec.margin()).isEqualTo(rec.maxBid() - rec.expectedPrice());
@@ -5016,7 +5121,7 @@ class ValuationEngineTest {
     @Test
     void alwaysExposesBetweenThreeAndFiveDrivers() {
         seedPool();
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
         assertThat(rec.drivers()).hasSizeBetween(3, 5);
         assertThat(rec.drivers()).allSatisfy(d -> {
@@ -5028,7 +5133,7 @@ class ValuationEngineTest {
     @Test
     void confidenceIsLowWhenNoSalesHaveBeenObserved() {
         seedPool();
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state(List.of())));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state(List.of())));
 
         assertThat(rec.confidence().marketFactor()).isLessThan(0.2);
         assertThat(rec.confidence().stars()).isLessThanOrEqualTo(3);
@@ -5042,7 +5147,7 @@ class ValuationEngineTest {
                 new AuctionEvent.PlayerPurchased(1, T, "gk", "me", 50),
                 new AuctionEvent.PlayerPurchased(2, T, "mid", "me", 45)));
 
-        PriceRecommendation rec = engine.evaluate(context(pool.get(3), state));
+        PriceRecommendation rec = engine.evaluate(context(p("bestDef"), state));
 
         // 5 crediti, 2 slot residui: si puo' spendere al massimo 4 su questo giocatore
         assertThat(state.mySquad().budgetRemaining()).isEqualTo(5);
@@ -5365,7 +5470,7 @@ Aggiungere in coda a `ValuationEngineTest`:
     void staysWithinTheLatencyBudget() {
         seedPool();
         AuctionState state = state(List.of());
-        ValuationContext ctx = context(pool.get(3), state);
+        ValuationContext ctx = context(p("bestDef"), state);
 
         engine.evaluate(ctx); // riscaldamento della JIT
         long start = System.nanoTime();
@@ -5573,20 +5678,17 @@ public final class TextNormalizer {
 ```
 
 In `src/main/java/com/fantaagent/ingestion/NameResolver.java` sostituire il corpo di
-`normalize` e di `editDistanceAtMostOne` con una delega, eliminando la duplicazione:
+`normalize` con una delega, eliminando la duplicazione:
 
 ```java
     public static String normalize(String raw) {
         return com.fantaagent.domain.search.TextNormalizer.normalize(raw);
     }
-
-    static boolean editDistanceAtMostOne(String a, String b) {
-        return com.fantaagent.domain.search.TextNormalizer.editDistanceAtMostOne(a, b);
-    }
 ```
 
 Rimuovere da `NameResolver` gli import ora inutilizzati `java.text.Normalizer` e
-`java.util.Locale`.
+`java.util.Locale`. Nota: `NameResolver` non fa matching approssimato — quello vive
+solo qui, in `PlayerSearch`, dove l'utente legge il nome proposto prima di agire.
 
 - [ ] **Step 4: Implementare `PlayerSearch`**
 
@@ -6413,9 +6515,12 @@ public class PlayerSearchService {
     private static final int SEARCH_LIMIT = 8;
 
     /**
-     * Quanti candidati valutare per la lista target. Ogni valutazione costa qualche
-     * decina di millisecondi: quindici righe restano sotto il quarto di secondo, che è
-     * accettabile per un pannello aperto su richiesta.
+     * Quanti candidati valutare per la lista target.
+     *
+     * <p>Una valutazione completa costa circa 45 ms su un pool reale, quindi questa
+     * lista sta nell'ordine del mezzo secondo. È accettabile perché il pannello si apre
+     * di proposito fra una chiamata e l'altra, non mentre si rilancia — ma è il punto
+     * più lento dell'applicazione e va misurato, non stimato.
      */
     private static final int TARGET_CANDIDATES = 15;
 

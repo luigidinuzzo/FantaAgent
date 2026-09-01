@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Impostazioni lega</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+  <style>
+    .wrap { max-width: 46rem; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
+    h1 { font-size: var(--fs-lg); margin: .8rem 0 .2rem; }
+    h2 { font-size: var(--fs-md); color: var(--dim); letter-spacing: .06em;
+         margin: 1.6rem 0 .5rem; border-top: 1px solid var(--line); padding-top: .8rem; }
+    .note { color: var(--dim); font-size: var(--fs-sm); line-height: 1.5; margin: .3rem 0 .8rem; }
+    .grid { display: grid; grid-template-columns: 14rem 7rem; gap: .35rem 1rem; align-items: center; }
+    .grid label { font-size: var(--fs-sm); }
+    input[type=text], input[type=number] { width: 100%; padding: .35rem .5rem; font: inherit;
+      background: #000; color: var(--fg); border: 1px solid var(--line); }
+    table.steps { border-collapse: collapse; margin-top: .4rem; }
+    table.steps th { font-size: var(--fs-xs); color: var(--dim); text-align: left;
+      font-weight: normal; padding: 0 .6rem .3rem 0; }
+    table.steps td { padding: .15rem .6rem .15rem 0; }
+    table.steps input { width: 7rem; }
+    .banner { padding: .7rem .9rem; margin: .8rem 0; border-left: 3px solid; }
+    .ok   { background: #10240f; border-color: var(--pos); }
+    .bad  { background: #2a1010; border-color: var(--neg); }
+    .warn { background: #2a2410; border-color: #d4a017; }
+    .banner ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+    button.save { margin-top: 1.4rem; padding: .6rem 1.4rem; font: inherit; cursor: pointer; }
+    a.back { color: var(--dim); font-size: var(--fs-sm); }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back" th:href="@{/}">← home</a>
+  <a class="back" th:href="@{/asta}" style="margin-left:1rem">torna all'asta</a>
+  <a class="back" th:href="@{/riepilogo}" style="margin-left:1rem">riepilogo</a>
+  <h1>Impostazioni della lega</h1>
+
+  <!-- Cosa e' vivo e cosa e' congelato, detto prima di ogni campo: chi cambia un
+       numero deve sapere in anticipo se avra' effetto adesso o non lo avra' affatto. -->
+  <p class="note">
+    <b>Nomi e iniziali dei partecipanti: sempre modificabili, effetto immediato.</b>
+    Gli id restano fissi ed è agli id che il registro dell'asta lega gli acquisti già
+    fatti, quindi cambia solo ciò che leggi a schermo: nulla di quanto registrato perde
+    significato.<br>
+    <b>Regole di punteggio: modificabili a effetto immediato finché l'asta non ha
+    acquisti, bloccate dal primo acquisto in poi.</b> I prezzi già pagati sono stati
+    decisi sotto le vecchie regole: mescolare due modelli di punteggio dentro la stessa
+    asta rende la rosa risultante impossibile da interpretare.<br>
+    In entrambi i casi il salvataggio ricostruisce per intero proiezioni, livelli di
+    rimpiazzo e motore di valutazione e li rimette in servizio in blocco. Nessun
+    riavvio, e nessun momento in cui metà dei numeri viene da un modello e metà
+    dall'altro.
+  </p>
+
+  <p class="note" th:if="${fileGoverns}">
+    Questi valori vengono da <span th:text="${file}">…</span> e hanno la precedenza su
+    quelli di <code>application.yml</code>, che vengono ignorati.
+  </p>
+
+  <div class="banner ok" th:if="${saved}">
+    ✓ Impostazioni salvate in <span th:text="${file}">…</span>.
+    <div class="note" style="margin:.4rem 0 0">
+      <b>Le nuove regole sono già in vigore.</b> Punti attesi di tutti i giocatori,
+      livelli di rimpiazzo e motore di valutazione sono stati ricostruiti per intero e
+      rimessi in servizio insieme: da adesso ogni numero che vedi viene dalle regole
+      nuove, nessuno da quelle vecchie.
+    </div>
+  </div>
+
+  <div class="banner bad" th:if="${errors}">
+    Impostazioni non salvate:
+    <ul><li th:each="e : ${errors}" th:text="${e}">errore</li></ul>
+  </div>
+
+  <div class="banner warn" th:if="${locked}">
+    L'asta ha già degli acquisti: le regole di punteggio sono in sola lettura. I prezzi
+    già pagati sono stati decisi sotto queste regole, e mescolare due modelli di
+    punteggio dentro la stessa asta renderebbe la rosa risultante impossibile da
+    interpretare. Per correggerle, annulla prima gli acquisti registrati — oppure
+    comincia una nuova asta dalla home e configurala prima di partire.
+  </div>
+
+  <form method="post" th:action="@{/impostazioni}">
+
+    <h2>MODIFICATORE DI DIFESA</h2>
+    <p class="note">
+      Si applica alla media voto di portiere più i migliori difensori schierati.
+      Il bonus è in <b>fantapunti a giornata</b> aggiunti al totale della squadra —
+      non è un numero di gol. Le soglie vanno in ordine crescente e il bonus non può
+      diminuire salendo.
+    </p>
+
+    <div class="grid">
+      <label for="enabled">Modificatore attivo</label>
+      <input type="checkbox" id="enabled" name="defenceModifierEnabled" value="true"
+             th:checked="${settings.defenceModifierEnabled}" th:disabled="${locked}">
+
+      <label for="dc">Difensori conteggiati<br>
+        <span class="note" style="margin:0">oltre al portiere</span></label>
+      <input type="number" id="dc" name="defendersCounted" min="1" max="10"
+             th:value="${settings.defendersCounted}" th:disabled="${locked}">
+    </div>
+
+    <div class="table-scroll">
+      <table class="steps">
+        <tr><th>da media</th><th>bonus</th></tr>
+        <tr th:each="s : ${settings.thresholds}">
+          <td><input type="text" name="minAverage" th:value="${s.minAverage}" th:disabled="${locked}"></td>
+          <td><input type="text" name="bonus" th:value="${s.bonus}" th:disabled="${locked}"></td>
+        </tr>
+        <tr th:each="i : ${#numbers.sequence(1, 4)}">
+          <td><input type="text" name="minAverage" value="" placeholder="es. 6,75" th:disabled="${locked}"></td>
+          <td><input type="text" name="bonus" value="" placeholder="es. 2,5" th:disabled="${locked}"></td>
+        </tr>
+      </table>
+    </div>
+    <p class="note">Le righe lasciate vuote vengono ignorate. Per togliere una soglia,
+      svuota la sua casella «da media».</p>
+
+    <h2>BONUS E MALUS</h2>
+    <div class="grid">
+      <label for="gbP">Gol portiere</label>
+      <input type="text" id="gbP" name="goalBonusP" th:value="${settings.goalBonus['P']}" th:disabled="${locked}">
+      <label for="gbD">Gol difensore</label>
+      <input type="text" id="gbD" name="goalBonusD" th:value="${settings.goalBonus['D']}" th:disabled="${locked}">
+      <label for="gbC">Gol centrocampista</label>
+      <input type="text" id="gbC" name="goalBonusC" th:value="${settings.goalBonus['C']}" th:disabled="${locked}">
+      <label for="gbA">Gol attaccante</label>
+      <input type="text" id="gbA" name="goalBonusA" th:value="${settings.goalBonus['A']}" th:disabled="${locked}">
+      <label for="as">Assist</label>
+      <input type="text" id="as" name="assist" th:value="${settings.assist}" th:disabled="${locked}">
+      <label for="ps">Rigore segnato</label>
+      <input type="text" id="ps" name="penaltyScored" th:value="${settings.penaltyScored}" th:disabled="${locked}">
+      <label for="pm">Rigore sbagliato</label>
+      <input type="text" id="pm" name="penaltyMissed" th:value="${settings.penaltyMissed}" th:disabled="${locked}">
+      <label for="pp">Rigore parato</label>
+      <input type="text" id="pp" name="penaltySaved" th:value="${settings.penaltySaved}" th:disabled="${locked}">
+      <label for="yc">Ammonizione</label>
+      <input type="text" id="yc" name="yellowCard" th:value="${settings.yellowCard}" th:disabled="${locked}">
+      <label for="rc">Espulsione</label>
+      <input type="text" id="rc" name="redCard" th:value="${settings.redCard}" th:disabled="${locked}">
+      <label for="gc">Gol subito</label>
+      <input type="text" id="gc" name="goalConceded" th:value="${settings.goalConceded}" th:disabled="${locked}">
+      <label for="cs">Porta inviolata</label>
+      <input type="text" id="cs" name="cleanSheet" th:value="${settings.cleanSheet}" th:disabled="${locked}">
+    </div>
+    <p class="note">
+      I file di statistiche di Fantacalcio.it non contengono le porte inviolate: quando
+      mancano, l'applicazione le stima dalle presenze e dai gol subiti con un modello
+      di Poisson, invece di lasciarle a zero.
+    </p>
+
+    <h2>CONFERMA</h2>
+    <p class="note">
+      Finché non confermi, l'applicazione si rifiuta di partire in modalità asta. È una
+      protezione contro l'uso dei valori segnaposto: meglio non partire che consigliare
+      prezzi calcolati su regole che non sono le tue.
+    </p>
+    <div class="grid">
+      <label for="conf">Regole verificate sul regolamento</label>
+      <input type="checkbox" id="conf" name="confirmed" value="true"
+             th:checked="${settings.confirmed}" th:disabled="${locked}">
+    </div>
+
+    <button class="save" type="submit" th:disabled="${locked}">Salva impostazioni</button>
+  </form>
+
+  <h2>PARTECIPANTI</h2>
+  <p class="note" th:if="${membersFileGoverns}">
+    Questi nomi vengono da <span th:text="${membersFile}">…</span> e hanno la precedenza
+    su quelli di <code>application.yml</code>, che vengono ignorati.
+  </p>
+  <p class="note">
+    L'iniziale è quella usata dal comando rapido (es. <code>bast 47 m</code>) per
+    riconoscere a chi assegnare l'acquisto: deve restare unica. L'id di ciascun
+    partecipante non è modificabile qui: è quello a cui il registro dell'asta lega gli
+    acquisti già registrati.
+  </p>
+
+  <div class="banner ok" th:if="${membersSaved}">
+    ✓ Partecipanti salvati in <span th:text="${membersFile}">…</span>.
+    <div class="note" style="margin:.4rem 0 0">
+      <b>I nuovi nomi e le nuove iniziali sono già in vigore</b>, tabellone e barra
+      comando compresi. Gli id non sono cambiati, quindi gli acquisti già registrati
+      restano attribuiti esattamente a chi li ha fatti.
+    </div>
+  </div>
+
+  <div class="banner bad" th:if="${membersErrors}">
+    Partecipanti non salvati:
+    <ul><li th:each="e : ${membersErrors}" th:text="${e}">errore</li></ul>
+  </div>
+
+  <p class="note">
+    Nomi e iniziali restano modificabili anche ad asta iniziata, e hanno effetto subito:
+    il registro lega gli acquisti agli id, non ai nomi, quindi rinominare cambia solo
+    quello che leggi. L'id, infatti, non è modificabile da qui.
+  </p>
+
+  <form method="post" th:action="@{/impostazioni/partecipanti}">
+    <div class="table-scroll">
+      <table class="steps">
+        <tr><th>nome</th><th>iniziale</th><th>tu</th></tr>
+        <tr th:each="p : ${members}">
+          <td>
+            <input type="hidden" name="id" th:value="${p.id}">
+            <input type="text" name="name" th:value="${p.name}">
+          </td>
+          <td><input type="text" name="initial" maxlength="1" style="width:3rem"
+                      th:value="${p.initial}"></td>
+          <td><input type="radio" name="me" th:value="${p.id}"
+                      th:checked="${p.me}"></td>
+        </tr>
+      </table>
+    </div>
+    <button class="save" type="submit">Salva partecipanti</button>
+  </form>
+
+</div>
+</body>
+</html>
