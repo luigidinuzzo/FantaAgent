@@ -1,27 +1,32 @@
 <!--
   File separato apposta, sullo stesso schema di fragments/update.html: qui vivono i
-  due fragment della tabella di fase, "phaseTable" (l'intero pannello, per il primo
-  caricamento o un cambio fase) e "phaseRowsBody" (solo le righe, per "carica altri
-  25" — sostituisce la sola riga del bottone, non l'intera tabella).
+  due fragment della tabella di fase, "phaseTable" (l'intero pannello, che ogni
+  richiesta di pagina sostituisce per intero) e "phaseRowsBody" (le sole righe, usato
+  da phaseTable per non duplicare il markup del corpo).
 
-  Risponde a una domanda diversa dal pannello TARGET: qui "qual è il migliore
-  disponibile in questo ruolo" (ordinato per punti attesi), là "dove sta l'affare"
-  (ordinato per margine). Il max bid è calcolato solo per le righe di QUESTA pagina,
-  vedi PlayerSearchService#phasePlayers.
+  Risponde a una domanda diversa dal pannello TARGET: qui "chi c'è ancora in questo
+  ruolo, nell'ordine in cui verrà chiamato" (ordinato per quotazione Fantacalcio.it),
+  là "dove sta l'affare" (ordinato per margine). Il max bid è calcolato solo per le
+  righe di QUESTA pagina, vedi PlayerSearchService#phasePlayers.
 
   Il fragment "phaseTable" porta con sé hx-get/hx-trigger (non solo il div segnaposto
   in index.html): uno swap "outerHTML" sostituisce l'intero elemento, attributi
   compresi, quindi se questi hx-* mancassero qui il primo refresh dopo un acquisto
   lascerebbe la tabella senza più alcun ascolto — buona per un solo giro, sorda a
-  quelli successivi. Ripartire da offset=0 ad ogni "fantaStateChanged" è voluto:
-  vedi il commento accanto al div segnaposto in index.html.
+  quelli successivi. Quell'hx-get porta l'offset della pagina MOSTRATA, non zero:
+  così un acquisto ricarica la pagina che si sta guardando invece di riportare alla
+  prima. Se nel frattempo quella pagina è finita oltre la fine (gli ultimi giocatori
+  del ruolo sono stati venduti), phasePlayers riporta all'ultima pagina piena.
 -->
 <th:block xmlns:th="http://www.thymeleaf.org">
 
-<div id="phaseTable" th:fragment="phaseTable" hx-get="/fragments/phase-players?offset=0"
+<div id="phaseTable" th:fragment="phaseTable"
+     th:hx-get="@{/fragments/phase-players(offset=${phasePage.offset})}"
      hx-trigger="fantaStateChanged from:body" hx-swap="outerHTML">
   <h3>GIOCATORI FASE <span th:text="${phase}">D</span>
-    <span class="dim">— il migliore disponibile, per punti attesi</span></h3>
+    <span class="dim">— per quotazione Fantacalcio.it</span>
+    <span class="dim phase-count" th:if="${phasePage.total > 0}"
+          th:text="${phasePage.total} + ' disponibili'">312 disponibili</span></h3>
   <!-- L'ultimo giocatore del ruolo può essere venduto proprio durante questa fase
        (es. dalla barra comando, mentre la tabella è aperta): senza questo ramo la
        tabella si ricaricherebbe su un'intestazione con sotto zero righe, un vuoto
@@ -40,6 +45,23 @@
       </tbody>
     </table>
   </div>
+
+  <!--
+    Navigazione fra le pagine. I bottoni sostituiscono l'intero #phaseTable, quindi
+    tornano con i propri offset gia' aggiornati. Sono disabilitati agli estremi invece
+    di sparire: una barra che perde un bottone sposta l'altro sotto il puntatore, e in
+    asta si clicca senza guardare.
+  -->
+  <div class="phase-nav" th:unless="${phasePage.rows.isEmpty()}">
+    <button type="button" th:disabled="${!phasePage.hasPrevious()}"
+            th:hx-get="@{/fragments/phase-players(offset=${phasePage.previousOffset()})}"
+            hx-target="#phaseTable" hx-swap="outerHTML">← precedenti</button>
+    <span class="dim">pagina <b th:text="${phasePage.pageNumber()}">1</b>
+      di <span th:text="${phasePage.pageCount()}">13</span></span>
+    <button type="button" th:disabled="${!phasePage.hasNext()}"
+            th:hx-get="@{/fragments/phase-players(offset=${phasePage.nextOffset()})}"
+            hx-target="#phaseTable" hx-swap="outerHTML">successivi →</button>
+  </div>
 </div>
 
 <th:block th:fragment="phaseRowsBody">
@@ -51,6 +73,12 @@
     <td th:text="${#numbers.formatDecimal(r.fantamediaAttesa(), 1, 2)}">6,20</td>
     <td th:text="${#numbers.formatDecimal(r.titolaritaPercent(), 1, 0)} + '%'">82%</td>
     <td>
+      <!-- Due modi, due situazioni diverse: "batti" quando il giocatore va all'asta e
+           il prezzo lo decidera' la stanza; il form qui accanto quando il prezzo e'
+           gia' noto e resta solo da registrarlo. Entrambi finiscono su /assign. -->
+      <button type="button" class="bidder-open bidder-open-row" title="batti l'asta"
+              th:hx-get="@{/asta/battitore(playerId=${r.player.id})}"
+              hx-target="#bidderMount" hx-swap="innerHTML">⏱</button>
       <!-- Stesso /assign dell'articolo di analisi: identica validazione, identici
            messaggi di rifiuto in italiano — nessuna seconda via per registrare un
            acquisto. -->
@@ -64,13 +92,6 @@
         </select>
         <button type="submit">assegna</button>
       </form>
-    </td>
-  </tr>
-  <tr th:if="${phasePage.hasMore}">
-    <td colspan="7">
-      <button type="button" class="load-more"
-              th:hx-get="@{/fragments/phase-players(offset=${phasePage.nextOffset})}"
-              hx-target="closest tr" hx-swap="outerHTML">carica altri 25</button>
     </td>
   </tr>
 </th:block>

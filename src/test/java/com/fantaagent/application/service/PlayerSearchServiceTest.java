@@ -86,11 +86,9 @@ class PlayerSearchServiceTest {
     }
 
     @Test
-    void phasePlayersOnlyListsAvailablePlayersOfTheCurrentPhaseRankedByExpectedPointsDescending() {
+    void phasePlayersOnlyListsAvailablePlayersOfTheCurrentPhaseRankedByListPriceDescending() {
         List<Player> players = new ArrayList<>();
-        // Quotazioni diverse -> presenze prior diverse -> punti base diversi (senza
-        // storico statistico la proiezione ricade sulla quotazione). "alto" ha la
-        // quotazione più alta quindi i punti base più alti, e deve comparire per primo.
+        // Ordinamento per quotazione Fantacalcio.it decrescente: "alto" per primo.
         players.add(new Player("basso", "Basso", "Squadra", Role.D, 1));
         players.add(new Player("medio", "Medio", "Squadra", Role.D, 15));
         players.add(new Player("alto", "Alto", "Squadra", Role.D, 30));
@@ -114,11 +112,13 @@ class PlayerSearchServiceTest {
         PlayerSearchService.PhasePage page = search.phasePlayers(0, 10);
 
         assertThat(page.rows()).extracting(r -> r.player().id()).containsExactly("alto", "basso");
-        assertThat(page.hasMore()).isFalse();
+        assertThat(page.hasNext()).isFalse();
+        assertThat(page.hasPrevious()).isFalse();
+        assertThat(page.total()).isEqualTo(2);
     }
 
     @Test
-    void phasePlayersRespectsTheBatchLimitAndReportsWhetherThereIsMore() {
+    void phasePlayersPaginatesForwardAndBackward() {
         List<Player> players = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             players.add(new Player("d" + i, "Difensore " + i, "Squadra", Role.D, 1 + i));
@@ -136,14 +136,118 @@ class PlayerSearchServiceTest {
                 new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
+        // Quotazioni 1..5, quindi l'ordine atteso è d4, d3, d2 | d1, d0.
         PlayerSearchService.PhasePage firstPage = search.phasePlayers(0, 3);
-        assertThat(firstPage.rows()).hasSize(3);
-        assertThat(firstPage.hasMore()).isTrue();
+        assertThat(firstPage.rows()).extracting(r -> r.player().id())
+                .containsExactly("d4", "d3", "d2");
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(firstPage.hasPrevious()).isFalse();
         assertThat(firstPage.nextOffset()).isEqualTo(3);
+        assertThat(firstPage.pageNumber()).isEqualTo(1);
+        assertThat(firstPage.pageCount()).isEqualTo(2);
 
         PlayerSearchService.PhasePage secondPage = search.phasePlayers(3, 3);
-        assertThat(secondPage.rows()).hasSize(2);
-        assertThat(secondPage.hasMore()).isFalse();
+        assertThat(secondPage.rows()).extracting(r -> r.player().id())
+                .containsExactly("d1", "d0");
+        assertThat(secondPage.hasNext()).isFalse();
+        assertThat(secondPage.hasPrevious()).isTrue();
+        assertThat(secondPage.previousOffset()).isEqualTo(0);
+        assertThat(secondPage.pageNumber()).isEqualTo(2);
+
+        // Andare avanti e poi indietro deve riportare esattamente la prima pagina:
+        // se l'ordine non fosse totale, due giocatori a pari quotazione potrebbero
+        // scambiarsi di posto fra una richiesta e l'altra.
+        assertThat(search.phasePlayers(secondPage.previousOffset(), 3).rows())
+                .extracting(r -> r.player().id())
+                .isEqualTo(firstPage.rows().stream().map(r -> r.player().id()).toList());
+    }
+
+    /**
+     * Quotazioni pari sono la norma (decine di giocatori a 1): l'ordine deve restare
+     * lo stesso a ogni richiesta, altrimenti paginando un giocatore comparirebbe due
+     * volte e un altro mai.
+     */
+    @Test
+    void phasePlayersOrdersDeterministicallyWhenListPricesTie() {
+        List<Player> players = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            players.add(new Player("d" + i, "Difensore " + i, "Squadra", Role.D, 7));
+        }
+
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        PlayerSearchService search = serviceFor(catalog, auction);
+
+        List<String> firstRun = search.phasePlayers(0, 6).rows().stream()
+                .map(r -> r.player().id()).toList();
+        List<String> secondRun = search.phasePlayers(0, 6).rows().stream()
+                .map(r -> r.player().id()).toList();
+
+        assertThat(firstRun).isEqualTo(secondRun);
+        assertThat(firstRun).doesNotHaveDuplicates().hasSize(6);
+
+        // Le due pagine da 3 coprono esattamente l'elenco intero, senza sovrapposizioni.
+        List<String> pageOne = search.phasePlayers(0, 3).rows().stream()
+                .map(r -> r.player().id()).toList();
+        List<String> pageTwo = search.phasePlayers(3, 3).rows().stream()
+                .map(r -> r.player().id()).toList();
+        assertThat(pageOne).doesNotContainAnyElementsOf(pageTwo);
+        assertThat(firstRun).containsExactlyElementsOf(
+                java.util.stream.Stream.concat(pageOne.stream(), pageTwo.stream()).toList());
+    }
+
+    /**
+     * Un offset oltre la fine riporta all'ultima pagina piena invece di una tabella
+     * vuota: succede quando si sta guardando l'ultima pagina e i giocatori rimasti
+     * vengono venduti.
+     */
+    @Test
+    void phasePlayersClampsAnOffsetPastTheEnd() {
+        List<Player> players = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            players.add(new Player("d" + i, "Difensore " + i, "Squadra", Role.D, 1 + i));
+        }
+
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        PlayerSearchService search = serviceFor(catalog, auction);
+
+        PlayerSearchService.PhasePage page = search.phasePlayers(90, 3);
+
+        assertThat(page.rows()).isNotEmpty();
+        assertThat(page.offset()).isEqualTo(3);
+        assertThat(page.hasNext()).isFalse();
+    }
+
+    /** Nessun giocatore disponibile: nessuna pagina, e nessun bordo da sbagliare. */
+    @Test
+    void phasePlayersHandlesAnEmptyRole() {
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(
+                List.of(new Player("p1", "Portiere", "Squadra", Role.P, 10)), List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        PlayerSearchService search = serviceFor(catalog, auction);
+
+        PlayerSearchService.PhasePage page = search.phasePlayers(0, 3);
+
+        assertThat(page.rows()).isEmpty();
+        assertThat(page.total()).isZero();
+        assertThat(page.hasNext()).isFalse();
+        assertThat(page.hasPrevious()).isFalse();
+        assertThat(page.pageCount()).isEqualTo(1);
+    }
+
+    private static PlayerSearchService serviceFor(PlayerCatalog catalog, AuctionService auction) {
+        ProjectionRegistry projections =
+                ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
+        ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
+        RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
+        ValuationEngine engine = new ValuationEngine(completer, modifiers);
+        PlayerAnalysisService analysis =
+                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+        return new PlayerSearchService(catalog, projections, auction, analysis);
     }
 
     /**

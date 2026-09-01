@@ -6,6 +6,8 @@ import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.auction.Squad;
 import com.fantaagent.domain.league.Participant;
@@ -57,15 +59,17 @@ public class AuctionController {
     private final PlayerSearchService search;
     private final PlayerCatalog catalog;
     private final AuctionRuntime runtime;
+    private final AuctionSettingsHolder auctionSettings;
 
     public AuctionController(AuctionService auction, PlayerAnalysisService analysis,
                              PlayerSearchService search, PlayerCatalog catalog,
-                             AuctionRuntime runtime) {
+                             AuctionRuntime runtime, AuctionSettingsHolder auctionSettings) {
         this.auction = auction;
         this.analysis = analysis;
         this.search = search;
         this.catalog = catalog;
         this.runtime = runtime;
+        this.auctionSettings = auctionSettings;
     }
 
     /**
@@ -222,15 +226,43 @@ public class AuctionController {
         return "index :: targets";
     }
 
+    /**
+     * Una pagina della tabella di fase. Restituisce sempre il pannello intero, non le
+     * sole righe: con "precedente"/"successiva" ogni richiesta SOSTITUISCE la pagina
+     * mostrata invece di accodarsi ad essa, e i bottoni in fondo devono aggiornare i
+     * propri offset insieme alle righe — lasciarli fermi darebbe una tabella nuova con
+     * una navigazione che rimanda ancora alla pagina precedente.
+     */
     @GetMapping("/fragments/phase-players")
     public String phasePlayers(@RequestParam(defaultValue = "0") int offset, Model model) {
         model.addAttribute("phasePage", search.phasePlayers(offset, PlayerSearchService.PHASE_PAGE_SIZE));
         model.addAttribute("participants", auction.participants());
         model.addAttribute("phase", auction.state().currentPhase());
-        // offset == 0: prima apertura o cambio fase, sostituisce l'intero pannello
-        // (intestazione compresa). offset > 0: "carica altri 25", sostituisce solo le
-        // righe già caricate — l'intestazione non deve ricomparire in fondo alla tabella.
-        return offset == 0 ? "fragments/phase-table :: phaseTable" : "fragments/phase-table :: phaseRowsBody";
+        return "fragments/phase-table :: phaseTable";
+    }
+
+    /**
+     * Il popup del battitore per un giocatore, versione PRIVATA: porta con se' il max
+     * bid, e va servita solo alla schermata d'asta sul portatile di chi conduce. La
+     * pagina proiettata usa /battitore/popup, che monta un modello senza valutazioni.
+     *
+     * <p>Non cambia stato: il countdown e i
+     * rilanci vivono interamente nel browser e non toccano il registro. Un rilancio non
+     * e' un fatto dell'asta — solo l'aggiudicazione lo e', e quella passa dallo stesso
+     * /assign di sempre. Scrivere sul registro ad ogni tap significherebbe riempirlo di
+     * eventi che non e' possibile annullare in modo sensato.
+     */
+    @GetMapping("/asta/battitore")
+    public String bidder(@RequestParam String playerId, Model model) {
+        Optional<Player> player = catalog.byId(playerId);
+        if (player.isEmpty()) {
+            return "fragments/empty :: empty";
+        }
+        AuctionSettings settings = auctionSettings.get();
+        model.addAttribute("bidder", new ViewModels.Bidder(player.get(),
+                analysis.analyze(playerId), settings.bidTimerSeconds(), settings.beepEnabled()));
+        model.addAttribute("participants", auction.participants());
+        return "fragments/bidder :: bidder";
     }
 
     private ViewModels.MainPanel searchPanel(String query, String message) {
@@ -251,7 +283,7 @@ public class AuctionController {
                 mine.budgetRemaining(), composition(mine), mine.slotsRemaining(),
                 !state.holdings().isEmpty()));
         model.addAttribute("phases", state.rules().phases());
-        model.addAttribute("phaseDone", phaseComplete(state));
+        model.addAttribute("phaseDone", PhaseCompletion.of(state));
 
         List<ViewModels.BoardRow> board = new ArrayList<>();
         for (Participant participant : auction.participants()) {
@@ -263,21 +295,6 @@ public class AuctionController {
         model.addAttribute("board", board);
         model.addAttribute("participants", auction.participants());
         auction.resumeSummary().ifPresent(summary -> model.addAttribute("resume", summary));
-    }
-
-    /**
-     * Il messaggio "fase completa", o null se non lo e'. Calcolato sullo stesso stato
-     * gia' proiettato per il resto dell'intestazione, e restituito in ogni risposta che
-     * cambia stato: cosi' compare nell'istante in cui l'ultimo slot del ruolo si
-     * chiude, non al prossimo ricaricamento della pagina.
-     */
-    private ViewModels.PhaseComplete phaseComplete(AuctionState state) {
-        Role phase = state.currentPhase();
-        if (!state.isPhaseComplete(phase)) {
-            return null;
-        }
-        return new ViewModels.PhaseComplete(phase.name(),
-                state.rules().nextPhase(phase).map(Role::name).orElse(null));
     }
 
     private static String composition(Squad squad) {

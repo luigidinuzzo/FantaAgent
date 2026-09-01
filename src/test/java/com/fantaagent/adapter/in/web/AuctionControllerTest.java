@@ -4,6 +4,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.auction.AuctionProjector;
 import com.fantaagent.domain.auction.AuctionState;
@@ -94,6 +95,60 @@ class AuctionControllerTest {
         when(searchService.search(anyString())).thenReturn(List.of(BASTONI));
         when(analysisService.analyze("d1")).thenReturn(RECOMMENDATION);
         when(playerCatalog.byId("d1")).thenReturn(Optional.of(BASTONI));
+    }
+
+    /**
+     * Il popup porta con se' il max bid e la durata del countdown: sono i due valori da
+     * cui bidder.js parte, e viaggiano come data-* sul dialog. Se sparissero, il timer
+     * ricadrebbe sul default e il tetto non verrebbe mai segnalato — un popup che si
+     * apre e sembra funzionare, ma che ha perso la sola informazione per cui esiste.
+     */
+    @Test
+    void ilBattitorePortaMaxBidEdurataDelCountdown() throws Exception {
+        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-max-bid=\"47\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                        "data-seconds=\"" + AuctionSettings.DEFAULTS.bidTimerSeconds() + "\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("bidderAssign")));
+    }
+
+    /** La tendina dell'aggiudicazione deve elencare tutti i partecipanti, non solo me. */
+    @Test
+    void ilBattitoreElencaTuttiIpartecipanti() throws Exception {
+        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Marco")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Io")));
+    }
+
+    /**
+     * Aprire il battitore non registra nulla: il countdown e i rilanci vivono nel
+     * browser, e il registro si tocca solo all'aggiudicazione. Se questo test cadesse,
+     * ogni popup aperto per curiosita' lascerebbe un evento nel log dell'asta.
+     */
+    @Test
+    void aprireIlBattitoreNonRegistraAlcunAcquisto() throws Exception {
+        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk());
+
+        verify(auctionService, org.mockito.Mockito.never())
+                .recordPurchase(anyString(), anyString(), anyInt());
+    }
+
+    /**
+     * Un id sconosciuto non deve produrre un popup vuoto ne' un errore 500: restituisce
+     * corpo vuoto, e il punto di innesto resta com'era.
+     */
+    @Test
+    void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {
+        when(playerCatalog.byId("ignoto")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/asta/battitore").param("playerId", "ignoto"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("bidderDialog"))));
     }
 
     @Test
@@ -379,7 +434,7 @@ class AuctionControllerTest {
         PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
                 BASTONI, RECOMMENDATION, projection("d1", 120.0));
         when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
-                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), false, 1));
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 0, 25, 1));
 
         mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
                 .andExpect(status().isOk())
@@ -390,20 +445,59 @@ class AuctionControllerTest {
         verify(searchService).phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
     }
 
+    /**
+     * Ogni pagina sostituisce il pannello intero, intestazione compresa: con i bottoni
+     * avanti/indietro non si accoda piu' nulla alla pagina precedente.
+     */
     @Test
-    void aFollowingPageOfThePhaseTableDoesNotRepeatTheHeading() throws Exception {
-        // offset > 0 arriva dal bottone "carica altri 25": la risposta sostituisce solo
-        // la riga del bottone, quindi non deve ripetere l'intestazione del pannello.
+    void everyPageOfThePhaseTableReplacesTheWholePanel() throws Exception {
         PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
                 BASTONI, RECOMMENDATION, projection("d1", 90.0));
         when(searchService.phasePlayers(25, PlayerSearchService.PHASE_PAGE_SIZE))
-                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), true, 50));
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 25, 25, 60));
 
         mockMvc.perform(get("/fragments/phase-players").param("offset", "25"))
                 .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("GIOCATORI FASE")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("pagina")))
+                // indietro alla prima pagina, avanti alla terza
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=0")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=26")))
                 .andExpect(content().string(
-                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("GIOCATORI FASE"))))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("carica altri 25")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("offset=50")));
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("carica altri"))));
+    }
+
+    /**
+     * Il pannello ricaricato dopo un acquisto deve richiedere la pagina MOSTRATA, non
+     * la prima: l'hx-get che il fragment porta con se' e' quello che l'evento
+     * fantaStateChanged fara' scattare, e se puntasse a offset=0 ogni acquisto
+     * riporterebbe l'utente in cima all'elenco.
+     */
+    @Test
+    void thePhaseTableReloadsItselfOnTheSamePageAfterAPurchase() throws Exception {
+        PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
+                BASTONI, RECOMMENDATION, projection("d1", 90.0));
+        when(searchService.phasePlayers(50, PlayerSearchService.PHASE_PAGE_SIZE))
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 50, 25, 60));
+
+        mockMvc.perform(get("/fragments/phase-players").param("offset", "50"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
+                        "(?s).*id=\"phaseTable\"[^>]*hx-get=\"[^\"]*offset=50\".*")));
+    }
+
+    /** Agli estremi i bottoni restano al loro posto, disabilitati invece che spariti. */
+    @Test
+    void thePaginationKeepsBothButtonsAtTheEdges() throws Exception {
+        PlayerSearchService.PhaseRow row = new PlayerSearchService.PhaseRow(
+                BASTONI, RECOMMENDATION, projection("d1", 90.0));
+        when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
+                .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 0, 25, 1));
+
+        mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("precedenti")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("successivi")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("disabled")));
     }
 }

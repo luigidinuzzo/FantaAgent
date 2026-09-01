@@ -36,6 +36,10 @@
             th:attrappend="aria-current=${r.name() == status.phase} ? 'true' : null">D</button>
   </form>
   <a th:href="@{/riepilogo}" class="settings-link">riepilogo</a>
+  <!-- La pagina da proiettare: aprila in una seconda finestra sullo schermo
+       condiviso e tieni questa, con i max bid, sul tuo portatile. -->
+  <a th:href="@{/battitore}" class="settings-link" target="_blank"
+     rel="noopener">battitore ↗</a>
   <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
 </header>
 
@@ -119,6 +123,13 @@
 
         <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
 
+        <!-- Apre il battitore su questo giocatore: countdown, rilanci, e aggiudicazione
+             allo scadere. Resta accanto all'assegnazione diretta qui sotto, che serve
+             il caso opposto — prezzo gia' noto, nessuna asta da battere. -->
+        <button type="button" class="bidder-open"
+                th:hx-get="@{/asta/battitore(playerId=${panel.analysis.player.id})}"
+                hx-target="#bidderMount" hx-swap="innerHTML">⏱ batti l'asta</button>
+
         <!-- Complementa la barra comando per chi non conosce "bast 47 m": un prezzo
              condiviso (precompilato con maxBid) e un bottone per partecipante, che
              assegna QUEL giocatore a QUEL partecipante a quel prezzo. Passa da /assign,
@@ -146,13 +157,9 @@
          HX-Trigger da /command, /undo, /phase/next e /assign (si veda
          AuctionController#STATE_CHANGED_EVENT) e sale fino al body per bubbling,
          così questo elemento — che sta fuori da #main e non riceve mai quello swap
-         — lo intercetta comunque. Ricarica sempre da offset=0: un giocatore appena
-         venduto potrebbe stare in una pagina già scrollata oltre le prime 25 righe,
-         e tracciare "quante pagine ha caricato l'utente" per riproporre lo stesso
-         offset avrebbe richiesto uno stato aggiuntivo nel markup (es. un attributo
-         aggiornato ad ogni "carica altri 25") per un caso — l'utente scrolla molto
-         E compra nel frattempo dalla barra comando — abbastanza raro da non
-         giustificare la complessità: si perde il punto di scroll, non i dati. -->
+         — lo intercetta comunque. Qui l'offset è 0 perché è il primo caricamento;
+         da lì in poi è il fragment sostituito a portare con sé l'offset della
+         pagina mostrata, quindi un acquisto non riporta più alla prima pagina. -->
     <div id="phaseTable" hx-get="/fragments/phase-players?offset=0"
          hx-trigger="load, fantaStateChanged from:body" hx-swap="outerHTML"></div>
   </section>
@@ -192,6 +199,15 @@
 
 </div>
 
+<!-- Punto di innesto del popup del battitore. Vuoto finche' non si preme "batti":
+     il fragment arriva da GET /battitore e bidder.js lo apre come dialogo modale.
+     Sta qui, ultimo figlio del body e fuori da ogni regione soggetta a swap, perche'
+     un <dialog> modale non deve stare dentro un elemento che htmx puo' sostituire
+     mentre e' aperto: lo swap lo staccherebbe dal documento e il browser lo
+     chiuderebbe senza che nessuno lo abbia chiesto. -->
+<div id="bidderMount"></div>
+
 <script th:src="@{/app.js}"></script>
+<script th:src="@{/bidder.js}"></script>
 </body>
 </html>

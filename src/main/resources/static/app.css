@@ -101,7 +101,6 @@ select:focus-visible, textarea:focus-visible {
 #phaseTable .assign-price { width:3.5rem; margin-left:0; }
 #phaseTable select { font:inherit; background:#000; color:var(--fg);
                       border:1px solid var(--line); padding:.3rem; }
-#phaseTable .load-more { width:100%; }
 
 /* Home: la schermata che chiede quale asta aprire. */
 .home { max-width:46rem; margin:0 auto; padding:1rem 1.5rem 3rem; }
@@ -139,3 +138,189 @@ table.auctions tr.sel td { color:#fff; }
                                 border:1px solid var(--line); font-weight:normal;
                                 padding:.2rem .5rem; }
 .phase-done .phase-done-close:hover { color:var(--fg); }
+
+/* ---------------------------------------------------------------------------
+   Il battitore d'asta.
+
+   Gerarchia deliberata: il countdown è l'elemento più grande dello schermo, più
+   dello stesso max bid. Durante un rilancio la domanda non è "quanto vale" — a
+   quella si è già risposto prima di aprire il popup — ma "quanto tempo resta",
+   e va letta con la coda dell'occhio mentre si guarda la stanza.
+   --------------------------------------------------------------------------- */
+
+.bidder-open { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
+               border:1px solid var(--line); padding:.35rem .8rem; cursor:pointer;
+               margin-bottom:.5rem; }
+.bidder-open:hover { background:#2a2a2a; border-color:var(--focus); }
+
+/* Nella tabella di fase la cella ospita il bottone E il form: entrambi in linea,
+   altrimenti il "batti" spingerebbe l'assegnazione su una seconda riga e la
+   tabella raddoppierebbe in altezza. */
+.bidder-open-row { margin:0 .3rem 0 0; padding:.3rem .5rem; vertical-align:middle; }
+#phaseTable .assign-row { display:inline-flex; vertical-align:middle; }
+
+.bidder { border:1px solid var(--line); background:var(--bg); color:var(--fg);
+          padding:0; width:min(30rem, 92vw); }
+.bidder::backdrop { background:rgba(0,0,0,.78); }
+
+.bidder-head { display:flex; align-items:baseline; gap:.6rem; padding:.8rem 1rem;
+               border-bottom:1px solid var(--line); }
+.bidder-head b { font-size:var(--fs-md); }
+.bidder-close { margin-left:auto; font:inherit; background:transparent; color:var(--dim);
+                border:1px solid var(--line); padding:.2rem .5rem; cursor:pointer; }
+.bidder-close:hover { color:var(--fg); }
+
+.bidder-clock { text-align:center; padding:1.2rem 1rem .4rem; line-height:1; }
+.bidder-clock-icon { font-size:var(--fs-lg); color:var(--dim); margin-right:.4rem;
+                     vertical-align:.35rem; }
+#bidderClock { font-size:5rem; font-weight:bold; font-variant-numeric:tabular-nums; }
+/* Gli ultimi due secondi cambiano colore invece di lampeggiare: un lampeggio va
+   evitato per chi è sensibile al movimento, e in una stanza rumorosa il colore si
+   coglie comunque con la coda dell'occhio. */
+.bidder-clock.urgent #bidderClock { color:var(--neg); }
+.bidder-clock.expired #bidderClock { color:var(--dim); }
+
+.bidder-numbers { display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+                  padding:.6rem 1rem 1rem; text-align:center; }
+.bidder-numbers label { display:block; font-size:var(--fs-xs); color:var(--dim);
+                        letter-spacing:.08em; }
+.bidder-numbers b.big { font-size:var(--fs-xxl); font-variant-numeric:tabular-nums; }
+
+/* Il segnale che conta: si è superato il tetto. Colora anche il prezzo, perché è
+   quello il numero che si sta guardando quando si decide se rilanciare ancora. */
+.bidder.over-max #bidderPrice { color:var(--neg); }
+.bidder-over { margin:0; padding:.5rem 1rem; background:#2a0f0f; color:var(--neg);
+               border-top:1px solid var(--neg); border-bottom:1px solid var(--neg);
+               font-weight:bold; text-align:center; }
+
+.bidder-controls { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
+                   padding:1rem; border-top:1px solid var(--line); }
+.bidder-controls button { font:inherit; background:#1c1c1c; color:var(--fg);
+                          border:1px solid var(--line); padding:.4rem .7rem; cursor:pointer; }
+.bidder-controls button:hover { background:#2a2a2a; }
+.bidder-bid { flex:1 1 10rem; background:var(--pos) !important; color:#022 !important;
+              border-color:var(--pos) !important; font-weight:bold;
+              font-size:var(--fs-lg); padding:.7rem 1rem !important; }
+.bidder-bid small { display:block; font-size:var(--fs-xs); font-weight:normal; opacity:.7; }
+.bidder-jump { font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
+#bidderJump { width:4.5rem; font:inherit; background:#000; color:var(--fg);
+              border:1px solid var(--line); padding:.3rem; margin-left:.3rem; }
+
+.bidder-assign { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem;
+                 padding:1rem; border-top:1px solid var(--line); background:#161616; }
+.bidder-assign label { font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
+.bidder-assign select, .bidder-assign input { font:inherit; background:#000; color:var(--fg);
+                                              border:1px solid var(--line); padding:.35rem;
+                                              margin-left:.3rem; }
+#bidderFinalPrice { width:5rem; }
+.bidder-confirm { font:inherit; background:var(--pos); color:#022; font-weight:bold;
+                  border:1px solid var(--pos); padding:.45rem 1rem; cursor:pointer; }
+.bidder-resume { font:inherit; background:transparent; color:var(--dim);
+                 border:1px solid var(--line); padding:.4rem .7rem; cursor:pointer; }
+.bidder-resume:hover { color:var(--fg); }
+.bidder-error { flex:1 1 100%; margin:0; color:var(--neg); }
+
+/* ---------------------------------------------------------------------------
+   La pagina BATTITORE, proiettata sullo schermo condiviso.
+
+   Si legge da qualche metro, non da sessanta centimetri: tutta la pagina parte da
+   una base tipografica più grande invece di ingrandire un elemento per volta, così
+   la gerarchia resta quella già calibrata altrove e non va ritarata a mano.
+
+   Nessuna regola qui mostra una valutazione, perché nessun dato di valutazione
+   arriva a questa pagina: il vincolo è imposto in BattitoreController, che non ha
+   il servizio per calcolarle. Il foglio di stile non è il posto dove si difende un
+   segreto — è solo il posto dove si smetterebbe di sembrare che lo sia.
+   --------------------------------------------------------------------------- */
+
+body.projected { font-size:1.25rem; }
+.battitore { padding:1rem 1.5rem 3rem; }
+
+.battitore-head { display:flex; align-items:baseline; gap:1.5rem;
+                  border-bottom:1px solid var(--line); padding-bottom:.6rem;
+                  margin-bottom:1rem; }
+.battitore-head h1 { font-size:2rem; margin:0; letter-spacing:.1em; }
+.battitore-phase { font-size:1.4rem; color:var(--dim); }
+.battitore-phase b { color:var(--fg); }
+/* Piccolo e spinto a destra: è un comando per chi conduce, non un'informazione
+   per la stanza. */
+.battitore-exit { margin-left:auto; font-size:var(--fs-sm); color:var(--dim);
+                  text-decoration:none; }
+.battitore-exit:hover { color:var(--fg); }
+
+.battitore-search input { width:100%; font:inherit; font-size:1.6rem;
+                          background:#000; color:var(--fg);
+                          border:1px solid var(--line); padding:.6rem .8rem; }
+.battitore-search input:focus { outline:2px solid var(--focus); outline-offset:2px; }
+
+.battitore-results { display:flex; flex-wrap:wrap; gap:.5rem; margin:.7rem 0 1.5rem; }
+/* Ogni risultato è un bottone, non una riga cliccabile: arriva al fuoco con Tab e
+   si attiva con Invio senza che si debba scriverne il comportamento. */
+.battitore-result { display:flex; align-items:baseline; gap:.7rem; font:inherit;
+                    font-size:1.15rem; background:#1c1c1c; color:var(--fg);
+                    border:1px solid var(--line); padding:.5rem .9rem; cursor:pointer;
+                    text-align:left; }
+.battitore-result:hover { background:#2a2a2a; border-color:var(--focus); }
+.battitore-result-name { font-weight:bold; }
+.battitore-result-price { color:var(--dim); }
+
+.battitore-message { padding:.5rem .9rem; margin:0 0 .8rem;
+                     border-left:3px solid var(--pos); background:#10240f; }
+
+/* Il tabellone riusa le classi del riepilogo privato: stesse regole, un solo
+   posto dove correggerle. Qui cambiano solo le misure, perché va letto da lontano. */
+.battitore-board-wrap .recap-board { display:flex; gap:1rem; overflow-x:auto;
+                                     padding-bottom:1rem; }
+.battitore-board-wrap .recap-col { flex:0 0 17rem; min-width:17rem;
+                                   border:1px solid var(--line); padding:.8rem; }
+.battitore-board-wrap .recap-col h2 { font-size:1.35rem; margin:0 0 .2rem; }
+.battitore-board-wrap .recap-col .meta { color:var(--dim); font-size:1rem;
+                                         margin-bottom:.6rem; }
+.battitore-board-wrap .recap-role { font-size:.9rem; color:var(--dim);
+                                    letter-spacing:.06em; margin:.6rem 0 .2rem;
+                                    border-top:1px solid var(--line); padding-top:.4rem; }
+.battitore-board-wrap .recap-role:first-of-type { border-top:none; margin-top:0; }
+.battitore-board-wrap .recap-player { display:flex; justify-content:space-between;
+                                      align-items:center; gap:.4rem; padding:.2rem 0;
+                                      font-size:1.1rem; }
+.battitore-board-wrap .recap-player .price { color:var(--dim); }
+.battitore-board-wrap .recap-player form { margin:0; }
+.battitore-board-wrap .empty-role { color:var(--dim); font-size:1rem; font-style:italic;
+                                    margin:.1rem 0; }
+.battitore-board-wrap .revoke-btn { font:inherit; font-size:.85rem; background:transparent;
+                                    color:var(--dim); border:1px solid var(--line);
+                                    padding:.05rem .4rem; cursor:pointer; border-radius:2px; }
+.battitore-board-wrap .revoke-btn:hover { color:var(--neg); border-color:var(--neg); }
+.battitore-board-wrap .revoke-btn.confirming { color:#022; background:var(--neg);
+                                               border-color:var(--neg); font-weight:bold; }
+
+/* Il popup proiettato: più grande, e con una sola cella di numeri perché il max bid
+   non esiste su questa pagina — non è nascosto, non arriva proprio dal server. */
+.bidder-public { width:min(38rem, 94vw); }
+.bidder-public #bidderClock { font-size:7rem; }
+.bidder-numbers-solo { grid-template-columns:1fr; }
+.bidder-public #bidderPrice { font-size:4rem; }
+.bidder-public .bidder-bid { font-size:1.6rem; }
+
+/* Fase completa sulla pagina proiettata. Riusa .phase-done per colori e struttura —
+   un solo posto dove cambiarli — e ne corregge solo ciò che qui è diverso: non è più
+   una fascia in cima alla finestra ma un riquadro dentro il tabellone, e va letto da
+   lontano come tutto il resto di questa pagina. */
+.battitore-phase-done { border:1px solid var(--pos); border-left:4px solid var(--pos);
+                        border-bottom:1px solid var(--pos); margin:0 0 1rem;
+                        font-size:1.15rem; }
+.battitore-phase-done button { font-size:1.15rem; padding:.5rem 1rem; }
+
+/* Navigazione fra le pagine della tabella di fase. I bottoni restano al loro posto
+   anche quando non sono utilizzabili: disabilitarli invece di nasconderli tiene la
+   barra di larghezza costante, così in asta si clicca "successivi" senza guardare e
+   senza che l'altro bottone sia scivolato sotto il puntatore. */
+.phase-nav { display:flex; align-items:center; gap:1rem; padding:.6rem 0 0;
+             border-top:1px solid var(--line); margin-top:.4rem; }
+.phase-nav button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c;
+                    color:var(--fg); border:1px solid var(--line);
+                    padding:.35rem .9rem; cursor:pointer; }
+.phase-nav button:hover:not(:disabled) { background:#2a2a2a; }
+.phase-nav button:disabled { color:var(--line); cursor:default; }
+.phase-nav span { font-size:var(--fs-sm); }
+.phase-count { margin-left:.6rem; }

@@ -55,6 +55,35 @@ public final class ViewModels {
                               boolean selected) {
     }
 
+    /**
+     * Il popup del battitore: chi si sta battendo, il tetto oltre cui non conviene, e
+     * le due preferenze che governano il countdown.
+     *
+     * <p>Il max bid e' calcolato una volta sola, all'apertura, e non si muove piu'
+     * mentre si rilancia. Non e' una svista: e' un tetto che dipende da budget, slot e
+     * alternative ancora disponibili, non da quanto si e' gia' offerto. Ricalcolarlo ad
+     * ogni rilancio mostrerebbe un numero che insegue l'offerta, che e' precisamente il
+     * comportamento da cui questo strumento deve proteggere.
+     */
+    public record Bidder(Player player, PriceRecommendation recommendation,
+                         int timerSeconds, boolean beepEnabled) {
+    }
+
+    /**
+     * Il battitore sulla pagina proiettata sullo schermo condiviso.
+     *
+     * <p>Un record separato da {@link Bidder}, e non lo stesso con un flag "nascondi il
+     * max bid". La differenza e' l'intero punto: qui NON ESISTE un campo in cui il max
+     * bid possa stare, quindi non puo' finire nel markup ne' per una svista in un
+     * template, ne' per un ramo condizionale scritto male, ne' guardando il sorgente
+     * della pagina. Un flag si dimentica; un campo assente no.
+     *
+     * <p>Chi aggiunge qui un campo che viene da una valutazione lo sta proiettando su
+     * uno schermo che guardano tutti gli avversari.
+     */
+    public record PublicBidder(Player player, int timerSeconds, boolean beepEnabled) {
+    }
+
     /** Una riga della pagina di riepilogo: un giocatore posseduto e il prezzo pagato. */
     public record RecapPlayer(long seq, String name, int price) {
     }
