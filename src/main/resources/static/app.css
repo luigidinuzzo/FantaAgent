@@ -118,3 +118,17 @@ table.auctions tr.sel td { color:#fff; }
 .phase-picker .dim { font-size:var(--fs-xs); letter-spacing:.08em; }
 .status .phase-picker button { padding:.3rem .5rem; min-width:2rem; }
 .status .phase-picker button.current { background:#2a2a2a; color:#fff; border-color:var(--fg); }
+
+/* Avviso di fase completa: prominente ma non bloccante — si chiude, non intrappola. */
+.phase-done { display:flex; align-items:center; gap:1rem; padding:.7rem 1rem;
+              background:#10240f; border-bottom:1px solid var(--pos);
+              border-left:4px solid var(--pos); }
+.phase-done b { color:#fff; }
+.phase-done form { margin:0; }
+.phase-done button { font:inherit; font-size:var(--fs-sm); background:var(--pos);
+                     color:#022; font-weight:bold; border:1px solid var(--pos);
+                     padding:.35rem .8rem; cursor:pointer; }
+.phase-done .phase-done-close { margin-left:auto; background:transparent; color:var(--dim);
+                                border:1px solid var(--line); font-weight:normal;
+                                padding:.2rem .5rem; }
+.phase-done .phase-done-close:hover { color:var(--fg); }

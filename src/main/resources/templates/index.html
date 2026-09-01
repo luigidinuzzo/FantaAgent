@@ -49,6 +49,26 @@
   fase <b th:text="${resume?.phase}">D</b> — ripreso dal log su disco.
 </div>
 
+<!-- Come #resume: l'elemento c'e' sempre nel markup e si nasconde con l'attributo
+     hidden, perche' uno swap out-of-band puo' solo sostituire un elemento che la
+     risposta contiene davvero — con th:if sull'elemento, un avviso gia' mostrato non
+     potrebbe piu' essere ripulito quando la fase smette di essere completa (es. dopo
+     un annullamento). Arriva in ogni risposta che cambia stato, quindi compare
+     nell'istante in cui l'ultimo slot del ruolo si chiude, non al ricaricamento.
+     Avvisa, non blocca: un modale impedirebbe di correggere un acquisto di quella
+     stessa fase, che e' proprio la ragione per cui si potrebbe volerci restare. -->
+<div id="phaseDone" class="phase-done" th:fragment="phaseDone" hx-swap-oob="true"
+     th:hidden="${phaseDone == null}" th:attr="data-phase=${phaseDone?.phase}"
+     role="status">
+  <span>Fase <b th:text="${phaseDone?.phase}">P</b> completa: nessun partecipante ha
+    più uno slot libero per questo ruolo.</span>
+  <form th:if="${phaseDone != null and phaseDone.nextPhase != null}"
+        hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
+    <button type="submit">vai alla fase <span th:text="${phaseDone?.nextPhase}">D</span> →</button>
+  </form>
+  <button type="button" class="phase-done-close" aria-label="chiudi l'avviso">✕</button>
+</div>
+
 <div class="layout">
 
   <!-- La barra comando vive fuori da #main: non viene mai sostituita da uno swap,

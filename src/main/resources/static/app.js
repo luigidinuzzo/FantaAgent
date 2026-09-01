@@ -89,3 +89,39 @@ if (cmdForm) {
     if (cmd) { cmd.value = ''; }
   });
 }
+
+// Avviso "fase completa": chiuderlo lo tiene chiuso per QUELLA fase, non per sempre.
+// Lo stato vive qui e non nell'elemento perche' ogni risposta che cambia stato
+// sostituisce #phaseDone per intero (swap out-of-band): un attributo scritto sul nodo
+// sparirebbe al primo aggiornamento e l'avviso ricomparirebbe ad ogni click.
+// NOTA: questa parte vive interamente nel browser e il progetto non ha un'infrastruttura
+// di test JavaScript, quindi non e' coperta da test — vedi il documento di consegna.
+let phaseDoneDismissed = null;
+
+function syncPhaseDone() {
+  const el = document.getElementById('phaseDone');
+  if (!el) { return; }
+  const phase = el.getAttribute('data-phase');
+  if (!phase) {
+    // La fase non e' piu' completa (es. dopo un annullamento): l'avviso si riarma,
+    // altrimenti una chiusura di stamattina zittirebbe anche il prossimo ruolo.
+    phaseDoneDismissed = null;
+    return;
+  }
+  if (phase === phaseDoneDismissed) { el.hidden = true; }
+}
+
+document.body.addEventListener('htmx:afterSwap', syncPhaseDone);
+
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  if (target && target.classList && target.classList.contains('phase-done-close')) {
+    const el = document.getElementById('phaseDone');
+    if (el) {
+      phaseDoneDismissed = el.getAttribute('data-phase');
+      el.hidden = true;
+    }
+  }
+});
+
+syncPhaseDone();

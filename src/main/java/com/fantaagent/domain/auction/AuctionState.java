@@ -32,6 +32,20 @@ public record AuctionState(
         return squadOf(myParticipantId);
     }
 
+    /**
+     * Slot ancora scoperti per quel ruolo sommati su TUTTI i partecipanti, non solo sui
+     * miei: e' la domanda "questa fase ha ancora senso" — se nessuno puo' piu' prendere
+     * un giocatore di quel ruolo, restare in quella fase non porta a nulla.
+     */
+    public int slotsRemainingFor(Role role) {
+        return squads.values().stream().mapToInt(squad -> squad.slotsRemaining(role)).sum();
+    }
+
+    /** Vero quando nessun partecipante ha piu' uno slot libero per quel ruolo. */
+    public boolean isPhaseComplete(Role role) {
+        return slotsRemainingFor(role) == 0;
+    }
+
     public Set<String> soldPlayerIds() {
         return holdings.stream().map(Holding::playerId).collect(Collectors.toUnmodifiableSet());
     }

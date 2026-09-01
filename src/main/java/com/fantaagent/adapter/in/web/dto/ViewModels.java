@@ -39,6 +39,14 @@ public final class ViewModels {
     }
 
     /**
+     * Fase completa: nessun partecipante ha piu' uno slot libero per quel ruolo.
+     * {@code nextPhase} e' null se si e' gia' sull'ultima fase — allora non c'e' un
+     * "vai alla prossima" da offrire, e dirlo comunque sarebbe un bottone che mente.
+     */
+    public record PhaseComplete(String phase, String nextPhase) {
+    }
+
+    /**
      * Una riga della home: quanto basta a riconoscere un'asta fra le altre — il suo
      * identificativo, quando e' stata scritta l'ultima volta, quanti acquisti contiene
      * e a che fase era arrivata.

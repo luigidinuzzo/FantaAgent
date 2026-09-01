@@ -251,6 +251,7 @@ public class AuctionController {
                 mine.budgetRemaining(), composition(mine), mine.slotsRemaining(),
                 !state.holdings().isEmpty()));
         model.addAttribute("phases", state.rules().phases());
+        model.addAttribute("phaseDone", phaseComplete(state));
 
         List<ViewModels.BoardRow> board = new ArrayList<>();
         for (Participant participant : auction.participants()) {
@@ -262,6 +263,21 @@ public class AuctionController {
         model.addAttribute("board", board);
         model.addAttribute("participants", auction.participants());
         auction.resumeSummary().ifPresent(summary -> model.addAttribute("resume", summary));
+    }
+
+    /**
+     * Il messaggio "fase completa", o null se non lo e'. Calcolato sullo stesso stato
+     * gia' proiettato per il resto dell'intestazione, e restituito in ogni risposta che
+     * cambia stato: cosi' compare nell'istante in cui l'ultimo slot del ruolo si
+     * chiude, non al prossimo ricaricamento della pagina.
+     */
+    private ViewModels.PhaseComplete phaseComplete(AuctionState state) {
+        Role phase = state.currentPhase();
+        if (!state.isPhaseComplete(phase)) {
+            return null;
+        }
+        return new ViewModels.PhaseComplete(phase.name(),
+                state.rules().nextPhase(phase).map(Role::name).orElse(null));
     }
 
     private static String composition(Squad squad) {

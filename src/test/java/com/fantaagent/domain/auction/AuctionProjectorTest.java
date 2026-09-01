@@ -112,4 +112,28 @@ class AuctionProjectorTest {
 
         assertThat(project(events)).isEqualTo(project(events));
     }
+
+    @Test
+    void unaFaseECompletaQuandoNessunPartecipanteHaPiuSlotPerQuelRuolo() {
+        // Un solo slot per ruolo e due partecipanti: bastano due portieri venduti
+        // perche' la fase P non abbia piu' senso per nessuno.
+        LeagueRules unoPerRuolo = new LeagueRules(2, 500,
+                Map.of(Role.P, 1, Role.D, 1, Role.C, 1, Role.A, 1),
+                List.of(Role.P, Role.D, Role.C, Role.A));
+        RoleLookup portieri = id -> Role.P;
+
+        AuctionState ancoraAperta = AuctionProjector.project(unoPerRuolo, PARTICIPANTS, portieri,
+                List.of(new AuctionEvent.PlayerPurchased(1L, T, "gk1", "me", 10)));
+        assertThat(ancoraAperta.slotsRemainingFor(Role.P)).isEqualTo(1);
+        assertThat(ancoraAperta.isPhaseComplete(Role.P)).isFalse();
+
+        AuctionState completa = AuctionProjector.project(unoPerRuolo, PARTICIPANTS, portieri,
+                List.of(new AuctionEvent.PlayerPurchased(1L, T, "gk1", "me", 10),
+                        new AuctionEvent.PlayerPurchased(2L, T, "gk2", "marco", 10)));
+
+        assertThat(completa.slotsRemainingFor(Role.P)).isZero();
+        assertThat(completa.isPhaseComplete(Role.P)).isTrue();
+        // La completezza e' per ruolo, non globale: gli altri restano aperti.
+        assertThat(completa.isPhaseComplete(Role.D)).isFalse();
+    }
 }

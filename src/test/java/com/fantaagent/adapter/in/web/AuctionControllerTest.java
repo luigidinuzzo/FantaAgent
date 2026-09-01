@@ -251,6 +251,49 @@ class AuctionControllerTest {
     }
 
     @Test
+    void aStateChangeThatCompletesThePhaseAnnouncesItInTheSameResponse() throws Exception {
+        // RULES da' 1 slot per ruolo a 2 partecipanti: due difensori venduti chiudono
+        // la fase D. L'avviso deve arrivare nella risposta al comando che la chiude,
+        // non al ricaricamento successivo della pagina.
+        AuctionState completa = AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.D,
+                List.of(new AuctionEvent.PhaseAdvanced(1L, java.time.Instant.now(), Role.D),
+                        new AuctionEvent.PlayerPurchased(2L, java.time.Instant.now(), "d1", "me", 10),
+                        new AuctionEvent.PlayerPurchased(3L, java.time.Instant.now(), "d2", "marco", 10)));
+        when(auctionService.state()).thenReturn(completa);
+
+        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("completa")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("vai alla fase")))
+                // Non bloccante: c'e' sempre il modo di chiuderlo e restare sulla fase
+                // per correggere un acquisto.
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("phase-done-close")));
+    }
+
+    @Test
+    void thePhaseCompleteNoticeIsHiddenWhileTheRoleStillHasFreeSlots() throws Exception {
+        mockMvc.perform(get("/asta"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
+                        "(?s).*<div id=\"phaseDone\"[^>]*hidden[^>]*>.*")));
+    }
+
+    @Test
+    void theLastPhaseWhenCompleteOffersNoNextPhaseButton() throws Exception {
+        AuctionState ultimaCompleta = AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.A,
+                List.of(new AuctionEvent.PhaseAdvanced(1L, java.time.Instant.now(), Role.A),
+                        new AuctionEvent.PlayerPurchased(2L, java.time.Instant.now(), "a1", "me", 10),
+                        new AuctionEvent.PlayerPurchased(3L, java.time.Instant.now(), "a2", "marco", 10)));
+        when(auctionService.state()).thenReturn(ultimaCompleta);
+
+        mockMvc.perform(get("/asta"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("completa")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("vai alla fase"))));
+    }
+
+    @Test
     void undoIsExposed() throws Exception {
         when(auctionService.undoLast()).thenReturn(true);
 
