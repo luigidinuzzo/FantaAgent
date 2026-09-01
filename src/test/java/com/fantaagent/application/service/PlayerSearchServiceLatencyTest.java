@@ -118,10 +118,17 @@ class PlayerSearchServiceLatencyTest {
     }
 
     /**
-     * Il max bid costa circa 45 ms/giocatore e la fase corrente conta fino a ~200
-     * giocatori (i difensori del fixture qui sotto): renderlo per tutti supererebbe
-     * gli otto secondi, da cui il limite di batch. Misura sulla stessa scala di
-     * {@link #targetsStaysUnderOneSecondAtRealisticScale}.
+     * Misurato su questa macchina, su questo fixture: {@code targets(10)} 252 ms,
+     * {@code phasePlayers(25)} 341 ms — circa 12 ms/riga. La fase D del fixture conta
+     * 192 difensori ancora disponibili (200 generati, 8 già venduti): renderli tutti
+     * costerebbe circa 2,3 s, non otto — la stima precedente ("45 ms/giocatore",
+     * "otto secondi") non era mai stata misurata. Il limite di batch resta comunque
+     * giustificato: un secondo intero di attesa per 192 righe non serve a chi vuole
+     * vedere in fretta il migliore disponibile. Misura sulla stessa scala di
+     * {@link #targetsStaysUnderOneSecondAtRealisticScale}, ma in fase D — non in fase
+     * P, dove il pool sarebbe di soli 52 portieri e il test non si accorgerebbe di una
+     * regressione a un modello di prezzo costruito una volta per riga invece che una
+     * volta per batch.
      */
     @Test
     void phasePlayersStaysUnderOnePointFiveSecondsForOneBatchAtRealisticScale() {
@@ -164,6 +171,13 @@ class PlayerSearchServiceLatencyTest {
                 rival++;
             }
         }
+        // La fase parte da P (52 portieri ancora disponibili): il commento sopra
+        // ragiona sui ~200 difensori, quindi il fixture deve davvero trovarsi in
+        // fase D quando misura, altrimenti il test passerebbe misurando un batch
+        // pescato da un pool troppo piccolo per accorgersi di una regressione a un
+        // modello di prezzo per riga.
+        auction.advancePhase();
+        assertThat(auction.state().currentPhase()).isEqualTo(Role.D);
 
         ProjectionRegistry projections = ProjectionRegistry.build(RULES, SCORING, catalog, List.of(0.5, 0.3, 0.2));
         ModifierCalculator modifiers = new ModifierCalculator(SCORING, projections.replacement());
