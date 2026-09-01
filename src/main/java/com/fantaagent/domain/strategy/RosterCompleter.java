@@ -70,6 +70,14 @@ public final class RosterCompleter {
         this.pointsShortlistSize = pointsShortlistSize;
     }
 
+    /**
+     * Vedi {@link ModifierCalculator#scoring()}: serve a verificare che l'intera catena
+     * di valutazione derivi dagli stessi livelli di rimpiazzo.
+     */
+    public ReplacementLevels replacement() {
+        return replacement;
+    }
+
     public Completion complete(Squad squad, List<PlayerProjection> owned,
                                Collection<PlayerProjection> available, PriceModel prices) {
         List<PlayerProjection> roster = new ArrayList<>(owned);

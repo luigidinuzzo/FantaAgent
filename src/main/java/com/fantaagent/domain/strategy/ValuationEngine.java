@@ -51,6 +51,15 @@ public final class ValuationEngine {
         this.playerNameResolver = playerNameResolver;
     }
 
+    /** Vedi {@link ModifierCalculator#scoring()}: serve a verificare la coerenza della catena. */
+    public ModifierCalculator modifiers() {
+        return modifiers;
+    }
+
+    public RosterCompleter completer() {
+        return completer;
+    }
+
     public PriceRecommendation evaluate(ValuationContext ctx) {
         Squad mySquad = ctx.state().mySquad();
         PlayerProjection target = ctx.target();

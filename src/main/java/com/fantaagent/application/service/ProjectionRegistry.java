@@ -19,12 +19,24 @@ import java.util.Map;
  */
 public class ProjectionRegistry {
 
+    private final ScoringRules scoring;
     private final Map<String, PlayerProjection> byId;
     private final ReplacementLevels replacement;
 
-    private ProjectionRegistry(Map<String, PlayerProjection> byId, ReplacementLevels replacement) {
+    private ProjectionRegistry(ScoringRules scoring, Map<String, PlayerProjection> byId,
+                               ReplacementLevels replacement) {
+        this.scoring = scoring;
         this.byId = byId;
         this.replacement = replacement;
+    }
+
+    /**
+     * Le regole di punteggio da cui queste proiezioni discendono. Non servono al
+     * calcolo: servono a {@link ValuationChain} per rifiutare in costruzione una catena
+     * in cui proiezioni e motore verrebbero da regole diverse.
+     */
+    public ScoringRules scoring() {
+        return scoring;
     }
 
     public static ProjectionRegistry build(LeagueRules rules, ScoringRules scoring,
@@ -39,7 +51,7 @@ public class ProjectionRegistry {
             byId.put(player.id(), calculator.project(player, catalog.statsOf(player.id()),
                     roleAverages.get(player.role())));
         }
-        return new ProjectionRegistry(byId, ReplacementLevels.from(rules, byId.values()));
+        return new ProjectionRegistry(scoring, byId, ReplacementLevels.from(rules, byId.values()));
     }
 
     public PlayerProjection of(String playerId) {

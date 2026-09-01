@@ -18,12 +18,21 @@ public class BeanConfig {
     /**
      * Se {@code league-members.yml} esiste, i suoi partecipanti hanno la precedenza su
      * quelli di application.yml — stesso pattern di {@link SettingsConfig#scoringRules}.
-     * Letto una sola volta all'avvio perché gli id dei partecipanti finiscono nel
-     * registro dell'asta: cambiarli a caldo romperebbe il significato di quanto già
-     * registrato.
+     *
+     * <p>Questo bean è il valore INIZIALE, usato dalla validazione d'avvio e dalla prima
+     * costruzione di {@link com.fantaagent.application.service.AuctionRuntime}. Da lì in
+     * poi i partecipanti in vigore sono quelli dello snapshot del runtime, che
+     * {@code loadParticipants} rilegge ad ogni salvataggio: gli id restano fissi, quindi
+     * il registro dell'asta conserva il suo significato, e solo nome e iniziale cambiano.
      */
     @Bean
     public List<Participant> participants(LeagueProperties props, LeagueMembersSettingsStore store) {
+        return loadParticipants(props, store);
+    }
+
+    /** Gli stessi partecipanti che costruirebbe il bean, riletti da disco su richiesta. */
+    public static List<Participant> loadParticipants(LeagueProperties props,
+                                                     LeagueMembersSettingsStore store) {
         java.util.Optional<List<Participant>> stored = store.load();
         if (stored.isEmpty()) {
             org.slf4j.LoggerFactory.getLogger(BeanConfig.class)
@@ -56,64 +65,67 @@ public class BeanConfig {
     }
 
     @Bean
-    public com.fantaagent.application.port.out.AuctionEventStore auctionEventStore(
-            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:res}") String dataDir,
-            @org.springframework.beans.factory.annotation.Value("${fantaagent.auction-id:current}") String auctionId) {
-        return new com.fantaagent.adapter.out.file.JsonlAuctionEventStore(
-                java.nio.file.Path.of(dataDir, "auctions", auctionId, "events.jsonl"));
+    public com.fantaagent.application.port.out.AuctionArchive auctionArchive(
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.data-dir:res}") String dataDir) {
+        return new com.fantaagent.adapter.out.file.FileAuctionArchive(java.nio.file.Path.of(dataDir));
     }
 
+    /**
+     * L'unico posto da cui i servizi prendono asta selezionata e catena di valutazione.
+     * Sostituisce sia il vecchio bean {@code auctionEventStore} (che fissava l'asta
+     * all'avvio da {@code fantaagent.auction-id}) sia i bean {@code projectionRegistry}
+     * e {@code valuationEngine}, che erano derivati una volta sola dalle regole di
+     * punteggio e per questo imponevano un riavvio ad ogni modifica.
+     */
     @Bean
-    public com.fantaagent.application.service.ProjectionRegistry projectionRegistry(
+    public com.fantaagent.application.service.AuctionRuntime auctionRuntime(
             com.fantaagent.domain.league.LeagueRules rules,
-            com.fantaagent.domain.league.ScoringRules scoring,
             com.fantaagent.application.port.out.PlayerCatalog catalog,
-            LeagueProperties props) {
-        return com.fantaagent.application.service.ProjectionRegistry.build(
-                rules, scoring, catalog, props.scoring().seasonWeights());
-    }
-
-    @Bean
-    public com.fantaagent.domain.strategy.ValuationEngine valuationEngine(
-            com.fantaagent.domain.league.ScoringRules scoring,
-            com.fantaagent.application.service.ProjectionRegistry projections,
-            com.fantaagent.application.port.out.PlayerCatalog catalog) {
-        var modifiers = new com.fantaagent.domain.strategy.ModifierCalculator(
-                scoring, projections.replacement());
-        var completer = new com.fantaagent.domain.strategy.RosterCompleter(
-                modifiers, projections.replacement());
-        java.util.function.UnaryOperator<String> playerNameResolver = id ->
-                catalog.byId(id).map(com.fantaagent.domain.player.Player::name).orElse(id);
-        return new com.fantaagent.domain.strategy.ValuationEngine(completer, modifiers, playerNameResolver);
+            LeagueProperties props,
+            ScoringSettingsStore scoringStore,
+            LeagueMembersSettingsStore membersStore,
+            com.fantaagent.application.port.out.AuctionArchive archive,
+            @org.springframework.beans.factory.annotation.Value("${fantaagent.auction-id:}") String auctionId) {
+        var runtime = new com.fantaagent.application.service.AuctionRuntime(
+                rules, catalog, props.scoring().seasonWeights(),
+                () -> SettingsConfig.loadScoringRules(scoringStore, props),
+                () -> loadParticipants(props, membersStore),
+                archive);
+        // Compatibilita' con la vecchia proprieta': se e' impostata e quell'asta esiste,
+        // la si apre subito. Altrimenti si parte senza asta selezionata e la home chiede
+        // quale aprire.
+        if (!auctionId.isBlank() && archive.exists(auctionId)) {
+            runtime.select(auctionId);
+        }
+        return runtime;
     }
 
     @Bean
     public com.fantaagent.application.service.AuctionService auctionService(
             com.fantaagent.domain.league.LeagueRules rules,
-            java.util.List<com.fantaagent.domain.league.Participant> participants,
             com.fantaagent.application.port.out.PlayerCatalog catalog,
-            com.fantaagent.application.port.out.AuctionEventStore store) {
-        return new com.fantaagent.application.service.AuctionService(rules, participants, catalog, store);
+            com.fantaagent.application.service.AuctionRuntime runtime) {
+        return new com.fantaagent.application.service.AuctionService(
+                rules, catalog, runtime.scopes());
     }
 
     @Bean
     public com.fantaagent.application.service.PlayerAnalysisService playerAnalysisService(
             com.fantaagent.domain.league.LeagueRules rules,
             com.fantaagent.application.port.out.PlayerCatalog catalog,
-            com.fantaagent.application.service.ProjectionRegistry projections,
-            com.fantaagent.domain.strategy.ValuationEngine engine,
+            com.fantaagent.application.service.AuctionRuntime runtime,
             com.fantaagent.application.service.AuctionService auction) {
         return new com.fantaagent.application.service.PlayerAnalysisService(
-                rules, catalog, projections, engine, auction);
+                rules, catalog, runtime.chains(), auction);
     }
 
     @Bean
     public com.fantaagent.application.service.PlayerSearchService playerSearchService(
             com.fantaagent.application.port.out.PlayerCatalog catalog,
-            com.fantaagent.application.service.ProjectionRegistry projections,
+            com.fantaagent.application.service.AuctionRuntime runtime,
             com.fantaagent.application.service.AuctionService auction,
             com.fantaagent.application.service.PlayerAnalysisService analysis) {
         return new com.fantaagent.application.service.PlayerSearchService(
-                catalog, projections, auction, analysis);
+                catalog, runtime.chains(), auction, analysis);
     }
 }

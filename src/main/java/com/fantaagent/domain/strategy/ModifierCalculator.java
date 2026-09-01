@@ -32,6 +32,19 @@ public final class ModifierCalculator {
         this.replacement = replacement;
     }
 
+    /**
+     * Le regole con cui questo calcolatore e' stato costruito. Serve a
+     * {@code ValuationChain} per rifiutare in costruzione una catena i cui pezzi non
+     * derivino tutti dalle stesse regole.
+     */
+    public ScoringRules scoring() {
+        return scoring;
+    }
+
+    public ReplacementLevels replacement() {
+        return replacement;
+    }
+
     public double modifierPoints(List<PlayerProjection> squad) {
         double keeperRating = bestRating(squad, Role.P).orElse(replacement.rating(Role.P));
 

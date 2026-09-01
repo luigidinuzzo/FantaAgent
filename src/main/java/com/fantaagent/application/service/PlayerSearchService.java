@@ -12,6 +12,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public class PlayerSearchService {
 
@@ -66,16 +67,41 @@ public class PlayerSearchService {
     private final PlayerSearch search;
     private final AuctionService auction;
     private final PlayerAnalysisService analysis;
-    private final ProjectionRegistry projections;
 
-    public PlayerSearchService(PlayerCatalog catalog, ProjectionRegistry projections,
+    /**
+     * Riletta ad ogni richiesta invece di essere catturata alla costruzione: salvare le
+     * impostazioni la sostituisce in blocco. Ogni metodo pubblico la legge una volta
+     * sola e la passa avanti, così tutte le righe di una pagina nascono dallo stesso
+     * modello di punteggio.
+     */
+    private final Supplier<ValuationChain> chain;
+
+    public PlayerSearchService(PlayerCatalog catalog, Supplier<ValuationChain> chain,
                                AuctionService auction, PlayerAnalysisService analysis) {
         this.catalog = catalog;
-        this.projections = projections;
+        this.chain = chain;
         this.auction = auction;
         this.analysis = analysis;
+        // Il catalogo non cambia a caldo, quindi l'indice di ricerca si costruisce una
+        // volta sola; solo il criterio di ordinamento rilegge le proiezioni correnti.
         this.search = new PlayerSearch(catalog.all(),
-                id -> projections.of(id).basePoints());
+                id -> chain.get().projections().of(id).basePoints());
+    }
+
+    /**
+     * Catena fissa, decisa alla costruzione: la forma usata dai test. Prende la catena
+     * dal servizio di analisi invece di costruirne una seconda, e verifica che le
+     * proiezioni passate siano davvero le stesse — due catene diverse dentro la stessa
+     * pagina sono esattamente ciò che questo progetto sta cercando di rendere
+     * impossibile.
+     */
+    public PlayerSearchService(PlayerCatalog catalog, ProjectionRegistry projections,
+                               AuctionService auction, PlayerAnalysisService analysis) {
+        this(catalog, analysis.chains(), auction, analysis);
+        if (analysis.chains().get().projections() != projections) {
+            throw new IllegalArgumentException(
+                    "the projections given differ from the ones the analysis service uses");
+        }
     }
 
     public List<Player> search(String query) {
@@ -89,12 +115,14 @@ public class PlayerSearchService {
 
     /** Migliori obiettivi della fase corrente, ordinati per margine decrescente. */
     public List<TargetRow> targets(int limit) {
+        ValuationChain current = chain.get();
+        ProjectionRegistry projections = current.projections();
         AuctionState state = auction.state();
         Set<String> sold = state.soldPlayerIds();
         // Costruito una sola volta e riusato su tutti i candidati: rifarlo per ciascuno
         // ripeterebbe una scansione dell'intero catalogo TARGET_CANDIDATES_PER_CRITERION
         // volte.
-        PriceModel prices = analysis.priceModelFor(state);
+        PriceModel prices = analysis.priceModelFor(state, current);
 
         List<PlayerProjection> ofPhase = projections.all().stream()
                 .filter(p -> p.role() == state.currentPhase())
@@ -122,7 +150,7 @@ public class PlayerSearchService {
         return candidateIds.stream()
                 .map(id -> new TargetRow(
                         catalog.byId(id).orElseThrow(),
-                        analysis.analyze(id, state, prices)))
+                        analysis.analyze(id, state, prices, current)))
                 .sorted(Comparator.comparingInt(TargetRow::margin).reversed())
                 .limit(limit)
                 .toList();
@@ -144,6 +172,8 @@ public class PlayerSearchService {
      * il log da capo).
      */
     public PhasePage phasePlayers(int offset, int limit) {
+        ValuationChain current = chain.get();
+        ProjectionRegistry projections = current.projections();
         AuctionState state = auction.state();
         Set<String> sold = state.soldPlayerIds();
 
@@ -155,10 +185,10 @@ public class PlayerSearchService {
 
         List<PlayerProjection> page = ofPhase.stream().skip(Math.max(0, offset)).limit(limit).toList();
 
-        PriceModel prices = analysis.priceModelFor(state);
+        PriceModel prices = analysis.priceModelFor(state, current);
         List<PhaseRow> rows = page.stream()
                 .map(p -> new PhaseRow(catalog.byId(p.playerId()).orElseThrow(),
-                        analysis.analyze(p.playerId(), state, prices), p))
+                        analysis.analyze(p.playerId(), state, prices, current), p))
                 .toList();
 
         boolean hasMore = offset + page.size() < ofPhase.size();

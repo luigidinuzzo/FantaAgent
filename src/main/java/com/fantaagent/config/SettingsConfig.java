@@ -22,12 +22,13 @@ import java.util.Optional;
  * valere. Altrimenti si ricade sui valori di application.yml, che restano il default
  * del progetto.
  *
- * <p>Le regole di punteggio sono lette una volta sola, all'avvio, perché da esse
- * discendono i punti attesi di tutti i giocatori, i livelli di rimpiazzo e l'intero
- * motore di valutazione. Cambiarle a caldo senza ricostruire quella catena mostrerebbe
- * numeri calcolati con le regole vecchie: verdi, plausibili e sbagliati. Per questo il
- * salvataggio scrive su disco e chiede un riavvio, invece di fingere un aggiornamento
- * immediato.
+ * <p>Questo bean è il valore INIZIALE. Da esse discendono i punti attesi di tutti i
+ * giocatori, i livelli di rimpiazzo e l'intero motore di valutazione: cambiarle a caldo
+ * senza ricostruire quella catena mostrerebbe numeri calcolati con le regole vecchie —
+ * verdi, plausibili e sbagliati. Per questo il salvataggio non aggiorna nulla a pezzi
+ * ma chiede a {@link com.fantaagent.application.service.AuctionRuntime} di ricostruire
+ * l'intera catena e di pubblicarla in blocco: niente più riavvio, e nessun istante in
+ * cui metà dei numeri viene da un modello e metà dall'altro.
  */
 @Configuration
 public class SettingsConfig {
@@ -48,6 +49,11 @@ public class SettingsConfig {
 
     @Bean
     public ScoringRules scoringRules(ScoringSettingsStore store, LeagueProperties props) {
+        return loadScoringRules(store, props);
+    }
+
+    /** Le stesse regole che costruirebbe il bean, rilette da disco su richiesta. */
+    public static ScoringRules loadScoringRules(ScoringSettingsStore store, LeagueProperties props) {
         double sigma = props.scoring().matchdayRatingSigma();
         Optional<ScoringSettings> stored = store.load();
         if (stored.isEmpty()) {
