@@ -56,6 +56,16 @@ class SettingsControllerTest {
     @MockitoBean
     private LeagueMembersSettingsStore membersStore;
 
+    @MockitoBean
+    private com.fantaagent.application.service.AuctionRuntime auctionRuntime;
+
+    /**
+     * Finto apposta: uno store vero punterebbe alla data-dir del profilo dev e
+     * SCRIVEREBBE davvero un file di impostazioni nel progetto.
+     */
+    @MockitoBean
+    private com.fantaagent.config.ScoringSettingsStore scoringStore;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -65,6 +75,72 @@ class SettingsControllerTest {
         when(membersStore.load()).thenReturn(Optional.empty());
         when(auctionService.state()).thenReturn(
                 AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.D, List.of()));
+        when(auctionRuntime.snapshot()).thenAnswer(inv -> snapshot());
+        when(scoringStore.file()).thenReturn(Path.of("res/league-settings.yml"));
+        when(scoringStore.load()).thenReturn(Optional.empty());
+    }
+
+    /**
+     * Lo snapshot che il runtime pubblicherebbe: partecipanti e catena di valutazione
+     * in un unico blocco coerente, esattamente come li legge la pagina.
+     */
+    private static com.fantaagent.application.service.RuntimeSnapshot snapshot() {
+        com.fantaagent.application.port.out.PlayerCatalog catalog =
+                new com.fantaagent.adapter.out.file.InMemoryPlayerCatalog(List.of(), List.of());
+        java.util.Map<Role, Double> goalBonus = new java.util.EnumMap<>(Role.class);
+        for (Role role : Role.values()) {
+            goalBonus.put(role, 3.0);
+        }
+        com.fantaagent.domain.league.ScoringRules scoring =
+                new com.fantaagent.domain.league.ScoringRules(true, goalBonus, 1.0, 3.0, -3.0,
+                        3.0, -0.5, -1.0, -1.0, 1.0,
+                        new com.fantaagent.domain.league.ModifierTable(3, List.of(
+                                new com.fantaagent.domain.league.ModifierTable.Threshold(0.0, 0.0))),
+                        new com.fantaagent.domain.league.ModifierTable(0, List.of(
+                                new com.fantaagent.domain.league.ModifierTable.Threshold(0.0, 0.0))),
+                        0.55);
+        return new com.fantaagent.application.service.RuntimeSnapshot(null, null, PARTICIPANTS,
+                com.fantaagent.application.service.ValuationChain.build(
+                        RULES, scoring, catalog, List.of(1.0)));
+    }
+
+    @Test
+    void savingTheScoringRulesPutsThemInServiceAtOnceInsteadOfAskingForARestart() throws Exception {
+        mockMvc.perform(post("/impostazioni")
+                        .param("defenceModifierEnabled", "true")
+                        .param("defendersCounted", "3")
+                        .param("minAverage", "0", "6")
+                        .param("bonus", "0", "1")
+                        .param("goalBonusP", "3").param("goalBonusD", "3")
+                        .param("goalBonusC", "3").param("goalBonusA", "3")
+                        .param("assist", "1").param("penaltyScored", "3")
+                        .param("penaltyMissed", "-3").param("penaltySaved", "3")
+                        .param("yellowCard", "-0,5").param("redCard", "-1")
+                        .param("goalConceded", "-1").param("cleanSheet", "1")
+                        .param("confirmed", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("già in vigore")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("prossimo avvio"))));
+
+        verify(scoringStore).save(any());
+        verify(auctionRuntime).rebuild();
+    }
+
+    @Test
+    void theScoringRulesAreFrozenOnceThereIsAPurchaseAndNothingIsRebuilt() throws Exception {
+        when(auctionService.state()).thenReturn(AuctionProjector.project(RULES, PARTICIPANTS,
+                id -> Role.D,
+                List.of(new AuctionEvent.PlayerPurchased(1, Instant.now(), "d1", "me", 20))));
+
+        mockMvc.perform(post("/impostazioni")
+                        .param("defendersCounted", "3")
+                        .param("confirmed", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("già iniziata")));
+
+        verify(scoringStore, never()).save(any());
+        verify(auctionRuntime, never()).rebuild();
     }
 
     @Test
@@ -94,8 +170,14 @@ class SettingsControllerTest {
         verify(membersStore, never()).save(any());
     }
 
+    /**
+     * Assertion cambiata di proposito rispetto a prima, quando il salvataggio veniva
+     * rifiutato ad asta iniziata: nomi e iniziali sono ora sempre modificabili. Il
+     * registro lega gli acquisti agli id, che questa pagina non tocca, quindi cambia
+     * solo cio' che si legge a schermo — e cambia subito, senza riavvio.
+     */
     @Test
-    void editingIsRefusedOncePurchasesExist() throws Exception {
+    void editingIsStillAllowedOncePurchasesExistBecauseOnlyTheDisplayedNamesChange() throws Exception {
         when(auctionService.state()).thenReturn(AuctionProjector.project(RULES, PARTICIPANTS,
                 id -> Role.D,
                 List.of(new AuctionEvent.PlayerPurchased(1, Instant.now(), "d1", "me", 20))));
@@ -105,9 +187,35 @@ class SettingsControllerTest {
                         .param("name", "Gigi", "Marco")
                         .param("initial", "I", "M")
                         .param("me", "me"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("già iniziata")));
+                .andExpect(status().isOk());
 
-        verify(membersStore, never()).save(any());
+        verify(membersStore).save(List.of(
+                new Participant("me", "Gigi", 'I', true),
+                new Participant("marco", "Marco", 'M', false)));
+    }
+
+    /** Il salvataggio deve rimettere in servizio l'intera catena, non aggiornarla a pezzi. */
+    @Test
+    void savingParticipantsRebuildsTheWholeChainAtOnce() throws Exception {
+        mockMvc.perform(post("/impostazioni/partecipanti")
+                        .param("id", "me", "marco")
+                        .param("name", "Gigi", "Marco")
+                        .param("initial", "I", "M")
+                        .param("me", "me"))
+                .andExpect(status().isOk());
+
+        verify(auctionRuntime).rebuild();
+    }
+
+    @Test
+    void aRejectedParticipantsSaveDoesNotRebuildAnything() throws Exception {
+        mockMvc.perform(post("/impostazioni/partecipanti")
+                        .param("id", "me", "marco")
+                        .param("name", "Io", "Marco")
+                        .param("initial", "M", "M")
+                        .param("me", "me"))
+                .andExpect(status().isOk());
+
+        verify(auctionRuntime, never()).rebuild();
     }
 }

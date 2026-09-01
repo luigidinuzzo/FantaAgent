@@ -36,6 +36,23 @@
   <a class="back" th:href="@{/riepilogo}" style="margin-left:1rem">riepilogo</a>
   <h1>Impostazioni della lega</h1>
 
+  <!-- Cosa e' vivo e cosa e' congelato, detto prima di ogni campo: chi cambia un
+       numero deve sapere in anticipo se avra' effetto adesso o non lo avra' affatto. -->
+  <p class="note">
+    <b>Nomi e iniziali dei partecipanti: sempre modificabili, effetto immediato.</b>
+    Gli id restano fissi ed è agli id che il registro dell'asta lega gli acquisti già
+    fatti, quindi cambia solo ciò che leggi a schermo: nulla di quanto registrato perde
+    significato.<br>
+    <b>Regole di punteggio: modificabili a effetto immediato finché l'asta non ha
+    acquisti, bloccate dal primo acquisto in poi.</b> I prezzi già pagati sono stati
+    decisi sotto le vecchie regole: mescolare due modelli di punteggio dentro la stessa
+    asta rende la rosa risultante impossibile da interpretare.<br>
+    In entrambi i casi il salvataggio ricostruisce per intero proiezioni, livelli di
+    rimpiazzo e motore di valutazione e li rimette in servizio in blocco. Nessun
+    riavvio, e nessun momento in cui metà dei numeri viene da un modello e metà
+    dall'altro.
+  </p>
+
   <p class="note" th:if="${fileGoverns}">
     Questi valori vengono da <span th:text="${file}">…</span> e hanno la precedenza su
     quelli di <code>application.yml</code>, che vengono ignorati.
@@ -44,10 +61,10 @@
   <div class="banner ok" th:if="${saved}">
     ✓ Impostazioni salvate in <span th:text="${file}">…</span>.
     <div class="note" style="margin:.4rem 0 0">
-      <b>Le nuove regole valgono dal prossimo avvio.</b> Da queste dipendono i punti
-      attesi di tutti i giocatori, i livelli di rimpiazzo e il motore di valutazione:
-      finché l'applicazione non riparte continueresti a vedere numeri calcolati con le
-      regole precedenti. Chiudi e rilancia con <code>./run.sh</code>.
+      <b>Le nuove regole sono già in vigore.</b> Punti attesi di tutti i giocatori,
+      livelli di rimpiazzo e motore di valutazione sono stati ricostruiti per intero e
+      rimessi in servizio insieme: da adesso ogni numero che vedi viene dalle regole
+      nuove, nessuno da quelle vecchie.
     </div>
   </div>
 
@@ -57,9 +74,11 @@
   </div>
 
   <div class="banner warn" th:if="${locked}">
-    L'asta è già iniziata: le regole di punteggio sono in sola lettura. Cambiarle ora
-    renderebbe non ricostruibili le raccomandazioni già date. Per correggerle, annulla
-    prima gli acquisti registrati.
+    L'asta ha già degli acquisti: le regole di punteggio sono in sola lettura. I prezzi
+    già pagati sono stati decisi sotto queste regole, e mescolare due modelli di
+    punteggio dentro la stessa asta renderebbe la rosa risultante impossibile da
+    interpretare. Per correggerle, annulla prima gli acquisti registrati — oppure
+    comincia una nuova asta dalla home e configurala prima di partire.
   </div>
 
   <form method="post" th:action="@{/impostazioni}">
@@ -162,8 +181,9 @@
   <div class="banner ok" th:if="${membersSaved}">
     ✓ Partecipanti salvati in <span th:text="${membersFile}">…</span>.
     <div class="note" style="margin:.4rem 0 0">
-      <b>I nuovi nomi valgono dal prossimo avvio.</b> Chiudi e rilancia con
-      <code>./run.sh</code>.
+      <b>I nuovi nomi e le nuove iniziali sono già in vigore</b>, tabellone e barra
+      comando compresi. Gli id non sono cambiati, quindi gli acquisti già registrati
+      restano attribuiti esattamente a chi li ha fatti.
     </div>
   </div>
 
@@ -172,12 +192,11 @@
     <ul><li th:each="e : ${membersErrors}" th:text="${e}">errore</li></ul>
   </div>
 
-  <div class="banner warn" th:if="${locked}">
-    L'asta è già iniziata: i partecipanti sono in sola lettura. Gli acquisti già
-    registrati fanno riferimento agli id dei partecipanti: rinominarli o riordinarli ora
-    romperebbe il significato di quanto già registrato. Per correggerli, annulla prima
-    gli acquisti registrati.
-  </div>
+  <p class="note">
+    Nomi e iniziali restano modificabili anche ad asta iniziata, e hanno effetto subito:
+    il registro lega gli acquisti agli id, non ai nomi, quindi rinominare cambia solo
+    quello che leggi. L'id, infatti, non è modificabile da qui.
+  </p>
 
   <form method="post" th:action="@{/impostazioni/partecipanti}">
     <div class="table-scroll">
@@ -186,16 +205,16 @@
         <tr th:each="p : ${members}">
           <td>
             <input type="hidden" name="id" th:value="${p.id}">
-            <input type="text" name="name" th:value="${p.name}" th:disabled="${locked}">
+            <input type="text" name="name" th:value="${p.name}">
           </td>
           <td><input type="text" name="initial" maxlength="1" style="width:3rem"
-                      th:value="${p.initial}" th:disabled="${locked}"></td>
+                      th:value="${p.initial}"></td>
           <td><input type="radio" name="me" th:value="${p.id}"
-                      th:checked="${p.me}" th:disabled="${locked}"></td>
+                      th:checked="${p.me}"></td>
         </tr>
       </table>
     </div>
-    <button class="save" type="submit" th:disabled="${locked}">Salva partecipanti</button>
+    <button class="save" type="submit">Salva partecipanti</button>
   </form>
 
 </div>

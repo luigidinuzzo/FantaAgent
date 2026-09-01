@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.web;
 
+import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.config.LeagueMembersSettingsStore;
 import com.fantaagent.config.LeagueMembersSettingsValidator;
@@ -23,35 +24,51 @@ import java.util.Map;
 /**
  * Schermata delle impostazioni di lega.
  *
- * <p>Due vincoli governano questa pagina.
+ * <p>Due parti, due regimi diversi, decisi con l'utente.
  *
- * <p>Il primo: le regole di punteggio si possono cambiare solo prima del primo acquisto.
- * Il registro dell'asta resterebbe valido, ma ogni raccomandazione già data smetterebbe
- * di essere riproducibile, e la riproducibilità di questa applicazione si fonda proprio
- * sul fatto che il motore è deterministico.
+ * <p><b>Nomi e iniziali dei partecipanti: sempre modificabili, effetto immediato.</b>
+ * Gli id restano fissi ed è agli id che il registro lega gli acquisti, quindi cambia
+ * solo ciò che si legge a schermo: il significato di quanto già registrato non si
+ * muove. Le iniziali devono restare uniche perché la barra comando risolve
+ * l'acquirente proprio dall'iniziale, e uno e un solo partecipante resta marcato come
+ * "tu".
  *
- * <p>Il secondo: il salvataggio scrive su disco e le nuove regole valgono dal riavvio.
- * Da esse discendono i punti attesi di tutti i giocatori, i livelli di rimpiazzo e il
- * motore: aggiornarle senza ricostruire quella catena mostrerebbe numeri vecchi con
- * un'etichetta nuova. Meglio due secondi di riavvio che un numero plausibile e falso.
+ * <p><b>Regole di punteggio: modificabili a effetto immediato finché non c'è nessun
+ * acquisto, bloccate dal primo in poi.</b> I prezzi già pagati sono stati decisi sotto
+ * le vecchie regole: mescolare due modelli di punteggio dentro la stessa asta rende la
+ * rosa risultante impossibile da interpretare — metà dei numeri direbbe una cosa e metà
+ * un'altra, senza che si veda quale.
+ *
+ * <p>In entrambi i casi il salvataggio non aggiorna nulla a pezzi: chiede a
+ * {@link com.fantaagent.application.service.AuctionRuntime} di ricostruire l'intera
+ * catena (proiezioni, livelli di rimpiazzo, modificatori, completamento, motore) e di
+ * pubblicarla in blocco. Nessun riavvio, e nessun istante in cui metà dei numeri viene
+ * da un modello e metà dall'altro.
  */
 @Controller
 public class SettingsController {
 
     private final ScoringSettingsStore store;
-    private final ScoringRules current;
     private final AuctionService auction;
     private final LeagueMembersSettingsStore membersStore;
-    private final List<Participant> participants;
+    private final AuctionRuntime runtime;
 
-    public SettingsController(ScoringSettingsStore store, ScoringRules current,
-                              AuctionService auction, LeagueMembersSettingsStore membersStore,
-                              List<Participant> participants) {
+    public SettingsController(ScoringSettingsStore store, AuctionService auction,
+                              LeagueMembersSettingsStore membersStore, AuctionRuntime runtime) {
         this.store = store;
-        this.current = current;
         this.auction = auction;
         this.membersStore = membersStore;
-        this.participants = participants;
+        this.runtime = runtime;
+    }
+
+    /** Le regole in vigore adesso, non quelle lette all'avvio. */
+    private ScoringRules current() {
+        return runtime.snapshot().chain().scoring();
+    }
+
+    /** I partecipanti in vigore adesso, non quelli letti all'avvio. */
+    private List<Participant> participants() {
+        return runtime.snapshot().participants();
     }
 
     @GetMapping("/impostazioni")
@@ -61,7 +78,7 @@ public class SettingsController {
         model.addAttribute("file", store.file().toString());
         model.addAttribute("fileGoverns", store.exists());
         populateMembersShell(model);
-        model.addAttribute("members", participants);
+        model.addAttribute("members", participants());
         return "settings";
     }
 
@@ -90,7 +107,7 @@ public class SettingsController {
         model.addAttribute("locked", auctionStarted());
         model.addAttribute("fileGoverns", store.exists());
         populateMembersShell(model);
-        model.addAttribute("members", participants);
+        model.addAttribute("members", participants());
 
         if (auctionStarted()) {
             model.addAttribute("settings", currentSettings());
@@ -131,6 +148,11 @@ public class SettingsController {
         }
 
         store.save(candidate);
+        // Ricostruzione atomica: la nuova catena viene costruita per intero e poi
+        // pubblicata in un colpo solo. Da qui in avanti ogni numero mostrato viene dal
+        // nuovo modello, nessuno dal vecchio.
+        runtime.rebuild();
+        model.addAttribute("settings", currentSettings());
         model.addAttribute("fileGoverns", store.exists());
         model.addAttribute("saved", true);
         return "settings";
@@ -138,8 +160,9 @@ public class SettingsController {
 
     /**
      * Rinomina i partecipanti senza toccare i loro id: sono gli id, non i nomi, a cui
-     * il registro dell'asta lega gli acquisti già fatti. Per lo stesso motivo il
-     * salvataggio è rifiutato una volta che l'asta è iniziata — vedi la classe.
+     * il registro dell'asta lega gli acquisti già fatti. Proprio per questo la modifica
+     * resta permessa anche ad asta iniziata — cambia solo ciò che si legge a schermo —
+     * e ha effetto subito, senza riavvio.
      */
     @PostMapping("/impostazioni/partecipanti")
     public String saveParticipants(
@@ -154,16 +177,6 @@ public class SettingsController {
         model.addAttribute("file", store.file().toString());
         model.addAttribute("fileGoverns", store.exists());
         populateMembersShell(model);
-
-        if (auctionStarted()) {
-            model.addAttribute("members", participants);
-            model.addAttribute("membersErrors", List.of(
-                    "L'asta è già iniziata: i partecipanti non si possono più cambiare. Gli "
-                    + "acquisti registrati fanno riferimento ai loro id, e rinominarli o "
-                    + "riordinarli ora romperebbe il significato di quanto già registrato. "
-                    + "Annulla gli acquisti registrati se hai davvero bisogno di correggerli."));
-            return "settings";
-        }
 
         List<Participant> candidate = new ArrayList<>();
         int rows = Math.min(ids.size(), Math.min(names.size(), initials.size()));
@@ -183,6 +196,8 @@ public class SettingsController {
         }
 
         membersStore.save(candidate);
+        runtime.rebuild();
+        model.addAttribute("members", participants());
         model.addAttribute("membersFileGoverns", true);
         model.addAttribute("membersSaved", true);
         return "settings";
@@ -198,7 +213,7 @@ public class SettingsController {
     }
 
     private ScoringSettings currentSettings() {
-        return store.load().orElseGet(() -> ScoringSettings.from(current, isDefenceActive()));
+        return store.load().orElseGet(() -> ScoringSettings.from(current(), isDefenceActive()));
     }
 
     /**
@@ -207,7 +222,7 @@ public class SettingsController {
      * quando in realtà il modificatore non fa nulla.
      */
     private boolean isDefenceActive() {
-        var thresholds = current.defenceModifier().thresholds();
+        var thresholds = current().defenceModifier().thresholds();
         return thresholds.stream().anyMatch(t -> t.bonus() != 0.0);
     }
 
