@@ -167,11 +167,16 @@ public class AuctionController {
 
     @PostMapping("/phase/next")
     public String nextPhase(Model model, HttpServletResponse response) {
-        auction.advancePhase();
-        response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
+        boolean advanced = auction.advancePhase();
+        String message;
+        if (advanced) {
+            response.setHeader("HX-Trigger", STATE_CHANGED_EVENT);
+            message = "fase avanzata a " + auction.state().currentPhase();
+        } else {
+            message = "già all'ultima fase";
+        }
         populateShell(model);
-        model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null,
-                "fase avanzata a " + auction.state().currentPhase()));
+        model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, message));
         return UPDATE_VIEW;
     }
 

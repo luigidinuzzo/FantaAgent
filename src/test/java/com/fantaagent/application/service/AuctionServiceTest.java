@@ -169,6 +169,30 @@ class AuctionServiceTest {
     }
 
     @Test
+    void advancePhaseReturnsTrueWhenThereIsANextPhase() {
+        assertThat(service.advancePhase()).isTrue();
+        assertThat(service.state().currentPhase()).isEqualTo(Role.D);
+    }
+
+    /**
+     * S5: /phase/next non deve emettere l'evento "fase avanzata" (e la UI non deve
+     * dire "fase avanzata a X") quando non c'era una fase successiva — l'ultima fase
+     * dell'ordine configurato, qui A. advancePhase() deve riportarlo al chiamante
+     * invece di limitarsi a non fare nulla in silenzio.
+     */
+    @Test
+    void advancePhaseReturnsFalseAndChangesNothingAtTheLastPhase() {
+        service.advancePhase(); // P -> D
+        service.advancePhase(); // D -> C
+        service.advancePhase(); // C -> A
+        assertThat(service.state().currentPhase()).isEqualTo(Role.A);
+
+        assertThat(service.advancePhase()).isFalse();
+
+        assertThat(service.state().currentPhase()).isEqualTo(Role.A);
+    }
+
+    @Test
     void backsUpTheLogBeforeChangingPhase() {
         service.recordPurchase("gk", "marco", 30);
 
