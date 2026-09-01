@@ -45,6 +45,14 @@ public class BattitoreController {
     /** Poche righe: la lista sta su uno schermo condiviso, non e' un catalogo da sfogliare. */
     private static final int SEARCH_ROWS = 8;
 
+    /**
+     * Le risposte che cambiano stato aggiornano due regioni in una volta: il tabellone
+     * come swap normale e l'indicatore FASE in testa alla pagina come out-of-band. Un
+     * avanzamento di fase che lasciasse il badge fermo sul ruolo precedente mostrerebbe
+     * a tutta la stanza una fase che non e' quella in corso.
+     */
+    private static final String BOARD_UPDATE = "fragments/battitore-update :: boardUpdate";
+
     private final AuctionService auction;
     private final PlayerSearchService search;
     private final PlayerCatalog catalog;
@@ -118,7 +126,7 @@ public class BattitoreController {
             message = "✗ " + e.getMessage();
         }
         populate(model, message);
-        return "battitore :: board";
+        return BOARD_UPDATE;
     }
 
     @PostMapping("/battitore/revoca")
@@ -131,7 +139,28 @@ public class BattitoreController {
             message = "✗ " + e.getMessage();
         }
         populate(model, message);
-        return "battitore :: board";
+        return BOARD_UPDATE;
+    }
+
+    /**
+     * Avanza alla fase successiva dalla pagina proiettata.
+     *
+     * <p>Resta un gesto deliberato e non un automatismo: la fase NON avanza da sola
+     * quando l'ultimo slot si chiude. Una revoca e' proprio cio' che accade piu'
+     * spesso subito dopo l'ultimo acquisto di un ruolo — ci si accorge di avere
+     * sbagliato acquirente o prezzo — e con l'avanzamento automatico ci si
+     * ritroverebbe a correggere un ruolo mentre l'applicazione ne mostra un altro.
+     *
+     * <p>Che la fase sia finita e' comunque informazione pubblica: chiunque in stanza
+     * puo' ricavarla contando le rose. Annunciarla sullo schermo non regala nulla.
+     */
+    @PostMapping("/battitore/fase")
+    public String nextPhase(Model model) {
+        String message = auction.advancePhase()
+                ? "fase avanzata a " + auction.state().currentPhase()
+                : "già all'ultima fase";
+        populate(model, message);
+        return BOARD_UPDATE;
     }
 
     private String nameOf(String participantId) {
@@ -147,6 +176,7 @@ public class BattitoreController {
         model.addAttribute("roles", RecapView.ROLE_ORDER);
         model.addAttribute("participants", auction.participants());
         model.addAttribute("phase", auction.state().currentPhase());
+        model.addAttribute("phaseDone", PhaseCompletion.of(auction.state()));
         model.addAttribute("message", message);
     }
 }

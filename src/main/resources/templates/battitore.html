@@ -26,7 +26,8 @@
 
   <header class="battitore-head">
     <h1>BATTITORE</h1>
-    <div class="battitore-phase">FASE <b th:text="${phase}">D</b></div>
+    <div id="phaseBadge" th:fragment="phaseBadge" class="battitore-phase"
+         hx-swap-oob="true">FASE <b th:text="${phase}">D</b></div>
     <!-- Piccolo e in fondo: serve a chi conduce, non al pubblico. -->
     <a class="battitore-exit" th:href="@{/asta}">← la mia asta</a>
   </header>
@@ -56,6 +57,28 @@
 
   <div id="board" th:fragment="board" class="battitore-board-wrap">
     <p class="battitore-message" th:if="${message}" th:text="${message}"></p>
+
+    <!--
+      Fase completa. Sta DENTRO #board di proposito: e' l'ultimo acquisto di un ruolo
+      a renderla completa, e #board e' cio' che quell'acquisto ridisegna. Fuori di qui
+      comparirebbe solo al ricaricamento successivo, cioe' quasi mai.
+
+      Nessuna ✕ per chiuderlo, a differenza della schermata d'asta: sparisce da se'
+      quando si avanza, e su uno schermo proiettato un avviso chiuso per sbaglio non
+      si riapre senza toccare il computer davanti a tutti.
+
+      L'avanzamento resta un gesto voluto: vedi il commento su nextPhase in
+      BattitoreController.
+    -->
+    <div class="phase-done battitore-phase-done" th:if="${phaseDone != null}" role="status">
+      <span>Fase <b th:text="${phaseDone.phase}">P</b> completa: nessuno ha più
+        uno slot libero per questo ruolo.</span>
+      <form th:if="${phaseDone.nextPhase != null}"
+            hx-post="/battitore/fase" hx-target="#board" hx-swap="outerHTML">
+        <button type="submit">vai alla fase <span th:text="${phaseDone.nextPhase}">D</span> →</button>
+      </form>
+      <span class="dim" th:if="${phaseDone.nextPhase == null}">è l'ultima fase.</span>
+    </div>
 
     <div class="recap-board">
       <section class="recap-col" th:each="col : ${columns}">

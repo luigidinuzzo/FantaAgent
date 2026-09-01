@@ -181,6 +181,83 @@ class BattitoreControllerTest {
         verify(auctionService).revokePurchase(3L);
     }
 
+    /**
+     * Con slot ancora liberi non si annuncia nulla: un banner "fase completa" acceso a
+     * meta' ruolo, su uno schermo che guardano tutti, e' peggio di nessun banner.
+     */
+    @Test
+    void nessunAnnuncioSeLaFaseNonEcompleta() throws Exception {
+        mockMvc.perform(get("/battitore"))
+                .andExpect(status().isOk())
+                // Sulla classe del banner e non sulla parola "completa": quella compare
+                // anche nei commenti del template, che finiscono nell'HTML servito.
+                .andExpect(content().string(not(containsString("battitore-phase-done"))));
+    }
+
+    /**
+     * Chiuso l'ultimo slot del ruolo, il tabellone annuncia la fase completa e offre
+     * l'avanzamento. Il banner sta dentro #board perche' e' l'ultimo acquisto a
+     * renderlo vero, ed e' #board che quell'acquisto ridisegna.
+     */
+    @Test
+    void aFaseCompletaIlTabelloneAnnunciaEoffreLavanzamento() throws Exception {
+        when(auctionService.state()).thenReturn(statoConFaseCompleta());
+
+        mockMvc.perform(post("/battitore/revoca").param("targetSeq", "99"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("battitore-phase-done")))
+                .andExpect(content().string(containsString("vai alla fase")));
+    }
+
+    /** L'avanzamento resta un gesto voluto: nessun acquisto lo fa scattare da solo. */
+    @Test
+    void unAcquistoNonAvanzaLaFaseDaSolo() throws Exception {
+        when(auctionService.state()).thenReturn(statoConFaseCompleta());
+
+        mockMvc.perform(post("/battitore/assegna")
+                        .param("playerId", "d1").param("participantId", "marco").param("price", "5"))
+                .andExpect(status().isOk());
+
+        verify(auctionService, org.mockito.Mockito.never()).advancePhase();
+    }
+
+    /** Il bottone avanza, e l'indicatore FASE in testa alla pagina viaggia con lui. */
+    @Test
+    void ilBottoneAvanzaLaFaseEaggiornaLindicatore() throws Exception {
+        mockMvc.perform(post("/battitore/fase"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("phaseBadge")))
+                .andExpect(content().string(containsString("hx-swap-oob")));
+
+        verify(auctionService).advancePhase();
+    }
+
+    /**
+     * Una pagina intera non deve contenere il fragment composito: se boardUpdate
+     * vivesse dentro battitore.html, ogni caricamento stamperebbe una seconda copia
+     * del tabellone sotto la prima.
+     */
+    @Test
+    void laPaginaInteraNonDuplicaIlTabellone() throws Exception {
+        String html = mockMvc.perform(get("/battitore"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html.split("id=\"board\"", -1).length - 1)
+                .as("#board deve comparire una volta sola").isEqualTo(1);
+        assertThat(html.split("id=\"phaseBadge\"", -1).length - 1)
+                .as("l'indicatore FASE deve comparire una volta sola").isEqualTo(1);
+    }
+
+    /** Fase P chiusa: entrambi i partecipanti hanno riempito il loro unico slot P. */
+    private static AuctionState statoConFaseCompleta() {
+        return AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.P,
+                List.of(new com.fantaagent.domain.auction.AuctionEvent.PlayerPurchased(
+                                1, java.time.Instant.EPOCH, "p1", "me", 10),
+                        new com.fantaagent.domain.auction.AuctionEvent.PlayerPurchased(
+                                2, java.time.Instant.EPOCH, "p2", "marco", 10)));
+    }
+
     /** Un id sconosciuto non apre alcun popup, invece di aprirne uno vuoto. */
     @Test
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {

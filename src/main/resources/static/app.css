@@ -302,3 +302,12 @@ body.projected { font-size:1.25rem; }
 .bidder-numbers-solo { grid-template-columns:1fr; }
 .bidder-public #bidderPrice { font-size:4rem; }
 .bidder-public .bidder-bid { font-size:1.6rem; }
+
+/* Fase completa sulla pagina proiettata. Riusa .phase-done per colori e struttura —
+   un solo posto dove cambiarli — e ne corregge solo ciò che qui è diverso: non è più
+   una fascia in cima alla finestra ma un riquadro dentro il tabellone, e va letto da
+   lontano come tutto il resto di questa pagina. */
+.battitore-phase-done { border:1px solid var(--pos); border-left:4px solid var(--pos);
+                        border-bottom:1px solid var(--pos); margin:0 0 1rem;
+                        font-size:1.15rem; }
+.battitore-phase-done button { font-size:1.15rem; padding:.5rem 1rem; }
