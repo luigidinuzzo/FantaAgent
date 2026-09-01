@@ -20,11 +20,12 @@ L'applicazione separa nettamente due responsabilità:
 
 - **calcolo deterministico** — l'applicazione: budget, slot, statistiche, valore
   marginale, prezzo massimo, confidenza;
-- **ragionamento generativo** — Claude: interpretazione del contesto, rischi e
-  opportunita non catturati dai numeri, formulazione della raccomandazione.
+- **ragionamento generativo** — Claude: lettura critica dell'evidenza su cui poggiano
+  i numeri, rischi e opportunita non catturati dalle formule, formulazione a parole.
 
-Claude non è mai la fonte di verità per dati strutturati e non produce numeri
-statistici.
+Claude non è mai la fonte di verità per dati strutturati, non produce numeri
+statistici e non ne modifica alcuno. Non porta nemmeno fatti propri sul calcio:
+ragiona esclusivamente sui dati che l'applicazione gli mette davanti (vedi 9.0).
 
 ---
 
@@ -509,79 +510,104 @@ peggio di non riprendere.
 
 ## 9. Integrazione Claude
 
-### 9.1 Tre tipi di contenuto
+> **Emendata il 2026-09-01, prima della fase 7.** Le sottosezioni 9.1, 9.3 e 9.4
+> sostituiscono quelle originali. Il testo precedente prevedeva 280 `PlayerDossier` e
+> 20 `TeamDossier` generati da Claude, e un `adjustedMaxBid` che Claude poteva spostare
+> entro il 15%. Entrambe le previsioni sono state ritirate, per due ragioni emerse solo
+> dopo aver avuto i dati reali in mano. Le altre sottosezioni restano valide.
 
-**`TeamDossier`** — 20 squadre, generato pre-asta. Il giudizio qualitativo che serve ai
-modificatori (solidità difensiva attesa, cambio di allenatore, mercato, gerarchia tra
-i pali, rigorista) e una proprietà della squadra, non del singolo giocatore.
-Generarlo una volta per squadra invece di ripeterlo in ogni dossier individuale riduce
-il costo ed elimina il rischio di giudizi incoerenti sulla stessa difesa.
+### 9.0 Le due regole che governano l'integrazione
 
-**`PlayerDossier`** — circa 280 giocatori di shortlist, generati pre-asta in batch.
-Profilo tattico, rischi strutturali, upside, note sulla titolarità. Modello
-`claude-opus-5`, effort alto, Batch API (-50%), output tipizzato, cache su file con
-invalidazione manuale.
+**Claude non porta fatti, solo ragionamento.** Ogni affermazione che compare a schermo
+deve essere verificabile contro un numero che l'utente ha davanti. Claude vede le
+statistiche grezze delle quattro stagioni, la proiezione, i driver del motore e lo
+stato dell'asta, e ragiona su quelli. Il prompt gli vieta esplicitamente di attingere a
+conoscenza propria sul calcio.
 
-**`AuctionAdvice`** — runtime, in streaming. Unica chiamata nel percorso critico.
-Modello `claude-opus-5` con thinking adattivo ed effort basso: il ragionamento pesante
-e già nei numeri, qui serve sintesi rapida.
+Motivazione: il modello ha un limite di conoscenza precedente alla stagione in corso.
+Non sa chi sia stato acquistato in estate, chi si sia infortunato ad agosto, chi batta
+i rigori adesso. Interrogato su questi punti non risponde "non lo so": produce una
+risposta plausibile e sicura, indistinguibile da una giusta. In asta non c'e' tempo per
+verificarla. Un dossier qualitativo su 280 giocatori — la previsione originale — sarebbe
+stato per la maggior parte invenzione presentata come informazione.
+
+Ne consegue che `PlayerDossier` e `TeamDossier` sono **rimossi**: chiedevano a Claude
+esattamente cio' che non puo' sapere. Cio' che di quei dossier era davvero utile — la
+sintesi statistica — il motore lo calcola gia', in modo deterministico e verificabile.
+
+**Claude non muove i numeri.** `maxBid`, `expectedPrice` e `hardCap` restano quelli del
+motore, sempre e senza eccezioni. Claude puo' dire a parole "io starei sotto", e deve
+dire perche'; non puo' restituire una cifra diversa.
+
+Motivazione: la cifra che l'utente legge mentre rilancia deve essere ricostruibile a
+mano da lui, dai driver che ha sotto gli occhi. Un numero corretto da un modello non lo
+e' piu', e quando sbaglia sbaglia in silenzio — nessuna revisione e' possibile nei
+cinque secondi di un rilancio. Questo ritira il guardrail della 9.4 originale, che
+esisteva solo per contenere un potere che ora non viene piu' concesso.
+
+### 9.1 Un solo tipo di contenuto
+
+**`AuctionAdvice`** — a runtime, in streaming, sulla schermata d'asta privata. Unica
+chiamata nel percorso critico e unico contenuto generato dell'applicazione. Modello
+`claude-opus-5` con thinking adattivo: il ragionamento numerico pesante e' gia' nel
+motore, qui serve lettura critica dell'evidenza.
+
+**Mai sulla pagina BATTITORE.** Quella e' proiettata su uno schermo che guardano tutti
+gli avversari e non deve mostrare alcuna valutazione (vedi `BattitoreController`).
 
 ### 9.2 Struttura del prompt e caching
 
-L'ordine di rendering è `tools -> system -> messages`; qualunque byte modificato
-invalida tutto ciò che segue.
+L'ordine di rendering e' `tools -> system -> messages`; qualunque byte modificato
+invalida tutto cio' che segue.
 
-| Blocco | Contenuto | Token stimati | Cache |
-|---|---|---|---|
-| system | Regole di lega, tabelle dei modificatori, rubrica, semantica dei driver, formato di output, guardrail | ~1.500 | breakpoint |
-| system | I 20 `TeamDossier` | ~6.000 | breakpoint |
-| user | `PlayerDossier`, driver numerici, stato asta, `RosterPlan` | ~1.200 | volatile, in coda |
+| Blocco | Contenuto | Cache |
+|---|---|---|
+| system | Regole di lega, tabelle dei modificatori, semantica dei driver, formato di output, divieto di attingere a conoscenza propria | breakpoint |
+| user | Statistiche grezze delle 4 stagioni, proiezione, driver numerici, stato asta | volatile, in coda |
 
-Il TTL della cache va verificato in fase 7: con l'asta a fasi ci sono pause tra le
-chiamate e un TTL breve produrrebbe miss sistematici. L'impatto economico è di pochi
-centesimi, non è un rischio di progetto. Va comunque misurato su
-`usage.cache_read_input_tokens`: un valore costantemente nullo indica un invalidatore
-silenzioso, tipicamente un timestamp o un JSON con chiavi non ordinate.
+Il blocco volatile va reso in modo deterministico — chiavi in ordine fisso, nessun
+timestamp, nessuna cifra decimale che oscilli — altrimenti la cache manca sempre.
+Va misurato su `usage.cache_read_input_tokens`: un valore costantemente nullo indica un
+invalidatore silenzioso.
 
 ### 9.3 Schema di output
 
 ```java
 record AuctionAdvice(
-    Verdict      verdict,          // PUSH | FAIR | PASS
-    int          adjustedMaxBid,
-    String       oneLiner,         // massimo 120 caratteri
-    List<String> strengths,        // massimo 3
-    List<String> risks,            // massimo 3
-    String       rationale,        // 2-4 frasi
-    String       adjustmentReason  // obbligatorio se adjustedMaxBid != maxBid
+    Caution      caution,        // CONFERMA | CAUTELA | ALLARME
+    String       oneLiner,       // massimo 120 caratteri
+    List<String> strengths,      // massimo 3, ognuno citando un numero del contesto
+    List<String> risks,          // massimo 3, ognuno citando un numero del contesto
+    String       rationale       // 2-4 frasi
 )
 ```
 
-### 9.4 Guardrail
+`Caution` non duplica il verdetto del motore, che dice gia' PRENDI o LASCIA sul
+margine. Dice una cosa diversa e complementare: **quanto e' solida l'evidenza sotto
+quel verdetto.** ALLARME significa "il numero del motore poggia su poco"; CONFERMA
+significa "i dati sono coerenti e il verdetto regge". E' il giudizio che il motore
+strutturalmente non puo' dare su se stesso.
 
-Implementato in codice, non come istruzione nel prompt:
+`strengths` e `risks` devono citare un numero presente nel contesto. E' una regola di
+prompt, ma anche il criterio con cui si giudica una risposta in revisione: un rischio
+che non poggia su un numero e' un rischio inventato.
 
-```
-accettato   se |adjustedMaxBid - maxBid| <= 0.15 * maxBid  e  adjustedMaxBid <= hardCap
-altrimenti  clamp al limite, log dell'evento, confidenza declassata
-```
+### 9.4 Verifica al posto del guardrail
 
-Claude può spostare il numero entro una banda, motivando. Non può violare il vincolo
-di budget.
+Non essendoci piu' un numero da vincolare, non c'e' piu' un clamp da applicare. Resta
+la validazione della forma — campi presenti, liste entro i limiti, `oneLiner` entro i
+120 caratteri — e il rifiuto silenzioso di una risposta malformata, che degrada come
+un timeout (ADR-9).
 
 ### 9.5 Tool calling
 
-**Non incluso nell'MVP.** Il contesto sta sotto i 9.000 token e l'applicazione sa già
-quali dati servono: un round-trip aggiuntivo costerebbe latenza senza produrre valore.
+**Non incluso.** Il contesto sta sotto i 9.000 token e l'applicazione sa gia' quali
+dati servono: un round-trip aggiuntivo costerebbe latenza senza produrre valore.
 
-Previsti in una fase successiva, entrambi restituiscono calcoli del motore e non dati
-grezzi:
-
-- `simulate_purchase(playerId, price)` — stato risultante è nuovo `RosterPlan`,
-  consente a Claude di verificare l'effetto di un prezzo invece di stimarlo;
-- `compare_alternatives(role, maxPrice)` — le cinque migliori alternative con margine.
-
-Nessun subagent: non c'e fan-out ne ricerca aperta.
+Un solo strumento resta interessante per una fase successiva, e non per portare dati ma
+per far verificare un calcolo: `simulate_purchase(playerId, price)`, che restituisce il
+`RosterPlan` risultante. Consentirebbe a Claude di controllare l'effetto di un prezzo
+invece di stimarlo. Nessun subagent: non c'e' fan-out ne' ricerca aperta.
 
 ### 9.6 Resilienza
 
@@ -590,19 +616,19 @@ Nessun subagent: non c'e fan-out ne ricerca aperta.
   connessione); mai su 400;
 - circuit breaker: dopo due fallimenti consecutivi Claude viene disabilitato per 60
   secondi;
-- l'errore non è mai bloccante: il riquadro mostra l'indisponibilita del ragionamento e
-  il resto della scheda resta completo.
+- l'errore non e' mai bloccante: il riquadro mostra l'indisponibilita' del ragionamento
+  e il resto della scheda resta completo.
 
 ### 9.7 Costi stimati
 
+Rimossi i dossier, resta il solo costo a runtime.
+
 | Voce | Costo |
 |---|---|
-| 20 `TeamDossier`, in batch | ~0.5 USD |
-| 280 `PlayerDossier`, in batch | ~4.2 USD |
-| ~70 `AuctionAdvice` runtime, con prefisso cachato | ~1.7 USD |
-| **Totale per asta** | **~6.5 USD** |
+| ~70 `AuctionAdvice` per asta, con prefisso di sistema in cache | ~1.7 USD |
+| **Totale per asta** | **~1.7 USD** |
 
-Ogni chiamata è registrata su `llm-calls.jsonl` con token, latenza, costo stimato e
+Ogni chiamata e' registrata su `llm-calls.jsonl` con token, latenza, costo stimato e
 modello.
 
 ---
@@ -815,7 +841,7 @@ durante la messa a punto.
 | 4 | Auction ledger: eventi, JSONL con fsync, projector, annullamento, ripristino | 50 acquisti, processo terminato, riavvio: stato intatto |
 | 5 | Motore E2: modificatori, greedy, local search, ricerca binaria, confidenza, driver | `maxBid` motivato in meno di 80 ms; property e golden test verdi |
 | 6 | Ricerca fuzzy e UI base: barra unica, parsing dei comandi, scheda numerica, tabellone | **L'applicazione è utilizzabile in asta senza Claude** |
-| 7 | Claude: porta, dossier in batch, advice in streaming SSE, caching, guardrail, circuit breaker | Analisi in streaming; senza rete l'applicazione continua a funzionare |
+| 7 | Claude: porta, contesto statistico, advice in streaming SSE, caching, record/replay, circuit breaker | Analisi in streaming; senza rete l'applicazione continua a funzionare |
 | 8 | Rifinitura UI: hotkey, avvisi non bloccanti, lista target, layout definitivo | Acquisto registrato in meno di 3 secondi senza mouse |
 | 9 | Hardening e prova generale: logging, backup, simulazione d'asta cronometrata | Un'asta simulata completa, senza intoppi |
 
