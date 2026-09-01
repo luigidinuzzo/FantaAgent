@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.adapter.in.web.dto.ViewModels;
 import com.fantaagent.application.port.out.PlayerCatalog;
+import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
@@ -55,17 +56,27 @@ public class AuctionController {
     private final PlayerAnalysisService analysis;
     private final PlayerSearchService search;
     private final PlayerCatalog catalog;
+    private final AuctionRuntime runtime;
 
     public AuctionController(AuctionService auction, PlayerAnalysisService analysis,
-                             PlayerSearchService search, PlayerCatalog catalog) {
+                             PlayerSearchService search, PlayerCatalog catalog,
+                             AuctionRuntime runtime) {
         this.auction = auction;
         this.analysis = analysis;
         this.search = search;
         this.catalog = catalog;
+        this.runtime = runtime;
     }
 
-    @GetMapping("/")
+    /**
+     * La schermata d'asta non vive piu' su "/": la home chiede prima quale asta aprire.
+     * Arrivarci senza averne scelta una rimanda indietro invece di indovinarne una.
+     */
+    @GetMapping("/asta")
     public String index(Model model) {
+        if (!runtime.hasAuction()) {
+            return "redirect:/";
+        }
         populateShell(model);
         model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, null));
         return "index";

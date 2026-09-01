@@ -84,20 +84,15 @@ public class BeanConfig {
             LeagueProperties props,
             ScoringSettingsStore scoringStore,
             LeagueMembersSettingsStore membersStore,
-            com.fantaagent.application.port.out.AuctionArchive archive,
-            @org.springframework.beans.factory.annotation.Value("${fantaagent.auction-id:}") String auctionId) {
-        var runtime = new com.fantaagent.application.service.AuctionRuntime(
+            com.fantaagent.application.port.out.AuctionArchive archive) {
+        // Nessuna asta selezionata all'avvio, di proposito: e' la home a chiedere quale
+        // aprire. La vecchia proprieta' fantaagent.auction-id non esiste piu' perche'
+        // sceglieva in silenzio, ed e' esattamente cio' che non deve succedere.
+        return new com.fantaagent.application.service.AuctionRuntime(
                 rules, catalog, props.scoring().seasonWeights(),
                 () -> SettingsConfig.loadScoringRules(scoringStore, props),
                 () -> loadParticipants(props, membersStore),
                 archive);
-        // Compatibilita' con la vecchia proprieta': se e' impostata e quell'asta esiste,
-        // la si apre subito. Altrimenti si parte senza asta selezionata e la home chiede
-        // quale aprire.
-        if (!auctionId.isBlank() && archive.exists(auctionId)) {
-            runtime.select(auctionId);
-        }
-        return runtime;
     }
 
     @Bean

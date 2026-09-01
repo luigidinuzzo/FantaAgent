@@ -38,6 +38,15 @@ public final class ViewModels {
     public record MainPanel(List<Player> results, Analysis analysis, String message) {
     }
 
+    /**
+     * Una riga della home: quanto basta a riconoscere un'asta fra le altre — il suo
+     * identificativo, quando e' stata scritta l'ultima volta, quanti acquisti contiene
+     * e a che fase era arrivata.
+     */
+    public record AuctionCard(String id, String lastWritten, int purchases, String phase,
+                              boolean selected) {
+    }
+
     /** Una riga della pagina di riepilogo: un giocatore posseduto e il prezzo pagato. */
     public record RecapPlayer(long seq, String name, int price) {
     }

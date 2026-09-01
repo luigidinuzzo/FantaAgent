@@ -66,11 +66,17 @@ class RecapControllerTest {
     @MockitoBean
     private PlayerCatalog playerCatalog;
 
+    @MockitoBean
+    private com.fantaagent.application.service.AuctionRuntime auctionRuntime;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        // Il riepilogo e' una schermata d'asta: senza un'asta scelta dalla home
+        // rimanda alla home invece di indovinare su quale registro sta lavorando.
+        when(auctionRuntime.hasAuction()).thenReturn(true);
         when(auctionService.participants()).thenReturn(PARTICIPANTS);
         when(playerCatalog.byId("d1")).thenReturn(Optional.of(BASTONI));
         when(auctionService.playerName(org.mockito.ArgumentMatchers.any()))
@@ -100,9 +106,11 @@ class RecapControllerTest {
     void thePageLinksBackToTheAuctionPage() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());
 
+        // La schermata d'asta ora sta su /asta: "/" e' la home che chiede quale asta
+        // aprire, e un link alla home non riporterebbe l'utente dove stava lavorando.
         mockMvc.perform(get("/riepilogo"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("href=\"/\"")));
+                .andExpect(content().string(containsString("href=\"/asta\"")));
     }
 
     @Test

@@ -95,3 +95,20 @@ select:focus-visible, textarea:focus-visible {
 #phaseTable select { font:inherit; background:#000; color:var(--fg);
                       border:1px solid var(--line); padding:.3rem; }
 #phaseTable .load-more { width:100%; }
+
+/* Home: la schermata che chiede quale asta aprire. */
+.home { max-width:46rem; margin:0 auto; padding:1rem 1.5rem 3rem; }
+.home h2 { font-size:var(--fs-md); color:var(--dim); letter-spacing:.06em;
+           margin:1.8rem 0 .5rem; border-top:1px solid var(--line); padding-top:.8rem; }
+.home .note { color:var(--dim); font-size:var(--fs-sm); line-height:1.5; margin:.3rem 0 .9rem; }
+.home form { display:inline-flex; align-items:center; gap:.8rem; margin:0; }
+.home button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
+               border:1px solid var(--line); padding:.35rem .8rem; cursor:pointer; }
+.home button:hover { background:#2a2a2a; }
+.home button.primary { background:var(--pos); color:#022; font-weight:bold;
+                       border-color:var(--pos); font-size:var(--fs-base); padding:.5rem 1.2rem; }
+table.auctions { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
+table.auctions th { text-align:left; font-weight:normal; color:var(--dim);
+                    font-size:var(--fs-xs); padding:0 .6rem .3rem 0; }
+table.auctions td { padding:.35rem .6rem .35rem 0; border-bottom:1px solid var(--line); }
+table.auctions tr.sel td { color:#fff; }

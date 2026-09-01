@@ -75,11 +75,16 @@ class AuctionControllerTest {
     @MockitoBean
     private PlayerCatalog playerCatalog;
 
+    @MockitoBean
+    private com.fantaagent.application.service.AuctionRuntime auctionRuntime;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        // Un'asta scelta dalla home: senza, /asta rimanda indietro invece di indovinare.
+        when(auctionRuntime.hasAuction()).thenReturn(true);
         AuctionState state = AuctionProjector.project(RULES, PARTICIPANTS,
                 id -> Role.D, List.of());
         when(auctionService.state()).thenReturn(state);
@@ -93,7 +98,7 @@ class AuctionControllerTest {
 
     @Test
     void servesTheAuctionPage() throws Exception {
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("FASE")));
     }
@@ -226,7 +231,7 @@ class AuctionControllerTest {
         // Stato senza holdings: state() nel @BeforeEach è già proiettato da una lista
         // vuota di eventi, quindi canUndo deve risultare false e il bottone disabilitato
         // — sempre presente, mai nascosto, così la sua posizione resta prevedibile.
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "annulla ultimo")))
@@ -240,7 +245,7 @@ class AuctionControllerTest {
                 List.of(new AuctionEvent.PlayerPurchased(1L, java.time.Instant.now(), "d1", "me", 47)));
         when(auctionService.state()).thenReturn(afterPurchase);
 
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.matchesPattern(

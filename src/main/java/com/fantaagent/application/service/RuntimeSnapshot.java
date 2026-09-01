@@ -37,7 +37,7 @@ public record RuntimeSnapshot(String auctionId, AuctionEventStore store,
     /** @throws IllegalStateException se nessuna asta è stata ancora scelta */
     public AuctionScope scope() {
         if (!hasAuction()) {
-            throw new IllegalStateException("no auction selected");
+            throw new NoAuctionSelectedException();
         }
         return new AuctionScope(auctionId, store, participants);
     }

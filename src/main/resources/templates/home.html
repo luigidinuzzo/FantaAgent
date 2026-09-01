@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="it" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>FantaAgent — quale asta</title>
+  <link rel="stylesheet" th:href="@{/app.css}">
+</head>
+<body>
+<div class="home">
+
+  <h1>Quale asta?</h1>
+  <p class="note">
+    L'applicazione non ne sceglie una da sola: scriverebbe gli acquisti di stasera nel
+    registro sbagliato senza dirlo. Riprendere un'asta la riapre esattamente dov'era —
+    il registro degli eventi si riproietta per intero, non si ricostruisce nulla a mano.
+  </p>
+
+  <form method="post" th:action="@{/aste/nuova}">
+    <button class="primary" type="submit">nuova asta</button>
+    <span class="note">crea un registro nuovo con la data di oggi e apre le impostazioni</span>
+  </form>
+
+  <h2>ASTE ESISTENTI</h2>
+
+  <p class="note" th:if="${auctions.isEmpty()}">
+    Nessuna asta trovata: comincia da «nuova asta».
+  </p>
+
+  <div class="table-scroll" th:unless="${auctions.isEmpty()}">
+    <table class="auctions">
+      <thead>
+        <tr><th>asta</th><th>ultima scrittura</th><th>acquisti</th><th>fase</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr th:each="a : ${auctions}" th:classappend="${a.selected} ? 'sel' : ''">
+          <td th:text="${a.id}">2026-09-01</td>
+          <td class="dim" th:text="${a.lastWritten}">1 set 2026, 10:41</td>
+          <td th:text="${a.purchases}">25</td>
+          <td th:text="${a.phase}">D</td>
+          <td>
+            <form method="post" th:action="@{/aste/riprendi}">
+              <input type="hidden" name="auctionId" th:value="${a.id}">
+              <button type="submit">riprendi</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">
+    Nessuna di queste operazioni riscrive un registro: si apre un file diverso, e basta.
+  </p>
+
+</div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.adapter.in.web.dto.ViewModels;
+import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.auction.Squad;
@@ -29,13 +30,18 @@ public class RecapController {
     private static final List<Role> ROLE_ORDER = List.of(Role.P, Role.D, Role.C, Role.A);
 
     private final AuctionService auction;
+    private final AuctionRuntime runtime;
 
-    public RecapController(AuctionService auction) {
+    public RecapController(AuctionService auction, AuctionRuntime runtime) {
         this.auction = auction;
+        this.runtime = runtime;
     }
 
     @GetMapping("/riepilogo")
     public String show(Model model) {
+        if (!runtime.hasAuction()) {
+            return "redirect:/";
+        }
         populate(model, null);
         return "recap";
     }
