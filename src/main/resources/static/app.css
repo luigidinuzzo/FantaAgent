@@ -359,3 +359,7 @@ body.projected { font-size:1.25rem; }
 .bidder-now { background:transparent !important; color:var(--dim) !important;
               border-color:var(--line) !important; }
 .bidder-now:hover { color:var(--fg) !important; }
+
+/* Dice quale dei due popup si sta guardando. Senza, un'assegnazione diretta e un
+   countdown già scaduto avrebbero lo stesso aspetto. */
+.bidder-mode { font-size:var(--fs-sm); margin-top:.15rem; }

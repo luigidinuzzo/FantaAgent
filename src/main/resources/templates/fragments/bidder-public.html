@@ -28,12 +28,13 @@
       <b id="bidderName" th:text="${bidder.player.name}">Dimarco</b>
       <span class="dim"
             th:text="${bidder.player.role} + ' · ' + ${bidder.player.team}">D · Inter</span>
+      <div class="dim bidder-mode" th:if="${immediate}">assegnazione diretta, senza asta</div>
     </div>
     <button type="button" id="bidderClose" class="bidder-close"
             aria-label="chiudi senza aggiudicare">✕</button>
   </header>
 
-  <div class="bidder-clock" id="bidderClockBox">
+  <div class="bidder-clock" id="bidderClockBox" th:unless="${immediate}">
     <span class="bidder-clock-icon" aria-hidden="true">⏱</span>
     <span id="bidderClock" role="timer" aria-live="assertive"
           th:text="${bidder.timerSeconds}">5</span>
@@ -41,7 +42,7 @@
 
   <!-- Una sola cella, a tutta larghezza: l'offerta. Il quotato del listone accanto,
        perche' e' stampato sul foglio che ha in mano ogni partecipante. -->
-  <div class="bidder-numbers bidder-numbers-solo">
+  <div class="bidder-numbers bidder-numbers-solo" th:unless="${immediate}">
     <div>
       <label>OFFERTA</label>
       <b class="big" id="bidderPrice">1</b>
@@ -49,7 +50,7 @@
     </div>
   </div>
 
-  <div class="bidder-controls" id="bidderControls">
+  <div class="bidder-controls" id="bidderControls" th:unless="${immediate}">
     <button type="button" id="bidderBid" class="bidder-bid">
       BID <small>spazio</small>
     </button>
@@ -69,7 +70,14 @@
 
   <!-- Aggiudica sulla pagina proiettata: stesso AuctionService#recordPurchase di
        /assign, resa diversa perche' qui non esiste un #main da sostituire. -->
-  <form id="bidderAssign" class="bidder-assign" hidden
+  <!--
+    In assegnazione diretta questo form E' il popup: nasce visibile, e sopra non c'e'
+    ne' orologio ne' comandi di rilancio. La forma la decide il server, non un
+    aggiustamento in JavaScript dopo l'apertura: cosi' non si vede comparire per un
+    istante un timer che non serve, e se lo script non gira si ottiene comunque un
+    dialogo che funziona invece di un countdown fermo senza via d'uscita.
+  -->
+  <form id="bidderAssign" class="bidder-assign" th:hidden="${!immediate}"
         hx-post="/battitore/assegna" hx-target="#board" hx-swap="outerHTML">
     <input type="hidden" name="playerId" th:value="${bidder.player.id}">
     <label>A CHI
@@ -82,7 +90,8 @@
       <input type="number" name="price" id="bidderFinalPrice" min="1" value="1">
     </label>
     <button type="submit" class="bidder-confirm">ASSEGNA</button>
-    <button type="button" id="bidderResume" class="bidder-resume">riprendi rilanci</button>
+    <button type="button" id="bidderResume" class="bidder-resume"
+            th:unless="${immediate}">riprendi rilanci</button>
   </form>
 </dialog>
 

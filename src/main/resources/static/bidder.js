@@ -219,18 +219,28 @@
     expired = false;
     assignInFlight = false;
 
+    var immediate = dlg.getAttribute('data-immediate') === 'true';
+
     renderPrice();
     dlg.showModal();
-    if (dlg.getAttribute('data-immediate') === 'true') {
-      /* Nessuna asta da battere: si aggiudica e basta, senza far scorrere un timer
-         che non misura nulla. */
-      expire(false);
+
+    if (immediate) {
+      /*
+        Assegnazione diretta: il server ha gia' reso il popup nella forma giusta —
+        niente orologio, niente comandi di rilancio, form di aggiudicazione visibile.
+        Qui non c'e' nulla da trasformare, solo un countdown da NON far partire.
+        expired resta true perche' la barra spaziatrice non deve rilanciare in un
+        popup dove il rilancio non esiste.
+      */
+      expired = true;
+      var who = $('bidderWho');
+      if (who) { who.focus(); }
     } else {
       startCountdown();
     }
 
     var bid = $('bidderBid');
-    if (bid) {
+    if (bid && !immediate) {
       bid.addEventListener('click', function () { raise(1); });
       bid.focus();
     }
