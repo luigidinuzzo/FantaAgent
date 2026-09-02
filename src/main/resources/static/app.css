@@ -499,10 +499,7 @@ body.projected { font-size: 1.15rem; }
 .bidder-close:hover { background: var(--surface-2); color: var(--fg); }
 
 .bidder-clock { text-align: center; padding: var(--s-5) var(--s-4) var(--s-2); line-height: 1; }
-.bidder-clock-icon { font-size: var(--fs-md); color: var(--fg-subtle); margin-right: var(--s-2);
-                     vertical-align: .35rem; }
-#bidderClock { font-size: 4.5rem; font-weight: 700; letter-spacing: -.03em;
-               transition: color var(--t); }
+#bidderClock { font-weight: 700; letter-spacing: -.03em; transition: color var(--t); }
 /* Colore invece di lampeggio: un lampeggio va evitato per chi è sensibile al
    movimento, e in una stanza il colore si coglie comunque con la coda dell'occhio. */
 .bidder-clock.urgent #bidderClock { color: var(--neg); }
@@ -553,7 +550,6 @@ body.projected { font-size: 1.15rem; }
 .bidder-error { flex: 1 1 100%; margin: 0; color: var(--neg); font-size: var(--fs-sm); }
 
 .bidder-public { width: min(38rem, 94vw); }
-.bidder-public #bidderClock { font-size: 6.5rem; }
 .bidder-public #bidderPrice { font-size: 3.5rem; }
 .bidder-public .bidder-bid { font-size: 1.4rem; }
 
@@ -586,7 +582,25 @@ body.projected { font-size: 1.15rem; }
 /* Icone vettoriali in linea, non caratteri emoji: un'emoji si rende a colori e con
    una forma diversa su ogni sistema, e su uno schermo proiettato si nota. Ereditano
    colore e dimensione dal testo, quindi seguono da sole ogni stato del bottone. */
-.ico { width: 1em; height: 1em; vertical-align: -.125em; flex: none; }
-.bidder-clock-icon { color: var(--fg-subtle); margin-right: var(--s-2); }
-.bidder-clock-icon .ico { width: .5em; height: .5em; vertical-align: .1em; }
+/* 1.15em e non 1em: a 13 px di testo un quadrato di 13 px con tratto sottile
+   sparisce, e un bottone che contiene solo quello sembra vuoto — e' successo. */
+.ico { width: 1.15em; height: 1.15em; vertical-align: -.2em; flex: none; stroke-width: 2.25; }
 .battitore-result-go .ico { margin-right: 2px; }
+
+/* L'icona accanto al countdown: legata alla dimensione del numero, non al testo di
+   pagina, cosi' resta proporzionata anche sullo schermo proiettato dove il countdown
+   e' molto piu' grande. */
+/* La misura del countdown vive in UN SOLO posto: sul contenitore. Il numero e
+   l'icona la ereditano, quindi ingrandire il popup proiettato e' una riga sola e non
+   puo' lasciarne indietro una delle due parti — che e' esattamente come l'icona era
+   finita a otto pixel. */
+.bidder-clock { font-size: 4.5rem; }
+.bidder-public .bidder-clock { font-size: 6.5rem; }
+.bidder-clock-icon { color: var(--fg-subtle); margin-right: var(--s-3); }
+.bidder-clock-icon .ico { width: .3em; height: .3em; vertical-align: .06em; stroke-width: 2; }
+
+/* Icona PIU' etichetta. Un bottone con la sola icona si capisce solo se si conosce
+   gia' l'icona: il "title" compare al passaggio del mouse, che in asta non si usa, e
+   non esiste affatto da tastiera. */
+.bidder-open { display: inline-flex; align-items: center; gap: var(--s-1); }
+.bidder-open-row { font-size: var(--fs-xs); padding: var(--s-1) var(--s-2); }
