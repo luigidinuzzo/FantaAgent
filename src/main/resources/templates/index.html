@@ -41,6 +41,10 @@
   <a th:href="@{/battitore}" class="settings-link" target="_blank"
      rel="noopener">battitore ↗</a>
   <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
+  <!-- Stesso endpoint del bottone sulla pagina proiettata: il file non dipende da
+       dove lo si chiede, e una seconda via per costruirlo avrebbe potuto divergere
+       proprio nei dettagli di byte da cui dipende la riuscita dell'import. -->
+  <a th:href="@{/battitore/esporta}" class="settings-link">↓ esporta rose</a>
 </header>
 
 <!-- L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap

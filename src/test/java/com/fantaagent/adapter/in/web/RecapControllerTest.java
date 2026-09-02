@@ -102,6 +102,17 @@ class RecapControllerTest {
                 .andExpect(content().string(containsString("47")));
     }
 
+    /** Stesso endpoint di ogni altra pagina: un solo modo di costruire il file. */
+    @Test
+    void theRecapPageOffersTheRosterExport() throws Exception {
+        when(auctionService.state()).thenReturn(stateWithOnePurchase());
+
+        mockMvc.perform(get("/riepilogo"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("esporta rose")))
+                .andExpect(content().string(containsString("/battitore/esporta")));
+    }
+
     @Test
     void thePageLinksBackToTheAuctionPage() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());

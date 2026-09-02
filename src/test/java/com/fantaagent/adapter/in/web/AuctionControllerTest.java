@@ -158,6 +158,17 @@ class AuctionControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("FASE")));
     }
 
+    /** Il collegamento all'export deve raggiungere lo stesso endpoint di ogni altra
+     *  pagina: un secondo modo di costruire il file avrebbe potuto divergere proprio
+     *  nei dettagli di byte da cui dipende la riuscita dell'import. */
+    @Test
+    void theAuctionPageOffersTheRosterExport() throws Exception {
+        mockMvc.perform(get("/asta"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("esporta rose")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/battitore/esporta")));
+    }
+
     @Test
     void searchingShowsTheTopResultWithItsNumbers() throws Exception {
         mockMvc.perform(get("/fragments/main").param("cmd", "bast"))
