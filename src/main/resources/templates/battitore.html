@@ -6,7 +6,7 @@
   <link rel="stylesheet" th:href="@{/app.css}">
   <script th:src="@{/htmx.min.js}"></script>
 </head>
-<!--
+<!--/*
   La pagina da proiettare sullo schermo condiviso.
 
   Non contiene NESSUNA valutazione: niente max bid, prezzo atteso, punti attesi,
@@ -20,7 +20,7 @@
   rende solo esatta e uguale per tutti.
 
   Tipi grandi di proposito: si legge da qualche metro di distanza, non da 60 cm.
--->
+*/-->
 <body class="projected">
 <div class="battitore">
 
@@ -28,23 +28,23 @@
     <h1>BATTITORE</h1>
     <div id="phaseBadge" th:fragment="phaseBadge" class="battitore-phase"
          hx-swap-oob="true">FASE <b th:text="${phase}">D</b></div>
-    <!-- Piccolo e in fondo: serve a chi conduce, non al pubblico. -->
-    <!--
+    <!--/* Piccolo e in fondo: serve a chi conduce, non al pubblico. */-->
+    <!--/*
       Link normale e non bottone htmx: il download deve partire dal browser, e uno
       swap htmx si aspetta markup in risposta, non un file. Un <a> con l'endpoint che
       manda Content-Disposition attachment fa esattamente la cosa giusta senza una
       riga di JavaScript.
-    -->
+    */-->
     <a class="battitore-export" th:href="@{/battitore/esporta}"
        th:download="'rose.csv'">↓ ESPORTA</a>
     <a class="battitore-exit" th:href="@{/asta}">← la mia asta</a>
   </header>
 
-  <!--
+  <!--/*
     La barra di ricerca. hx-trigger su keyup con un ritardo breve, come la barra
     comando della schermata d'asta: si digita il nome e le righe compaiono sotto.
     Nessun prezzo da inserire qui — quello lo decide il popup, rilancio dopo rilancio.
-  -->
+  */-->
   <div class="battitore-search">
     <input id="battitoreSearch" name="q" autocomplete="off" autofocus
            placeholder="cerca un giocatore nel listone…"
@@ -53,13 +53,13 @@
   </div>
 
   <div id="results" th:fragment="results" class="battitore-results">
-    <!--
+    <!--/*
       Due azioni per giocatore, perche' due sono le situazioni. "batti" apre il
       countdown quando c'e' davvero un'asta; "assegna" salta il timer quando nessuno
       rilancia e il giocatore va a chi lo ha chiamato. Un timer che scorre su un'asta
       che non c'e' e' solo tempo perso davanti a tutti.
       Nome, ruolo, squadra e quotazione: i quattro dati del listone cartaceo.
-    -->
+    */-->
     <div class="battitore-result" th:each="p : ${results}">
       <button type="button" class="battitore-result-main"
               th:hx-get="@{/battitore/popup(playerId=${p.id})}"
@@ -67,7 +67,7 @@
         <span class="battitore-result-name" th:text="${p.name}">Dimarco</span>
         <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
         <span class="battitore-result-price" th:text="${p.listPrice}">12</span>
-        <span class="battitore-result-go">⏱ batti</span>
+        <span class="battitore-result-go"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> batti</span>
       </button>
       <button type="button" class="battitore-result-now"
               th:hx-get="@{/battitore/popup(playerId=${p.id}, subito=true)}"
@@ -78,7 +78,7 @@
   <div id="board" th:fragment="board" class="battitore-board-wrap">
     <p class="battitore-message" th:if="${message}" th:text="${message}"></p>
 
-    <!--
+    <!--/*
       Fase completa. Sta DENTRO #board di proposito: e' l'ultimo acquisto di un ruolo
       a renderla completa, e #board e' cio' che quell'acquisto ridisegna. Fuori di qui
       comparirebbe solo al ricaricamento successivo, cioe' quasi mai.
@@ -89,7 +89,7 @@
 
       L'avanzamento resta un gesto voluto: vedi il commento su nextPhase in
       BattitoreController.
-    -->
+    */-->
     <div class="phase-done battitore-phase-done" th:if="${phaseDone != null}" role="status">
       <span>Fase <b th:text="${phaseDone.phase}">P</b> completa: nessuno ha più
         uno slot libero per questo ruolo.</span>
@@ -114,11 +114,11 @@
           <div class="recap-player" th:each="p : ${col.byRole.get(role)}">
             <span th:text="${p.name}">Bastoni</span>
             <span class="price" th:text="${p.price}">47</span>
-            <!-- Due click come nel riepilogo privato, e per un motivo in piu': qui il
+            <!--/* Due click come nel riepilogo privato, e per un motivo in piu': qui il
                  puntatore si muove davanti a tutti e un click di troppo cambierebbe in
                  silenzio i crediti di un partecipante. Il bottone e' type="button" e
                  diventa type="submit" solo dopo la conferma (recap.js): se lo script
-                 non si carica il bottone non risponde, invece di rimuovere. -->
+                 non si carica il bottone non risponde, invece di rimuovere. */-->
             <form method="post" th:action="@{/battitore/revoca}"
                   hx-post="/battitore/revoca" hx-target="#board" hx-swap="outerHTML">
               <input type="hidden" name="targetSeq" th:value="${p.seq}">
@@ -132,9 +132,9 @@
 
 </div>
 
-<!-- Stesso innesto della schermata d'asta, ultimo figlio del body e fuori da ogni
+<!--/* Stesso innesto della schermata d'asta, ultimo figlio del body e fuori da ogni
      regione soggetta a swap: un <dialog> modale non deve stare dentro un elemento
-     che htmx puo' sostituire mentre e' aperto. -->
+     che htmx puo' sostituire mentre e' aperto. */-->
 <div id="bidderMount"></div>
 
 <script th:src="@{/recap.js}"></script>

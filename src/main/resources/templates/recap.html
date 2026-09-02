@@ -4,51 +4,19 @@
   <meta charset="UTF-8">
   <title>Riepilogo asta</title>
   <link rel="stylesheet" th:href="@{/app.css}">
-  <style>
-    .wrap { max-width: 100%; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
-    h1 { font-size: var(--fs-lg); margin: .8rem 0 .6rem; }
-    .nav { display: flex; gap: 1rem; align-items: center; margin-bottom: .5rem; }
-    .nav a { color: var(--dim); font-size: var(--fs-sm); text-decoration: none; }
-    .nav a:hover { color: var(--fg); }
-    .banner { padding: .6rem .9rem; margin: .6rem 0; border-left: 3px solid var(--pos); }
-
-    /* Contenitore scorrevole: otto colonne fianco a fianco romperebbero il layout
-       su qualsiasi schermo se non fossero racchiuse in un contenitore con il proprio
-       overflow orizzontale — il resto della pagina non deve scorrere di lato. */
-    .recap-board { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
-    .recap-col { flex: 0 0 15rem; min-width: 15rem; border: 1px solid var(--line);
-                 padding: .75rem; }
-    .recap-col.me { border-color: var(--pos); }
-    .recap-col h2 { font-size: var(--fs-md); margin: 0 0 .2rem; }
-    .recap-col .meta { color: var(--dim); font-size: var(--fs-sm); margin-bottom: .6rem; }
-    .recap-role { font-size: var(--fs-xs); color: var(--dim); letter-spacing: .06em;
-                  margin: .6rem 0 .2rem; border-top: 1px solid var(--line); padding-top: .4rem; }
-    .recap-role:first-of-type { border-top: none; margin-top: 0; }
-    .recap-player { display: flex; justify-content: space-between; align-items: center;
-                    gap: .4rem; padding: .15rem 0; font-size: var(--fs-sm); }
-    .recap-player .price { color: var(--dim); }
-    .recap-player form { margin: 0; }
-    .revoke-btn { font: inherit; font-size: var(--fs-xs); background: transparent; color: var(--dim);
-                  border: 1px solid var(--line); padding: .05rem .35rem; cursor: pointer;
-                  border-radius: 2px; }
-    .revoke-btn:hover { color: var(--neg); border-color: var(--neg); }
-    .revoke-btn.confirming { color: #022; background: var(--neg); border-color: var(--neg);
-                              font-weight: bold; }
-    .empty-role { color: var(--dim); font-size: var(--fs-sm); font-style: italic; }
-  </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!--
+  <!--/*
     Solo indietro ed esporta. La schermata d'asta e' l'unica da cui si raggiunge ogni
     altra pagina: da qui si torna li', e da li' si sceglie. Una navigazione completa
     ripetuta su ogni pagina moltiplica i modi di perdersi senza aggiungere una sola
     destinazione.
-  -->
+  */-->
   <div class="nav">
     <a th:href="@{/asta}">← indietro all'asta</a>
-    <!-- Stesso endpoint del bottone sulla pagina proiettata. -->
+    <!--/* Stesso endpoint del bottone sulla pagina proiettata. */-->
     <a th:href="@{/battitore/esporta}">↓ esporta rose</a>
   </div>
 
@@ -70,7 +38,7 @@
         <div class="recap-player" th:each="p : ${col.byRole.get(role)}">
           <span th:text="${p.name}">Bastoni</span>
           <span class="price" th:text="${p.price}">47</span>
-          <!-- Due click, decisi con l'utente: il primo trasforma il bottone in
+          <!--/* Due click, decisi con l'utente: il primo trasforma il bottone in
                "conferma?", il secondo rimuove davvero. Il comportamento vive in
                recap.js: qui il bottone è type="button", non type="submit", quindi
                senza JavaScript (script non caricato, errore prima dell'attach del
@@ -78,7 +46,7 @@
                invia mai il form da solo. È recap.js che promuove il bottone a
                type="submit" solo dopo la conferma, non prima: se lo script manca,
                il fallimento è "il bottone non risponde", mai "un click rimuove
-               l'acquisto in silenzio". -->
+               l'acquisto in silenzio". */-->
           <form method="post" th:action="@{/riepilogo/revoca}">
             <input type="hidden" name="targetSeq" th:value="${p.seq}">
             <button type="button" class="revoke-btn" title="rimuovi">✕</button>

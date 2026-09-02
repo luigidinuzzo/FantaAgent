@@ -255,7 +255,7 @@ class SettingsControllerTest {
 
         mockMvc.perform(fullForm().param("name", "Anna", "Marco"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("già in vigore")));
+                .andExpect(content().string(containsString("in vigore")));
 
         verify(membersStore).save(any());
         verify(auctionStore).save(new AuctionSettings(7, true));

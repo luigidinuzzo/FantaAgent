@@ -15,19 +15,19 @@
     <span th:text="${status.myComposition}">0P 0D 0C 0A</span> ·
     <span th:text="${status.mySlotsLeft}">25</span> slot</div>
   <form hx-post="/undo" hx-target="#main" hx-swap="outerHTML">
-    <!-- Sempre presente e mai nascosto: la sua posizione deve restare prevedibile
+    <!--/* Sempre presente e mai nascosto: la sua posizione deve restare prevedibile
          anche quando non c'è nulla da annullare, quindi si disabilita invece di
-         sparire. Stessa via del comando Ctrl+Z/Cmd+Z e dello stesso /undo. -->
+         sparire. Stessa via del comando Ctrl+Z/Cmd+Z e dello stesso /undo. */-->
     <button type="submit" th:disabled="${!status.canUndo}">↩ annulla ultimo</button>
   </form>
   <form hx-post="/phase/next" hx-target="#main" hx-swap="outerHTML">
     <button type="submit">fase successiva →</button>
   </form>
-  <!-- Spostamento su una fase qualunque, avanti o indietro: si puo' avere avanzato per
+  <!--/* Spostamento su una fase qualunque, avanti o indietro: si puo' avere avanzato per
        sbaglio, o voler tornare su un ruolo gia' passato. Nessun dato si perde, perche'
        la fase e' gia' un evento del registro e spostarsi significa appenderne un altro.
        La fase corrente resta segnata e il suo bottone disabilitato: cliccarla non
-       scriverebbe nulla, e un bottone che non fa nulla e' peggio di uno spento. -->
+       scriverebbe nulla, e un bottone che non fa nulla e' peggio di uno spento. */-->
   <form class="phase-picker" hx-post="/phase/select" hx-target="#main" hx-swap="outerHTML">
     <span class="dim">vai a</span>
     <button th:each="r : ${phases}" type="submit" name="role" th:value="${r}"
@@ -36,35 +36,35 @@
             th:attrappend="aria-current=${r.name() == status.phase} ? 'true' : null">D</button>
   </form>
   <a th:href="@{/riepilogo}" class="settings-link">riepilogo</a>
-  <!-- La pagina da proiettare: aprila in una seconda finestra sullo schermo
-       condiviso e tieni questa, con i max bid, sul tuo portatile. -->
+  <!--/* La pagina da proiettare: aprila in una seconda finestra sullo schermo
+       condiviso e tieni questa, con i max bid, sul tuo portatile. */-->
   <a th:href="@{/battitore}" class="settings-link" target="_blank"
      rel="noopener">battitore ↗</a>
   <a th:href="@{/impostazioni}" class="settings-link">impostazioni</a>
-  <!-- Stesso endpoint del bottone sulla pagina proiettata: il file non dipende da
+  <!--/* Stesso endpoint del bottone sulla pagina proiettata: il file non dipende da
        dove lo si chiede, e una seconda via per costruirlo avrebbe potuto divergere
-       proprio nei dettagli di byte da cui dipende la riuscita dell'import. -->
+       proprio nei dettagli di byte da cui dipende la riuscita dell'import. */-->
   <a th:href="@{/battitore/esporta}" class="settings-link">↓ esporta rose</a>
 </header>
 
-<!-- L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap
+<!--/* L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap
      out-of-band può solo sostituire un elemento che il markup contiene davvero.
      Se th:if lo rimuovesse quando resume è assente, un banner mostrato prima
      resterebbe visibile in pagina senza che nessuna risposta possa più ripulirlo.
-     Nascondiamo invece il contenuto con l'attributo hidden. -->
+     Nascondiamo invece il contenuto con l'attributo hidden. */-->
 <div id="resume" class="resume" th:fragment="resume" hx-swap-oob="true" th:hidden="${resume == null}">
   Asta in corso: <b th:text="${resume?.purchases}">47</b> acquisti,
   fase <b th:text="${resume?.phase}">D</b> — ripreso dal log su disco.
 </div>
 
-<!-- Come #resume: l'elemento c'e' sempre nel markup e si nasconde con l'attributo
+<!--/* Come #resume: l'elemento c'e' sempre nel markup e si nasconde con l'attributo
      hidden, perche' uno swap out-of-band puo' solo sostituire un elemento che la
      risposta contiene davvero — con th:if sull'elemento, un avviso gia' mostrato non
      potrebbe piu' essere ripulito quando la fase smette di essere completa (es. dopo
      un annullamento). Arriva in ogni risposta che cambia stato, quindi compare
      nell'istante in cui l'ultimo slot del ruolo si chiude, non al ricaricamento.
      Avvisa, non blocca: un modale impedirebbe di correggere un acquisto di quella
-     stessa fase, che e' proprio la ragione per cui si potrebbe volerci restare. -->
+     stessa fase, che e' proprio la ragione per cui si potrebbe volerci restare. */-->
 <div id="phaseDone" class="phase-done" th:fragment="phaseDone" hx-swap-oob="true"
      th:hidden="${phaseDone == null}" th:attr="data-phase=${phaseDone?.phase}"
      role="status">
@@ -79,8 +79,8 @@
 
 <div class="layout">
 
-  <!-- La barra comando vive fuori da #main: non viene mai sostituita da uno swap,
-       quindi non si svuota mentre l'utente sta ancora digitando (era il difetto A). -->
+  <!--/* La barra comando vive fuori da #main: non viene mai sostituita da uno swap,
+       quindi non si svuota mentre l'utente sta ancora digitando (era il difetto A). */-->
   <section>
     <form id="cmdForm" hx-post="/command" hx-target="#main" hx-swap="outerHTML">
       <input id="cmd" name="cmd" autocomplete="off" autofocus
@@ -127,17 +127,17 @@
 
         <p class="walkaway" th:text="${panel.analysis.recommendation.walkAwayReason}"></p>
 
-        <!-- Apre il battitore su questo giocatore: countdown, rilanci, e aggiudicazione
+        <!--/* Apre il battitore su questo giocatore: countdown, rilanci, e aggiudicazione
              allo scadere. Resta accanto all'assegnazione diretta qui sotto, che serve
-             il caso opposto — prezzo gia' noto, nessuna asta da battere. -->
+             il caso opposto — prezzo gia' noto, nessuna asta da battere. */-->
         <button type="button" class="bidder-open"
                 th:hx-get="@{/asta/battitore(playerId=${panel.analysis.player.id})}"
-                hx-target="#bidderMount" hx-swap="innerHTML">⏱ batti l'asta</button>
+                hx-target="#bidderMount" hx-swap="innerHTML"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> batti l'asta</button>
 
-        <!-- Complementa la barra comando per chi non conosce "bast 47 m": un prezzo
+        <!--/* Complementa la barra comando per chi non conosce "bast 47 m": un prezzo
              condiviso (precompilato con maxBid) e un bottone per partecipante, che
              assegna QUEL giocatore a QUEL partecipante a quel prezzo. Passa da /assign,
-             che chiama lo stesso AuctionService#recordPurchase del comando. -->
+             che chiama lo stesso AuctionService#recordPurchase del comando. */-->
         <form class="assign-row" hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
           <input type="hidden" name="playerId" th:value="${panel.analysis.player.id}">
           <label>PREZZO
@@ -151,7 +151,7 @@
       </article>
     </div>
 
-    <!-- Fuori da #main apposta, stessa ragione di #targets: #main viene sostituito
+    <!--/* Fuori da #main apposta, stessa ragione di #targets: #main viene sostituito
          a ogni ricerca/comando, e questa tabella non deve sparire mentre l'utente
          digita. Si carica da sola all'apertura della pagina (hx-trigger="load") così
          la pagina resta veloce e la tabella (fino a ~1,5 s per 25 righe) arriva subito
@@ -163,7 +163,7 @@
          così questo elemento — che sta fuori da #main e non riceve mai quello swap
          — lo intercetta comunque. Qui l'offset è 0 perché è il primo caricamento;
          da lì in poi è il fragment sostituito a portare con sé l'offset della
-         pagina mostrata, quindi un acquisto non riporta più alla prima pagina. -->
+         pagina mostrata, quindi un acquisto non riporta più alla prima pagina. */-->
     <div id="phaseTable" hx-get="/fragments/phase-players?offset=0"
          hx-trigger="load, fantaStateChanged from:body" hx-swap="outerHTML"></div>
   </section>
@@ -182,10 +182,10 @@
     </div>
   </aside>
 
-  <!-- Fuori da #board apposta: #board viene sostituito out-of-band ad ogni comando
+  <!--/* Fuori da #board apposta: #board viene sostituito out-of-band ad ogni comando
        (era il difetto S7), quindi un elemento annidato al suo interno perderebbe il
        contenuto ad ogni acquisto anche se nessuna risposta lo tocca esplicitamente.
-       Qui #targets sopravvive agli swap di stato: solo /fragments/targets lo scrive. -->
+       Qui #targets sopravvive agli swap di stato: solo /fragments/targets lo scrive. */-->
   <div id="targets" th:fragment="targets">
     <h3 th:if="${targets}">TARGET <span class="dim">— dove sta l'affare</span></h3>
     <div class="table-scroll" th:if="${targets}">
@@ -203,12 +203,12 @@
 
 </div>
 
-<!-- Punto di innesto del popup del battitore. Vuoto finche' non si preme "batti":
+<!--/* Punto di innesto del popup del battitore. Vuoto finche' non si preme "batti":
      il fragment arriva da GET /battitore e bidder.js lo apre come dialogo modale.
      Sta qui, ultimo figlio del body e fuori da ogni regione soggetta a swap, perche'
      un <dialog> modale non deve stare dentro un elemento che htmx puo' sostituire
      mentre e' aperto: lo swap lo staccherebbe dal documento e il browser lo
-     chiuderebbe senza che nessuno lo abbia chiesto. -->
+     chiuderebbe senza che nessuno lo abbia chiesto. */-->
 <div id="bidderMount"></div>
 
 <script th:src="@{/app.js}"></script>

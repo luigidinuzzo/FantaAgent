@@ -1,4 +1,4 @@
-<!--
+<!--/*
   File separato apposta, sullo stesso schema di fragments/update.html: qui vivono i
   due fragment della tabella di fase, "phaseTable" (l'intero pannello, che ogni
   richiesta di pagina sostituisce per intero) e "phaseRowsBody" (le sole righe, usato
@@ -17,7 +17,7 @@
   così un acquisto ricarica la pagina che si sta guardando invece di riportare alla
   prima. Se nel frattempo quella pagina è finita oltre la fine (gli ultimi giocatori
   del ruolo sono stati venduti), phasePlayers riporta all'ultima pagina piena.
--->
+*/-->
 <th:block xmlns:th="http://www.thymeleaf.org">
 
 <div id="phaseTable" th:fragment="phaseTable"
@@ -27,10 +27,10 @@
     <span class="dim">— per quotazione Fantacalcio.it</span>
     <span class="dim phase-count" th:if="${phasePage.total > 0}"
           th:text="${phasePage.total} + ' disponibili'">312 disponibili</span></h3>
-  <!-- L'ultimo giocatore del ruolo può essere venduto proprio durante questa fase
+  <!--/* L'ultimo giocatore del ruolo può essere venduto proprio durante questa fase
        (es. dalla barra comando, mentre la tabella è aperta): senza questo ramo la
        tabella si ricaricherebbe su un'intestazione con sotto zero righe, un vuoto
-       muto che sembra un errore di caricamento. -->
+       muto che sembra un errore di caricamento. */-->
   <p class="empty-role" th:if="${phasePage.rows.isEmpty()}">nessun giocatore disponibile in questo ruolo</p>
   <div class="table-scroll" th:unless="${phasePage.rows.isEmpty()}">
     <table>
@@ -46,12 +46,12 @@
     </table>
   </div>
 
-  <!--
+  <!--/*
     Navigazione fra le pagine. I bottoni sostituiscono l'intero #phaseTable, quindi
     tornano con i propri offset gia' aggiornati. Sono disabilitati agli estremi invece
     di sparire: una barra che perde un bottone sposta l'altro sotto il puntatore, e in
     asta si clicca senza guardare.
-  -->
+  */-->
   <div class="phase-nav" th:unless="${phasePage.rows.isEmpty()}">
     <button type="button" th:disabled="${!phasePage.hasPrevious()}"
             th:hx-get="@{/fragments/phase-players(offset=${phasePage.previousOffset()})}"
@@ -73,15 +73,15 @@
     <td th:text="${#numbers.formatDecimal(r.fantamediaAttesa(), 1, 2)}">6,20</td>
     <td th:text="${#numbers.formatDecimal(r.titolaritaPercent(), 1, 0)} + '%'">82%</td>
     <td>
-      <!-- Due modi, due situazioni diverse: "batti" quando il giocatore va all'asta e
+      <!--/* Due modi, due situazioni diverse: "batti" quando il giocatore va all'asta e
            il prezzo lo decidera' la stanza; il form qui accanto quando il prezzo e'
-           gia' noto e resta solo da registrarlo. Entrambi finiscono su /assign. -->
+           gia' noto e resta solo da registrarlo. Entrambi finiscono su /assign. */-->
       <button type="button" class="bidder-open bidder-open-row" title="batti l'asta"
               th:hx-get="@{/asta/battitore(playerId=${r.player.id})}"
-              hx-target="#bidderMount" hx-swap="innerHTML">⏱</button>
-      <!-- Stesso /assign dell'articolo di analisi: identica validazione, identici
+              hx-target="#bidderMount" hx-swap="innerHTML"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
+      <!--/* Stesso /assign dell'articolo di analisi: identica validazione, identici
            messaggi di rifiuto in italiano — nessuna seconda via per registrare un
-           acquisto. -->
+           acquisto. */-->
       <form class="assign-row" hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
         <input type="hidden" name="playerId" th:value="${r.player.id}">
         <input type="number" name="price" min="1" class="assign-price"

@@ -1,4 +1,4 @@
-<!--
+<!--/*
   Il battitore nella versione PROIETTATA, per lo schermo che guardano tutti.
 
   Rispetto a fragments/bidder.html manca una cosa sola, ed e' quella che conta: non
@@ -13,7 +13,7 @@
   Gli id degli elementi sono gli stessi dell'altro fragment, di proposito: bidder.js
   e' uno solo e serve entrambe le pagine. Rinominarne uno qui lo romperebbe in
   silenzio proprio sulla pagina proiettata, cioe' davanti a tutti.
--->
+*/-->
 <th:block xmlns:th="http://www.thymeleaf.org">
 
 <dialog id="bidderDialog" class="bidder bidder-public" th:fragment="bidder"
@@ -35,13 +35,13 @@
   </header>
 
   <div class="bidder-clock" id="bidderClockBox" th:unless="${immediate}">
-    <span class="bidder-clock-icon" aria-hidden="true">⏱</span>
+    <span class="bidder-clock-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
     <span id="bidderClock" role="timer" aria-live="assertive"
           th:text="${bidder.timerSeconds}">5</span>
   </div>
 
-  <!-- Una sola cella, a tutta larghezza: l'offerta. Il quotato del listone accanto,
-       perche' e' stampato sul foglio che ha in mano ogni partecipante. -->
+  <!--/* Una sola cella, a tutta larghezza: l'offerta. Il quotato del listone accanto,
+       perche' e' stampato sul foglio che ha in mano ogni partecipante. */-->
   <div class="bidder-numbers bidder-numbers-solo" th:unless="${immediate}">
     <div>
       <label>OFFERTA</label>
@@ -60,23 +60,23 @@
       <input type="number" id="bidderJump" min="1" inputmode="numeric"
              aria-label="porta l'offerta a una cifra precisa">
     </label>
-    <!--
+    <!--/*
       Ferma il countdown e passa all'aggiudicazione. Serve quando uno dei due
       contendenti si ritira: senza, si dovrebbe restare a guardare un timer che scorre
       su un'asta gia' decisa.
-    -->
+    */-->
     <button type="button" id="bidderNow" class="bidder-now">aggiudica ora →</button>
   </div>
 
-  <!-- Aggiudica sulla pagina proiettata: stesso AuctionService#recordPurchase di
-       /assign, resa diversa perche' qui non esiste un #main da sostituire. -->
-  <!--
+  <!--/* Aggiudica sulla pagina proiettata: stesso AuctionService#recordPurchase di
+       /assign, resa diversa perche' qui non esiste un #main da sostituire. */-->
+  <!--/*
     In assegnazione diretta questo form E' il popup: nasce visibile, e sopra non c'e'
     ne' orologio ne' comandi di rilancio. La forma la decide il server, non un
     aggiustamento in JavaScript dopo l'apertura: cosi' non si vede comparire per un
     istante un timer che non serve, e se lo script non gira si ottiene comunque un
     dialogo che funziona invece di un countdown fermo senza via d'uscita.
-  -->
+  */-->
   <form id="bidderAssign" class="bidder-assign" th:hidden="${!immediate}"
         hx-post="/battitore/assegna" hx-target="#board" hx-swap="outerHTML">
     <input type="hidden" name="playerId" th:value="${bidder.player.id}">
