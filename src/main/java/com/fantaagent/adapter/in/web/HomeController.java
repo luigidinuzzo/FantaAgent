@@ -50,13 +50,15 @@ public class HomeController {
     }
 
     /**
-     * Porta alle impostazioni, non direttamente all'asta: con la scelta fatta prima di
-     * cominciare, configurare le regole non richiede piu' un riavvio ne' un'asta vuota
-     * da annullare.
+     * Porta alla schermata di preparazione, e non crea ancora nulla.
+     *
+     * <p>L'asta nasce quando le impostazioni vengono confermate, non quando si dichiara
+     * di volerla cominciare. Prima la cartella veniva creata qui, al primo click: chi
+     * tornava indietro dalla schermata di conferma lasciava dietro di se' un'asta vuota
+     * che restava per sempre nell'elenco, e piu' d'una se ci ripensava piu' volte.
      */
     @PostMapping("/aste/nuova")
     public String create() {
-        runtime.createNew();
         return "redirect:/impostazioni";
     }
 
@@ -64,6 +66,7 @@ public class HomeController {
         return runtime.auctions().stream()
                 .map(summary -> new ViewModels.AuctionCard(
                         summary.id(),
+                        summary.label(),
                         when(summary.lastWritten()),
                         summary.purchases(),
                         summary.phase().name(),

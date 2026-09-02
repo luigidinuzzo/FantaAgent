@@ -40,10 +40,14 @@
 <body>
 <div class="wrap">
 
+  <!--
+    Solo indietro ed esporta. La schermata d'asta e' l'unica da cui si raggiunge ogni
+    altra pagina: da qui si torna li', e da li' si sceglie. Una navigazione completa
+    ripetuta su ogni pagina moltiplica i modi di perdersi senza aggiungere una sola
+    destinazione.
+  -->
   <div class="nav">
-    <a th:href="@{/asta}">← asta</a>
-    <a th:href="@{/impostazioni}">impostazioni</a>
-    <a th:href="@{/battitore}" target="_blank" rel="noopener">battitore ↗</a>
+    <a th:href="@{/asta}">← indietro all'asta</a>
     <!-- Stesso endpoint del bottone sulla pagina proiettata. -->
     <a th:href="@{/battitore/esporta}">↓ esporta rose</a>
   </div>

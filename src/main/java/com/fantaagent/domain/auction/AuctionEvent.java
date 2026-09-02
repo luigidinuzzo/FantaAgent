@@ -15,7 +15,12 @@ public sealed interface AuctionEvent {
 
     Instant at();
 
-    record AuctionStarted(long seq, Instant at) implements AuctionEvent {
+    /**
+     * @param name nome scelto per l'asta; puo' essere null nei registri scritti prima
+     *             che il nome esistesse, e in quel caso si mostra l'identificativo.
+     *             La data e l'ora sono gia' in {@code at}: non vanno duplicate.
+     */
+    record AuctionStarted(long seq, Instant at, String name) implements AuctionEvent {
     }
 
     record PhaseAdvanced(long seq, Instant at, Role role) implements AuctionEvent {

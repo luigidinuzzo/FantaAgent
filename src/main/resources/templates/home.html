@@ -33,7 +33,14 @@
       </thead>
       <tbody>
         <tr th:each="a : ${auctions}" th:classappend="${a.selected} ? 'sel' : ''">
-          <td th:text="${a.id}">2026-09-01</td>
+          <!-- Il nome dato all'asta; per i registri scritti prima che il nome
+               esistesse, label() ricade sull'identificativo. L'identificativo resta
+               comunque visibile sotto: e' il nome della cartella su disco, ed e' cio'
+               che si cerca quando si va a guardare un registro a mano. -->
+          <td>
+            <span th:text="${a.label}">Asta di prova</span>
+            <div class="dim auction-id" th:if="${a.label != a.id}" th:text="${a.id}">2026-09-01</div>
+          </td>
           <td class="dim" th:text="${a.lastWritten}">1 set 2026, 10:41</td>
           <td th:text="${a.purchases}">25</td>
           <td th:text="${a.phase}">D</td>

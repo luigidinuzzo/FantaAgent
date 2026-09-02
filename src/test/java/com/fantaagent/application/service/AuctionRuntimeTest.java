@@ -68,7 +68,7 @@ class AuctionRuntimeTest {
 
     @Test
     void creaUnAstaSottoUnIdentificativoDatato() {
-        String id = runtime.createNew();
+        String id = runtime.createNew("prova");
 
         assertThat(id).isEqualTo(LocalDate.now().toString());
         assertThat(runtime.hasAuction()).isTrue();
@@ -91,7 +91,7 @@ class AuctionRuntimeTest {
                 + "\"participantId\":\"me\",\"price\":6}\n");
         String prima = Files.readString(log);
 
-        String nuovo = runtime.createNew();
+        String nuovo = runtime.createNew("prova");
 
         assertThat(nuovo).isNotEqualTo(oggi);
         assertThat(Files.readString(log)).isEqualTo(prima);
@@ -131,7 +131,7 @@ class AuctionRuntimeTest {
 
     @Test
     void cambiareAstaNonPerdeIlLogDiQuellaLasciata() throws Exception {
-        String prima = runtime.createNew();
+        String prima = runtime.createNew("prova");
         Path logPrima = tmp.resolve("auctions").resolve(prima).resolve("events.jsonl");
         long righePrima = Files.readAllLines(logPrima).size();
 
@@ -147,7 +147,7 @@ class AuctionRuntimeTest {
 
     @Test
     void laRicostruzioneNonCambiaAstaSelezionata() {
-        String id = runtime.createNew();
+        String id = runtime.createNew("prova");
         ValuationChain prima = runtime.snapshot().chain();
 
         runtime.rebuild();

@@ -47,12 +47,13 @@ public final class ViewModels {
     }
 
     /**
-     * Una riga della home: quanto basta a riconoscere un'asta fra le altre — il suo
-     * identificativo, quando e' stata scritta l'ultima volta, quanti acquisti contiene
+     * Una riga della home: quanto basta a riconoscere un'asta fra le altre — il nome
+     * che le e' stato dato (o l'identificativo, per i registri scritti prima che il
+     * nome esistesse), quando e' stata scritta l'ultima volta, quanti acquisti contiene
      * e a che fase era arrivata.
      */
-    public record AuctionCard(String id, String lastWritten, int purchases, String phase,
-                              boolean selected) {
+    public record AuctionCard(String id, String label, String lastWritten, int purchases,
+                              String phase, boolean selected) {
     }
 
     /**

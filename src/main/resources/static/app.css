@@ -334,3 +334,7 @@ body.projected { font-size:1.25rem; }
 .battitore-export:hover { color:var(--fg); border-color:var(--pos); }
 /* Con ESPORTA presente, è quello a spingere a destra: il link di uscita lo segue. */
 .battitore-export + .battitore-exit { margin-left:.6rem; }
+
+/* L'identificativo sotto al nome dell'asta: serve solo a chi va a cercare la cartella
+   su disco, quindi sta più in piccolo e più spento del nome. */
+.auction-id { font-size:var(--fs-xs); }
