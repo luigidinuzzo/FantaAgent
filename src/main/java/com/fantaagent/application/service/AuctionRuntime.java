@@ -103,12 +103,24 @@ public class AuctionRuntime {
         return name == null || name.isBlank() ? id : name;
     }
 
-    /** Il nome sta sull'evento di avvio; assente nei registri scritti prima che esistesse. */
+    /**
+     * Il nome sta sull'evento di avvio; e' assente nei registri scritti prima che il
+     * campo esistesse, e li' questo metodo restituisce null.
+     *
+     * <p>L'ordine dei passaggi non e' indifferente. Prima si trova l'evento, POI se ne
+     * legge il nome: {@code findFirst()} costruisce un {@link java.util.Optional} sul
+     * primo elemento e lancia NullPointerException se quell'elemento e' null, quindi
+     * mappare al nome PRIMA di findFirst faceva esplodere la home su ogni asta priva di
+     * nome — cioe' su tutte quelle esistenti. {@code Optional.map}, al contrario, di un
+     * risultato nullo fa un Optional vuoto, che e' esattamente il significato voluto.
+     */
     private static String nameOf(List<AuctionEvent> events) {
         return events.stream()
                 .filter(AuctionEvent.AuctionStarted.class::isInstance)
-                .map(e -> ((AuctionEvent.AuctionStarted) e).name())
-                .findFirst().orElse(null);
+                .map(AuctionEvent.AuctionStarted.class::cast)
+                .findFirst()
+                .map(AuctionEvent.AuctionStarted::name)
+                .orElse(null);
     }
 
     public boolean hasAuction() {

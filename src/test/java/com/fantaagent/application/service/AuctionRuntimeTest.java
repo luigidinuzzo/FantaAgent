@@ -77,6 +77,45 @@ class AuctionRuntimeTest {
     }
 
     /**
+     * Un registro scritto prima che il nome dell'asta esistesse.
+     *
+     * <p>Questo test nasce da un difetto vero: la home lanciava NullPointerException su
+     * ogni asta priva di nome, cioe' su tutte quelle gia' esistenti. Il codice diceva a
+     * parole di gestire il caso, ma nessun test lo copriva perche' ogni asta creata nei
+     * test aveva un nome — si provava il percorso nuovo, mai il dato vecchio.
+     */
+    @Test
+    void unRegistroSenzaNomeSiElencaEmostraLIdentificativo() throws Exception {
+        String vecchia = "2026-08-30";
+        Path dir = tmp.resolve("auctions").resolve(vecchia);
+        Files.createDirectories(dir);
+        // Esattamente la forma scritta prima che il campo "name" esistesse.
+        Files.writeString(dir.resolve("events.jsonl"),
+                "{\"type\":\"AuctionStarted\",\"seq\":1,\"at\":\"2026-08-30T08:00:00Z\"}\n");
+
+        List<AuctionRuntime.AuctionSummary> auctions = runtime.auctions();
+
+        assertThat(auctions).extracting(AuctionRuntime.AuctionSummary::id).contains(vecchia);
+        AuctionRuntime.AuctionSummary summary = auctions.stream()
+                .filter(a -> a.id().equals(vecchia)).findFirst().orElseThrow();
+        assertThat(summary.name()).isNull();
+        assertThat(summary.label()).isEqualTo(vecchia);
+
+        runtime.select(vecchia);
+        assertThat(runtime.currentAuctionLabel()).isEqualTo(vecchia);
+    }
+
+    /** E con un nome, e' il nome a comparire. */
+    @Test
+    void unRegistroConNomeMostraIlNome() {
+        runtime.createNew("Lega Brontolo");
+
+        assertThat(runtime.currentAuctionLabel()).isEqualTo("Lega Brontolo");
+        assertThat(runtime.auctions()).extracting(AuctionRuntime.AuctionSummary::label)
+                .contains("Lega Brontolo");
+    }
+
+    /**
      * Il caso che conta davvero: un'asta esistente con eventi dentro non deve mai
      * essere aperta credendo di crearne una nuova, ne' vedersi toccare il log.
      */
