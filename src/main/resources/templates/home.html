@@ -8,56 +8,57 @@
 <body>
 <div class="home">
 
-  <h1>Quale asta?</h1>
-  <p class="note">
-    L'applicazione non ne sceglie una da sola: scriverebbe gli acquisti di stasera nel
-    registro sbagliato senza dirlo. Riprendere un'asta la riapre esattamente dov'era —
-    il registro degli eventi si riproietta per intero, non si ricostruisce nulla a mano.
-  </p>
+  <!--/* Nessuna asta viene scelta in automatico: sceglierne una per l'utente
+       significherebbe, in caso di errore, scrivere gli acquisti di stasera dentro
+       l'asta sbagliata senza che nulla lo segnali. */-->
+  <header class="home-head">
+    <div class="brand">FantaAgent</div>
+    <h1>Quale asta apriamo?</h1>
+    <p class="note">
+      Riprendi un'asta per continuare esattamente da dove eri, oppure cominciane una
+      nuova.
+    </p>
+  </header>
 
   <form method="post" th:action="@{/aste/nuova}">
-    <button class="primary" type="submit">nuova asta</button>
-    <span class="note">crea un registro nuovo con la data di oggi e apre le impostazioni</span>
+    <button class="primary" type="submit">Nuova asta</button>
   </form>
 
-  <h2>ASTE ESISTENTI</h2>
+  <h2>Le tue aste</h2>
 
-  <p class="note" th:if="${auctions.isEmpty()}">
-    Nessuna asta trovata: comincia da «nuova asta».
-  </p>
+  <div class="empty-state" th:if="${auctions.isEmpty()}">
+    <p>Non c'è ancora nessuna asta.</p>
+    <p class="note">Comincia da «Nuova asta»: sceglierai le regole prima di partire.</p>
+  </div>
 
   <div class="table-scroll" th:unless="${auctions.isEmpty()}">
     <table class="auctions">
       <thead>
-        <tr><th>asta</th><th>ultima scrittura</th><th>acquisti</th><th>fase</th><th></th></tr>
+        <tr><th>Asta</th><th>Ultima modifica</th><th>Acquisti</th><th>Fase</th><th></th></tr>
       </thead>
       <tbody>
         <tr th:each="a : ${auctions}" th:classappend="${a.selected} ? 'sel' : ''">
-          <!-- Il nome dato all'asta; per i registri scritti prima che il nome
+          <!--/* Il nome dato all'asta; per i registri scritti prima che il nome
                esistesse, label() ricade sull'identificativo. L'identificativo resta
                comunque visibile sotto: e' il nome della cartella su disco, ed e' cio'
-               che si cerca quando si va a guardare un registro a mano. -->
+               che si cerca quando si va a guardare un registro a mano. */-->
           <td>
             <span th:text="${a.label}">Asta di prova</span>
             <div class="dim auction-id" th:if="${a.label != a.id}" th:text="${a.id}">2026-09-01</div>
           </td>
           <td class="dim" th:text="${a.lastWritten}">1 set 2026, 10:41</td>
           <td th:text="${a.purchases}">25</td>
-          <td th:text="${a.phase}">D</td>
+          <td><span class="badge" th:text="${a.phase}">D</span></td>
           <td>
             <form method="post" th:action="@{/aste/riprendi}">
               <input type="hidden" name="auctionId" th:value="${a.id}">
-              <button type="submit">riprendi</button>
+              <button type="submit">Riprendi</button>
             </form>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
-
-  <p class="note">
-    Nessuna di queste operazioni riscrive un registro: si apre un file diverso, e basta.
-  </p>
 
 </div>
 </body>

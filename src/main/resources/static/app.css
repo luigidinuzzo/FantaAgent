@@ -1,20 +1,94 @@
+/* ============================================================================
+   FantaAgent — sistema di design.
+
+   Un solo foglio per tutte le pagine: prima ogni schermata portava il proprio
+   blocco <style>, e gli stessi elementi finivano con misure e grigi leggermente
+   diversi da una pagina all'altra.
+
+   TRE VINCOLI GOVERNANO OGNI SCELTA QUI SOTTO.
+
+   1) Si legge mentre si rilancia. Il requisito dominante del progetto è
+      registrare un acquisto in meno di tre secondi, guardando lo schermo un
+      secondo per volta. Ogni decorazione che allontani i numeri dall'occhio, o
+      che spinga il contenuto sotto la piega, è una regressione — non importa
+      quanto sia gradevole.
+
+   2) Nessuna risorsa esterna. Niente font da CDN, niente icone remote: la
+      stanza dell'asta può essere senza rete, e un'applicazione che si sfascia
+      offline non è pronta per l'uso vero. Lo stack di sistema dà su Mac San
+      Francisco, che è esattamente il carattere che si sarebbe scelto.
+
+   3) I numeri sono dati, non testo. Tutto ciò che si confronta in colonna —
+      crediti, prezzi, countdown — usa cifre a larghezza fissa. Senza, le colonne
+      ballano a ogni aggiornamento e l'occhio deve rileggere invece di
+      riconoscere.
+   ============================================================================ */
+
 :root {
-  --bg:#111; --fg:#eee; --dim:#888; --pos:#4ade80; --neg:#f87171; --line:#333;
-  --focus:#7dd3fc;
-  /* Scala tipografica unica: ogni font-size del foglio usa uno di questi token invece
-     di una misura scritta a mano — misure "vicine ma diverse" (.7rem/.75rem,
-     .8rem/.85rem sparsi nel foglio) si leggono come rumore, non come gerarchia. */
-  --fs-xs: .75rem;    /* etichette in maiuscolo, note minori */
-  --fs-sm: .85rem;    /* testo secondario, link di navigazione, tabelle dense */
-  --fs-base: 1rem;    /* corpo del testo */
-  --fs-md: 1.1rem;    /* titoli di colonna/riquadro (h2/h3) */
-  --fs-lg: 1.3rem;    /* titoli di pagina (h1) */
-  --fs-xl: 1.5rem;    /* numero enfatizzato */
-  --fs-xxl: 2.5rem;   /* il numero che conta di più sullo schermo: il max bid */
+  /* ---- Colore ------------------------------------------------------------
+     Palette fredda su fondo quasi nero: molte ore di lettura in ambiente poco
+     illuminato, e un verde che deve saltare all'occhio senza affaticarlo. */
+  --bg:            #020617;
+  --surface:       #0E1223;   /* riquadri, schede */
+  --surface-2:     #161B2E;   /* controlli, righe alternate */
+  --surface-3:     #1E2438;   /* stato attivo/hover */
+  --fg:            #F8FAFC;
+  --fg-muted:      #94A3B8;   /* etichette, testo secondario */
+  --fg-subtle:     #64748B;   /* note, metadati */
+  --border:        #243049;
+  --border-strong: #3B4A68;
+  --pos:           #22C55E;
+  --pos-deep:      #052E16;
+  --neg:           #F87171;
+  --neg-deep:      #2D0B0B;
+  --warn:          #FBBF24;
+  --warn-deep:     #2A2410;
+  --focus:         #60A5FA;
+
+  /* Alias storici, per i punti che li usano ancora. */
+  --line: var(--border);
+  --dim:  var(--fg-muted);
+
+  /* ---- Tipografia --------------------------------------------------------
+     Sans di sistema per l'interfaccia, monospaziato SOLO per le cifre. Prima
+     era monospaziato tutto: leggibile, ma con l'aspetto di un terminale invece
+     che di un prodotto. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --fs-xs:   .75rem;
+  --fs-sm:   .8125rem;
+  --fs-base: .9375rem;
+  --fs-md:   1.0625rem;
+  --fs-lg:   1.375rem;
+  --fs-xl:   1.75rem;
+  --fs-xxl:  3rem;
+
+  /* ---- Spazio, forma, movimento ----------------------------------------- */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px;
+  --s-4: 16px; --s-5: 24px; --s-6: 32px;
+
+  --r-sm: 4px; --r: 8px; --r-lg: 12px;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.5);
+  --shadow-2: 0 8px 24px rgba(0,0,0,.55);
+  --shadow-3: 0 24px 64px rgba(0,0,0,.7);
+
+  --t: 150ms ease;
 }
+
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font-size:var(--fs-base);
-       font:16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
 
 /* [hidden] è solo display:none nel browser stylesheet. Qualunque regola che setta display sullo
    stesso elemento la sconfigge silenziosamente. Successo con .phase-done: display:flex batteva
@@ -23,343 +97,510 @@ body { margin:0; background:var(--bg); color:var(--fg); font-size:var(--fs-base)
    riapparire ogni elemento che conta su [hidden]. */
 [hidden] { display: none !important; }
 
-h1 { font-size:var(--fs-lg); margin:.8rem 0 .6rem; }
-h2, h3 { font-size:var(--fs-md); margin:0 0 .5rem; }
+h1 { font-size: var(--fs-lg); font-weight: 650; letter-spacing: -.01em; margin: 0 0 var(--s-2); }
+h2 { font-size: var(--fs-md); font-weight: 600; margin: 0 0 var(--s-2); }
+h3 { font-size: var(--fs-sm); font-weight: 600; text-transform: uppercase;
+     letter-spacing: .08em; color: var(--fg-muted); margin: 0 0 var(--s-2); }
 
-/* Indicatore di fuoco visibile su ogni controllo interattivo: nessuna regola qui
-   rimuove l'outline di default, questa lo sostituisce con uno consistente — stesso
-   colore, stesso spessore, stesso distacco dal bordo — su bottoni, link, campi e
-   select, invece del blu di sistema che varia da browser a browser. */
-a:focus-visible, button:focus-visible, input:focus-visible,
-select:focus-visible, textarea:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+/* Ogni cifra confrontabile in colonna. */
+.num, .numbers b, .board td, .phase-nav span b, #bidderClock, #bidderPrice,
+table.auctions td, .recap-player .price, #phaseTable td, .status b {
+  font-variant-numeric: tabular-nums;
 }
 
-/* Qualunque tabella può diventare più larga del suo contenitore (più partecipanti,
-   più colonne, uno schermo stretto): il contenitore scorre di lato, la pagina no. */
-.table-scroll { overflow-x:auto; }
+a { color: var(--fg-muted); text-decoration: none; transition: color var(--t); }
+a:hover { color: var(--fg); }
 
-.status { display:flex; gap:2rem; align-items:center; padding:.75rem 1rem;
-          font-size:var(--fs-base);
-          border-bottom:1px solid var(--line); }
-.status b { color:#fff; }
-.layout { display:grid; grid-template-columns:1fr 22rem; gap:1rem; padding:1rem; }
-#cmd { width:100%; padding:.75rem; font:inherit; font-size:var(--fs-xl);
-       background:#000; color:var(--fg); border:1px solid var(--line); }
-.message { padding:.5rem .75rem; background:#1c1c1c; border-left:3px solid var(--pos); }
-.resume { padding:.5rem 1rem; background:#2a2410; border-bottom:1px solid var(--line); }
-.results { list-style:none; padding:0; margin:.5rem 0; }
-.results li { padding:.25rem .5rem; }
-.results li.sel { background:#1e293b; }
-.dim { color:var(--dim); }
-.card { border:1px solid var(--line); padding:1rem; margin-top:1rem; }
-.numbers { display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; margin:1rem 0; }
-.numbers label { display:block; font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
-.numbers b { font-size:var(--fs-xl); }
-.numbers b.big { font-size:var(--fs-xxl); }
-.margin { color:var(--pos); margin-left:.4rem; }
-.drivers { list-style:none; padding:0; }
-.drivers li { padding:.2rem 0; border-top:1px solid var(--line); }
-.drivers b { display:inline-block; min-width:8rem; color:var(--dim); }
-.walkaway { color:var(--dim); font-style:italic; }
-.board table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
-.board td { padding:.2rem .3rem; border-bottom:1px solid var(--line); }
-.board tr.me td { color:#fff; font-weight:bold; }
-.pos { color:var(--pos); } .neg { color:var(--neg); }
+/* Indicatore di fuoco unico su ogni controllo: nessuna regola qui rimuove l'outline
+   di default, questa lo sostituisce con uno consistente invece del blu di sistema
+   che cambia da browser a browser. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
 
-.status form { margin:0; }
-.status button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
-                 border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
-.status button:hover:not(:disabled) { background:#2a2a2a; }
-/* Niente opacity qui: sfumerebbe testo E sfondo insieme contro lo sfondo di pagina,
-   portando l'etichetta a circa 2,2:1 — sotto la soglia 4,5:1 di questo progetto.
-   var(--dim) da solo, senza opacity, resta a 4,8:1 su questo sfondo bottone. */
-.status button:disabled { color:var(--dim); cursor:default; }
+/* Chi ha chiesto meno movimento non deve vedere transizioni: qui non trasportano
+   informazione, quindi toglierle non costa nulla. */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
 
-.settings-link { color:var(--dim); font-size:var(--fs-sm); text-decoration:none; }
-.settings-link:hover { color:var(--fg); }
+/* ---- Controlli ---------------------------------------------------------- */
 
-.assign-row { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
-              margin-top:1rem; padding-top:.75rem; border-top:1px solid var(--line); }
-.assign-row label { font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
-.assign-price { width:5rem; font:inherit; background:#000; color:var(--fg);
-                border:1px solid var(--line); padding:.3rem; margin-left:.3rem; }
-.assign-row button { font:inherit; background:#1c1c1c; color:var(--fg);
-                      border:1px solid var(--line); padding:.3rem .6rem; cursor:pointer; }
-.assign-row button:hover { background:#2a2a2a; }
-.assign-row button.assign-me { background:var(--pos); color:#022; font-weight:bold;
-                                border-color:var(--pos); }
+button, .btn {
+  font: inherit;
+  font-weight: 500;
+  background: var(--surface-2);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  cursor: pointer;
+  transition: background var(--t), border-color var(--t), color var(--t);
+}
+button:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-strong); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { color: var(--fg-subtle); cursor: default; opacity: .55; }
 
-#phaseTable { margin-top:1.5rem; }
-#phaseTable table { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
-#phaseTable th, #phaseTable td { padding:.3rem .4rem; border-bottom:1px solid var(--line);
-                                  text-align:left; }
-/* Dentro una cella la riga di assegnazione non è più il piede di una card: niente
-   bordo/margine superiore, e più stretta perché condivide la riga con le altre colonne. */
-#phaseTable .assign-row { margin:0; padding:0; border-top:none; flex-wrap:nowrap; gap:.3rem; }
-#phaseTable .assign-price { width:3.5rem; margin-left:0; }
-#phaseTable select { font:inherit; background:#000; color:var(--fg);
-                      border:1px solid var(--line); padding:.3rem; }
+input[type=text], input[type=number], select {
+  font: inherit;
+  background: #060B18;
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--s-2) var(--s-3);
+  transition: border-color var(--t);
+}
+input[type=text]:hover, input[type=number]:hover, select:hover { border-color: var(--border-strong); }
+input:disabled, select:disabled { color: var(--fg-subtle); background: #0A0F1E; }
+input[type=number] { font-variant-numeric: tabular-nums; }
 
-/* Home: la schermata che chiede quale asta aprire. */
-.home { max-width:46rem; margin:0 auto; padding:1rem 1.5rem 3rem; }
-.home h2 { font-size:var(--fs-md); color:var(--dim); letter-spacing:.06em;
-           margin:1.8rem 0 .5rem; border-top:1px solid var(--line); padding-top:.8rem; }
-.home .note { color:var(--dim); font-size:var(--fs-sm); line-height:1.5; margin:.3rem 0 .9rem; }
-.home form { display:inline-flex; align-items:center; gap:.8rem; margin:0; }
-.home button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
-               border:1px solid var(--line); padding:.35rem .8rem; cursor:pointer; }
-.home button:hover { background:#2a2a2a; }
-.home button.primary { background:var(--pos); color:#022; font-weight:bold;
-                       border-color:var(--pos); font-size:var(--fs-base); padding:.5rem 1.2rem; }
-table.auctions { width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
-table.auctions th { text-align:left; font-weight:normal; color:var(--dim);
-                    font-size:var(--fs-xs); padding:0 .6rem .3rem 0; }
-table.auctions td { padding:.35rem .6rem .35rem 0; border-bottom:1px solid var(--line); }
-table.auctions tr.sel td { color:#fff; }
+/* ---- Impaginato comune -------------------------------------------------- */
 
-/* Scelta della fase: quattro bottoni, quello corrente marcato e spento. */
-.phase-picker { display:flex; align-items:center; gap:.3rem; }
-.phase-picker .dim { font-size:var(--fs-xs); letter-spacing:.08em; }
-.status .phase-picker button { padding:.3rem .5rem; min-width:2rem; }
-.status .phase-picker button.current { background:#2a2a2a; color:#fff; border-color:var(--fg); }
+.wrap { max-width: 52rem; margin: 0 auto; padding: var(--s-5) var(--s-5) var(--s-6); }
+.note { color: var(--fg-muted); font-size: var(--fs-sm); margin: var(--s-1) 0 var(--s-3); }
+.dim  { color: var(--fg-muted); }
+.pos  { color: var(--pos); }
+.neg  { color: var(--neg); }
+.back { display: inline-block; font-size: var(--fs-sm); margin-bottom: var(--s-4); }
 
-/* Avviso di fase completa: prominente ma non bloccante — si chiude, non intrappola. */
-.phase-done { display:flex; align-items:center; gap:1rem; padding:.7rem 1rem;
-              background:#10240f; border-bottom:1px solid var(--pos);
-              border-left:4px solid var(--pos); }
-.phase-done b { color:#fff; }
-.phase-done form { margin:0; }
-.phase-done button { font:inherit; font-size:var(--fs-sm); background:var(--pos);
-                     color:#022; font-weight:bold; border:1px solid var(--pos);
-                     padding:.35rem .8rem; cursor:pointer; }
-.phase-done .phase-done-close { margin-left:auto; background:transparent; color:var(--dim);
-                                border:1px solid var(--line); font-weight:normal;
-                                padding:.2rem .5rem; }
-.phase-done .phase-done-close:hover { color:var(--fg); }
+.table-scroll { overflow-x: auto; }
 
-/* ---------------------------------------------------------------------------
-   Il battitore d'asta.
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-1);
+  padding: var(--s-5);
+  margin-top: var(--s-4);
+}
 
-   Gerarchia deliberata: il countdown è l'elemento più grande dello schermo, più
-   dello stesso max bid. Durante un rilancio la domanda non è "quanto vale" — a
-   quella si è già risposto prima di aprire il popup — ma "quanto tempo resta",
-   e va letta con la coda dell'occhio mentre si guarda la stanza.
-   --------------------------------------------------------------------------- */
+.banner {
+  padding: var(--s-3) var(--s-4);
+  margin: var(--s-3) 0;
+  border: 1px solid;
+  border-left-width: 3px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.banner.ok   { background: var(--pos-deep);  border-color: var(--pos); }
+.banner.bad  { background: var(--neg-deep);  border-color: var(--neg); }
+.banner.warn { background: var(--warn-deep); border-color: var(--warn); }
+.banner ul { margin: var(--s-2) 0 0; padding-left: var(--s-4); }
 
-.bidder-open { font:inherit; font-size:var(--fs-sm); background:#1c1c1c; color:var(--fg);
-               border:1px solid var(--line); padding:.35rem .8rem; cursor:pointer;
-               margin-bottom:.5rem; }
-.bidder-open:hover { background:#2a2a2a; border-color:var(--focus); }
+/* ---- Barra di stato ----------------------------------------------------- */
 
-/* Nella tabella di fase la cella ospita il bottone E il form: entrambi in linea,
-   altrimenti il "batti" spingerebbe l'assegnazione su una seconda riga e la
-   tabella raddoppierebbe in altezza. */
-.bidder-open-row { margin:0 .3rem 0 0; padding:.3rem .5rem; vertical-align:middle; }
-#phaseTable .assign-row { display:inline-flex; vertical-align:middle; }
+.status {
+  display: flex; align-items: center; gap: var(--s-5);
+  padding: var(--s-3) var(--s-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  position: sticky; top: 0; z-index: 5;
+}
+.status b { color: var(--fg); font-weight: 650; }
+.status form { margin: 0; }
+.settings-link { font-size: var(--fs-sm); }
+.status > :nth-last-child(4) { margin-left: auto; }
 
-.bidder { border:1px solid var(--line); background:var(--bg); color:var(--fg);
-          padding:0; width:min(30rem, 92vw); }
-.bidder::backdrop { background:rgba(0,0,0,.78); }
+.phase-picker { display: flex; align-items: center; gap: var(--s-1); }
+.phase-picker .dim { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; }
+.status .phase-picker button { padding: var(--s-1) var(--s-2); min-width: 2rem; font-size: var(--fs-sm); }
+.status .phase-picker button.current {
+  background: var(--pos); color: #04120A; border-color: var(--pos); font-weight: 650;
+}
 
-.bidder-head { display:flex; align-items:baseline; gap:.6rem; padding:.8rem 1rem;
-               border-bottom:1px solid var(--line); }
-.bidder-head b { font-size:var(--fs-md); }
-.bidder-close { margin-left:auto; font:inherit; background:transparent; color:var(--dim);
-                border:1px solid var(--line); padding:.2rem .5rem; cursor:pointer; }
-.bidder-close:hover { color:var(--fg); }
+/* ---- Impaginato dell'asta ----------------------------------------------- */
 
-.bidder-clock { text-align:center; padding:1.2rem 1rem .4rem; line-height:1; }
-.bidder-clock-icon { font-size:var(--fs-lg); color:var(--dim); margin-right:.4rem;
-                     vertical-align:.35rem; }
-#bidderClock { font-size:5rem; font-weight:bold; font-variant-numeric:tabular-nums; }
-/* Gli ultimi due secondi cambiano colore invece di lampeggiare: un lampeggio va
-   evitato per chi è sensibile al movimento, e in una stanza rumorosa il colore si
-   coglie comunque con la coda dell'occhio. */
-.bidder-clock.urgent #bidderClock { color:var(--neg); }
-.bidder-clock.expired #bidderClock { color:var(--dim); }
+.layout {
+  display: grid; grid-template-columns: minmax(0,1fr) 22rem;
+  gap: var(--s-5); padding: var(--s-5); align-items: start;
+}
+@media (max-width: 60rem) { .layout { grid-template-columns: minmax(0,1fr); } }
 
-.bidder-numbers { display:grid; grid-template-columns:1fr 1fr; gap:1rem;
-                  padding:.6rem 1rem 1rem; text-align:center; }
-.bidder-numbers label { display:block; font-size:var(--fs-xs); color:var(--dim);
-                        letter-spacing:.08em; }
-.bidder-numbers b.big { font-size:var(--fs-xxl); font-variant-numeric:tabular-nums; }
+#cmd {
+  width: 100%; font-size: var(--fs-lg); padding: var(--s-3) var(--s-4);
+  border-radius: var(--r);
+}
+#cmd::placeholder { color: var(--fg-subtle); }
 
-/* Il segnale che conta: si è superato il tetto. Colora anche il prezzo, perché è
-   quello il numero che si sta guardando quando si decide se rilanciare ancora. */
-.bidder.over-max #bidderPrice { color:var(--neg); }
-.bidder-over { margin:0; padding:.5rem 1rem; background:#2a0f0f; color:var(--neg);
-               border-top:1px solid var(--neg); border-bottom:1px solid var(--neg);
-               font-weight:bold; text-align:center; }
+.message { font-size: var(--fs-sm); color: var(--fg-muted); margin: var(--s-3) 0 0; }
+.resume  { font-size: var(--fs-sm); color: var(--fg-muted); margin: var(--s-2) 0; }
 
-.bidder-controls { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;
-                   padding:1rem; border-top:1px solid var(--line); }
-.bidder-controls button { font:inherit; background:#1c1c1c; color:var(--fg);
-                          border:1px solid var(--line); padding:.4rem .7rem; cursor:pointer; }
-.bidder-controls button:hover { background:#2a2a2a; }
-.bidder-bid { flex:1 1 10rem; background:var(--pos) !important; color:#022 !important;
-              border-color:var(--pos) !important; font-weight:bold;
-              font-size:var(--fs-lg); padding:.7rem 1rem !important; }
-.bidder-bid small { display:block; font-size:var(--fs-xs); font-weight:normal; opacity:.7; }
-.bidder-jump { font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
-#bidderJump { width:4.5rem; font:inherit; background:#000; color:var(--fg);
-              border:1px solid var(--line); padding:.3rem; margin-left:.3rem; }
+.results { list-style: none; padding: 0; margin: var(--s-3) 0 0; }
+.results li {
+  display: flex; justify-content: space-between; gap: var(--s-3);
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+.results li.sel { background: var(--surface-2); }
 
-.bidder-assign { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem;
-                 padding:1rem; border-top:1px solid var(--line); background:#161616; }
-.bidder-assign label { font-size:var(--fs-xs); color:var(--dim); letter-spacing:.08em; }
-.bidder-assign select, .bidder-assign input { font:inherit; background:#000; color:var(--fg);
-                                              border:1px solid var(--line); padding:.35rem;
-                                              margin-left:.3rem; }
-#bidderFinalPrice { width:5rem; }
-.bidder-confirm { font:inherit; background:var(--pos); color:#022; font-weight:bold;
-                  border:1px solid var(--pos); padding:.45rem 1rem; cursor:pointer; }
-.bidder-resume { font:inherit; background:transparent; color:var(--dim);
-                 border:1px solid var(--line); padding:.4rem .7rem; cursor:pointer; }
-.bidder-resume:hover { color:var(--fg); }
-.bidder-error { flex:1 1 100%; margin:0; color:var(--neg); }
+/* La scheda del giocatore: è il fuoco della pagina, quindi è l'unico riquadro
+   con un contorno che si stacca dal fondo. */
+.numbers { display: grid; grid-template-columns: repeat(4,1fr); gap: var(--s-4); margin: var(--s-4) 0; }
+.numbers label {
+  display: block; font-size: var(--fs-xs); color: var(--fg-muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: var(--s-1);
+}
+.numbers b { font-size: var(--fs-xl); font-weight: 650; letter-spacing: -.02em; }
+.numbers b.big { font-size: var(--fs-xxl); line-height: 1; }
+.margin { color: var(--pos); font-size: var(--fs-sm); margin-left: var(--s-2); }
 
-/* ---------------------------------------------------------------------------
-   La pagina BATTITORE, proiettata sullo schermo condiviso.
+.drivers { list-style: none; padding: 0; margin: 0; }
+.drivers li {
+  display: flex; gap: var(--s-3); padding: var(--s-2) 0;
+  border-top: 1px solid var(--border); font-size: var(--fs-sm);
+}
+.drivers b { min-width: 8rem; color: var(--fg-muted); font-weight: 500; }
+.walkaway { color: var(--fg-subtle); font-size: var(--fs-sm); font-style: italic; margin: var(--s-3) 0 0; }
 
-   Si legge da qualche metro, non da sessanta centimetri: tutta la pagina parte da
-   una base tipografica più grande invece di ingrandire un elemento per volta, così
-   la gerarchia resta quella già calibrata altrove e non va ritarata a mano.
+.assign-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+  margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--border);
+}
+.assign-row label { font-size: var(--fs-xs); color: var(--fg-muted);
+                    text-transform: uppercase; letter-spacing: .08em; }
+.assign-price { width: 5rem; margin-left: var(--s-2); }
+.assign-row button.assign-me {
+  background: var(--pos); color: #04120A; border-color: var(--pos); font-weight: 650;
+}
+.assign-row button.assign-me:hover { background: #16A34A; }
 
-   Nessuna regola qui mostra una valutazione, perché nessun dato di valutazione
-   arriva a questa pagina: il vincolo è imposto in BattitoreController, che non ha
-   il servizio per calcolarle. Il foglio di stile non è il posto dove si difende un
-   segreto — è solo il posto dove si smetterebbe di sembrare che lo sia.
-   --------------------------------------------------------------------------- */
+.bidder-open { margin-bottom: var(--s-3); }
+.bidder-open-row { margin: 0 var(--s-1) 0 0; padding: var(--s-1) var(--s-2); vertical-align: middle; }
 
-body.projected { font-size:1.25rem; }
-.battitore { padding:1rem 1.5rem 3rem; }
+/* ---- Tabellone ---------------------------------------------------------- */
 
-.battitore-head { display:flex; align-items:baseline; gap:1.5rem;
-                  border-bottom:1px solid var(--line); padding-bottom:.6rem;
-                  margin-bottom:1rem; }
-.battitore-head h1 { font-size:2rem; margin:0; letter-spacing:.1em; }
-.battitore-phase { font-size:1.4rem; color:var(--dim); }
-.battitore-phase b { color:var(--fg); }
-/* Piccolo e spinto a destra: è un comando per chi conduce, non un'informazione
-   per la stanza. */
-.battitore-exit { margin-left:auto; font-size:var(--fs-sm); color:var(--dim);
-                  text-decoration:none; }
-.battitore-exit:hover { color:var(--fg); }
+.board {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: var(--s-4);
+}
+.board table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.board td { padding: var(--s-2) var(--s-1); border-bottom: 1px solid var(--border); }
+.board tr:last-child td { border-bottom: none; }
+.board tr.me td { color: var(--fg); font-weight: 650; }
 
-.battitore-search input { width:100%; font:inherit; font-size:1.6rem;
-                          background:#000; color:var(--fg);
-                          border:1px solid var(--line); padding:.6rem .8rem; }
-.battitore-search input:focus { outline:2px solid var(--focus); outline-offset:2px; }
+#targets { margin-top: var(--s-5); }
+#targets table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+#targets td { padding: var(--s-1); border-bottom: 1px solid var(--border); }
 
-.battitore-results { display:flex; flex-wrap:wrap; gap:.5rem; margin:.7rem 0 1.5rem; }
-/* Ogni risultato è un bottone, non una riga cliccabile: arriva al fuoco con Tab e
-   si attiva con Invio senza che si debba scriverne il comportamento. */
-.battitore-result { display:flex; align-items:baseline; gap:.7rem; font:inherit;
-                    font-size:1.15rem; background:#1c1c1c; color:var(--fg);
-                    border:1px solid var(--line); padding:.5rem .9rem; cursor:pointer;
-                    text-align:left; }
-.battitore-result:hover { background:#2a2a2a; border-color:var(--focus); }
-.battitore-result-name { font-weight:bold; }
-.battitore-result-price { color:var(--dim); }
+/* ---- Tabella della fase ------------------------------------------------- */
 
-.battitore-message { padding:.5rem .9rem; margin:0 0 .8rem;
-                     border-left:3px solid var(--pos); background:#10240f; }
+#phaseTable { margin-top: var(--s-5); }
+#phaseTable table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+#phaseTable th {
+  position: sticky; top: 0; background: var(--surface); z-index: 1;
+  font-size: var(--fs-xs); font-weight: 600; color: var(--fg-muted);
+  text-transform: uppercase; letter-spacing: .06em;
+  text-align: left; padding: var(--s-2) var(--s-2);
+  border-bottom: 1px solid var(--border-strong);
+}
+#phaseTable td { padding: var(--s-2); border-bottom: 1px solid var(--border); text-align: left; }
+#phaseTable tbody tr:hover td { background: var(--surface); }
+#phaseTable .assign-row {
+  display: inline-flex; vertical-align: middle;
+  margin: 0; padding: 0; border-top: none; flex-wrap: nowrap; gap: var(--s-1);
+}
+#phaseTable .assign-price { width: 3.5rem; margin-left: 0; }
+#phaseTable select, #phaseTable input { padding: var(--s-1) var(--s-2); font-size: var(--fs-sm); }
+.phase-count { margin-left: var(--s-2); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.empty-role { color: var(--fg-subtle); font-size: var(--fs-sm); font-style: italic; }
 
-/* Il tabellone riusa le classi del riepilogo privato: stesse regole, un solo
-   posto dove correggerle. Qui cambiano solo le misure, perché va letto da lontano. */
-.battitore-board-wrap .recap-board { display:flex; gap:1rem; overflow-x:auto;
-                                     padding-bottom:1rem; }
-.battitore-board-wrap .recap-col { flex:0 0 17rem; min-width:17rem;
-                                   border:1px solid var(--line); padding:.8rem; }
-.battitore-board-wrap .recap-col h2 { font-size:1.35rem; margin:0 0 .2rem; }
-.battitore-board-wrap .recap-col .meta { color:var(--dim); font-size:1rem;
-                                         margin-bottom:.6rem; }
-.battitore-board-wrap .recap-role { font-size:.9rem; color:var(--dim);
-                                    letter-spacing:.06em; margin:.6rem 0 .2rem;
-                                    border-top:1px solid var(--line); padding-top:.4rem; }
-.battitore-board-wrap .recap-role:first-of-type { border-top:none; margin-top:0; }
-.battitore-board-wrap .recap-player { display:flex; justify-content:space-between;
-                                      align-items:center; gap:.4rem; padding:.2rem 0;
-                                      font-size:1.1rem; }
-.battitore-board-wrap .recap-player .price { color:var(--dim); }
-.battitore-board-wrap .recap-player form { margin:0; }
-.battitore-board-wrap .empty-role { color:var(--dim); font-size:1rem; font-style:italic;
-                                    margin:.1rem 0; }
-.battitore-board-wrap .revoke-btn { font:inherit; font-size:.85rem; background:transparent;
-                                    color:var(--dim); border:1px solid var(--line);
-                                    padding:.05rem .4rem; cursor:pointer; border-radius:2px; }
-.battitore-board-wrap .revoke-btn:hover { color:var(--neg); border-color:var(--neg); }
-.battitore-board-wrap .revoke-btn.confirming { color:#022; background:var(--neg);
-                                               border-color:var(--neg); font-weight:bold; }
+.phase-nav {
+  display: flex; align-items: center; gap: var(--s-4);
+  padding-top: var(--s-3); margin-top: var(--s-2); border-top: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
 
-/* Il popup proiettato: più grande, e con una sola cella di numeri perché il max bid
-   non esiste su questa pagina — non è nascosto, non arriva proprio dal server. */
-.bidder-public { width:min(38rem, 94vw); }
-.bidder-public #bidderClock { font-size:7rem; }
-.bidder-numbers-solo { grid-template-columns:1fr; }
-.bidder-public #bidderPrice { font-size:4rem; }
-.bidder-public .bidder-bid { font-size:1.6rem; }
+/* ---- Avviso di fase completa -------------------------------------------- */
 
-/* Fase completa sulla pagina proiettata. Riusa .phase-done per colori e struttura —
-   un solo posto dove cambiarli — e ne corregge solo ciò che qui è diverso: non è più
-   una fascia in cima alla finestra ma un riquadro dentro il tabellone, e va letto da
-   lontano come tutto il resto di questa pagina. */
-.battitore-phase-done { border:1px solid var(--pos); border-left:4px solid var(--pos);
-                        border-bottom:1px solid var(--pos); margin:0 0 1rem;
-                        font-size:1.15rem; }
-.battitore-phase-done button { font-size:1.15rem; padding:.5rem 1rem; }
+.phase-done {
+  display: flex; align-items: center; gap: var(--s-4);
+  padding: var(--s-3) var(--s-5);
+  background: var(--pos-deep);
+  border-bottom: 1px solid var(--pos);
+  border-left: 3px solid var(--pos);
+  font-size: var(--fs-sm);
+}
+.phase-done b { color: var(--fg); }
+.phase-done form { margin: 0; }
+.phase-done button { background: var(--pos); color: #04120A; border-color: var(--pos); font-weight: 650; }
+.phase-done .phase-done-close { margin-left: auto; background: transparent; color: var(--fg-muted); }
 
-/* Navigazione fra le pagine della tabella di fase. I bottoni restano al loro posto
-   anche quando non sono utilizzabili: disabilitarli invece di nasconderli tiene la
-   barra di larghezza costante, così in asta si clicca "successivi" senza guardare e
-   senza che l'altro bottone sia scivolato sotto il puntatore. */
-.phase-nav { display:flex; align-items:center; gap:1rem; padding:.6rem 0 0;
-             border-top:1px solid var(--line); margin-top:.4rem; }
-.phase-nav button { font:inherit; font-size:var(--fs-sm); background:#1c1c1c;
-                    color:var(--fg); border:1px solid var(--line);
-                    padding:.35rem .9rem; cursor:pointer; }
-.phase-nav button:hover:not(:disabled) { background:#2a2a2a; }
-.phase-nav button:disabled { color:var(--line); cursor:default; }
-.phase-nav span { font-size:var(--fs-sm); }
-.phase-count { margin-left:.6rem; }
+/* ---- Home --------------------------------------------------------------- */
 
-/* Esporta: sta nell'intestazione della pagina proiettata perché è da lì che si
-   conduce l'asta ed è lì che si arriva alla fine. Discreto come il link di uscita —
-   è un comando per chi conduce, non un'informazione per la stanza. */
-.battitore-export { margin-left:auto; font-size:var(--fs-sm); color:var(--dim);
-                    text-decoration:none; border:1px solid var(--line);
-                    padding:.3rem .7rem; }
-.battitore-export:hover { color:var(--fg); border-color:var(--pos); }
-/* Con ESPORTA presente, è quello a spingere a destra: il link di uscita lo segue. */
-.battitore-export + .battitore-exit { margin-left:.6rem; }
+.home { max-width: 46rem; margin: 0 auto; padding: var(--s-6) var(--s-5); }
+.home h2 {
+  font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--fg-muted); margin: var(--s-6) 0 var(--s-2);
+  border-top: 1px solid var(--border); padding-top: var(--s-4);
+}
+.home .note { line-height: 1.5; }
+.home form { display: inline-flex; align-items: center; gap: var(--s-3); margin: 0; }
+.home button.primary {
+  background: var(--pos); color: #04120A; border-color: var(--pos);
+  font-weight: 650; font-size: var(--fs-base); padding: var(--s-3) var(--s-5);
+}
+.home button.primary:hover { background: #16A34A; }
 
-/* L'identificativo sotto al nome dell'asta: serve solo a chi va a cercare la cartella
-   su disco, quindi sta più in piccolo e più spento del nome. */
-.auction-id { font-size:var(--fs-xs); }
+table.auctions { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+table.auctions th {
+  text-align: left; font-weight: 600; color: var(--fg-muted);
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .06em;
+  padding: 0 var(--s-3) var(--s-2) 0; border-bottom: 1px solid var(--border-strong);
+}
+table.auctions td { padding: var(--s-3) var(--s-3) var(--s-3) 0; border-bottom: 1px solid var(--border); }
+table.auctions tr.sel td { color: var(--fg); }
+.auction-id { font-size: var(--fs-xs); color: var(--fg-subtle); font-family: var(--font-mono); }
 
-/* Due azioni per riga di risultato: "batti" occupa la riga intera perché è il caso
-   normale, "assegna" sta accanto, più piccolo, per quando non c'è asta da battere. */
-.battitore-result { display:flex; align-items:stretch; gap:0; border:1px solid var(--line); }
-.battitore-result:hover { border-color:var(--focus); }
-.battitore-result-main { display:flex; align-items:baseline; gap:.7rem; font:inherit;
-                         font-size:1.15rem; background:#1c1c1c; color:var(--fg);
-                         border:none; padding:.5rem .9rem; cursor:pointer;
-                         text-align:left; }
-.battitore-result-main:hover { background:#2a2a2a; }
-.battitore-result-go { color:var(--dim); font-size:var(--fs-sm); }
-.battitore-result-now { font:inherit; font-size:var(--fs-sm); background:#161616;
-                        color:var(--dim); border:none; border-left:1px solid var(--line);
-                        padding:.5rem .8rem; cursor:pointer; }
-.battitore-result-now:hover { background:#2a2a2a; color:var(--fg); }
+/* ---- Impostazioni ------------------------------------------------------- */
 
-/* Interrompe il countdown: sta fra i controlli di rilancio, spento, perché è la via
-   d'uscita e non la strada principale. */
-.bidder-now { background:transparent !important; color:var(--dim) !important;
-              border-color:var(--line) !important; }
-.bidder-now:hover { color:var(--fg) !important; }
+.grid { display: grid; grid-template-columns: 16rem 8rem; gap: var(--s-2) var(--s-4); align-items: center; }
+.grid label { font-size: var(--fs-sm); }
+.grid input[type=text], .grid input[type=number] { width: 100%; }
 
-/* Dice quale dei due popup si sta guardando. Senza, un'assegnazione diretta e un
-   countdown già scaduto avrebbero lo stesso aspetto. */
-.bidder-mode { font-size:var(--fs-sm); margin-top:.15rem; }
+table.steps { border-collapse: collapse; margin-top: var(--s-2); }
+table.steps th {
+  font-size: var(--fs-xs); color: var(--fg-muted); text-align: left; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em; padding: 0 var(--s-3) var(--s-2) 0;
+}
+table.steps td { padding: var(--s-1) var(--s-3) var(--s-1) 0; }
+table.steps input { width: 7rem; }
+
+button.save {
+  margin-top: var(--s-5); padding: var(--s-3) var(--s-5);
+  background: var(--pos); color: #04120A; border-color: var(--pos);
+  font-weight: 650; font-size: var(--fs-base);
+}
+button.save:hover:not(:disabled) { background: #16A34A; }
+
+/* ---- Riepilogo ---------------------------------------------------------- */
+
+.nav { display: flex; gap: var(--s-4); align-items: center; margin-bottom: var(--s-4); font-size: var(--fs-sm); }
+.recap-board { display: flex; gap: var(--s-4); overflow-x: auto; padding-bottom: var(--s-4); }
+.recap-col {
+  flex: 0 0 15rem; min-width: 15rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: var(--s-4);
+}
+.recap-col.me { border-color: var(--pos); }
+.recap-col h2 { font-size: var(--fs-md); margin: 0 0 var(--s-1); }
+.recap-col .meta { color: var(--fg-muted); font-size: var(--fs-sm); margin-bottom: var(--s-3); }
+.recap-role {
+  font-size: var(--fs-xs); color: var(--fg-muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .08em;
+  margin: var(--s-3) 0 var(--s-1); border-top: 1px solid var(--border); padding-top: var(--s-2);
+}
+.recap-role:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+.recap-player {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: var(--s-2); padding: var(--s-1) 0; font-size: var(--fs-sm);
+}
+.recap-player .price { color: var(--fg-muted); }
+.recap-player form { margin: 0; }
+.revoke-btn {
+  font-size: var(--fs-xs); background: transparent; color: var(--fg-subtle);
+  border: 1px solid transparent; padding: 0 var(--s-2); line-height: 1.4;
+}
+.recap-player:hover .revoke-btn { border-color: var(--border); }
+.revoke-btn:hover { color: var(--neg); border-color: var(--neg); background: transparent; }
+.revoke-btn.confirming { color: #150404; background: var(--neg); border-color: var(--neg); font-weight: 650; }
+
+/* ============================================================================
+   Pagina BATTITORE — proiettata su uno schermo condiviso.
+
+   Si legge da qualche metro, non da sessanta centimetri: parte da una base
+   tipografica più grande invece di ingrandire un elemento per volta, così la
+   gerarchia resta quella già calibrata e non va ritarata a mano.
+   ============================================================================ */
+
+body.projected { font-size: 1.15rem; }
+.battitore { padding: var(--s-5) var(--s-6) var(--s-6); }
+
+.battitore-head {
+  display: flex; align-items: center; gap: var(--s-5);
+  padding-bottom: var(--s-3); margin-bottom: var(--s-5);
+  border-bottom: 1px solid var(--border);
+}
+.battitore-head h1 { font-size: 1.75rem; margin: 0; letter-spacing: .04em; font-weight: 700; }
+.battitore-phase { font-size: 1.25rem; color: var(--fg-muted); }
+.battitore-phase b { color: var(--pos); font-weight: 700; }
+/* Comandi per chi conduce, non informazione per la stanza: piccoli e in fondo. */
+.battitore-export { margin-left: auto; font-size: var(--fs-sm);
+                    border: 1px solid var(--border); border-radius: var(--r-sm);
+                    padding: var(--s-1) var(--s-3); }
+.battitore-export:hover { border-color: var(--pos); color: var(--pos); }
+.battitore-exit { font-size: var(--fs-sm); }
+
+.battitore-search input {
+  width: 100%; font-size: 1.5rem; padding: var(--s-3) var(--s-4);
+  border-radius: var(--r); background: var(--surface);
+}
+.battitore-results { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0 var(--s-5); }
+.battitore-result {
+  display: flex; align-items: stretch;
+  border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
+  transition: border-color var(--t);
+}
+.battitore-result:hover { border-color: var(--pos); }
+.battitore-result-main {
+  display: flex; align-items: baseline; gap: var(--s-3);
+  font-size: 1.05rem; background: var(--surface); border: none; border-radius: 0;
+  padding: var(--s-3) var(--s-4); text-align: left;
+}
+.battitore-result-name { font-weight: 650; }
+.battitore-result-price { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.battitore-result-go { color: var(--fg-subtle); font-size: var(--fs-sm); }
+.battitore-result-now {
+  font-size: var(--fs-sm); background: var(--surface-2); color: var(--fg-muted);
+  border: none; border-left: 1px solid var(--border); border-radius: 0;
+  padding: var(--s-3) var(--s-4);
+}
+.battitore-result-now:hover { background: var(--surface-3); color: var(--fg); }
+
+.battitore-message {
+  padding: var(--s-2) var(--s-4); margin: 0 0 var(--s-4);
+  background: var(--pos-deep); border-left: 3px solid var(--pos);
+  border-radius: var(--r-sm); font-size: var(--fs-base);
+}
+.battitore-phase-done {
+  border: 1px solid var(--pos); border-left-width: 3px; border-radius: var(--r);
+  margin: 0 0 var(--s-4); font-size: 1.05rem;
+}
+.battitore-phase-done button { font-size: 1.05rem; padding: var(--s-2) var(--s-4); }
+
+.battitore-board-wrap .recap-col { flex: 0 0 17rem; min-width: 17rem; }
+.battitore-board-wrap .recap-col h2 { font-size: 1.25rem; }
+.battitore-board-wrap .recap-col .meta { font-size: .95rem; }
+.battitore-board-wrap .recap-role { font-size: .8rem; }
+.battitore-board-wrap .recap-player { font-size: 1.05rem; padding: var(--s-1) 0; }
+.battitore-board-wrap .empty-role { font-size: .95rem; }
+
+/* ---- Il popup del battitore --------------------------------------------- */
+
+.bidder {
+  border: 1px solid var(--border-strong); border-radius: var(--r-lg);
+  background: var(--surface); color: var(--fg);
+  padding: 0; width: min(30rem, 92vw);
+  box-shadow: var(--shadow-3);
+}
+.bidder::backdrop { background: rgba(2,6,23,.8); backdrop-filter: blur(2px); }
+
+.bidder-head {
+  display: flex; align-items: flex-start; gap: var(--s-3);
+  padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--border);
+}
+.bidder-head b { font-size: var(--fs-md); font-weight: 650; }
+.bidder-mode { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em;
+               color: var(--fg-subtle); margin-top: var(--s-1); }
+.bidder-close { margin-left: auto; background: transparent; border-color: transparent;
+                color: var(--fg-muted); padding: var(--s-1) var(--s-2); }
+.bidder-close:hover { background: var(--surface-2); color: var(--fg); }
+
+.bidder-clock { text-align: center; padding: var(--s-5) var(--s-4) var(--s-2); line-height: 1; }
+#bidderClock { font-weight: 700; letter-spacing: -.03em; transition: color var(--t); }
+/* Colore invece di lampeggio: un lampeggio va evitato per chi è sensibile al
+   movimento, e in una stanza il colore si coglie comunque con la coda dell'occhio. */
+.bidder-clock.urgent #bidderClock { color: var(--neg); }
+.bidder-clock.expired #bidderClock { color: var(--fg-subtle); }
+
+.bidder-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4);
+                  padding: var(--s-2) var(--s-5) var(--s-5); text-align: center; }
+.bidder-numbers-solo { grid-template-columns: 1fr; }
+.bidder-numbers label { display: block; font-size: var(--fs-xs); color: var(--fg-muted);
+                        text-transform: uppercase; letter-spacing: .08em; }
+.bidder-numbers b.big { font-size: 2.5rem; font-weight: 700; letter-spacing: -.02em; }
+.bidder.over-max #bidderPrice { color: var(--neg); }
+.bidder-over {
+  margin: 0; padding: var(--s-2) var(--s-5); background: var(--neg-deep); color: var(--neg);
+  border-top: 1px solid var(--neg); border-bottom: 1px solid var(--neg);
+  font-weight: 650; text-align: center; font-size: var(--fs-sm);
+}
+
+.bidder-controls {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+  padding: var(--s-4) var(--s-5); border-top: 1px solid var(--border);
+}
+.bidder-bid {
+  flex: 1 1 10rem; background: var(--pos); color: #04120A; border-color: var(--pos);
+  font-weight: 700; font-size: var(--fs-md); padding: var(--s-3) var(--s-4);
+}
+.bidder-bid:hover:not(:disabled) { background: #16A34A; border-color: #16A34A; }
+.bidder-bid small { display: block; font-size: var(--fs-xs); font-weight: 400; opacity: .75; }
+.bidder-jump { font-size: var(--fs-xs); color: var(--fg-muted);
+               text-transform: uppercase; letter-spacing: .08em; }
+#bidderJump { width: 5rem; margin-left: var(--s-2); }
+.bidder-now { background: transparent; color: var(--fg-muted); }
+.bidder-now:hover { background: var(--surface-2); color: var(--fg); }
+
+.bidder-assign {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3);
+  padding: var(--s-4) var(--s-5); border-top: 1px solid var(--border);
+  background: #0A0E1C;
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+}
+.bidder-assign label { font-size: var(--fs-xs); color: var(--fg-muted);
+                       text-transform: uppercase; letter-spacing: .08em; }
+.bidder-assign select, .bidder-assign input { margin-left: var(--s-2); }
+#bidderFinalPrice { width: 5.5rem; }
+.bidder-confirm { background: var(--pos); color: #04120A; border-color: var(--pos); font-weight: 700; }
+.bidder-confirm:hover { background: #16A34A; }
+.bidder-resume { background: transparent; color: var(--fg-muted); }
+.bidder-error { flex: 1 1 100%; margin: 0; color: var(--neg); font-size: var(--fs-sm); }
+
+.bidder-public { width: min(38rem, 94vw); }
+.bidder-public #bidderPrice { font-size: 3.5rem; }
+.bidder-public .bidder-bid { font-size: 1.4rem; }
+
+/* ---- Home --------------------------------------------------------------- */
+
+.home-head { margin-bottom: var(--s-5); }
+.brand {
+  font-size: var(--fs-xs); font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--pos); margin-bottom: var(--s-3);
+}
+.home-head h1 { font-size: var(--fs-xl); }
+
+/* Uno stato vuoto vero al posto di una riga di testo spenta: è la prima schermata
+   che vede chi apre l'applicazione per la prima volta. */
+.empty-state {
+  border: 1px dashed var(--border); border-radius: var(--r);
+  padding: var(--s-6) var(--s-5); text-align: center;
+}
+.empty-state p { margin: 0; }
+.empty-state .note { margin-top: var(--s-2); }
+
+/* Pastiglia per un valore breve e categorico: la fase, un ruolo. */
+.badge {
+  display: inline-block; min-width: 1.6rem; text-align: center;
+  padding: 1px var(--s-2); border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: var(--fs-xs); font-weight: 650; color: var(--fg);
+}
+
+/* Icone vettoriali in linea, non caratteri emoji: un'emoji si rende a colori e con
+   una forma diversa su ogni sistema, e su uno schermo proiettato si nota. Ereditano
+   colore e dimensione dal testo, quindi seguono da sole ogni stato del bottone. */
+/* 1.15em e non 1em: a 13 px di testo un quadrato di 13 px con tratto sottile
+   sparisce, e un bottone che contiene solo quello sembra vuoto — e' successo. */
+.ico { width: 1.15em; height: 1.15em; vertical-align: -.2em; flex: none; stroke-width: 2.25; }
+.battitore-result-go .ico { margin-right: 2px; }
+
+/* L'icona accanto al countdown: legata alla dimensione del numero, non al testo di
+   pagina, cosi' resta proporzionata anche sullo schermo proiettato dove il countdown
+   e' molto piu' grande. */
+/* La misura del countdown vive in UN SOLO posto: sul contenitore. Il numero e
+   l'icona la ereditano, quindi ingrandire il popup proiettato e' una riga sola e non
+   puo' lasciarne indietro una delle due parti — che e' esattamente come l'icona era
+   finita a otto pixel. */
+.bidder-clock { font-size: 4.5rem; }
+.bidder-public .bidder-clock { font-size: 6.5rem; }
+.bidder-clock-icon { color: var(--fg-subtle); margin-right: var(--s-3); }
+.bidder-clock-icon .ico { width: .3em; height: .3em; vertical-align: .06em; stroke-width: 2; }
+
+/* Icona PIU' etichetta. Un bottone con la sola icona si capisce solo se si conosce
+   gia' l'icona: il "title" compare al passaggio del mouse, che in asta non si usa, e
+   non esiste affatto da tastiera. */
+.bidder-open { display: inline-flex; align-items: center; gap: var(--s-1); }
+.bidder-open-row { font-size: var(--fs-xs); padding: var(--s-1) var(--s-2); }

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.containsStringIgnoringCase;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -66,8 +67,8 @@ class HomeControllerTest {
                 .andExpect(content().string(containsString("2026-09-01")))
                 .andExpect(content().string(containsString("25")))
                 .andExpect(content().string(containsString(">D<")))
-                .andExpect(content().string(containsString("riprendi")))
-                .andExpect(content().string(containsString("nuova asta")));
+                .andExpect(content().string(containsStringIgnoringCase("riprendi")))
+                .andExpect(content().string(containsStringIgnoringCase("nuova asta")));
     }
 
     @Test

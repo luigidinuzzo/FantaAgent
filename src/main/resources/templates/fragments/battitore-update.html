@@ -1,4 +1,4 @@
-<!--
+<!--/*
   File separato apposta, sullo stesso schema di fragments/update.html: qui vive SOLO
   il fragment composito che le risposte di stato della pagina BATTITORE rendono —
   il tabellone come swap normale, piu' l'indicatore FASE che viaggia out-of-band.
@@ -9,7 +9,7 @@
   sotto la prima ad ogni caricamento. Componendolo qui, un GET /battitore non lo
   attraversa mai: battitore.html resta l'unica sorgente del markup, questo file lo
   referenzia per id.
--->
+*/-->
 <th:block xmlns:th="http://www.thymeleaf.org" th:fragment="boardUpdate">
   <th:block th:insert="~{battitore :: #phaseBadge}"></th:block>
   <th:block th:insert="~{battitore :: #board}"></th:block>

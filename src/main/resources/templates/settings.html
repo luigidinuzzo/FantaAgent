@@ -4,39 +4,16 @@
   <meta charset="UTF-8">
   <title>Impostazioni lega</title>
   <link rel="stylesheet" th:href="@{/app.css}">
-  <style>
-    .wrap { max-width: 46rem; margin: 0 auto; padding: 1rem 1.5rem 3rem; }
-    h1 { font-size: var(--fs-lg); margin: .8rem 0 .2rem; }
-    h2 { font-size: var(--fs-md); color: var(--dim); letter-spacing: .06em;
-         margin: 1.6rem 0 .5rem; border-top: 1px solid var(--line); padding-top: .8rem; }
-    .note { color: var(--dim); font-size: var(--fs-sm); line-height: 1.5; margin: .3rem 0 .8rem; }
-    .grid { display: grid; grid-template-columns: 14rem 7rem; gap: .35rem 1rem; align-items: center; }
-    .grid label { font-size: var(--fs-sm); }
-    input[type=text], input[type=number] { width: 100%; padding: .35rem .5rem; font: inherit;
-      background: #000; color: var(--fg); border: 1px solid var(--line); }
-    table.steps { border-collapse: collapse; margin-top: .4rem; }
-    table.steps th { font-size: var(--fs-xs); color: var(--dim); text-align: left;
-      font-weight: normal; padding: 0 .6rem .3rem 0; }
-    table.steps td { padding: .15rem .6rem .15rem 0; }
-    table.steps input { width: 7rem; }
-    .banner { padding: .7rem .9rem; margin: .8rem 0; border-left: 3px solid; }
-    .ok   { background: #10240f; border-color: var(--pos); }
-    .bad  { background: #2a1010; border-color: var(--neg); }
-    .warn { background: #2a2410; border-color: #d4a017; }
-    .banner ul { margin: .4rem 0 0; padding-left: 1.1rem; }
-    button.save { margin-top: 1.4rem; padding: .6rem 1.4rem; font: inherit; cursor: pointer; }
-    a.back { color: var(--dim); font-size: var(--fs-sm); }
-  </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!--
+  <!--/*
     Un solo collegamento, e porta indietro. Da questa pagina non si salta altrove: in
     preparazione si torna alla home (dove si puo' anche scegliere di riprendere
     un'asta invece che iniziarne una), ad asta aperta si torna all'asta. La schermata
     d'asta e' l'unica da cui si raggiunge tutto il resto.
-  -->
+  */-->
   <a class="back" th:href="${setup} ? @{/} : @{/asta}"
      th:text="${setup} ? '← indietro alla home' : '← indietro all\'asta'">← indietro</a>
 
@@ -45,35 +22,28 @@
     Asta in corso: <b th:text="${currentAuction}">Asta di prova</b>
   </p>
 
-  <!-- Cosa e' modificabile e cosa no, detto prima di ogni campo: chi cambia un numero
-       deve sapere in anticipo se avra' effetto o non lo avra' affatto. -->
+  <!--/* Cosa e' modificabile e cosa no, detto prima di ogni campo: chi cambia un numero
+       deve sapere in anticipo se avra' effetto o non lo avra' affatto. */-->
   <p class="note" th:if="${setup}">
-    Qui si decide tutto ciò che governa l'asta. <b>Un solo pulsante conferma l'intero
-    blocco</b> — regole, battitore e partecipanti insieme — ed è quel pulsante a creare
-    l'asta: finché non lo premi non viene scritto nulla su disco, e tornando indietro
-    non resta alcuna asta vuota nell'elenco.
+    Regole di punteggio, partecipanti e battitore. <b>Un solo pulsante conferma tutto e
+    apre l'asta</b>: fino ad allora puoi tornare indietro senza lasciare nulla dietro di te.
   </p>
   <p class="note" th:unless="${setup}">
-    <b>Le regole di punteggio sono in sola lettura</b> mentre un'asta è aperta. Da esse
-    discendono i punti attesi di ogni giocatore e quindi ogni raccomandazione già data:
-    cambiarle adesso renderebbe i prezzi già pagati impossibili da interpretare, metà
-    decisi con un modello e metà con un altro. Per usare regole diverse si comincia una
-    nuova asta dalla home.<br>
-    <b>Nomi dei partecipanti e preferenze del battitore restano sempre modificabili</b>,
-    con effetto immediato: non entrano in alcun calcolo, e il registro lega gli acquisti
-    agli id, non ai nomi.
+    <b>Le regole di punteggio non si cambiano ad asta aperta.</b> I prezzi già pagati
+    sono stati decisi con queste regole: cambiarle ora renderebbe la rosa impossibile da
+    valutare. Per usarne di diverse, comincia una nuova asta.<br>
+    <b>Nomi dei partecipanti e battitore restano sempre modificabili</b>, con effetto
+    immediato: non entrano in alcun calcolo.
   </p>
 
   <p class="note" th:if="${fileGoverns}">
-    Questi valori vengono da <span th:text="${file}">…</span> e hanno la precedenza su
-    quelli di <code>application.yml</code>, che vengono ignorati.
+    Le tue impostazioni sono salvate e hanno la precedenza sui valori predefiniti.
   </p>
 
   <div class="banner ok" th:if="${saved}">
     ✓ Impostazioni salvate.
     <div class="note" style="margin:.4rem 0 0">
-      <b>Sono già in vigore</b>, senza riavviare: nomi nel tabellone e nella barra
-      comando, e durata del countdown al prossimo battitore che apri.
+      <b>Già in vigore</b>, senza riavviare.
     </div>
   </div>
 
@@ -86,8 +56,7 @@
 
     <h2 th:if="${setup}">NOME DELL'ASTA</h2>
     <p class="note" th:if="${setup}">
-      Serve a riconoscerla nell'elenco quando ne avrai più di una. Data e ora vengono
-      registrate da sole: non metterle nel nome.
+      Ti servirà a riconoscerla fra le altre. Data e ora sono registrate in automatico.
     </p>
     <div class="grid" th:if="${setup}">
       <label for="auctionName">Nome</label>
@@ -97,9 +66,9 @@
     </div>
 
     <h2>MODIFICATORE DI DIFESA</h2>
-    <!-- Ad asta aperta i campi che seguono sono disabilitati. Il divieto non vive qui:
+    <!--/* Ad asta aperta i campi che seguono sono disabilitati. Il divieto non vive qui:
          SettingsController, in quella modalita', non legge nemmeno questi parametri. Un
-         campo disabilitato ferma il browser, non una richiesta costruita a mano. -->
+         campo disabilitato ferma il browser, non una richiesta costruita a mano. */-->
     <p class="note" th:unless="${setup}"><b>Sola lettura</b> — asta in corso.</p>
     <p class="note">
       Si applica alla media voto di portiere più i migliori difensori schierati.
@@ -163,15 +132,13 @@
       <input type="text" id="cs" name="cleanSheet" th:value="${settings.cleanSheet}" th:disabled="${!setup}">
     </div>
     <p class="note">
-      I file di statistiche di Fantacalcio.it non contengono le porte inviolate: quando
-      mancano, l'applicazione le stima dalle presenze e dai gol subiti con un modello
-      di Poisson, invece di lasciarle a zero.
+      Le porte inviolate non sono nei dati di Fantacalcio.it: quando mancano vengono
+      stimate dalle presenze e dai gol subiti.
     </p>
 
     <h2>CONFERMA</h2>
     <p class="note">
-      Finché non confermi, l'applicazione si rifiuta di partire in modalità asta. È una
-      protezione contro l'uso dei valori segnaposto: meglio non partire che consigliare
+      Serve a evitare di partire con valori d'esempio: meglio fermarsi che consigliare
       prezzi calcolati su regole che non sono le tue.
     </p>
     <div class="grid">
@@ -211,10 +178,7 @@
       </tr>
     </table>
     <h2>PARTECIPANTI</h2>
-  <p class="note" th:if="${membersFileGoverns}">
-    Questi nomi vengono da <span th:text="${membersFile}">…</span> e hanno la precedenza
-    su quelli di <code>application.yml</code>, che vengono ignorati.
-  </p>
+
   <p class="note">
     L'iniziale è quella usata dal comando rapido (es. <code>bast 47 m</code>) per
     riconoscere a chi assegnare l'acquisto: deve restare unica. L'id di ciascun
@@ -243,11 +207,11 @@
         </tr>
       </table>
     </div>
-    <!--
+    <!--/*
       L'unico pulsante della pagina. Conferma insieme regole, battitore e partecipanti:
       con tre pulsanti separati si poteva uscire avendone premuto uno solo, convinti di
       aver salvato tutto.
-    -->
+    */-->
     <button class="save" type="submit"
             th:text="${setup} ? 'Conferma e inizia l\'asta' : 'Salva impostazioni'">Salva</button>
   </form>
