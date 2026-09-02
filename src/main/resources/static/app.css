@@ -324,3 +324,13 @@ body.projected { font-size:1.25rem; }
 .phase-nav button:disabled { color:var(--line); cursor:default; }
 .phase-nav span { font-size:var(--fs-sm); }
 .phase-count { margin-left:.6rem; }
+
+/* Esporta: sta nell'intestazione della pagina proiettata perché è da lì che si
+   conduce l'asta ed è lì che si arriva alla fine. Discreto come il link di uscita —
+   è un comando per chi conduce, non un'informazione per la stanza. */
+.battitore-export { margin-left:auto; font-size:var(--fs-sm); color:var(--dim);
+                    text-decoration:none; border:1px solid var(--line);
+                    padding:.3rem .7rem; }
+.battitore-export:hover { color:var(--fg); border-color:var(--pos); }
+/* Con ESPORTA presente, è quello a spingere a destra: il link di uscita lo segue. */
+.battitore-export + .battitore-exit { margin-left:.6rem; }

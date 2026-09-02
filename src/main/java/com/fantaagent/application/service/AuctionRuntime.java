@@ -79,6 +79,15 @@ public class AuctionRuntime {
         return current;
     }
 
+    /**
+     * L'identificativo dell'asta scelta, o null se non ce n'e' una. Legge lo stesso
+     * snapshot volatile di {@link #snapshot()}: nessun secondo campo mutabile, che
+     * annullerebbe la garanzia di atomicita' verificata da AuctionRuntimeAtomicityTest.
+     */
+    public String currentAuctionId() {
+        return current.auctionId();
+    }
+
     public boolean hasAuction() {
         return current.hasAuction();
     }

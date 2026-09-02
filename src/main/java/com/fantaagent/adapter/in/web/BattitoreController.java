@@ -8,12 +8,16 @@ import com.fantaagent.application.service.PlayerSearchService;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.domain.player.Player;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -127,6 +131,31 @@ public class BattitoreController {
         }
         populate(model, message);
         return BOARD_UPDATE;
+    }
+
+    /**
+     * Scarica le rose nel formato di importazione di Fantacalcio.it.
+     *
+     * <p>Sta qui e non fra le pagine private perche' e' da qui che si conduce l'asta e
+     * qui che si arriva alla fine. Non espone nulla di strategico: contiene gli stessi
+     * acquisti gia' proiettati sul tabellone, con i loro prezzi.
+     *
+     * <p>Il tipo e' text/csv con charset esplicito e Content-Disposition attachment: un
+     * charset assente lascerebbe indovinare la codifica al browser, e un nome accentato
+     * arriverebbe corrotto dentro il file caricato in lega.
+     */
+    @GetMapping("/battitore/esporta")
+    public ResponseEntity<byte[]> export() {
+        if (!runtime.hasAuction()) {
+            return ResponseEntity.notFound().build();
+        }
+        byte[] csv = RosterCsvExporter.toCsv(auction).getBytes(StandardCharsets.UTF_8);
+        String fileName = "rose-" + runtime.currentAuctionId() + ".csv";
+        return ResponseEntity.ok()
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fileName + "\"")
+                .body(csv);
     }
 
     @PostMapping("/battitore/revoca")

@@ -258,6 +258,41 @@ class BattitoreControllerTest {
                                 2, java.time.Instant.EPOCH, "p2", "marco", 10)));
     }
 
+    /**
+     * L'export scarica un file invece di renderlo in pagina: senza
+     * Content-Disposition attachment il browser mostrerebbe il CSV a schermo — sulla
+     * pagina proiettata, davanti a tutti — invece di salvarlo.
+     */
+    @Test
+    void lExportScaricaUnCsvConIlNomeDellAsta() throws Exception {
+        when(auctionRuntime.currentAuctionId()).thenReturn("2026-09-01");
+
+        mockMvc.perform(get("/battitore/esporta"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Content-Disposition",
+                                containsString("attachment; filename=\"rose-2026-09-01.csv\"")))
+                .andExpect(content().contentTypeCompatibleWith("text/csv"));
+    }
+
+    /** Senza un'asta scelta non c'e' nulla da esportare: 404, non un file vuoto. */
+    @Test
+    void senzaAstaLExportNonProduceUnFileVuoto() throws Exception {
+        when(auctionRuntime.hasAuction()).thenReturn(false);
+
+        mockMvc.perform(get("/battitore/esporta"))
+                .andExpect(status().isNotFound());
+    }
+
+    /** Il bottone deve esserci: senza, l'endpoint esiste ma non lo raggiunge nessuno. */
+    @Test
+    void laPaginaOffreIlBottoneEsporta() throws Exception {
+        mockMvc.perform(get("/battitore"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("ESPORTA")))
+                .andExpect(content().string(containsString("/battitore/esporta")));
+    }
+
     /** Un id sconosciuto non apre alcun popup, invece di aprirne uno vuoto. */
     @Test
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {

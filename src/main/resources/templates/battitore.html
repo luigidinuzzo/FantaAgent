@@ -29,6 +29,14 @@
     <div id="phaseBadge" th:fragment="phaseBadge" class="battitore-phase"
          hx-swap-oob="true">FASE <b th:text="${phase}">D</b></div>
     <!-- Piccolo e in fondo: serve a chi conduce, non al pubblico. -->
+    <!--
+      Link normale e non bottone htmx: il download deve partire dal browser, e uno
+      swap htmx si aspetta markup in risposta, non un file. Un <a> con l'endpoint che
+      manda Content-Disposition attachment fa esattamente la cosa giusta senza una
+      riga di JavaScript.
+    -->
+    <a class="battitore-export" th:href="@{/battitore/esporta}"
+       th:download="'rose.csv'">↓ ESPORTA</a>
     <a class="battitore-exit" th:href="@{/asta}">← la mia asta</a>
   </header>
 
