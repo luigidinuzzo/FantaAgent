@@ -91,7 +91,7 @@
     var left = deadline - Date.now();
     if (left <= 0) {
       renderClock(0);
-      expire();
+      expire(true);
       return;
     }
     renderClock(left);
@@ -120,10 +120,16 @@
     }
   }
 
-  function expire() {
+  /*
+    @param rang true quando il countdown e' arrivato davvero a zero, false quando lo si
+    e' fermato a mano. Il segnale acustico annuncia lo scadere del tempo: farlo suonare
+    anche su un'interruzione voluta gli toglierebbe significato, e chi lo sente da
+    lontano non saprebbe piu' se il tempo e' finito o se qualcuno ha premuto un bottone.
+  */
+  function expire(rang) {
     stopCountdown();
     expired = true;
-    beep();
+    if (rang) { beep(); }
     var controls = $('bidderControls');
     var form = $('bidderAssign');
     var box = $('bidderClockBox');
@@ -215,7 +221,13 @@
 
     renderPrice();
     dlg.showModal();
-    startCountdown();
+    if (dlg.getAttribute('data-immediate') === 'true') {
+      /* Nessuna asta da battere: si aggiudica e basta, senza far scorrere un timer
+         che non misura nulla. */
+      expire(false);
+    } else {
+      startCountdown();
+    }
 
     var bid = $('bidderBid');
     if (bid) {
@@ -253,6 +265,11 @@
 
     var resume = $('bidderResume');
     if (resume) { resume.addEventListener('click', resumeBidding); }
+
+    /* Ferma il countdown e passa all'aggiudicazione: uno dei due si e' ritirato, e
+       l'asta e' gia' decisa prima che il tempo finisca. */
+    var now = $('bidderNow');
+    if (now) { now.addEventListener('click', function () { expire(false); }); }
 
     var form = $('bidderAssign');
     if (form) {

@@ -293,6 +293,38 @@ class BattitoreControllerTest {
                 .andExpect(content().string(containsString("/battitore/esporta")));
     }
 
+    /**
+     * Aperto con subito=true il popup dichiara la modalita' immediata: bidder.js salta
+     * il countdown e mostra subito l'aggiudicazione. Serve quando non c'e' un'asta da
+     * battere e aspettare un timer che non misura nulla e' solo tempo perso.
+     */
+    @Test
+    void ilPopupPuoAprirsiGiaInAggiudicazione() throws Exception {
+        mockMvc.perform(get("/battitore/popup").param("playerId", "d1").param("subito", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-immediate=\"true\"")))
+                .andExpect(content().string(containsString("bidderAssign")));
+    }
+
+    /** Senza il parametro il popup parte col countdown, come sempre. */
+    @Test
+    void senzaIlParametroIlPopupParteColCountdown() throws Exception {
+        mockMvc.perform(get("/battitore/popup").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-immediate=\"false\"")))
+                .andExpect(content().string(containsString("bidderNow")));
+    }
+
+    /** Ogni risultato offre entrambe le vie: batti il timer, oppure assegna e basta. */
+    @Test
+    void ogniRisultatoOffreSiaLAstaSiaLAssegnazioneDiretta() throws Exception {
+        mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("batti")))
+                .andExpect(content().string(containsString("assegna")))
+                .andExpect(content().string(containsString("subito=true")));
+    }
+
     /** Un id sconosciuto non apre alcun popup, invece di aprirne uno vuoto. */
     @Test
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {
