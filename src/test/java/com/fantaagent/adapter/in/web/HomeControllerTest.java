@@ -54,12 +54,16 @@ class HomeControllerTest {
     @Test
     void elencaLeAsteConQuantoServeARiconoscerle() throws Exception {
         when(auctionRuntime.auctions()).thenReturn(List.of(
-                new AuctionRuntime.AuctionSummary("current",
+                new AuctionRuntime.AuctionSummary("2026-09-01", "Lega Brontolo",
                         Instant.parse("2026-09-01T08:41:00Z"), 25, Role.D, false)));
 
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("current")))
+                // Il nome dato all'asta, e sotto l'identificativo: e' quest'ultimo il
+                // nome della cartella su disco, ed e' cio' che si cerca andando a
+                // guardare un registro a mano.
+                .andExpect(content().string(containsString("Lega Brontolo")))
+                .andExpect(content().string(containsString("2026-09-01")))
                 .andExpect(content().string(containsString("25")))
                 .andExpect(content().string(containsString(">D<")))
                 .andExpect(content().string(containsString("riprendi")))
@@ -75,15 +79,19 @@ class HomeControllerTest {
         verify(auctionRuntime).select("current");
     }
 
+    /**
+     * "Nuova asta" porta alla preparazione e NON crea nulla. Prima creava la cartella
+     * qui: chi tornava indietro dalla schermata di conferma lasciava un'asta vuota che
+     * restava per sempre nell'elenco, e piu' d'una se ci ripensava piu' volte.
+     */
     @Test
-    void nuovaAstaNeCreaUnaEPortaAlleImpostazioni() throws Exception {
-        when(auctionRuntime.createNew()).thenReturn("2026-09-01");
-
+    void nuovaAstaPortaAllaPreparazioneSenzaCrearneAncoraUna() throws Exception {
         mockMvc.perform(post("/aste/nuova"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/impostazioni"));
 
-        verify(auctionRuntime).createNew();
+        verify(auctionRuntime, org.mockito.Mockito.never())
+                .createNew(org.mockito.ArgumentMatchers.anyString());
     }
 
     @Test

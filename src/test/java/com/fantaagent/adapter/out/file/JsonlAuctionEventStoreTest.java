@@ -33,7 +33,7 @@ class JsonlAuctionEventStoreTest {
         Path file = tmp.resolve("events.jsonl");
         JsonlAuctionEventStore store = new JsonlAuctionEventStore(file);
 
-        store.append(new AuctionEvent.AuctionStarted(1, T));
+        store.append(new AuctionEvent.AuctionStarted(1, T, "prova"));
         store.append(new AuctionEvent.PhaseAdvanced(2, T, Role.D));
         store.append(new AuctionEvent.PlayerPurchased(3, T, "bastoni", "me", 47));
         store.append(new AuctionEvent.PurchaseCorrected(4, T, 3, "marco", 45));
@@ -42,7 +42,7 @@ class JsonlAuctionEventStoreTest {
         List<AuctionEvent> reloaded = new JsonlAuctionEventStore(file).load();
 
         assertThat(reloaded).containsExactly(
-                new AuctionEvent.AuctionStarted(1, T),
+                new AuctionEvent.AuctionStarted(1, T, "prova"),
                 new AuctionEvent.PhaseAdvanced(2, T, Role.D),
                 new AuctionEvent.PlayerPurchased(3, T, "bastoni", "me", 47),
                 new AuctionEvent.PurchaseCorrected(4, T, 3, "marco", 45),

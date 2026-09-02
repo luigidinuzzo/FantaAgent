@@ -293,6 +293,69 @@ class BattitoreControllerTest {
                 .andExpect(content().string(containsString("/battitore/esporta")));
     }
 
+    /**
+     * Aperto con subito=true il popup dichiara la modalita' immediata: bidder.js salta
+     * il countdown e mostra subito l'aggiudicazione. Serve quando non c'e' un'asta da
+     * battere e aspettare un timer che non misura nulla e' solo tempo perso.
+     */
+    @Test
+    void ilPopupDiAssegnazioneDirettaNonPortaAffattoIlTimer() throws Exception {
+        String html = mockMvc.perform(get("/battitore/popup")
+                        .param("playerId", "d1").param("subito", "true"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Chiede solo chi e quanto: chi + crediti + conferma.
+        assertThat(html).contains("bidderWho").contains("bidderFinalPrice").contains("ASSEGNA");
+        // E il form nasce visibile, non nascosto in attesa che qualcosa lo riveli.
+        assertThat(assignFormTag(html)).doesNotContain("hidden");
+
+        // Del battitore non deve arrivare nulla: la forma la decide il server, non un
+        // aggiustamento in JavaScript dopo l'apertura. Prima arrivava il popup del
+        // timer identico a quello normale, e si vedeva comparire un countdown inutile.
+        assertThat(html)
+                .doesNotContain("bidderClockBox")
+                .doesNotContain("bidderControls")
+                .doesNotContain("bidderBid")
+                .doesNotContain("bidderNow")
+                .doesNotContain("bidderResume");
+    }
+
+    /** Senza il parametro arriva il battitore vero, col countdown e i rilanci. */
+    @Test
+    void senzaIlParametroIlPopupParteColCountdown() throws Exception {
+        String html = mockMvc.perform(get("/battitore/popup").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("bidderClockBox").contains("bidderBid").contains("bidderNow");
+        // Qui il form di aggiudicazione parte nascosto: lo rivela lo scadere del tempo.
+        assertThat(assignFormTag(html)).contains("hidden");
+    }
+
+    /** Ogni risultato offre entrambe le vie: batti il timer, oppure assegna e basta. */
+    @Test
+    void ogniRisultatoOffreSiaLAstaSiaLAssegnazioneDiretta() throws Exception {
+        mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("batti")))
+                .andExpect(content().string(containsString("assegna")))
+                .andExpect(content().string(containsString("subito=true")));
+    }
+
+    /**
+     * Il solo tag di apertura del form di aggiudicazione. Cercare la stringa intera con
+     * gli attributi in un ordine preciso e' fragile: Thymeleaf sposta in fondo quelli
+     * che genera, e un'asserzione cosi' fallisce per la ragione sbagliata.
+     */
+    private static String assignFormTag(String html) {
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("<form[^>]*id=\"bidderAssign\"[^>]*>", java.util.regex.Pattern.DOTALL)
+                .matcher(html);
+        assertThat(m.find()).as("il form di aggiudicazione deve esserci").isTrue();
+        return m.group();
+    }
+
     /** Un id sconosciuto non apre alcun popup, invece di aprirne uno vuoto. */
     @Test
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {

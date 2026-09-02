@@ -1,9 +1,7 @@
 package com.fantaagent.adapter.in.web;
 
-import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.LeagueMembersSettingsStore;
-import com.fantaagent.domain.auction.AuctionEvent;
-import com.fantaagent.domain.auction.AuctionProjector;
 import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
 import com.fantaagent.domain.player.Role;
@@ -14,26 +12,35 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Sezione PARTECIPANTI della schermata Impostazioni: modifica dei nomi senza toccare
- * gli id, che il registro dell'asta usa per attribuire gli acquisti.
+ * La schermata Impostazioni in due modalita'.
+ *
+ * <p>PREPARAZIONE: nessuna asta aperta, tutto modificabile, un solo pulsante che
+ * conferma l'intero blocco e crea l'asta. ASTA IN CORSO: regole in sola lettura, nomi e
+ * battitore sempre modificabili.
  */
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -51,7 +58,7 @@ class SettingsControllerTest {
     private WebApplicationContext context;
 
     @MockitoBean
-    private AuctionService auctionService;
+    private com.fantaagent.application.service.AuctionService auctionService;
 
     @MockitoBean
     private LeagueMembersSettingsStore membersStore;
@@ -59,18 +66,14 @@ class SettingsControllerTest {
     @MockitoBean
     private com.fantaagent.application.service.AuctionRuntime auctionRuntime;
 
-    /**
-     * Finto apposta: uno store vero punterebbe alla data-dir del profilo dev e
-     * SCRIVEREBBE davvero un file di impostazioni nel progetto.
-     */
+    /** Finti apposta: store veri scriverebbero davvero nella data-dir del progetto. */
     @MockitoBean
     private com.fantaagent.config.ScoringSettingsStore scoringStore;
 
-    /** Finto per la stessa ragione dello store di punteggio: non scrivere nel progetto. */
     @MockitoBean
     private com.fantaagent.config.AuctionSettingsStore auctionStore;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    @Autowired
     private com.fantaagent.config.AuctionSettingsHolder auctionSettings;
 
     private MockMvc mockMvc;
@@ -80,77 +83,59 @@ class SettingsControllerTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
         when(membersStore.file()).thenReturn(Path.of("res/league-members.yml"));
         when(membersStore.load()).thenReturn(Optional.empty());
-        when(auctionService.state()).thenReturn(
-                AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.D, List.of()));
-        when(auctionRuntime.snapshot()).thenAnswer(inv -> snapshot());
         when(scoringStore.file()).thenReturn(Path.of("res/league-settings.yml"));
         when(scoringStore.load()).thenReturn(Optional.empty());
         when(auctionStore.file()).thenReturn(Path.of("res/auction-settings.yml"));
         when(auctionStore.load()).thenReturn(Optional.empty());
-        auctionSettings.set(com.fantaagent.config.AuctionSettings.DEFAULTS);
+        when(auctionRuntime.snapshot()).thenAnswer(inv -> snapshot());
+        auctionSettings.set(AuctionSettings.DEFAULTS);
+        preparing();
+    }
+
+    private void preparing() {
+        when(auctionRuntime.hasAuction()).thenReturn(false);
+        when(auctionRuntime.currentAuctionLabel()).thenReturn(null);
+    }
+
+    private void running() {
+        when(auctionRuntime.hasAuction()).thenReturn(true);
+        when(auctionRuntime.currentAuctionLabel()).thenReturn("Lega Brontolo");
+    }
+
+    /** Un invio completo e valido, come lo manderebbe il form. */
+    private static MockHttpServletRequestBuilder fullForm() {
+        return form("Lega Brontolo", "7", "I", "M");
     }
 
     /**
-     * Il salvataggio non si limita a scrivere il file: aggiorna anche le impostazioni in
-     * vigore. Senza la seconda meta', il nuovo timer si vedrebbe solo dopo un riavvio —
-     * esattamente cio' che si e' voluto togliere.
+     * I parametri variabili si passano qui e non si sovrascrivono dopo: MockMvc
+     * ACCUMULA i valori di uno stesso parametro invece di sostituirli, e un
+     * .param("auctionName", "") aggiunto in coda lascerebbe vincere il valore
+     * precedente — un test che passa senza provare nulla.
      */
-    @Test
-    void lePreferenzeDelBattitoreSonoInVigoreSubitoDopoIlSalvataggio() throws Exception {
-        mockMvc.perform(post("/impostazioni/asta")
-                        .param("bidTimerSeconds", "9")
-                        .param("beepEnabled", "true"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("già in vigore")));
-
-        verify(auctionStore).save(new com.fantaagent.config.AuctionSettings(9, true));
-        org.assertj.core.api.Assertions.assertThat(auctionSettings.get())
-                .isEqualTo(new com.fantaagent.config.AuctionSettings(9, true));
+    private static MockHttpServletRequestBuilder form(String auctionName, String timerSeconds,
+                                                      String initial1, String initial2) {
+        return post("/impostazioni")
+                .param("auctionName", auctionName)
+                .param("defenceModifierEnabled", "true")
+                .param("defendersCounted", "3")
+                .param("minAverage", "0", "6")
+                .param("bonus", "0", "1")
+                .param("goalBonusP", "3").param("goalBonusD", "3")
+                .param("goalBonusC", "3").param("goalBonusA", "3")
+                .param("assist", "1").param("penaltyScored", "3")
+                .param("penaltyMissed", "-3").param("penaltySaved", "3")
+                .param("yellowCard", "-0,5").param("redCard", "-1")
+                .param("goalConceded", "-1").param("cleanSheet", "1")
+                .param("confirmed", "true")
+                .param("id", "me", "marco")
+                .param("name", "Io", "Marco")
+                .param("initial", initial1, initial2)
+                .param("me", "me")
+                .param("bidTimerSeconds", timerSeconds)
+                .param("beepEnabled", "true");
     }
 
-    /**
-     * A differenza delle regole di punteggio, queste restano modificabili ad asta
-     * iniziata: non entrano in nessun calcolo, e il momento in cui ci si accorge che il
-     * countdown e' sbagliato e' proprio mentre si batte.
-     */
-    @Test
-    void lePreferenzeDelBattitoreRestanoModificabiliAdAstaIniziata() throws Exception {
-        when(auctionService.state()).thenReturn(AuctionProjector.project(RULES, PARTICIPANTS,
-                id -> Role.D,
-                List.of(new com.fantaagent.domain.auction.AuctionEvent.PlayerPurchased(
-                        1, java.time.Instant.EPOCH, "d1", "me", 10))));
-
-        mockMvc.perform(post("/impostazioni/asta")
-                        .param("bidTimerSeconds", "12")
-                        .param("beepEnabled", "false"))
-                .andExpect(status().isOk());
-
-        verify(auctionStore).save(new com.fantaagent.config.AuctionSettings(12, false));
-    }
-
-    /**
-     * Una durata assurda non deve essere ne' scritta su disco ne' messa in vigore: un
-     * countdown di zero secondi renderebbe il battitore inutilizzabile senza che nulla
-     * spieghi perche'.
-     */
-    @Test
-    void unaDurataNonValidaNonVieneSalvataNeMessaInVigore() throws Exception {
-        mockMvc.perform(post("/impostazioni/asta")
-                        .param("bidTimerSeconds", "0")
-                        .param("beepEnabled", "true"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(
-                        org.hamcrest.Matchers.containsString("durata del timer")));
-
-        verify(auctionStore, never()).save(any());
-        org.assertj.core.api.Assertions.assertThat(auctionSettings.get())
-                .isEqualTo(com.fantaagent.config.AuctionSettings.DEFAULTS);
-    }
-
-    /**
-     * Lo snapshot che il runtime pubblicherebbe: partecipanti e catena di valutazione
-     * in un unico blocco coerente, esattamente come li legge la pagina.
-     */
     private static com.fantaagent.application.service.RuntimeSnapshot snapshot() {
         com.fantaagent.application.port.out.PlayerCatalog catalog =
                 new com.fantaagent.adapter.out.file.InMemoryPlayerCatalog(List.of(), List.of());
@@ -171,118 +156,123 @@ class SettingsControllerTest {
                         RULES, scoring, catalog, List.of(1.0)));
     }
 
-    @Test
-    void savingTheScoringRulesPutsThemInServiceAtOnceInsteadOfAskingForARestart() throws Exception {
-        mockMvc.perform(post("/impostazioni")
-                        .param("defenceModifierEnabled", "true")
-                        .param("defendersCounted", "3")
-                        .param("minAverage", "0", "6")
-                        .param("bonus", "0", "1")
-                        .param("goalBonusP", "3").param("goalBonusD", "3")
-                        .param("goalBonusC", "3").param("goalBonusA", "3")
-                        .param("assist", "1").param("penaltyScored", "3")
-                        .param("penaltyMissed", "-3").param("penaltySaved", "3")
-                        .param("yellowCard", "-0,5").param("redCard", "-1")
-                        .param("goalConceded", "-1").param("cleanSheet", "1")
-                        .param("confirmed", "true"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("già in vigore")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(
-                        org.hamcrest.Matchers.containsString("prossimo avvio"))));
+    // ---------- preparazione ----------
 
-        verify(scoringStore).save(any());
-        verify(auctionRuntime).rebuild();
+    /**
+     * Un solo pulsante per l'intero blocco. Con tre separati si poteva uscire avendone
+     * premuto uno solo, convinti di aver salvato tutto.
+     */
+    @Test
+    void laPreparazioneHaUnSoloFormEUnSoloPulsante() throws Exception {
+        String html = mockMvc.perform(get("/impostazioni"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html.split("<form", -1).length - 1).as("un solo form").isEqualTo(1);
+        assertThat(html.split("type=\"submit\"", -1).length - 1)
+                .as("un solo pulsante di invio").isEqualTo(1);
+        assertThat(html).contains("auctionName");
     }
 
+    /** Da qui si torna solo indietro: nessuna scorciatoia verso altre pagine. */
     @Test
-    void theScoringRulesAreFrozenOnceThereIsAPurchaseAndNothingIsRebuilt() throws Exception {
-        when(auctionService.state()).thenReturn(AuctionProjector.project(RULES, PARTICIPANTS,
-                id -> Role.D,
-                List.of(new AuctionEvent.PlayerPurchased(1, Instant.now(), "d1", "me", 20))));
-
-        mockMvc.perform(post("/impostazioni")
-                        .param("defendersCounted", "3")
-                        .param("confirmed", "true"))
+    void laPreparazioneOffreSoloIlRitornoAllaHome() throws Exception {
+        mockMvc.perform(get("/impostazioni"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("già iniziata")));
-
-        verify(scoringStore, never()).save(any());
-        verify(auctionRuntime, never()).rebuild();
-    }
-
-    @Test
-    void savingPersistsTheNewNamesWithTheSameIds() throws Exception {
-        mockMvc.perform(post("/impostazioni/partecipanti")
-                        .param("id", "me", "marco")
-                        .param("name", "Gigi", "Marco")
-                        .param("initial", "I", "M")
-                        .param("me", "me"))
-                .andExpect(status().isOk());
-
-        verify(membersStore).save(List.of(
-                new Participant("me", "Gigi", 'I', true),
-                new Participant("marco", "Marco", 'M', false)));
-    }
-
-    @Test
-    void duplicateInitialsAreRejectedNamingTheClash() throws Exception {
-        mockMvc.perform(post("/impostazioni/partecipanti")
-                        .param("id", "me", "marco")
-                        .param("name", "Io", "Marco")
-                        .param("initial", "M", "M")
-                        .param("me", "me"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("iniziale")));
-
-        verify(membersStore, never()).save(any());
+                .andExpect(content().string(containsString("indietro alla home")))
+                .andExpect(content().string(not(containsString("/riepilogo"))))
+                .andExpect(content().string(not(containsString("/battitore"))));
     }
 
     /**
-     * Assertion cambiata di proposito rispetto a prima, quando il salvataggio veniva
-     * rifiutato ad asta iniziata: nomi e iniziali sono ora sempre modificabili. Il
-     * registro lega gli acquisti agli id, che questa pagina non tocca, quindi cambia
-     * solo cio' che si legge a schermo — e cambia subito, senza riavvio.
+     * E' la conferma a creare l'asta, non il click sulla home: prima la cartella
+     * nasceva subito e chi tornava indietro lasciava un'asta vuota nell'elenco.
      */
     @Test
-    void editingIsStillAllowedOncePurchasesExistBecauseOnlyTheDisplayedNamesChange() throws Exception {
-        when(auctionService.state()).thenReturn(AuctionProjector.project(RULES, PARTICIPANTS,
-                id -> Role.D,
-                List.of(new AuctionEvent.PlayerPurchased(1, Instant.now(), "d1", "me", 20))));
+    void laConfermaSalvaTuttoEcreaLastaConIlSuoNome() throws Exception {
+        mockMvc.perform(fullForm())
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/asta"));
 
-        mockMvc.perform(post("/impostazioni/partecipanti")
-                        .param("id", "me", "marco")
-                        .param("name", "Gigi", "Marco")
-                        .param("initial", "I", "M")
-                        .param("me", "me"))
-                .andExpect(status().isOk());
-
-        verify(membersStore).save(List.of(
-                new Participant("me", "Gigi", 'I', true),
-                new Participant("marco", "Marco", 'M', false)));
+        verify(scoringStore).save(any());
+        verify(membersStore).save(any());
+        verify(auctionStore).save(new AuctionSettings(7, true));
+        verify(auctionRuntime).createNew("Lega Brontolo");
     }
 
-    /** Il salvataggio deve rimettere in servizio l'intera catena, non aggiornarla a pezzi. */
+    /** Senza nome non si parte, e soprattutto non si crea nulla. */
     @Test
-    void savingParticipantsRebuildsTheWholeChainAtOnce() throws Exception {
-        mockMvc.perform(post("/impostazioni/partecipanti")
-                        .param("id", "me", "marco")
-                        .param("name", "Gigi", "Marco")
-                        .param("initial", "I", "M")
-                        .param("me", "me"))
+    void senzaNomeNonSiCreaAlcunAsta() throws Exception {
+        String html = mockMvc.perform(form("", "7", "I", "M"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        // Senza apostrofo: Thymeleaf lo rende come &#39; e cercare il testo cosi' come
+        // e' scritto nel codice darebbe un test che fallisce per la ragione sbagliata.
+        assertThat(html).contains("Dai un nome all");
+
+        verify(auctionRuntime, never()).createNew(anyString());
+        verify(scoringStore, never()).save(any());
+    }
+
+    /**
+     * Gli errori delle tre sezioni si mostrano insieme: con un solo invio, riportarne
+     * uno per volta costringerebbe a tre giri per scoprire tre problemi gia' tutti
+     * visibili.
+     */
+    @Test
+    void gliErroriDelleTreSezioniCompaionoInsieme() throws Exception {
+        String html = mockMvc.perform(form("", "0", "X", "X"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(html).contains("Dai un nome all");
+        assertThat(html).contains("durata del timer");
+        assertThat(html).contains("iniziale");
+
+        verify(auctionRuntime, never()).createNew(anyString());
+    }
+
+    // ---------- asta in corso ----------
+
+    /**
+     * Le regole non vengono nemmeno lette: i campi disabilitati fermano il browser,
+     * questo ferma una richiesta costruita a mano.
+     */
+    @Test
+    void adAstaApertaLeRegoleNonVengonoSalvate() throws Exception {
+        running();
+
+        mockMvc.perform(fullForm().param("assist", "99"))
                 .andExpect(status().isOk());
 
+        verify(scoringStore, never()).save(any());
+        verify(auctionRuntime, never()).createNew(anyString());
+    }
+
+    /** Nomi e battitore restano modificabili, e in vigore subito. */
+    @Test
+    void adAstaApertaNomiEbattitoreRestanoModificabili() throws Exception {
+        running();
+
+        mockMvc.perform(fullForm().param("name", "Anna", "Marco"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("già in vigore")));
+
+        verify(membersStore).save(any());
+        verify(auctionStore).save(new AuctionSettings(7, true));
         verify(auctionRuntime).rebuild();
+        assertThat(auctionSettings.get()).isEqualTo(new AuctionSettings(7, true));
     }
 
+    /** Ad asta aperta si torna all'asta, e da nessun'altra parte. */
     @Test
-    void aRejectedParticipantsSaveDoesNotRebuildAnything() throws Exception {
-        mockMvc.perform(post("/impostazioni/partecipanti")
-                        .param("id", "me", "marco")
-                        .param("name", "Io", "Marco")
-                        .param("initial", "M", "M")
-                        .param("me", "me"))
-                .andExpect(status().isOk());
+    void adAstaApertaSiTornaSoloAllAsta() throws Exception {
+        running();
 
-        verify(auctionRuntime, never()).rebuild();
+        mockMvc.perform(get("/impostazioni"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("indietro all")))
+                .andExpect(content().string(containsString("Sola lettura")))
+                .andExpect(content().string(containsString("Lega Brontolo")))
+                .andExpect(content().string(not(containsString("/riepilogo"))));
     }
 }

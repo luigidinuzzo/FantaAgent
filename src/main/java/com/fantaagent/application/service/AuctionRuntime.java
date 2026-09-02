@@ -41,8 +41,13 @@ import java.util.function.Supplier;
 public class AuctionRuntime {
 
     /** Una riga della home: come riconoscere l'asta e a che punto era rimasta. */
-    public record AuctionSummary(String id, Instant lastWritten, int purchases, Role phase,
-                                 boolean selected) {
+    public record AuctionSummary(String id, String name, Instant lastWritten, int purchases,
+                                 Role phase, boolean selected) {
+
+        /** Il nome se c'e', altrimenti l'identificativo: i registri vecchi non lo hanno. */
+        public String label() {
+            return name == null || name.isBlank() ? id : name;
+        }
     }
 
     private final LeagueRules rules;
@@ -88,6 +93,36 @@ public class AuctionRuntime {
         return current.auctionId();
     }
 
+    /** Il nome dell'asta scelta, o il suo identificativo se il registro non lo porta. */
+    public String currentAuctionLabel() {
+        String id = current.auctionId();
+        if (id == null) {
+            return null;
+        }
+        String name = nameOf(current.store().load());
+        return name == null || name.isBlank() ? id : name;
+    }
+
+    /**
+     * Il nome sta sull'evento di avvio; e' assente nei registri scritti prima che il
+     * campo esistesse, e li' questo metodo restituisce null.
+     *
+     * <p>L'ordine dei passaggi non e' indifferente. Prima si trova l'evento, POI se ne
+     * legge il nome: {@code findFirst()} costruisce un {@link java.util.Optional} sul
+     * primo elemento e lancia NullPointerException se quell'elemento e' null, quindi
+     * mappare al nome PRIMA di findFirst faceva esplodere la home su ogni asta priva di
+     * nome — cioe' su tutte quelle esistenti. {@code Optional.map}, al contrario, di un
+     * risultato nullo fa un Optional vuoto, che e' esattamente il significato voluto.
+     */
+    private static String nameOf(List<AuctionEvent> events) {
+        return events.stream()
+                .filter(AuctionEvent.AuctionStarted.class::isInstance)
+                .map(AuctionEvent.AuctionStarted.class::cast)
+                .findFirst()
+                .map(AuctionEvent.AuctionStarted::name)
+                .orElse(null);
+    }
+
     public boolean hasAuction() {
         return current.hasAuction();
     }
@@ -124,10 +159,22 @@ public class AuctionRuntime {
      *
      * @return l'identificatore creato
      */
-    public synchronized String createNew() {
+    /**
+     * Crea l'asta e la seleziona.
+     *
+     * <p>Va chiamata quando le impostazioni sono state CONFERMATE, non quando l'utente
+     * dichiara di voler cominciare: prima creava la cartella al primo click, e chi si
+     * fermava alla schermata di conferma lasciava dietro di se' un'asta vuota che
+     * restava per sempre nell'elenco della home.
+     *
+     * @param name nome scelto dall'utente; l'identificativo resta invece derivato dalla
+     *             data, perche' e' anche il nome della cartella su disco e deve restare
+     *             ordinabile e privo di caratteri che un filesystem rifiuta.
+     */
+    public synchronized String createNew(String name) {
         String id = freeId(LocalDate.now().toString());
         AuctionEventStore store = archive.open(id);
-        store.appendWithNextSeq(seq -> new AuctionEvent.AuctionStarted(seq, Instant.now()));
+        store.appendWithNextSeq(seq -> new AuctionEvent.AuctionStarted(seq, Instant.now(), name));
         RuntimeSnapshot base = current;
         current = new RuntimeSnapshot(id, store, base.participants(), base.chain());
         return id;
@@ -153,6 +200,7 @@ public class AuctionRuntime {
         for (String id : archive.auctionIds()) {
             List<AuctionEvent> events = archive.open(id).load();
             summaries.add(new AuctionSummary(id,
+                    nameOf(events),
                     archive.lastWritten(id).orElse(null),
                     countPurchases(events),
                     lastPhase(events, rules.firstPhase()),

@@ -52,7 +52,7 @@ class AuctionProjectorTest {
     @Test
     void purchasesLandInTheRightSquads() {
         AuctionState state = project(List.of(
-                new AuctionEvent.AuctionStarted(1, T),
+                new AuctionEvent.AuctionStarted(1, T, "prova"),
                 new AuctionEvent.PlayerPurchased(2, T, "sommer", "me", 30),
                 new AuctionEvent.PlayerPurchased(3, T, "bastoni", "marco", 45)));
 
@@ -65,7 +65,7 @@ class AuctionProjectorTest {
     @Test
     void phaseAdvancesAreApplied() {
         AuctionState state = project(List.of(
-                new AuctionEvent.AuctionStarted(1, T),
+                new AuctionEvent.AuctionStarted(1, T, "prova"),
                 new AuctionEvent.PhaseAdvanced(2, T, Role.D)));
 
         assertThat(state.currentPhase()).isEqualTo(Role.D);

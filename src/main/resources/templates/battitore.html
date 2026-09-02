@@ -53,14 +53,26 @@
   </div>
 
   <div id="results" th:fragment="results" class="battitore-results">
-    <!-- Nome, ruolo, squadra e quotazione: i quattro dati del listone cartaceo. -->
-    <button type="button" class="battitore-result" th:each="p : ${results}"
-            th:hx-get="@{/battitore/popup(playerId=${p.id})}"
-            hx-target="#bidderMount" hx-swap="innerHTML">
-      <span class="battitore-result-name" th:text="${p.name}">Dimarco</span>
-      <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
-      <span class="battitore-result-price" th:text="${p.listPrice}">12</span>
-    </button>
+    <!--
+      Due azioni per giocatore, perche' due sono le situazioni. "batti" apre il
+      countdown quando c'e' davvero un'asta; "assegna" salta il timer quando nessuno
+      rilancia e il giocatore va a chi lo ha chiamato. Un timer che scorre su un'asta
+      che non c'e' e' solo tempo perso davanti a tutti.
+      Nome, ruolo, squadra e quotazione: i quattro dati del listone cartaceo.
+    -->
+    <div class="battitore-result" th:each="p : ${results}">
+      <button type="button" class="battitore-result-main"
+              th:hx-get="@{/battitore/popup(playerId=${p.id})}"
+              hx-target="#bidderMount" hx-swap="innerHTML">
+        <span class="battitore-result-name" th:text="${p.name}">Dimarco</span>
+        <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
+        <span class="battitore-result-price" th:text="${p.listPrice}">12</span>
+        <span class="battitore-result-go">⏱ batti</span>
+      </button>
+      <button type="button" class="battitore-result-now"
+              th:hx-get="@{/battitore/popup(playerId=${p.id}, subito=true)}"
+              hx-target="#bidderMount" hx-swap="innerHTML">assegna</button>
+    </div>
   </div>
 
   <div id="board" th:fragment="board" class="battitore-board-wrap">

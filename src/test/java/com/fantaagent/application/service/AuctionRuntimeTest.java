@@ -68,12 +68,51 @@ class AuctionRuntimeTest {
 
     @Test
     void creaUnAstaSottoUnIdentificativoDatato() {
-        String id = runtime.createNew();
+        String id = runtime.createNew("prova");
 
         assertThat(id).isEqualTo(LocalDate.now().toString());
         assertThat(runtime.hasAuction()).isTrue();
         assertThat(runtime.snapshot().auctionId()).isEqualTo(id);
         assertThat(tmp.resolve("auctions").resolve(id).resolve("events.jsonl")).exists();
+    }
+
+    /**
+     * Un registro scritto prima che il nome dell'asta esistesse.
+     *
+     * <p>Questo test nasce da un difetto vero: la home lanciava NullPointerException su
+     * ogni asta priva di nome, cioe' su tutte quelle gia' esistenti. Il codice diceva a
+     * parole di gestire il caso, ma nessun test lo copriva perche' ogni asta creata nei
+     * test aveva un nome — si provava il percorso nuovo, mai il dato vecchio.
+     */
+    @Test
+    void unRegistroSenzaNomeSiElencaEmostraLIdentificativo() throws Exception {
+        String vecchia = "2026-08-30";
+        Path dir = tmp.resolve("auctions").resolve(vecchia);
+        Files.createDirectories(dir);
+        // Esattamente la forma scritta prima che il campo "name" esistesse.
+        Files.writeString(dir.resolve("events.jsonl"),
+                "{\"type\":\"AuctionStarted\",\"seq\":1,\"at\":\"2026-08-30T08:00:00Z\"}\n");
+
+        List<AuctionRuntime.AuctionSummary> auctions = runtime.auctions();
+
+        assertThat(auctions).extracting(AuctionRuntime.AuctionSummary::id).contains(vecchia);
+        AuctionRuntime.AuctionSummary summary = auctions.stream()
+                .filter(a -> a.id().equals(vecchia)).findFirst().orElseThrow();
+        assertThat(summary.name()).isNull();
+        assertThat(summary.label()).isEqualTo(vecchia);
+
+        runtime.select(vecchia);
+        assertThat(runtime.currentAuctionLabel()).isEqualTo(vecchia);
+    }
+
+    /** E con un nome, e' il nome a comparire. */
+    @Test
+    void unRegistroConNomeMostraIlNome() {
+        runtime.createNew("Lega Brontolo");
+
+        assertThat(runtime.currentAuctionLabel()).isEqualTo("Lega Brontolo");
+        assertThat(runtime.auctions()).extracting(AuctionRuntime.AuctionSummary::label)
+                .contains("Lega Brontolo");
     }
 
     /**
@@ -91,7 +130,7 @@ class AuctionRuntimeTest {
                 + "\"participantId\":\"me\",\"price\":6}\n");
         String prima = Files.readString(log);
 
-        String nuovo = runtime.createNew();
+        String nuovo = runtime.createNew("prova");
 
         assertThat(nuovo).isNotEqualTo(oggi);
         assertThat(Files.readString(log)).isEqualTo(prima);
@@ -131,7 +170,7 @@ class AuctionRuntimeTest {
 
     @Test
     void cambiareAstaNonPerdeIlLogDiQuellaLasciata() throws Exception {
-        String prima = runtime.createNew();
+        String prima = runtime.createNew("prova");
         Path logPrima = tmp.resolve("auctions").resolve(prima).resolve("events.jsonl");
         long righePrima = Files.readAllLines(logPrima).size();
 
@@ -147,7 +186,7 @@ class AuctionRuntimeTest {
 
     @Test
     void laRicostruzioneNonCambiaAstaSelezionata() {
-        String id = runtime.createNew();
+        String id = runtime.createNew("prova");
         ValuationChain prima = runtime.snapshot().chain();
 
         runtime.rebuild();

@@ -31,26 +31,37 @@
 <body>
 <div class="wrap">
 
-  <a class="back" th:href="@{/}">← home</a>
-  <a class="back" th:href="@{/asta}" style="margin-left:1rem">torna all'asta</a>
-  <a class="back" th:href="@{/riepilogo}" style="margin-left:1rem">riepilogo</a>
-  <h1>Impostazioni della lega</h1>
+  <!--
+    Un solo collegamento, e porta indietro. Da questa pagina non si salta altrove: in
+    preparazione si torna alla home (dove si puo' anche scegliere di riprendere
+    un'asta invece che iniziarne una), ad asta aperta si torna all'asta. La schermata
+    d'asta e' l'unica da cui si raggiunge tutto il resto.
+  -->
+  <a class="back" th:href="${setup} ? @{/} : @{/asta}"
+     th:text="${setup} ? '← indietro alla home' : '← indietro all\'asta'">← indietro</a>
 
-  <!-- Cosa e' vivo e cosa e' congelato, detto prima di ogni campo: chi cambia un
-       numero deve sapere in anticipo se avra' effetto adesso o non lo avra' affatto. -->
-  <p class="note">
-    <b>Nomi e iniziali dei partecipanti: sempre modificabili, effetto immediato.</b>
-    Gli id restano fissi ed è agli id che il registro dell'asta lega gli acquisti già
-    fatti, quindi cambia solo ciò che leggi a schermo: nulla di quanto registrato perde
-    significato.<br>
-    <b>Regole di punteggio: modificabili a effetto immediato finché l'asta non ha
-    acquisti, bloccate dal primo acquisto in poi.</b> I prezzi già pagati sono stati
-    decisi sotto le vecchie regole: mescolare due modelli di punteggio dentro la stessa
-    asta rende la rosa risultante impossibile da interpretare.<br>
-    In entrambi i casi il salvataggio ricostruisce per intero proiezioni, livelli di
-    rimpiazzo e motore di valutazione e li rimette in servizio in blocco. Nessun
-    riavvio, e nessun momento in cui metà dei numeri viene da un modello e metà
-    dall'altro.
+  <h1 th:text="${setup} ? 'Prepara la nuova asta' : 'Impostazioni'">Impostazioni</h1>
+  <p class="note" th:unless="${setup}">
+    Asta in corso: <b th:text="${currentAuction}">Asta di prova</b>
+  </p>
+
+  <!-- Cosa e' modificabile e cosa no, detto prima di ogni campo: chi cambia un numero
+       deve sapere in anticipo se avra' effetto o non lo avra' affatto. -->
+  <p class="note" th:if="${setup}">
+    Qui si decide tutto ciò che governa l'asta. <b>Un solo pulsante conferma l'intero
+    blocco</b> — regole, battitore e partecipanti insieme — ed è quel pulsante a creare
+    l'asta: finché non lo premi non viene scritto nulla su disco, e tornando indietro
+    non resta alcuna asta vuota nell'elenco.
+  </p>
+  <p class="note" th:unless="${setup}">
+    <b>Le regole di punteggio sono in sola lettura</b> mentre un'asta è aperta. Da esse
+    discendono i punti attesi di ogni giocatore e quindi ogni raccomandazione già data:
+    cambiarle adesso renderebbe i prezzi già pagati impossibili da interpretare, metà
+    decisi con un modello e metà con un altro. Per usare regole diverse si comincia una
+    nuova asta dalla home.<br>
+    <b>Nomi dei partecipanti e preferenze del battitore restano sempre modificabili</b>,
+    con effetto immediato: non entrano in alcun calcolo, e il registro lega gli acquisti
+    agli id, non ai nomi.
   </p>
 
   <p class="note" th:if="${fileGoverns}">
@@ -59,12 +70,10 @@
   </p>
 
   <div class="banner ok" th:if="${saved}">
-    ✓ Impostazioni salvate in <span th:text="${file}">…</span>.
+    ✓ Impostazioni salvate.
     <div class="note" style="margin:.4rem 0 0">
-      <b>Le nuove regole sono già in vigore.</b> Punti attesi di tutti i giocatori,
-      livelli di rimpiazzo e motore di valutazione sono stati ricostruiti per intero e
-      rimessi in servizio insieme: da adesso ogni numero che vedi viene dalle regole
-      nuove, nessuno da quelle vecchie.
+      <b>Sono già in vigore</b>, senza riavviare: nomi nel tabellone e nella barra
+      comando, e durata del countdown al prossimo battitore che apri.
     </div>
   </div>
 
@@ -73,17 +82,25 @@
     <ul><li th:each="e : ${errors}" th:text="${e}">errore</li></ul>
   </div>
 
-  <div class="banner warn" th:if="${locked}">
-    L'asta ha già degli acquisti: le regole di punteggio sono in sola lettura. I prezzi
-    già pagati sono stati decisi sotto queste regole, e mescolare due modelli di
-    punteggio dentro la stessa asta renderebbe la rosa risultante impossibile da
-    interpretare. Per correggerle, annulla prima gli acquisti registrati — oppure
-    comincia una nuova asta dalla home e configurala prima di partire.
-  </div>
-
   <form method="post" th:action="@{/impostazioni}">
 
+    <h2 th:if="${setup}">NOME DELL'ASTA</h2>
+    <p class="note" th:if="${setup}">
+      Serve a riconoscerla nell'elenco quando ne avrai più di una. Data e ora vengono
+      registrate da sole: non metterle nel nome.
+    </p>
+    <div class="grid" th:if="${setup}">
+      <label for="auctionName">Nome</label>
+      <input type="text" id="auctionName" name="auctionName" maxlength="60"
+             placeholder="es. Lega Brontolo 2026-27" th:value="${auctionName}"
+             style="width:22rem">
+    </div>
+
     <h2>MODIFICATORE DI DIFESA</h2>
+    <!-- Ad asta aperta i campi che seguono sono disabilitati. Il divieto non vive qui:
+         SettingsController, in quella modalita', non legge nemmeno questi parametri. Un
+         campo disabilitato ferma il browser, non una richiesta costruita a mano. -->
+    <p class="note" th:unless="${setup}"><b>Sola lettura</b> — asta in corso.</p>
     <p class="note">
       Si applica alla media voto di portiere più i migliori difensori schierati.
       Il bonus è in <b>fantapunti a giornata</b> aggiunti al totale della squadra —
@@ -94,24 +111,24 @@
     <div class="grid">
       <label for="enabled">Modificatore attivo</label>
       <input type="checkbox" id="enabled" name="defenceModifierEnabled" value="true"
-             th:checked="${settings.defenceModifierEnabled}" th:disabled="${locked}">
+             th:checked="${settings.defenceModifierEnabled}" th:disabled="${!setup}">
 
       <label for="dc">Difensori conteggiati<br>
         <span class="note" style="margin:0">oltre al portiere</span></label>
       <input type="number" id="dc" name="defendersCounted" min="1" max="10"
-             th:value="${settings.defendersCounted}" th:disabled="${locked}">
+             th:value="${settings.defendersCounted}" th:disabled="${!setup}">
     </div>
 
     <div class="table-scroll">
       <table class="steps">
         <tr><th>da media</th><th>bonus</th></tr>
         <tr th:each="s : ${settings.thresholds}">
-          <td><input type="text" name="minAverage" th:value="${s.minAverage}" th:disabled="${locked}"></td>
-          <td><input type="text" name="bonus" th:value="${s.bonus}" th:disabled="${locked}"></td>
+          <td><input type="text" name="minAverage" th:value="${s.minAverage}" th:disabled="${!setup}"></td>
+          <td><input type="text" name="bonus" th:value="${s.bonus}" th:disabled="${!setup}"></td>
         </tr>
         <tr th:each="i : ${#numbers.sequence(1, 4)}">
-          <td><input type="text" name="minAverage" value="" placeholder="es. 6,75" th:disabled="${locked}"></td>
-          <td><input type="text" name="bonus" value="" placeholder="es. 2,5" th:disabled="${locked}"></td>
+          <td><input type="text" name="minAverage" value="" placeholder="es. 6,75" th:disabled="${!setup}"></td>
+          <td><input type="text" name="bonus" value="" placeholder="es. 2,5" th:disabled="${!setup}"></td>
         </tr>
       </table>
     </div>
@@ -121,29 +138,29 @@
     <h2>BONUS E MALUS</h2>
     <div class="grid">
       <label for="gbP">Gol portiere</label>
-      <input type="text" id="gbP" name="goalBonusP" th:value="${settings.goalBonus['P']}" th:disabled="${locked}">
+      <input type="text" id="gbP" name="goalBonusP" th:value="${settings.goalBonus['P']}" th:disabled="${!setup}">
       <label for="gbD">Gol difensore</label>
-      <input type="text" id="gbD" name="goalBonusD" th:value="${settings.goalBonus['D']}" th:disabled="${locked}">
+      <input type="text" id="gbD" name="goalBonusD" th:value="${settings.goalBonus['D']}" th:disabled="${!setup}">
       <label for="gbC">Gol centrocampista</label>
-      <input type="text" id="gbC" name="goalBonusC" th:value="${settings.goalBonus['C']}" th:disabled="${locked}">
+      <input type="text" id="gbC" name="goalBonusC" th:value="${settings.goalBonus['C']}" th:disabled="${!setup}">
       <label for="gbA">Gol attaccante</label>
-      <input type="text" id="gbA" name="goalBonusA" th:value="${settings.goalBonus['A']}" th:disabled="${locked}">
+      <input type="text" id="gbA" name="goalBonusA" th:value="${settings.goalBonus['A']}" th:disabled="${!setup}">
       <label for="as">Assist</label>
-      <input type="text" id="as" name="assist" th:value="${settings.assist}" th:disabled="${locked}">
+      <input type="text" id="as" name="assist" th:value="${settings.assist}" th:disabled="${!setup}">
       <label for="ps">Rigore segnato</label>
-      <input type="text" id="ps" name="penaltyScored" th:value="${settings.penaltyScored}" th:disabled="${locked}">
+      <input type="text" id="ps" name="penaltyScored" th:value="${settings.penaltyScored}" th:disabled="${!setup}">
       <label for="pm">Rigore sbagliato</label>
-      <input type="text" id="pm" name="penaltyMissed" th:value="${settings.penaltyMissed}" th:disabled="${locked}">
+      <input type="text" id="pm" name="penaltyMissed" th:value="${settings.penaltyMissed}" th:disabled="${!setup}">
       <label for="pp">Rigore parato</label>
-      <input type="text" id="pp" name="penaltySaved" th:value="${settings.penaltySaved}" th:disabled="${locked}">
+      <input type="text" id="pp" name="penaltySaved" th:value="${settings.penaltySaved}" th:disabled="${!setup}">
       <label for="yc">Ammonizione</label>
-      <input type="text" id="yc" name="yellowCard" th:value="${settings.yellowCard}" th:disabled="${locked}">
+      <input type="text" id="yc" name="yellowCard" th:value="${settings.yellowCard}" th:disabled="${!setup}">
       <label for="rc">Espulsione</label>
-      <input type="text" id="rc" name="redCard" th:value="${settings.redCard}" th:disabled="${locked}">
+      <input type="text" id="rc" name="redCard" th:value="${settings.redCard}" th:disabled="${!setup}">
       <label for="gc">Gol subito</label>
-      <input type="text" id="gc" name="goalConceded" th:value="${settings.goalConceded}" th:disabled="${locked}">
+      <input type="text" id="gc" name="goalConceded" th:value="${settings.goalConceded}" th:disabled="${!setup}">
       <label for="cs">Porta inviolata</label>
-      <input type="text" id="cs" name="cleanSheet" th:value="${settings.cleanSheet}" th:disabled="${locked}">
+      <input type="text" id="cs" name="cleanSheet" th:value="${settings.cleanSheet}" th:disabled="${!setup}">
     </div>
     <p class="note">
       I file di statistiche di Fantacalcio.it non contengono le porte inviolate: quando
@@ -160,13 +177,10 @@
     <div class="grid">
       <label for="conf">Regole verificate sul regolamento</label>
       <input type="checkbox" id="conf" name="confirmed" value="true"
-             th:checked="${settings.confirmed}" th:disabled="${locked}">
+             th:checked="${settings.confirmed}" th:disabled="${!setup}">
     </div>
 
-    <button class="save" type="submit" th:disabled="${locked}">Salva impostazioni</button>
-  </form>
-
-  <h2>BATTITORE D'ASTA</h2>
+    <h2>BATTITORE D'ASTA</h2>
   <p class="note">
     Il countdown che parte quando apri il battitore su un giocatore, e che si riazzera
     ad ogni rilancio. Scaduto, compare la scelta di chi se l'è aggiudicato.
@@ -178,21 +192,7 @@
     cinque secondi sono troppi per la tua stanza.
   </p>
 
-  <div class="banner ok" th:if="${bidderSaved}">
-    ✓ Preferenze del battitore salvate in <span th:text="${bidderFile}">…</span>.
-    <div class="note" style="margin:.4rem 0 0">
-      <b>Sono già in vigore</b>: il prossimo battitore che apri usa la nuova durata,
-      senza riavviare l'applicazione.
-    </div>
-  </div>
-
-  <div class="banner bad" th:if="${bidderErrors}">
-    Preferenze del battitore non salvate:
-    <ul><li th:each="e : ${bidderErrors}" th:text="${e}">errore</li></ul>
-  </div>
-
-  <form method="post" th:action="@{/impostazioni/asta}">
-    <table class="steps">
+        <table class="steps">
       <tr>
         <td><label for="bidTimerSeconds">durata del countdown (secondi)</label></td>
         <td>
@@ -210,10 +210,7 @@
         </td>
       </tr>
     </table>
-    <button class="save" type="submit">Salva preferenze del battitore</button>
-  </form>
-
-  <h2>PARTECIPANTI</h2>
+    <h2>PARTECIPANTI</h2>
   <p class="note" th:if="${membersFileGoverns}">
     Questi nomi vengono da <span th:text="${membersFile}">…</span> e hanno la precedenza
     su quelli di <code>application.yml</code>, che vengono ignorati.
@@ -225,27 +222,12 @@
     acquisti già registrati.
   </p>
 
-  <div class="banner ok" th:if="${membersSaved}">
-    ✓ Partecipanti salvati in <span th:text="${membersFile}">…</span>.
-    <div class="note" style="margin:.4rem 0 0">
-      <b>I nuovi nomi e le nuove iniziali sono già in vigore</b>, tabellone e barra
-      comando compresi. Gli id non sono cambiati, quindi gli acquisti già registrati
-      restano attribuiti esattamente a chi li ha fatti.
-    </div>
-  </div>
-
-  <div class="banner bad" th:if="${membersErrors}">
-    Partecipanti non salvati:
-    <ul><li th:each="e : ${membersErrors}" th:text="${e}">errore</li></ul>
-  </div>
-
-  <p class="note">
+      <p class="note">
     Nomi e iniziali restano modificabili anche ad asta iniziata, e hanno effetto subito:
     il registro lega gli acquisti agli id, non ai nomi, quindi rinominare cambia solo
     quello che leggi. L'id, infatti, non è modificabile da qui.
   </p>
 
-  <form method="post" th:action="@{/impostazioni/partecipanti}">
     <div class="table-scroll">
       <table class="steps">
         <tr><th>nome</th><th>iniziale</th><th>tu</th></tr>
@@ -261,7 +243,13 @@
         </tr>
       </table>
     </div>
-    <button class="save" type="submit">Salva partecipanti</button>
+    <!--
+      L'unico pulsante della pagina. Conferma insieme regole, battitore e partecipanti:
+      con tre pulsanti separati si poteva uscire avendone premuto uno solo, convinti di
+      aver salvato tutto.
+    -->
+    <button class="save" type="submit"
+            th:text="${setup} ? 'Conferma e inizia l\'asta' : 'Salva impostazioni'">Salva</button>
   </form>
 
 </div>

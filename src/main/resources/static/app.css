@@ -334,3 +334,32 @@ body.projected { font-size:1.25rem; }
 .battitore-export:hover { color:var(--fg); border-color:var(--pos); }
 /* Con ESPORTA presente, è quello a spingere a destra: il link di uscita lo segue. */
 .battitore-export + .battitore-exit { margin-left:.6rem; }
+
+/* L'identificativo sotto al nome dell'asta: serve solo a chi va a cercare la cartella
+   su disco, quindi sta più in piccolo e più spento del nome. */
+.auction-id { font-size:var(--fs-xs); }
+
+/* Due azioni per riga di risultato: "batti" occupa la riga intera perché è il caso
+   normale, "assegna" sta accanto, più piccolo, per quando non c'è asta da battere. */
+.battitore-result { display:flex; align-items:stretch; gap:0; border:1px solid var(--line); }
+.battitore-result:hover { border-color:var(--focus); }
+.battitore-result-main { display:flex; align-items:baseline; gap:.7rem; font:inherit;
+                         font-size:1.15rem; background:#1c1c1c; color:var(--fg);
+                         border:none; padding:.5rem .9rem; cursor:pointer;
+                         text-align:left; }
+.battitore-result-main:hover { background:#2a2a2a; }
+.battitore-result-go { color:var(--dim); font-size:var(--fs-sm); }
+.battitore-result-now { font:inherit; font-size:var(--fs-sm); background:#161616;
+                        color:var(--dim); border:none; border-left:1px solid var(--line);
+                        padding:.5rem .8rem; cursor:pointer; }
+.battitore-result-now:hover { background:#2a2a2a; color:var(--fg); }
+
+/* Interrompe il countdown: sta fra i controlli di rilancio, spento, perché è la via
+   d'uscita e non la strada principale. */
+.bidder-now { background:transparent !important; color:var(--dim) !important;
+              border-color:var(--line) !important; }
+.bidder-now:hover { color:var(--fg) !important; }
+
+/* Dice quale dei due popup si sta guardando. Senza, un'assegnazione diretta e un
+   countdown già scaduto avrebbero lo stesso aspetto. */
+.bidder-mode { font-size:var(--fs-sm); margin-top:.15rem; }

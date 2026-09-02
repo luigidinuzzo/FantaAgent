@@ -1,7 +1,6 @@
 package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.application.service.AuctionRuntime;
-import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.config.AuctionSettingsStore;
@@ -26,74 +25,86 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Schermata delle impostazioni di lega.
+ * Schermata delle impostazioni, in due modalita' decise da una sola condizione: se
+ * un'asta e' gia' aperta o no.
  *
- * <p>Due parti, due regimi diversi, decisi con l'utente.
+ * <p><b>PREPARAZIONE</b> — nessuna asta scelta. Si arriva qui dalla home avendo detto
+ * "nuova asta". Tutto e' modificabile, compreso il nome da dare all'asta, e un solo
+ * pulsante conferma l'intero blocco: regole, partecipanti e battitore insieme. E' quel
+ * pulsante — non il click sulla home — a CREARE l'asta. Prima la cartella nasceva al
+ * primo click, e chi tornava indietro lasciava dietro di se' un'asta vuota che restava
+ * per sempre nell'elenco.
  *
- * <p><b>Nomi e iniziali dei partecipanti: sempre modificabili, effetto immediato.</b>
- * Gli id restano fissi ed è agli id che il registro lega gli acquisti, quindi cambia
- * solo ciò che si legge a schermo: il significato di quanto già registrato non si
- * muove. Le iniziali devono restare uniche perché la barra comando risolve
- * l'acquirente proprio dall'iniziale, e uno e un solo partecipante resta marcato come
- * "tu".
+ * <p><b>ASTA IN CORSO</b> — si arriva qui dalla schermata d'asta. Le regole di punteggio
+ * sono in sola lettura: da esse discendono i punti attesi di ogni giocatore e quindi
+ * ogni raccomandazione gia' data, e cambiarle a meta' asta renderebbe i prezzi gia'
+ * pagati impossibili da interpretare — meta' decisi con un modello, meta' con un altro.
+ * Nomi dei partecipanti e preferenze del battitore restano invece sempre modificabili:
+ * non entrano in alcun calcolo, e il registro lega gli acquisti agli id, non ai nomi.
  *
- * <p><b>Regole di punteggio: modificabili a effetto immediato finché non c'è nessun
- * acquisto, bloccate dal primo in poi.</b> I prezzi già pagati sono stati decisi sotto
- * le vecchie regole: mescolare due modelli di punteggio dentro la stessa asta rende la
- * rosa risultante impossibile da interpretare — metà dei numeri direbbe una cosa e metà
- * un'altra, senza che si veda quale.
- *
- * <p>In entrambi i casi il salvataggio non aggiorna nulla a pezzi: chiede a
- * {@link com.fantaagent.application.service.AuctionRuntime} di ricostruire l'intera
- * catena (proiezioni, livelli di rimpiazzo, modificatori, completamento, motore) e di
- * pubblicarla in blocco. Nessun riavvio, e nessun istante in cui metà dei numeri viene
- * da un modello e metà dall'altro.
+ * <p>In entrambe le modalita' il salvataggio non aggiorna nulla a pezzi: chiede a
+ * {@link AuctionRuntime} di ricostruire l'intera catena e di pubblicarla in blocco.
  */
 @Controller
 public class SettingsController {
 
+    /** Oltre non e' piu' un nome ma un appunto, e non entra in nessuna intestazione. */
+    private static final int MAX_NAME = 60;
+
     private final ScoringSettingsStore store;
-    private final AuctionService auction;
     private final LeagueMembersSettingsStore membersStore;
     private final AuctionRuntime runtime;
     private final AuctionSettingsStore auctionStore;
     private final AuctionSettingsHolder auctionSettings;
 
-    public SettingsController(ScoringSettingsStore store, AuctionService auction,
+    public SettingsController(ScoringSettingsStore store,
                               LeagueMembersSettingsStore membersStore, AuctionRuntime runtime,
                               AuctionSettingsStore auctionStore,
                               AuctionSettingsHolder auctionSettings) {
         this.store = store;
-        this.auction = auction;
         this.membersStore = membersStore;
         this.runtime = runtime;
         this.auctionStore = auctionStore;
         this.auctionSettings = auctionSettings;
     }
 
-    /** Le regole in vigore adesso, non quelle lette all'avvio. */
+    /** Nessuna asta aperta significa che la si sta preparando. */
+    private boolean setup() {
+        return !runtime.hasAuction();
+    }
+
     private ScoringRules current() {
         return runtime.snapshot().chain().scoring();
     }
 
-    /** I partecipanti in vigore adesso, non quelli letti all'avvio. */
     private List<Participant> participants() {
         return runtime.snapshot().participants();
     }
 
     @GetMapping("/impostazioni")
     public String show(Model model) {
+        populate(model);
         model.addAttribute("settings", currentSettings());
-        model.addAttribute("locked", auctionStarted());
-        model.addAttribute("file", store.file().toString());
-        model.addAttribute("fileGoverns", store.exists());
-        populateMembersShell(model);
         model.addAttribute("members", participants());
+        model.addAttribute("bidderSettings", auctionSettings.get());
+        model.addAttribute("auctionName", "");
         return "settings";
     }
 
+    /**
+     * Un solo pulsante per l'intero blocco.
+     *
+     * <p>Gli errori delle tre sezioni si raccolgono e si mostrano insieme: con un solo
+     * invio, riportarne uno per volta costringerebbe a tre giri per scoprire tre
+     * problemi che erano visibili tutti dall'inizio.
+     *
+     * <p>Ad asta in corso i parametri di punteggio non vengono nemmeno letti. Non e'
+     * ridondante rispetto ai campi disabilitati nel form: quelli impediscono di
+     * modificarli dal browser, questo impedisce di modificarli, punto.
+     */
     @PostMapping("/impostazioni")
     public String save(
+            @RequestParam(name = "auctionName", defaultValue = "") String auctionName,
             @RequestParam(defaultValue = "false") boolean defenceModifierEnabled,
             @RequestParam(defaultValue = "3") int defendersCounted,
             @RequestParam(name = "minAverage", required = false) List<String> minAverages,
@@ -111,33 +122,121 @@ public class SettingsController {
             @RequestParam(defaultValue = "0") String goalConceded,
             @RequestParam(defaultValue = "0") String cleanSheet,
             @RequestParam(defaultValue = "false") boolean confirmed,
+            @RequestParam(name = "id", required = false) List<String> ids,
+            @RequestParam(name = "name", required = false) List<String> names,
+            @RequestParam(name = "initial", required = false) List<String> initials,
+            @RequestParam(name = "me", required = false) String ownerId,
+            @RequestParam(defaultValue = "5") int bidTimerSeconds,
+            @RequestParam(defaultValue = "false") boolean beepEnabled,
             Model model) {
 
-        model.addAttribute("file", store.file().toString());
-        model.addAttribute("locked", auctionStarted());
-        model.addAttribute("fileGoverns", store.exists());
-        populateMembersShell(model);
-        model.addAttribute("members", participants());
+        boolean preparing = setup();
+        List<String> errors = new ArrayList<>();
 
-        if (auctionStarted()) {
-            model.addAttribute("settings", currentSettings());
-            model.addAttribute("errors", List.of(
-                    "L'asta è già iniziata: le regole di punteggio non si possono più "
-                    + "cambiare, altrimenti le raccomandazioni già date smetterebbero di "
-                    + "essere ricostruibili. Annulla gli acquisti registrati se hai "
-                    + "davvero bisogno di correggerle."));
+        String name = auctionName == null ? "" : auctionName.trim();
+        if (preparing) {
+            if (name.isEmpty()) {
+                errors.add("Dai un nome all'asta: serve a riconoscerla nell'elenco "
+                        + "quando ne avrai piu' di una.");
+            } else if (name.length() > MAX_NAME) {
+                errors.add("Il nome dell'asta non puo' superare " + MAX_NAME + " caratteri.");
+            }
+        }
+
+        ScoringSettings scoring = preparing
+                ? parseScoring(defenceModifierEnabled, defendersCounted, minAverages, bonuses,
+                        goalBonusP, goalBonusD, goalBonusC, goalBonusA, assist, penaltyScored,
+                        penaltyMissed, penaltySaved, yellowCard, redCard, goalConceded,
+                        cleanSheet, confirmed, errors)
+                : currentSettings();
+        if (preparing) {
+            errors.addAll(ScoringSettingsValidator.validate(scoring));
+        }
+
+        List<Participant> members = parseMembers(ids, names, initials, ownerId);
+        errors.addAll(LeagueMembersSettingsValidator.validate(members));
+
+        AuctionSettings bidder = new AuctionSettings(bidTimerSeconds, beepEnabled);
+        errors.addAll(AuctionSettingsValidator.validate(bidder));
+
+        if (!errors.isEmpty()) {
+            populate(model);
+            model.addAttribute("errors", errors);
+            model.addAttribute("settings", scoring);
+            model.addAttribute("members", members.isEmpty() ? participants() : members);
+            model.addAttribute("bidderSettings", bidder);
+            model.addAttribute("auctionName", name);
             return "settings";
         }
 
-        List<String> errors = new ArrayList<>();
+        if (preparing) {
+            store.save(scoring);
+        }
+        membersStore.save(members);
+        auctionStore.save(bidder);
+        auctionSettings.set(bidder);
+        // Ricostruzione atomica: la catena nuova viene costruita per intero e pubblicata
+        // in un colpo solo, prima che l'asta la usi.
+        runtime.rebuild();
+
+        if (preparing) {
+            runtime.createNew(name);
+            return "redirect:/asta";
+        }
+
+        populate(model);
+        model.addAttribute("settings", currentSettings());
+        model.addAttribute("members", participants());
+        model.addAttribute("bidderSettings", auctionSettings.get());
+        model.addAttribute("auctionName", "");
+        model.addAttribute("saved", true);
+        return "settings";
+    }
+
+    private void populate(Model model) {
+        model.addAttribute("setup", setup());
+        model.addAttribute("file", store.file().toString());
+        model.addAttribute("fileGoverns", store.exists());
+        model.addAttribute("membersFile", membersStore.file().toString());
+        model.addAttribute("membersFileGoverns", membersStore.exists());
+        model.addAttribute("bidderFile", auctionStore.file().toString());
+        model.addAttribute("bidderMinSeconds", AuctionSettingsValidator.MIN_SECONDS);
+        model.addAttribute("bidderMaxSeconds", AuctionSettingsValidator.MAX_SECONDS);
+        model.addAttribute("currentAuction", runtime.currentAuctionLabel());
+    }
+
+    private static List<Participant> parseMembers(List<String> ids, List<String> names,
+                                                  List<String> initials, String ownerId) {
+        List<Participant> members = new ArrayList<>();
+        if (ids == null || names == null || initials == null) {
+            return members;
+        }
+        int rows = Math.min(ids.size(), Math.min(names.size(), initials.size()));
+        for (int i = 0; i < rows; i++) {
+            String id = ids.get(i);
+            String name = names.get(i) == null ? "" : names.get(i).trim();
+            String initialRaw = initials.get(i) == null ? "" : initials.get(i).trim();
+            char initial = initialRaw.isEmpty() ? ' ' : initialRaw.charAt(0);
+            members.add(new Participant(id, name, initial, id.equals(ownerId)));
+        }
+        return members;
+    }
+
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    private static ScoringSettings parseScoring(
+            boolean defenceModifierEnabled, int defendersCounted,
+            List<String> minAverages, List<String> bonuses,
+            String goalBonusP, String goalBonusD, String goalBonusC, String goalBonusA,
+            String assist, String penaltyScored, String penaltyMissed, String penaltySaved,
+            String yellowCard, String redCard, String goalConceded, String cleanSheet,
+            boolean confirmed, List<String> errors) {
         List<ScoringSettings.Step> steps = parseSteps(minAverages, bonuses, errors);
         Map<Role, Double> goalBonus = new EnumMap<>(Role.class);
         goalBonus.put(Role.P, parse(goalBonusP, "bonus gol portiere", errors));
         goalBonus.put(Role.D, parse(goalBonusD, "bonus gol difensore", errors));
         goalBonus.put(Role.C, parse(goalBonusC, "bonus gol centrocampista", errors));
         goalBonus.put(Role.A, parse(goalBonusA, "bonus gol attaccante", errors));
-
-        ScoringSettings candidate = new ScoringSettings(
+        return new ScoringSettings(
                 defenceModifierEnabled, defendersCounted, steps, goalBonus,
                 parse(assist, "assist", errors),
                 parse(penaltyScored, "rigore segnato", errors),
@@ -148,128 +247,6 @@ public class SettingsController {
                 parse(goalConceded, "gol subito", errors),
                 parse(cleanSheet, "porta inviolata", errors),
                 confirmed);
-
-        errors.addAll(ScoringSettingsValidator.validate(candidate));
-
-        model.addAttribute("settings", candidate);
-        if (!errors.isEmpty()) {
-            model.addAttribute("errors", errors);
-            return "settings";
-        }
-
-        store.save(candidate);
-        // Ricostruzione atomica: la nuova catena viene costruita per intero e poi
-        // pubblicata in un colpo solo. Da qui in avanti ogni numero mostrato viene dal
-        // nuovo modello, nessuno dal vecchio.
-        runtime.rebuild();
-        model.addAttribute("settings", currentSettings());
-        model.addAttribute("fileGoverns", store.exists());
-        model.addAttribute("saved", true);
-        return "settings";
-    }
-
-    /**
-     * Rinomina i partecipanti senza toccare i loro id: sono gli id, non i nomi, a cui
-     * il registro dell'asta lega gli acquisti già fatti. Proprio per questo la modifica
-     * resta permessa anche ad asta iniziata — cambia solo ciò che si legge a schermo —
-     * e ha effetto subito, senza riavvio.
-     */
-    @PostMapping("/impostazioni/partecipanti")
-    public String saveParticipants(
-            @RequestParam(name = "id") List<String> ids,
-            @RequestParam(name = "name") List<String> names,
-            @RequestParam(name = "initial") List<String> initials,
-            @RequestParam(name = "me", required = false) String ownerId,
-            Model model) {
-
-        model.addAttribute("settings", currentSettings());
-        model.addAttribute("locked", auctionStarted());
-        model.addAttribute("file", store.file().toString());
-        model.addAttribute("fileGoverns", store.exists());
-        populateMembersShell(model);
-
-        List<Participant> candidate = new ArrayList<>();
-        int rows = Math.min(ids.size(), Math.min(names.size(), initials.size()));
-        for (int i = 0; i < rows; i++) {
-            String id = ids.get(i);
-            String name = names.get(i) == null ? "" : names.get(i).trim();
-            String initialRaw = initials.get(i) == null ? "" : initials.get(i).trim();
-            char initial = initialRaw.isEmpty() ? ' ' : initialRaw.charAt(0);
-            candidate.add(new Participant(id, name, initial, id.equals(ownerId)));
-        }
-
-        List<String> errors = LeagueMembersSettingsValidator.validate(candidate);
-        model.addAttribute("members", candidate);
-        if (!errors.isEmpty()) {
-            model.addAttribute("membersErrors", errors);
-            return "settings";
-        }
-
-        membersStore.save(candidate);
-        runtime.rebuild();
-        model.addAttribute("members", participants());
-        model.addAttribute("membersFileGoverns", true);
-        model.addAttribute("membersSaved", true);
-        return "settings";
-    }
-
-    private void populateMembersShell(Model model) {
-        model.addAttribute("membersFile", membersStore.file().toString());
-        model.addAttribute("membersFileGoverns", membersStore.exists());
-        populateBidderShell(model);
-    }
-
-    private void populateBidderShell(Model model) {
-        model.addAttribute("bidderSettings", auctionSettings.get());
-        model.addAttribute("bidderFile", auctionStore.file().toString());
-        model.addAttribute("bidderMinSeconds", AuctionSettingsValidator.MIN_SECONDS);
-        model.addAttribute("bidderMaxSeconds", AuctionSettingsValidator.MAX_SECONDS);
-    }
-
-    /**
-     * Le preferenze del battitore, salvabili SEMPRE — anche ad asta iniziata, a
-     * differenza delle regole di punteggio.
-     *
-     * <p>Non e' una svista ne' una scorciatoia: la durata di un countdown non entra in
-     * nessun calcolo e non cambia il significato di un solo numero gia' registrato. Il
-     * momento in cui ci si accorge che cinque secondi sono troppi e' esattamente mentre
-     * si batte l'asta, e obbligare a fermarsi per cambiarli renderebbe la preferenza
-     * inutile proprio quando serve.
-     *
-     * <p>Nessuna chiamata a {@code runtime.rebuild()}, per la stessa ragione: non c'e'
-     * nessuna catena di valutazione che dipenda da questi valori. Ricostruirla sarebbe
-     * lavoro inutile travestito da prudenza.
-     */
-    @PostMapping("/impostazioni/asta")
-    public String saveAuctionSettings(
-            @RequestParam(defaultValue = "5") int bidTimerSeconds,
-            @RequestParam(defaultValue = "false") boolean beepEnabled,
-            Model model) {
-
-        model.addAttribute("settings", currentSettings());
-        model.addAttribute("locked", auctionStarted());
-        model.addAttribute("file", store.file().toString());
-        model.addAttribute("fileGoverns", store.exists());
-        populateMembersShell(model);
-        model.addAttribute("members", participants());
-
-        AuctionSettings candidate = new AuctionSettings(bidTimerSeconds, beepEnabled);
-        List<String> errors = AuctionSettingsValidator.validate(candidate);
-        if (!errors.isEmpty()) {
-            model.addAttribute("bidderSettings", candidate);
-            model.addAttribute("bidderErrors", errors);
-            return "settings";
-        }
-
-        auctionStore.save(candidate);
-        auctionSettings.set(candidate);
-        model.addAttribute("bidderSettings", candidate);
-        model.addAttribute("bidderSaved", true);
-        return "settings";
-    }
-
-    private boolean auctionStarted() {
-        return !auction.state().holdings().isEmpty();
     }
 
     private ScoringSettings currentSettings() {

@@ -96,9 +96,17 @@ public class BattitoreController {
         return "battitore :: results";
     }
 
-    /** Il popup, senza alcuna valutazione: vedi il commento in testa alla classe. */
+    /**
+     * Il popup, senza alcuna valutazione: vedi il commento in testa alla classe.
+     *
+     * @param subito apre gia' in aggiudicazione, saltando il countdown. Serve quando
+     *               non c'e' un'asta da battere — il giocatore va a chi lo ha chiamato,
+     *               nessuno rilancia — e aspettare lo scadere di un timer che non
+     *               misura nulla sarebbe solo tempo perso davanti a tutti.
+     */
     @GetMapping("/battitore/popup")
-    public String popup(@RequestParam String playerId, Model model) {
+    public String popup(@RequestParam String playerId,
+                        @RequestParam(defaultValue = "false") boolean subito, Model model) {
         Optional<Player> player = catalog.byId(playerId);
         if (player.isEmpty()) {
             return "fragments/empty :: empty";
@@ -107,6 +115,7 @@ public class BattitoreController {
         model.addAttribute("bidder", new ViewModels.PublicBidder(player.get(),
                 settings.bidTimerSeconds(), settings.beepEnabled()));
         model.addAttribute("participants", auction.participants());
+        model.addAttribute("immediate", subito);
         return "fragments/bidder-public :: bidder";
     }
 
