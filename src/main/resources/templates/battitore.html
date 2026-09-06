@@ -45,8 +45,16 @@
     comando della schermata d'asta: si digita il nome e le righe compaiono sotto.
     Nessun prezzo da inserire qui — quello lo decide il popup, rilancio dopo rilancio.
   */-->
+  <!--/*
+    Gli attributi contro il completamento automatico non sono ridondanti fra loro:
+    Chrome ignora deliberatamente autocomplete="off" su molti campi, e i gestori di
+    password (1Password, LastPass) aprono un proprio menu che nessun attributo
+    standard ferma — da qui data-1p-ignore e data-lpignore. Su uno schermo proiettato
+    quel menu copre i risultati e mostra alla stanza cosa e' stato cercato prima.
+  */-->
   <div class="battitore-search">
-    <input type="text" id="battitoreSearch" name="q" autocomplete="off" autofocus
+    <input type="text" id="battitoreSearch" name="q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           data-1p-ignore data-lpignore="true" autofocus
            placeholder="cerca un giocatore nel listone…"
            hx-get="/battitore/cerca" hx-trigger="keyup changed delay:150ms"
            hx-target="#results" hx-swap="outerHTML">
