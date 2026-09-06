@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -135,6 +136,29 @@ class AuctionControllerTest {
 
         verify(auctionService, org.mockito.Mockito.never())
                 .recordPurchase(anyString(), anyString(), anyInt());
+    }
+
+    /**
+     * I due popup di battitura — questo e quello della pagina proiettata — devono
+     * offrire gli STESSI comandi. Si batte allo stesso modo da entrambe le parti, e due
+     * finestre diverse per lo stesso gesto costringono a reimparare dove sono i
+     * bottoni. "aggiudica ora" esisteva solo di la', quindi qui non si poteva fermare
+     * il countdown quando uno dei due si ritirava.
+     *
+     * <p>Le uniche differenze legittime sono in senso opposto: qui ci sono il max bid e
+     * l'avviso di superamento, che sulla pagina proiettata non devono arrivare.
+     */
+    @Test
+    void ilPopupPrivatoOffreGliStessiComandiDiQuelloProiettato() throws Exception {
+        String html = mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html)
+                .contains("bidderClockBox").contains("bidderBid").contains("bidderNow")
+                .contains("bidderJump").contains("bidderResume").contains("bidderAssign");
+        // E in piu', solo qui:
+        assertThat(html).contains("bidderMax").contains("bidderOver");
     }
 
     /**

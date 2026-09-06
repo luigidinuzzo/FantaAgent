@@ -80,6 +80,13 @@
       <input type="number" id="bidderJump" min="1" inputmode="numeric"
              aria-label="porta l'offerta a una cifra precisa">
     </label>
+    <!--/*
+      Ferma il countdown e passa all'aggiudicazione. Serve quando uno dei due
+      contendenti si ritira: senza, si dovrebbe restare a guardare un timer che scorre
+      su un'asta gia' decisa. C'era solo sul popup proiettato, e la differenza non
+      aveva alcuna ragione — la stessa cosa succede da entrambe le parti.
+    */-->
+    <button type="button" id="bidderNow" class="bidder-now">aggiudica ora →</button>
   </div>
 
   <!--/*

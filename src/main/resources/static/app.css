@@ -493,10 +493,14 @@ body.projected { font-size: 1.15rem; }
 
 /* ---- Il popup del battitore --------------------------------------------- */
 
+/* Un solo popup di battitura, stesse misure sulle due pagine. Erano diverse — 30rem
+   contro 38rem, countdown 4.5rem contro 6.5 — senza che la differenza avesse una
+   ragione: si batte allo stesso modo da entrambe le parti, e due finestre diverse per
+   lo stesso gesto costringono a reimparare dove sono i comandi. */
 .bidder {
   border: 1px solid var(--border-strong); border-radius: var(--r-lg);
   background: var(--surface); color: var(--fg);
-  padding: 0; width: min(30rem, 92vw);
+  padding: 0; width: min(38rem, 94vw);
   box-shadow: var(--shadow-3);
 }
 .bidder::backdrop { background: rgba(2,6,23,.8); backdrop-filter: blur(2px); }
@@ -524,7 +528,7 @@ body.projected { font-size: 1.15rem; }
 .bidder-numbers-solo { grid-template-columns: 1fr; }
 .bidder-numbers label { display: block; font-size: var(--fs-xs); color: var(--fg-muted);
                         text-transform: uppercase; letter-spacing: .08em; }
-.bidder-numbers b.big { font-size: 2.5rem; font-weight: 700; letter-spacing: -.02em; }
+.bidder-numbers b.big { font-weight: 700; letter-spacing: -.02em; }
 .bidder.over-max #bidderPrice { color: var(--neg); }
 .bidder-over {
   margin: 0; padding: var(--s-2) var(--s-5); background: var(--neg-deep); color: var(--neg);
@@ -563,9 +567,8 @@ body.projected { font-size: 1.15rem; }
 .bidder-resume { background: transparent; color: var(--fg-muted); }
 .bidder-error { flex: 1 1 100%; margin: 0; color: var(--neg); font-size: var(--fs-sm); }
 
-.bidder-public { width: min(38rem, 94vw); }
-.bidder-public #bidderPrice { font-size: 3.5rem; }
-.bidder-public .bidder-bid { font-size: 1.4rem; }
+.bidder-numbers b.big { font-size: 3.25rem; }
+.bidder-bid { font-size: 1.3rem; }
 
 /* ---- Home --------------------------------------------------------------- */
 
@@ -601,8 +604,7 @@ body.projected { font-size: 1.15rem; }
    l'icona la ereditano, quindi ingrandire il popup proiettato e' una riga sola e non
    puo' lasciarne indietro una delle due parti — che e' esattamente come l'icona era
    finita a otto pixel. */
-.bidder-clock { font-size: 4.5rem; }
-.bidder-public .bidder-clock { font-size: 6.5rem; }
+.bidder-clock { font-size: 6.5rem; }
 /* Il simbolo dell'orologio è un carattere, quindi si dimensiona in em sul
    contenitore: una sola misura governa numero e simbolo insieme, e ingrandire il
    popup proiettato resta una riga sola. */
