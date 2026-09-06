@@ -43,7 +43,7 @@
     volta. role="timer" dice cos'e' quel numero a chi non lo vede.
   */-->
   <div class="bidder-clock" id="bidderClockBox">
-    <span class="bidder-clock-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+    <span class="bidder-clock-icon" aria-hidden="true">⏱</span>
     <span id="bidderClock" role="timer" aria-live="assertive"
           th:text="${bidder.timerSeconds}">5</span>
   </div>

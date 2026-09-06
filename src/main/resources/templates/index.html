@@ -132,7 +132,7 @@
              il caso opposto — prezzo gia' noto, nessuna asta da battere. */-->
         <button type="button" class="bidder-open"
                 th:hx-get="@{/asta/battitore(playerId=${panel.analysis.player.id})}"
-                hx-target="#bidderMount" hx-swap="innerHTML"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> batti l'asta</button>
+                hx-target="#bidderMount" hx-swap="innerHTML">⏱ batti l'asta</button>
 
         <!--/* Complementa la barra comando per chi non conosce "bast 47 m": un prezzo
              condiviso (precompilato con maxBid) e un bottone per partecipante, che

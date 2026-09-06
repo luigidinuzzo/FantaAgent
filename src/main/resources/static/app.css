@@ -579,13 +579,6 @@ body.projected { font-size: 1.15rem; }
   font-size: var(--fs-xs); font-weight: 650; color: var(--fg);
 }
 
-/* Icone vettoriali in linea, non caratteri emoji: un'emoji si rende a colori e con
-   una forma diversa su ogni sistema, e su uno schermo proiettato si nota. Ereditano
-   colore e dimensione dal testo, quindi seguono da sole ogni stato del bottone. */
-/* 1.15em e non 1em: a 13 px di testo un quadrato di 13 px con tratto sottile
-   sparisce, e un bottone che contiene solo quello sembra vuoto — e' successo. */
-.ico { width: 1.15em; height: 1.15em; vertical-align: -.2em; flex: none; stroke-width: 2.25; }
-.battitore-result-go .ico { margin-right: 2px; }
 
 /* L'icona accanto al countdown: legata alla dimensione del numero, non al testo di
    pagina, cosi' resta proporzionata anche sullo schermo proiettato dove il countdown
@@ -596,11 +589,13 @@ body.projected { font-size: 1.15rem; }
    finita a otto pixel. */
 .bidder-clock { font-size: 4.5rem; }
 .bidder-public .bidder-clock { font-size: 6.5rem; }
-.bidder-clock-icon { color: var(--fg-subtle); margin-right: var(--s-3); }
-.bidder-clock-icon .ico { width: .3em; height: .3em; vertical-align: .06em; stroke-width: 2; }
+/* Il simbolo dell'orologio è un carattere, quindi si dimensiona in em sul
+   contenitore: una sola misura governa numero e simbolo insieme, e ingrandire il
+   popup proiettato resta una riga sola. */
+.bidder-clock-icon { font-size: .28em; color: var(--fg-subtle); margin-right: var(--s-2);
+                     vertical-align: .9em; }
 
-/* Icona PIU' etichetta. Un bottone con la sola icona si capisce solo se si conosce
-   gia' l'icona: il "title" compare al passaggio del mouse, che in asta non si usa, e
-   non esiste affatto da tastiera. */
-.bidder-open { display: inline-flex; align-items: center; gap: var(--s-1); }
+/* Simbolo PIU' etichetta. Un bottone con il solo simbolo si capisce solo se si
+   conosce gia' il simbolo: il "title" compare al passaggio del mouse, che in asta non
+   si usa, e da tastiera non esiste affatto. */
 .bidder-open-row { font-size: var(--fs-xs); padding: var(--s-1) var(--s-2); }
