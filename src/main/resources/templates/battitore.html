@@ -46,7 +46,7 @@
     Nessun prezzo da inserire qui — quello lo decide il popup, rilancio dopo rilancio.
   */-->
   <div class="battitore-search">
-    <input id="battitoreSearch" name="q" autocomplete="off" autofocus
+    <input type="text" id="battitoreSearch" name="q" autocomplete="off" autofocus
            placeholder="cerca un giocatore nel listone…"
            hx-get="/battitore/cerca" hx-trigger="keyup changed delay:150ms"
            hx-target="#results" hx-swap="outerHTML">
@@ -61,14 +61,13 @@
       Nome, ruolo, squadra e quotazione: i quattro dati del listone cartaceo.
     */-->
     <div class="battitore-result" th:each="p : ${results}">
-      <button type="button" class="battitore-result-main"
+      <span class="battitore-result-info">
+        <span class="battitore-result-name" th:text="${p.name}">Maignan</span>
+        <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">P · Milan</span>
+      </span>
+      <button type="button" class="battitore-result-bid"
               th:hx-get="@{/battitore/popup(playerId=${p.id})}"
-              hx-target="#bidderMount" hx-swap="innerHTML">
-        <span class="battitore-result-name" th:text="${p.name}">Dimarco</span>
-        <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">D · Inter</span>
-        <span class="battitore-result-price" th:text="${p.listPrice}">12</span>
-        <span class="battitore-result-go">⏱ batti</span>
-      </button>
+              hx-target="#bidderMount" hx-swap="innerHTML">⏱ batti</button>
       <button type="button" class="battitore-result-now"
               th:hx-get="@{/battitore/popup(playerId=${p.id}, subito=true)}"
               hx-target="#bidderMount" hx-swap="innerHTML">assegna</button>

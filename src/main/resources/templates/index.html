@@ -83,7 +83,7 @@
        quindi non si svuota mentre l'utente sta ancora digitando (era il difetto A). */-->
   <section>
     <form id="cmdForm" hx-post="/command" hx-target="#main" hx-swap="outerHTML">
-      <input id="cmd" name="cmd" autocomplete="off" autofocus
+      <input type="text" id="cmd" name="cmd" autocomplete="off" autofocus
              placeholder="giocatore  prezzo  iniziale"
              hx-get="/fragments/main" hx-trigger="keyup changed delay:120ms"
              hx-target="#main" hx-swap="outerHTML">

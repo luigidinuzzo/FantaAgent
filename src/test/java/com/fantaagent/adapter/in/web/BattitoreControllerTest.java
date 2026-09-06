@@ -131,18 +131,33 @@ class BattitoreControllerTest {
     }
 
     /**
-     * La ricerca restituisce i quattro dati del listone cartaceo e nient'altro: nome,
-     * ruolo, squadra, quotazione.
+     * La ricerca proiettata mostra chi e' il giocatore e nient'altro: nome, ruolo,
+     * squadra.
+     *
+     * <p>Nemmeno la quotazione del listone, che pure e' stampata sul foglio di tutti:
+     * su uno schermo condiviso un numero accanto al nome ancora il rilancio della
+     * stanza, e non c'e' ragione di suggerirlo noi.
      */
     @Test
-    void laRicercaRestituisceSoloDatiDelListone() throws Exception {
+    void laRicercaMostraSoloChiEilGiocatore() throws Exception {
         mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Dimarco")))
                 .andExpect(content().string(containsString("Inter")))
-                .andExpect(content().string(containsString("12")))
+                .andExpect(content().string(not(containsString("12"))))
                 .andExpect(content().string(not(containsString("data-max-bid"))))
                 .andExpect(content().string(not(containsString("MAX BID"))));
+    }
+
+    /** Due azioni, e devono essere due bottoni: prima "batti" era una scritta. */
+    @Test
+    void ogniRisultatoOffreDueBottoni() throws Exception {
+        String html = mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(html).contains("battitore-result-bid").contains("battitore-result-now");
+        assertThat(html.split("<button", -1).length - 1).as("due bottoni per riga").isEqualTo(2);
     }
 
     /**

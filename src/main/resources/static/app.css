@@ -143,7 +143,12 @@ button:hover:not(:disabled) { background: var(--surface-3); border-color: var(--
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { color: var(--fg-subtle); cursor: default; opacity: .55; }
 
-input[type=text], input[type=number], select {
+/* Anche input:not([type]): un campo senza type e' pur sempre un campo di testo, e
+   senza questa clausola resta col nero su nero del browser. E' successo alla barra di
+   ricerca del battitore e alla barra comando dell'asta, cioe' ai due punti in cui si
+   scrive piu' spesso — un selettore che descrive l'attributo invece dell'elemento si
+   rompe in silenzio la prima volta che qualcuno dimentica di scriverlo. */
+input[type=text], input[type=number], input[type=search], input:not([type]), select {
   font: inherit;
   background: #060B18;
   color: var(--fg);
@@ -152,7 +157,9 @@ input[type=text], input[type=number], select {
   padding: var(--s-2) var(--s-3);
   transition: border-color var(--t);
 }
-input[type=text]:hover, input[type=number]:hover, select:hover { border-color: var(--border-strong); }
+input[type=text]:hover, input[type=number]:hover, input:not([type]):hover, select:hover {
+  border-color: var(--border-strong);
+}
 input:disabled, select:disabled { color: var(--fg-subtle); background: #0A0F1E; }
 input[type=number] { font-variant-numeric: tabular-nums; }
 
@@ -437,27 +444,34 @@ body.projected { font-size: 1.15rem; }
   width: 100%; font-size: 1.5rem; padding: var(--s-3) var(--s-4);
   border-radius: var(--r); background: var(--surface);
 }
-.battitore-results { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0 var(--s-5); }
+.battitore-results { display: flex; flex-wrap: wrap; gap: var(--s-3); margin: var(--s-3) 0 var(--s-5); }
+
+/* Una riga di risultato porta il nome e DUE bottoni veri, non un'area cliccabile con
+   dentro una scritta che sembra un'etichetta. Prima "batti" stava dentro il riquadro
+   del giocatore e non si leggeva come un comando: chi guardava vedeva un solo
+   bottone, "assegna", e quindi una sola strada. */
 .battitore-result {
-  display: flex; align-items: stretch;
-  border: 1px solid var(--border); border-radius: var(--r); overflow: hidden;
-  transition: border-color var(--t);
+  display: flex; align-items: center; gap: var(--s-3);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
 }
-.battitore-result:hover { border-color: var(--pos); }
-.battitore-result-main {
-  display: flex; align-items: baseline; gap: var(--s-3);
-  font-size: 1.05rem; background: var(--surface); border: none; border-radius: 0;
-  padding: var(--s-3) var(--s-4); text-align: left;
-}
+.battitore-result-info { display: flex; align-items: baseline; gap: var(--s-3);
+                         font-size: 1.05rem; margin-right: var(--s-3); }
 .battitore-result-name { font-weight: 650; }
-.battitore-result-price { color: var(--fg-muted); font-variant-numeric: tabular-nums; }
-.battitore-result-go { color: var(--fg-subtle); font-size: var(--fs-sm); }
-.battitore-result-now {
-  font-size: var(--fs-sm); background: var(--surface-2); color: var(--fg-muted);
-  border: none; border-left: 1px solid var(--border); border-radius: 0;
-  padding: var(--s-3) var(--s-4);
+
+/* "batti" è la strada normale, quindi è il bottone che si vede per primo; "assegna"
+   è l'eccezione — nessun rilancio — e resta più spento. Entrambi hanno l'aspetto di
+   un bottone: era il punto. */
+.battitore-result-bid, .battitore-result-now {
+  font-size: var(--fs-sm); padding: var(--s-2) var(--s-4); white-space: nowrap;
 }
-.battitore-result-now:hover { background: var(--surface-3); color: var(--fg); }
+.battitore-result-bid {
+  background: var(--surface-3); color: var(--fg);
+  border-color: var(--border-strong); font-weight: 600;
+}
+.battitore-result-bid:hover { background: var(--pos); color: #04120A; border-color: var(--pos); }
+.battitore-result-now { background: transparent; color: var(--fg-muted); }
+.battitore-result-now:hover { background: var(--surface-2); color: var(--fg); }
 
 .battitore-message {
   padding: var(--s-2) var(--s-4); margin: 0 0 var(--s-4);
