@@ -173,7 +173,7 @@ Tre principi che governano le scelte, in ordine:
 │  │                                 │  │  │ ██████░░░ 6/25 │  │
 │  │  ▸ budget · alternativa · conc. │  │  └────────────────┘  │
 │  │                                 │  │       …              │
-│  │  [ 47 ] [ Anna ▾ ]  ASSEGNA    │  │                      │
+│  │  [ 47 ] [ Anna  ▾ ]  ASSEGNA    │  │                      │
 │  └─────────────────────────────────┘  │                      │
 │                                       │                      │
 │  GIOCATORI FASE D          312 disp.  │                      │
