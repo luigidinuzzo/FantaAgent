@@ -64,6 +64,11 @@ public class ApiExceptionHandler {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-request", e.getMessage());
     }
 
+    @ExceptionHandler(NothingToUndoException.class)
+    ProblemDetail nothingToUndo(NothingToUndoException e) {
+        return problem(HttpStatus.CONFLICT, "nothing-to-undo", e.getMessage());
+    }
+
     static ProblemDetail problem(HttpStatusCode status, String slug, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
         problem.setType(URI.create(TYPE_BASE + slug));
