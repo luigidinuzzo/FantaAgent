@@ -85,8 +85,26 @@ public final class ViewModels {
     public record PublicBidder(Player player, int timerSeconds, boolean beepEnabled) {
     }
 
-    /** Una riga della pagina di riepilogo: un giocatore posseduto e il prezzo pagato. */
+    /**
+     * Una casella della rosa: un giocatore posseduto col prezzo pagato, oppure vuota.
+     *
+     * <p>Le caselle vuote esistono perche' le colonne dei partecipanti devono restare
+     * INCOLONNATE: se ogni colonna elencasse solo i giocatori comprati, la riga n di
+     * una squadra sarebbe uno slot diverso da quella di un'altra, e per capire a che
+     * punto e' ciascuno bisognerebbe contare invece di guardare.
+     *
+     * <p>{@code name} nullo significa casella libera; {@code seq} e {@code price} non
+     * hanno allora alcun significato e valgono zero.
+     */
     public record RecapPlayer(long seq, String name, int price) {
+
+        public static RecapPlayer empty() {
+            return new RecapPlayer(0, null, 0);
+        }
+
+        public boolean filled() {
+            return name != null;
+        }
     }
 
     /**

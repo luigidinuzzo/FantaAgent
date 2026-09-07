@@ -113,6 +113,29 @@ class RecapControllerTest {
                 .andExpect(content().string(containsString("/battitore/esporta")));
     }
 
+    /**
+     * Ogni ruolo mostra tutte le sue caselle, piene o vuote, cosi' la riga n e' lo
+     * stesso slot per tutti i partecipanti. Elencando solo i giocatori comprati, per
+     * capire a che punto e' ciascuno bisognerebbe contare invece di guardare.
+     */
+    @Test
+    void ogniColonnaMostraTutteLeCaselleDellaRosa() throws Exception {
+        when(auctionService.state()).thenReturn(stateWithOnePurchase());
+
+        String html = mockMvc.perform(get("/riepilogo"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        int celle = html.split("class=\"recap-player", -1).length - 1;
+        int perColonna = RULES.rosterSize();
+        org.assertj.core.api.Assertions.assertThat(celle)
+                .as("una casella per slot, per ogni partecipante")
+                .isEqualTo(perColonna * PARTICIPANTS.size());
+        // Con un solo acquisto, tutte le altre sono libere.
+        org.assertj.core.api.Assertions.assertThat(html.split("is-empty", -1).length - 1)
+                .isEqualTo(perColonna * PARTICIPANTS.size() - 1);
+    }
+
     @Test
     void thePageLinksBackToTheAuctionPage() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());

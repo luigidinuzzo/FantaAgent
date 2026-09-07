@@ -400,10 +400,19 @@ button.save:hover:not(:disabled) { background: #16A34A; }
   margin: var(--s-3) 0 var(--s-1); border-top: 1px solid var(--border); padding-top: var(--s-2);
 }
 .recap-role:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+/* Le caselle hanno tutte la stessa altezza, piene o vuote, e il nome non va MAI a
+   capo: e' cio' che tiene la riga n allineata fra tutte le squadre. Un nome lungo che
+   andasse su due righe sfaserebbe da li' in giu' l'intera colonna, e per capire a che
+   punto e' ciascuno bisognerebbe contare invece di guardare. */
 .recap-player {
   display: flex; justify-content: space-between; align-items: center;
   gap: var(--s-2); padding: var(--s-1) 0; font-size: var(--fs-sm);
+  white-space: nowrap;
 }
+.recap-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Una casella libera si vede come spazio in attesa, non come dato assente. */
+.recap-player.is-empty { color: var(--fg-subtle); }
+.recap-player.is-empty .recap-name { opacity: .45; }
 .recap-player .price { color: var(--fg-muted); }
 .recap-player form { margin: 0; }
 .revoke-btn {
@@ -498,8 +507,7 @@ body.projected { font-size: 1.15rem; }
 }
 .battitore-board-wrap .recap-col { min-width: 0; padding: var(--s-3); }
 /* Un nome lungo taglia invece di allargare la colonna e riportare lo scorrimento. */
-.battitore-board-wrap .recap-col h2,
-.battitore-board-wrap .recap-player > span:first-child {
+.battitore-board-wrap .recap-col h2 {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 .battitore-board-wrap .recap-player { gap: var(--s-2); }

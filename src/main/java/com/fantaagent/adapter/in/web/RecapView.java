@@ -33,6 +33,28 @@ final class RecapView {
     private RecapView() {
     }
 
+    /**
+     * L'elenco portato al numero di caselle previsto dal regolamento, aggiungendo
+     * caselle vuote in coda.
+     *
+     * <p>E' cio' che tiene INCOLONNATE le squadre: la riga n e' lo stesso slot per
+     * tutti, quindi lo stato di avanzamento di ciascuno si vede guardando invece di
+     * contare. Un elenco piu' lungo degli slot non viene troncato — non dovrebbe
+     * accadere, perche' recordPurchase rifiuta un acquisto senza slot liberi, ma
+     * nascondere un giocatore davvero posseduto sarebbe peggio di una riga in piu'.
+     */
+    private static List<ViewModels.RecapPlayer> padded(List<ViewModels.RecapPlayer> owned,
+                                                       int slots) {
+        if (owned.size() >= slots) {
+            return owned;
+        }
+        List<ViewModels.RecapPlayer> full = new ArrayList<>(owned);
+        while (full.size() < slots) {
+            full.add(ViewModels.RecapPlayer.empty());
+        }
+        return List.copyOf(full);
+    }
+
     static List<ViewModels.RecapColumn> columns(AuctionService auction) {
         AuctionState state = auction.state();
         List<ViewModels.RecapColumn> columns = new ArrayList<>();
@@ -41,11 +63,12 @@ final class RecapView {
 
             Map<Role, List<ViewModels.RecapPlayer>> byRole = new EnumMap<>(Role.class);
             for (Role role : ROLE_ORDER) {
-                byRole.put(role, squad.holdings().stream()
+                List<ViewModels.RecapPlayer> owned = squad.holdings().stream()
                         .filter(h -> h.role() == role)
                         .map(h -> new ViewModels.RecapPlayer(
                                 h.seq(), auction.playerName(h), h.price()))
-                        .toList());
+                        .toList();
+                byRole.put(role, padded(owned, state.rules().slots(role)));
             }
 
             columns.add(new ViewModels.RecapColumn(participant.id(), participant.name(),

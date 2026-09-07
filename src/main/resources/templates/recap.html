@@ -34,10 +34,10 @@
 
       <div th:each="role : ${roles}">
         <div class="recap-role" th:text="${role}">P</div>
-        <p class="empty-role" th:if="${col.byRole.get(role).isEmpty()}">—</p>
-        <div class="recap-player" th:each="p : ${col.byRole.get(role)}">
-          <span th:text="${p.name}">Bastoni</span>
-          <span class="price" th:text="${p.price}">47</span>
+        <div class="recap-player" th:each="p : ${col.byRole.get(role)}"
+               th:classappend="${p.filled()} ? '' : 'is-empty'">
+          <span class="recap-name" th:text="${p.filled()} ? ${p.name} : '—'">Bastoni</span>
+          <span class="price" th:text="${p.filled()} ? ${p.price} : ''">47</span>
           <!--/* Due click, decisi con l'utente: il primo trasforma il bottone in
                "conferma?", il secondo rimuove davvero. Il comportamento vive in
                recap.js: qui il bottone è type="button", non type="submit", quindi
@@ -47,7 +47,7 @@
                type="submit" solo dopo la conferma, non prima: se lo script manca,
                il fallimento è "il bottone non risponde", mai "un click rimuove
                l'acquisto in silenzio". */-->
-          <form method="post" th:action="@{/riepilogo/revoca}">
+          <form method="post" th:action="@{/riepilogo/revoca}" th:if="${p.filled()}">
             <input type="hidden" name="targetSeq" th:value="${p.seq}">
             <button type="button" class="revoke-btn" title="rimuovi">✕</button>
           </form>
