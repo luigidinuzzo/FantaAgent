@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Runtime Node.js scaricato in locale dal profilo Maven "prod"
+node
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
