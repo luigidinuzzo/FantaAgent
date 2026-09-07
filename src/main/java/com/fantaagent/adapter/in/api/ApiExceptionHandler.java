@@ -1,6 +1,7 @@
 package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.NoAuctionSelectedException;
+import com.fantaagent.application.service.PurchaseRejectedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -34,6 +35,28 @@ public class ApiExceptionHandler {
     @ExceptionHandler(UnknownPlayerException.class)
     ProblemDetail unknownPlayer(UnknownPlayerException e) {
         return problem(HttpStatus.NOT_FOUND, "unknown-player", e.getMessage());
+    }
+
+    /**
+     * Spring instrada qui i rifiuti di dominio, e non al gestore generico sotto,
+     * scegliendo l'handler più specifico per il tipo lanciato — non serve un ordine
+     * particolare fra i due metodi. Il generico resta per le richieste malformate
+     * (giocatore o partecipante sconosciuto, prezzo non valido).
+     */
+    @ExceptionHandler(PurchaseRejectedException.class)
+    ProblemDetail rejected(PurchaseRejectedException e) {
+        HttpStatus status = e.reason() == PurchaseRejectedException.Reason.ALREADY_SOLD
+                ? HttpStatus.CONFLICT
+                : HttpStatus.UNPROCESSABLE_ENTITY;
+        return problem(status, slug(e.reason()), e.getMessage());
+    }
+
+    private static String slug(PurchaseRejectedException.Reason reason) {
+        return switch (reason) {
+            case ALREADY_SOLD -> "player-already-sold";
+            case INSUFFICIENT_BUDGET -> "insufficient-budget";
+            case ROLE_SLOTS_EXHAUSTED -> "role-slots-exhausted";
+        };
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

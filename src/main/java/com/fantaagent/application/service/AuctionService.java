@@ -104,16 +104,20 @@ public class AuctionService {
 
         AuctionState current = state();
         if (current.soldPlayerIds().contains(playerId)) {
-            throw new IllegalArgumentException(player.name() + " è già stato acquistato");
+            throw new PurchaseRejectedException(PurchaseRejectedException.Reason.ALREADY_SOLD,
+                    player.name() + " è già stato acquistato");
         }
         Squad squad = current.squadOf(buyer.id());
         if (price > squad.budgetRemaining()) {
-            throw new IllegalArgumentException(buyer.name() + " ha solo "
-                    + squad.budgetRemaining() + " crediti di budget residuo");
+            throw new PurchaseRejectedException(
+                    PurchaseRejectedException.Reason.INSUFFICIENT_BUDGET,
+                    buyer.name() + " ha solo " + squad.budgetRemaining()
+                    + " crediti di budget residuo");
         }
         if (!squad.hasRoom(player.role())) {
-            throw new IllegalArgumentException(buyer.name()
-                    + " ha già coperto tutti gli slot " + player.role());
+            throw new PurchaseRejectedException(
+                    PurchaseRejectedException.Reason.ROLE_SLOTS_EXHAUSTED,
+                    buyer.name() + " ha già coperto tutti gli slot " + player.role());
         }
 
         scope.get().store().appendWithNextSeq(seq -> new AuctionEvent.PlayerPurchased(
