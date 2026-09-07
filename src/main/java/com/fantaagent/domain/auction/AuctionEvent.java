@@ -26,13 +26,25 @@ public sealed interface AuctionEvent {
     record PhaseAdvanced(long seq, Instant at, Role role) implements AuctionEvent {
     }
 
-    record PlayerPurchased(long seq, Instant at, String playerId, String participantId, int price)
-            implements AuctionEvent {
+    /**
+     * @param requestId chiave di idempotenza della richiesta che lo ha prodotto.
+     *                  Null nei registri scritti prima che l'idempotenza
+     *                  esistesse, e per le scritture che non passano dall'API:
+     *                  significa "nessuna richiesta da riconoscere", non errore.
+     */
+    record PlayerPurchased(long seq, Instant at, String playerId, String participantId,
+                           int price, String requestId) implements AuctionEvent {
 
         public PlayerPurchased {
             if (price < 1) {
                 throw new IllegalArgumentException("price must be at least 1");
             }
+        }
+
+        /** Forma senza chiave, per le scritture che non vengono da una richiesta HTTP. */
+        public PlayerPurchased(long seq, Instant at, String playerId, String participantId,
+                               int price) {
+            this(seq, at, playerId, participantId, price, null);
         }
     }
 

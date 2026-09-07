@@ -91,6 +91,27 @@ public class AuctionService {
     }
 
     public void recordPurchase(String playerId, String participantId, int price) {
+        recordPurchase(playerId, participantId, price, null);
+    }
+
+    /**
+     * @param requestId chiave di idempotenza, o null. Se una richiesta con la
+     *                  stessa chiave e' gia' stata registrata, non viene scritto
+     *                  nulla e si restituisce il seq di allora.
+     * @return il seq dell'acquisto registrato
+     */
+    public long recordPurchase(String playerId, String participantId, int price,
+                               String requestId) {
+        // Il controllo della chiave precede ogni validazione: un secondo invio
+        // della stessa richiesta deve riuscire come il primo, anche se nel
+        // frattempo quel giocatore risulta venduto — venduto proprio da lei.
+        if (requestId != null) {
+            Optional<Long> already = seqOf(requestId);
+            if (already.isPresent()) {
+                return already.get();
+            }
+        }
+
         Player player = catalog.byId(playerId)
                 .orElseThrow(() -> new IllegalArgumentException("giocatore sconosciuto: " + playerId));
         Participant buyer = participants().stream()
@@ -120,9 +141,21 @@ public class AuctionService {
                     buyer.name() + " ha già coperto tutti gli slot " + player.role());
         }
 
-        scope.get().store().appendWithNextSeq(seq -> new AuctionEvent.PlayerPurchased(
-                seq, Instant.now(), playerId, buyer.id(), price));
+        AuctionEvent written = scope.get().store().appendWithNextSeq(
+                seq -> new AuctionEvent.PlayerPurchased(seq, Instant.now(), playerId,
+                        buyer.id(), price, requestId));
         markChangedInThisSession();
+        return written.seq();
+    }
+
+    /** Il seq dell'acquisto scritto per quella chiave, se c'e' gia' stato. */
+    private Optional<Long> seqOf(String requestId) {
+        return scope.get().store().load().stream()
+                .filter(AuctionEvent.PlayerPurchased.class::isInstance)
+                .map(AuctionEvent.PlayerPurchased.class::cast)
+                .filter(p -> requestId.equals(p.requestId()))
+                .map(AuctionEvent.PlayerPurchased::seq)
+                .findFirst();
     }
 
     /** @return false se non c'era nulla da annullare */

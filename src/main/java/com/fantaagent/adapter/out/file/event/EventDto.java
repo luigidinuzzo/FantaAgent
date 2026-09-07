@@ -18,24 +18,27 @@ public record EventDto(
         String participantId,
         Integer price,
         Long targetSeq,
-        String name) {
+        String name,
+        String requestId) {
 
     public static EventDto from(AuctionEvent event) {
         return switch (event) {
             case AuctionEvent.AuctionStarted e ->
                     new EventDto("AuctionStarted", e.seq(), e.at(), null, null, null, null, null,
-                            e.name());
+                            e.name(), null);
             case AuctionEvent.PhaseAdvanced e ->
-                    new EventDto("PhaseAdvanced", e.seq(), e.at(), e.role(), null, null, null, null, null);
+                    new EventDto("PhaseAdvanced", e.seq(), e.at(), e.role(), null, null, null, null,
+                            null, null);
             case AuctionEvent.PlayerPurchased e ->
                     new EventDto("PlayerPurchased", e.seq(), e.at(), null,
-                            e.playerId(), e.participantId(), e.price(), null, null);
+                            e.playerId(), e.participantId(), e.price(), null, null,
+                            e.requestId());
             case AuctionEvent.PurchaseRevoked e ->
                     new EventDto("PurchaseRevoked", e.seq(), e.at(), null,
-                            null, null, null, e.targetSeq(), null);
+                            null, null, null, e.targetSeq(), null, null);
             case AuctionEvent.PurchaseCorrected e ->
                     new EventDto("PurchaseCorrected", e.seq(), e.at(), null,
-                            null, e.newParticipantId(), e.newPrice(), e.targetSeq(), null);
+                            null, e.newParticipantId(), e.newPrice(), e.targetSeq(), null, null);
         };
     }
 
@@ -46,7 +49,8 @@ public record EventDto(
             case "AuctionStarted" -> new AuctionEvent.AuctionStarted(seq, at, name);
             case "PhaseAdvanced" -> new AuctionEvent.PhaseAdvanced(seq, at, role);
             case "PlayerPurchased" ->
-                    new AuctionEvent.PlayerPurchased(seq, at, playerId, participantId, price);
+                    new AuctionEvent.PlayerPurchased(seq, at, playerId, participantId,
+                            price, requestId);
             case "PurchaseRevoked" -> new AuctionEvent.PurchaseRevoked(seq, at, targetSeq);
             case "PurchaseCorrected" ->
                     new AuctionEvent.PurchaseCorrected(seq, at, targetSeq, participantId, price);
