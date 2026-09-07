@@ -43,7 +43,24 @@ public class PlayerApi {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "25") int limit) {
         leagues.check(leagueId);
-        return PlayerDtos.PhasePageResponse.from(search.phasePlayers(offset, limit));
+        return PlayerDtos.PhasePageResponse.from(
+                search.phasePlayers(Math.max(0, offset), clampLimit(limit)));
+    }
+
+    /**
+     * {@code phasePlayers} calcola un {@code PriceRecommendation} completo per riga
+     * (circa 12 ms l'una secondo il Javadoc del servizio): senza un tetto qui, una
+     * richiesta anonima con {@code limit} enorme forzerebbe la valutazione di una
+     * fase intera, ripetibile a piacere. Il tetto vive nel controller e non nel
+     * servizio perche' {@code PlayerSearchService} serve anche i controller
+     * Thymeleaf in {@code adapter/in/web}, che questo piano non tocca: il limite
+     * appartiene al confine HTTP pubblicamente raggiungibile, non alla logica di
+     * paginazione condivisa. Un {@code limit} non positivo (incluso negativo)
+     * arriverebbe altrimenti a {@code Stream.limit(long)}, che rifiuta i negativi
+     * con un messaggio JDK in inglese finito, tal quale, nel corpo 422 dell'API.
+     */
+    private static int clampLimit(int limit) {
+        return Math.max(1, Math.min(limit, PlayerSearchService.PHASE_PAGE_SIZE));
     }
 
     @GetMapping("/{playerId}/valuation")
