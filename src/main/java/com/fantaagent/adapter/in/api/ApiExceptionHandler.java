@@ -31,6 +31,11 @@ public class ApiExceptionHandler {
                 "Nessuna asta è aperta. Scegline una dalla home.");
     }
 
+    @ExceptionHandler(UnknownPlayerException.class)
+    ProblemDetail unknownPlayer(UnknownPlayerException e) {
+        return problem(HttpStatus.NOT_FOUND, "unknown-player", e.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail invalid(IllegalArgumentException e) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-request", e.getMessage());
