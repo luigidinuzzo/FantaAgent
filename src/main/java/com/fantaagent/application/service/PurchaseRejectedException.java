@@ -17,7 +17,14 @@ public class PurchaseRejectedException extends IllegalArgumentException {
         ROLE_SLOTS_EXHAUSTED
     }
 
-    private final transient Reason reason;
+    /**
+     * Non {@code transient}: il motivo deve sopravvivere a un'eventuale serializzazione,
+     * perche' il {@code type} RFC 9457 emesso dall'API si deriva da questo campo. Se
+     * tornasse null alla deserializzazione, lo switch esaustivo in
+     * {@code ApiExceptionHandler.slug} lancerebbe una {@code NullPointerException}
+     * invece di vedere un case non mappato.
+     */
+    private final Reason reason;
 
     public PurchaseRejectedException(Reason reason, String message) {
         super(message);
