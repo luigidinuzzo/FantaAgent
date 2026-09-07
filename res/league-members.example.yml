@@ -1,0 +1,44 @@
+# Partecipanti della lega — esempio.
+#
+# Copia questo file in league-members.yml e mettici i nomi veri: quello resta
+# locale ed e' escluso dal versionamento, perche' contiene i nomi di persone che
+# non hanno scelto di comparire in un repository pubblico.
+#
+# L'id NON va cambiato dopo l'inizio di un'asta: e' agli id che il registro lega
+# gli acquisti, mentre nome e iniziale sono solo cio' che si legge a schermo.
+# L'iniziale serve alla barra comando ("bast 47 m") e deve restare unica.
+# Uno e uno solo dei partecipanti ha me: true — sei tu.
+
+members:
+  - id: "me"
+    name: "Partecipante 1"
+    initial: "A"
+    me: true
+  - id: "p2"
+    name: "Partecipante 2"
+    initial: "B"
+    me: false
+  - id: "p3"
+    name: "Partecipante 3"
+    initial: "C"
+    me: false
+  - id: "p4"
+    name: "Partecipante 4"
+    initial: "D"
+    me: false
+  - id: "p5"
+    name: "Partecipante 5"
+    initial: "E"
+    me: false
+  - id: "p6"
+    name: "Partecipante 6"
+    initial: "F"
+    me: false
+  - id: "p7"
+    name: "Partecipante 7"
+    initial: "G"
+    me: false
+  - id: "p8"
+    name: "Partecipante 8"
+    initial: "H"
+    me: false

@@ -121,12 +121,12 @@ class RosterCsvExporterTest {
     @Test
     void nonQuotaInutilmenteUnNomeConLaEcommerciale() {
         AuctionService auction = serviceWith(
-                List.of(new Participant("me", "Rossi&Bianchi", 'G', true),
+                List.of(new Participant("me", "RossiRossi&BianchiBianchi", 'G', true),
                         new Participant("p2", "Bruno", 'S', false)),
                 Map.of("101", Role.P),
                 List.of(buy(1, "101", "me", 18)));
 
-        assertThat(RosterCsvExporter.toCsv(auction)).contains("Rossi&Bianchi,101,18");
+        assertThat(RosterCsvExporter.toCsv(auction)).contains("RossiRossi&BianchiBianchi,101,18");
     }
 
     /** Un partecipante senza acquisti resta nel file, col solo separatore. */

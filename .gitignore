@@ -11,10 +11,19 @@ data/dossiers/
 data/reference/*.xlsx
 data/reference/*.csv
 data/reference/normalized.json
+# Nomi reali dei partecipanti: restano locali. Il modello versionato e'
+# res/league-members.example.yml.
+res/league-members.yml
+res/auction-settings.yml
 res/auctions/
+# Export delle rose: contiene i nomi dei partecipanti e l'asta intera, e viene
+# scritto dove capita di scaricarlo — anche nella radice del progetto.
+rose-*.csv
+*.csv
 res/dossiers/
 res/*.xlsx
 res/*.csv
+logs/
 
 # IDE / OS
 .idea/
