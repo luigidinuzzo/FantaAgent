@@ -19,7 +19,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           // Nessun tentativo automatico sulle scritture: un acquisto ripetuto
           // dalla libreria e' un acquisto che l'utente non ha chiesto. La chiave
           // di idempotenza protegge dai doppi invii voluti, non e' un permesso
-          // di inviare due volte.
+          // di inviare due volte. E qui non basterebbe comunque: la chiave si
+          // genera a ogni invocazione di mutationFn, quindi un retry
+          // automatico ne genererebbe una nuova e produrrebbe un secondo
+          // acquisto vero, non uno deduplicato.
           mutations: { retry: 0 },
         },
       }),
