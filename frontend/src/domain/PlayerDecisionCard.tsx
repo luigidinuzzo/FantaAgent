@@ -24,11 +24,21 @@ export function PlayerDecisionCard({
   bidState?: { currentBid: number };
   children?: ReactNode;
 }) {
+  const nameId = `player-name-${valuation.playerId}`;
+
+  // I driver con spiegazione vuota non sono un errore di battitura da
+  // mostrare: senza filtro, drivers: [] produce un punto isolato e una
+  // spiegazione vuota produce una virgola doppia. Entrambi validi per il tipo.
+  const driverText = valuation.drivers
+    .map((d) => d.explanation)
+    .filter((explanation) => explanation.trim().length > 0)
+    .join(', ');
+
   return (
     <section
       data-testid="decision-card"
       data-stale={stale}
-      aria-busy={stale}
+      aria-labelledby={nameId}
       className={[
         'relative border p-5 transition-opacity duration-200',
         // Il gradiente e' l'unico effetto decorativo del progetto, e sta su un
@@ -43,8 +53,20 @@ export function PlayerDecisionCard({
         className="pointer-events-none absolute left-0 top-0 h-8 w-8 rounded-br-full border-b border-r border-line-strong"
       />
 
+      {stale ? (
+        // Statico, non una live region: la pagina ne ha una sola
+        // (AuctionAnnouncer, task successivo) e una seconda competerebbe con
+        // quella. aria-busy non basta: significa "si sta aggiornando ora", non
+        // "questo e' vecchio", e la maggior parte degli screen reader non lo
+        // annuncia affatto su una regione non viva. Questo testo lo si
+        // incontra leggendo la scheda, come il bordo tratteggiato per chi vede.
+        <p className="sr-only">I valori mostrati non sono più aggiornati.</p>
+      ) : null}
+
       <header className="flex items-baseline gap-3 pl-7">
-        <h2 className="w-exp text-xl font-extrabold">{valuation.name}</h2>
+        <h2 id={nameId} className="w-exp text-xl font-extrabold">
+          {valuation.name}
+        </h2>
         <p className="text-sm text-muted-foreground">
           {ROLE_LABEL[valuation.role]}, {valuation.team}
         </p>
@@ -91,9 +113,9 @@ export function PlayerDecisionCard({
         </p>
       </div>
 
-      <p className="mt-3 max-w-[60ch] text-sm text-muted-foreground">
-        {valuation.drivers.map((d) => d.explanation).join(', ')}.
-      </p>
+      {driverText ? (
+        <p className="mt-3 max-w-[60ch] text-sm text-muted-foreground">{driverText}.</p>
+      ) : null}
 
       {children ? <div className="mt-5">{children}</div> : null}
     </section>

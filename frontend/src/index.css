@@ -10,6 +10,22 @@
 .w-cond { font-stretch: 78%; }
 .w-exp  { font-stretch: 118%; }
 
+/* Testo presente nell'albero di accessibilita' ma invisibile a schermo: a
+   differenza di una live region non annuncia da solo, viene letto quando chi
+   naviga con lo screen reader raggiunge l'elemento che lo contiene. Serve qui
+   per l'avviso di dato stantio e servira' ad AuctionAnnouncer piu' avanti. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

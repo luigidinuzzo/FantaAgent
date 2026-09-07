@@ -67,4 +67,37 @@ describe('PlayerDecisionCard', () => {
     );
     expect(screen.getByText(/offerta a 41/)).toBeInTheDocument();
   });
+
+  it('quando il dato e stantio espone un avviso per lo screen reader', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale />);
+    expect(
+      screen.getByText('I valori mostrati non sono più aggiornati.'),
+    ).toBeInTheDocument();
+  });
+
+  it('espone la scheda come regione raggiungibile per nome accessibile', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
+    expect(screen.getByRole('region', { name: 'Bastoni' })).toBeInTheDocument();
+  });
+
+  it('non mostra punteggiatura spuria quando i driver sono assenti o vuoti', () => {
+    const { rerender } = render(
+      <PlayerDecisionCard valuation={{ ...VALUATION, drivers: [] }} stale={false} />,
+    );
+    expect(screen.queryByText('.')).not.toBeInTheDocument();
+
+    rerender(
+      <PlayerDecisionCard
+        valuation={{
+          ...VALUATION,
+          drivers: [
+            { label: 'budget', contribution: 3, explanation: '' },
+            { label: 'alternative', contribution: -1, explanation: 'tre alternative sopra soglia' },
+          ],
+        }}
+        stale={false}
+      />,
+    );
+    expect(screen.getByText('tre alternative sopra soglia.')).toBeInTheDocument();
+  });
 });
