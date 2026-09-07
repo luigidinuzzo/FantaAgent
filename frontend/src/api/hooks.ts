@@ -1,0 +1,90 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost } from './client';
+import type {
+  AuctionStateResponse,
+  PhasePageResponse,
+  PlayerSummary,
+  PurchaseResponse,
+  Role,
+  ValuationResponse,
+} from './types';
+
+const KEYS = {
+  state: ['state'] as const,
+  phase: (offset: number) => ['phase', offset] as const,
+  valuation: (playerId: string) => ['valuation', playerId] as const,
+  search: (q: string) => ['search', q] as const,
+};
+
+export function useAuctionState() {
+  return useQuery({
+    queryKey: KEYS.state,
+    queryFn: () => apiGet<AuctionStateResponse>('/state'),
+  });
+}
+
+export function usePhasePlayers(offset: number) {
+  return useQuery({
+    queryKey: KEYS.phase(offset),
+    queryFn: () => apiGet<PhasePageResponse>(`/players/phase?offset=${offset}&limit=25`),
+  });
+}
+
+export function useValuation(playerId: string | null) {
+  return useQuery({
+    queryKey: KEYS.valuation(playerId ?? ''),
+    queryFn: () => apiGet<ValuationResponse>(`/players/${playerId}/valuation`),
+    enabled: playerId !== null,
+  });
+}
+
+export function useSearch(query: string) {
+  return useQuery({
+    queryKey: KEYS.search(query),
+    queryFn: () => apiGet<PlayerSummary[]>(`/players?q=${encodeURIComponent(query)}`),
+    enabled: query.trim().length > 0,
+  });
+}
+
+export interface AssignInput {
+  playerId: string;
+  participantId: string;
+  price: number;
+}
+
+export function useAssign() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AssignInput) =>
+      apiPost<PurchaseResponse>('/purchases', {
+        // Generata qui, una per invio: se la risposta si perde e l'utente
+        // ripreme, quella e' una richiesta NUOVA con una chiave nuova. La chiave
+        // protegge dal doppio invio della STESSA richiesta — un tentativo del
+        // browser, non un secondo clic deliberato.
+        requestId: crypto.randomUUID(),
+        ...input,
+      }),
+    // Nessun aggiornamento ottimistico: mostrare l'acquisto come riuscito prima
+    // che il registro abbia fatto fsync significa mentire nel momento in cui
+    // conta di piu'. Si aspetta la conferma, che costa decine di millisecondi.
+    onSuccess: () => {
+      client.invalidateQueries();
+    },
+  });
+}
+
+export function useChangePhase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (role: Role) => apiPost('/phase', { role }),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useUndoLast() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost('/purchases/void-last'),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
