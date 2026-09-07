@@ -29,7 +29,8 @@ describe('palette Campo', () => {
       expect(css).toContain(expected);
       expect(css).toContain(`--color-${name}: var(--${name});`);
     }
-    for (const name of Object.keys(LINES)) {
+    for (const [name, value] of Object.entries(LINES)) {
+      expect(css).toContain(`--${name}: ${value};`);
       expect(css).toContain(`--color-${name}: var(--${name});`);
     }
   });
