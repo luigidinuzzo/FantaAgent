@@ -15,6 +15,12 @@ import java.util.Map;
  *
  * <p>Chi aggiunge qui un campo che viene da una valutazione lo sta proiettando su
  * uno schermo che guardano tutti gli avversari.
+ *
+ * <p>Dove si ferma: la regola ArchUnit vede il nome di un tipo proibito, non la
+ * provenienza di un valore. Un int calcolato da una valutazione altrove e
+ * passato qui sotto un nome innocuo — {@code ceiling}, non {@code maxBid} —
+ * passerebbe sia la regola sia il test sul corpo JSON, che cerca parole, non
+ * origini.
  */
 public final class BoardDtos {
 

@@ -67,8 +67,14 @@ class BoardApiTest {
         mvc.perform(get("/api/leagues/default/auctions/a1/board"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.columns[0].participantName").value("Anna"))
+                .andExpect(jsonPath("$.columns[0].budgetRemaining").value(53))
+                .andExpect(jsonPath("$.columns[0].slotsRemaining").value(4))
                 .andExpect(jsonPath("$.columns[0].byRole.D[0].playerName").value("Bastoni"))
-                .andExpect(jsonPath("$.columns[0].byRole.D[0].price").value(47));
+                .andExpect(jsonPath("$.columns[0].byRole.D[0].price").value(47))
+                .andExpect(jsonPath("$.columns[1].participantName").value("Bruno"))
+                .andExpect(jsonPath("$.columns[1].budgetRemaining").value(100))
+                .andExpect(jsonPath("$.columns[1].slotsRemaining").value(5))
+                .andExpect(jsonPath("$.columns[1].byRole.D").isEmpty());
     }
 
     /**

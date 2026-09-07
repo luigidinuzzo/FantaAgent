@@ -85,6 +85,12 @@ class ArchitectureTest {
      * e' che il package del tabellone non possa nemmeno nominare i tipi da cui un
      * prezzo consigliato proviene. Chi fa fallire questo test sta per proiettare
      * i propri tetti sullo schermo che guardano tutti gli avversari.
+     *
+     * <p>Dove si ferma: questa regola vede solo i riferimenti diretti a un tipo
+     * di {@code domain.strategy}. Se AuctionService calcolasse un giorno un
+     * PriceRecommendation al suo interno e restituisse solo l'int che ne esce, il
+     * tabellone potrebbe metterlo in un campo senza nominare mai il tipo
+     * proibito, e questo test non se ne accorgerebbe.
      */
     @Test
     void boardApiCannotReachValuation() {
