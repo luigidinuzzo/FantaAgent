@@ -42,9 +42,14 @@ class AuctionRuntimeTest {
     private AuctionRuntime runtime;
 
     private static ScoringRules scoring() {
+        return scoring(3.0);
+    }
+
+    /** Le stesse regole con un bonus gol scelto: serve a distinguere due aste. */
+    private static ScoringRules scoring(double bonusGol) {
         Map<Role, Double> bonus = new EnumMap<>(Role.class);
         for (Role role : Role.values()) {
-            bonus.put(role, 3.0);
+            bonus.put(role, bonusGol);
         }
         return new ScoringRules(true, bonus, 1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0,
                 new ModifierTable(3, List.of(new ModifierTable.Threshold(0.0, 0.0))),
@@ -57,7 +62,7 @@ class AuctionRuntimeTest {
                 List.of(new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of());
         archive = new FileAuctionArchive(tmp);
         runtime = new AuctionRuntime(RULES, catalog, List.of(1.0),
-                AuctionRuntimeTest::scoring, () -> PARTICIPANTS, archive);
+                id -> scoring(), () -> PARTICIPANTS, archive, id -> { });
     }
 
     @Test
@@ -137,7 +142,7 @@ class AuctionRuntimeTest {
         AuctionRuntime rt = new AuctionRuntime(RULES,
                 new InMemoryPlayerCatalog(List.of(
                         new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of()),
-                List.of(1.0), AuctionRuntimeTest::scoring, globali::get, archive);
+                List.of(1.0), id -> scoring(), globali::get, archive, id -> { });
 
         String prima = rt.createNew("Prima");
         assertThat(rt.snapshot().participants()).isEqualTo(primi);
@@ -153,6 +158,49 @@ class AuctionRuntimeTest {
 
         rt.select(seconda);
         assertThat(rt.snapshot().participants()).isEqualTo(secondi);
+    }
+
+    /**
+     * Ogni asta ha le proprie regole di punteggio.
+     *
+     * <p>Erano globali, e la posta e' piu' alta dei nomi: da queste regole discendono i
+     * punti attesi di ogni giocatore, quindi configurare una nuova asta cambiava i
+     * NUMERI mostrati per quelle vecchie. Una rosa gia' pagata si rileggeva con un
+     * modello diverso da quello con cui era stata comprata.
+     */
+    @Test
+    void configurareUnAstaNuovaNonCambiaINumeriDiQuellaPrecedente() {
+        java.util.concurrent.atomic.AtomicReference<Double> bonusGlobale =
+                new java.util.concurrent.atomic.AtomicReference<>(3.0);
+        java.util.function.Function<Double, com.fantaagent.config.ScoringSettings> impostazioni =
+                bonus -> com.fantaagent.config.ScoringSettings.from(scoring(bonus), false);
+
+        AuctionRuntime rt = new AuctionRuntime(RULES,
+                new InMemoryPlayerCatalog(List.of(
+                        new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of()),
+                List.of(1.0),
+                // Le regole dell'asta, se le ha: e' il comportamento reale del bean.
+                id -> id == null
+                        ? scoring(bonusGlobale.get())
+                        : archive.scoring(id).map(com.fantaagent.config.ScoringSettings::toScoringRules)
+                                .orElseGet(() -> scoring(bonusGlobale.get())),
+                () -> PARTICIPANTS, archive,
+                id -> archive.saveScoring(id, impostazioni.apply(bonusGlobale.get())));
+
+        String prima = rt.createNew("Prima");
+        assertThat(rt.snapshot().chain().scoring().goalBonus(Role.D)).isEqualTo(3.0);
+
+        bonusGlobale.set(9.0);
+        String seconda = rt.createNew("Seconda");
+        assertThat(rt.snapshot().chain().scoring().goalBonus(Role.D)).isEqualTo(9.0);
+
+        rt.select(prima);
+        assertThat(rt.snapshot().chain().scoring().goalBonus(Role.D))
+                .as("riaprendo la prima si rivedono i suoi numeri")
+                .isEqualTo(3.0);
+
+        rt.select(seconda);
+        assertThat(rt.snapshot().chain().scoring().goalBonus(Role.D)).isEqualTo(9.0);
     }
 
     /** Rinominare durante una serata resta dentro quella serata. */

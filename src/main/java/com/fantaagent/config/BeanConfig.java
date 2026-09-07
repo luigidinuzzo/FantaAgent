@@ -90,9 +90,25 @@ public class BeanConfig {
         // sceglieva in silenzio, ed e' esattamente cio' che non deve succedere.
         return new com.fantaagent.application.service.AuctionRuntime(
                 rules, catalog, props.scoring().seasonWeights(),
-                () -> SettingsConfig.loadScoringRules(scoringStore, props),
+                // Le regole dell'asta indicata: le sue, se le ha. Il formato del file e
+                // la sigma delle medie di giornata restano qui, dove vive la
+                // configurazione; il runtime chiede soltanto "le regole di quale asta".
+                auctionId -> {
+                    if (auctionId != null) {
+                        var propria = archive.scoring(auctionId);
+                        if (propria.isPresent()) {
+                            return propria.get().toScoringRules(
+                                    props.scoring().matchdayRatingSigma());
+                        }
+                    }
+                    return SettingsConfig.loadScoringRules(scoringStore, props);
+                },
                 () -> loadParticipants(props, membersStore),
-                archive);
+                archive,
+                // Fissa nell'asta appena creata le regole in vigore adesso.
+                auctionId -> archive.saveScoring(auctionId,
+                        scoringStore.load().orElseGet(() -> ScoringSettings.from(
+                                SettingsConfig.loadScoringRules(scoringStore, props), true))));
     }
 
     @Bean

@@ -131,7 +131,7 @@ class AuctionRuntimeAtomicityTest {
         AtomicReference<Double> bonus = new AtomicReference<>(3.0);
 
         AuctionRuntime runtime = new AuctionRuntime(RULES, catalog, List.of(1.0),
-                () -> scoring(bonus.get()), () -> PARTICIPANTS, archive);
+                id -> scoring(bonus.get()), () -> PARTICIPANTS, archive, id -> { });
 
         // Ogni catena pubblicata, per identita': le uniche combinazioni legittime.
         Set<ValuationChain> pubblicate = Collections.newSetFromMap(new IdentityHashMap<>());

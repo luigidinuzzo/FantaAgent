@@ -1,5 +1,6 @@
 package com.fantaagent.application.port.out;
 
+import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.domain.league.Participant;
 
 import java.time.Instant;
@@ -46,4 +47,20 @@ public interface AuctionArchive {
 
     /** Fissa i partecipanti di quell'asta. */
     void saveParticipants(String auctionId, List<Participant> participants);
+
+    /**
+     * Le regole di punteggio DI QUELL'ASTA, se ne ha di proprie.
+     *
+     * <p>Stessa ragione dei partecipanti, con una posta piu' alta: da queste regole
+     * discendono i punti attesi di ogni giocatore, quindi tenerle in un'unica
+     * configurazione globale significava che configurare una nuova asta cambiava i
+     * NUMERI mostrati per quelle vecchie — non solo le etichette. Una rosa gia' pagata
+     * si sarebbe riletta con un modello che non era quello con cui era stata comprata.
+     *
+     * <p>Vuoto per le aste scritte prima di questa separazione.
+     */
+    Optional<ScoringSettings> scoring(String auctionId);
+
+    /** Fissa le regole di punteggio di quell'asta. */
+    void saveScoring(String auctionId, ScoringSettings settings);
 }

@@ -2,6 +2,8 @@ package com.fantaagent.adapter.out.file;
 
 import com.fantaagent.application.port.out.AuctionArchive;
 import com.fantaagent.config.LeagueMembersSettingsStore;
+import com.fantaagent.config.ScoringSettings;
+import com.fantaagent.config.ScoringSettingsStore;
 import com.fantaagent.domain.league.Participant;
 import com.fantaagent.application.port.out.AuctionEventStore;
 
@@ -103,6 +105,21 @@ public class FileAuctionArchive implements AuctionArchive {
 
     private LeagueMembersSettingsStore membersOf(String auctionId) {
         return new LeagueMembersSettingsStore(directoryOf(auctionId));
+    }
+
+    @Override
+    public Optional<ScoringSettings> scoring(String auctionId) {
+        return new ScoringSettingsStore(directoryOf(auctionId)).load();
+    }
+
+    @Override
+    public void saveScoring(String auctionId, ScoringSettings settings) {
+        try {
+            Files.createDirectories(directoryOf(auctionId));
+        } catch (IOException e) {
+            throw new UncheckedIOException("impossibile creare la cartella di " + auctionId, e);
+        }
+        new ScoringSettingsStore(directoryOf(auctionId)).save(settings);
     }
 
     private Path directoryOf(String auctionId) {

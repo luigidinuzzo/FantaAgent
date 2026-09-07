@@ -53,9 +53,21 @@ public class AuctionRuntime {
     private final LeagueRules rules;
     private final PlayerCatalog catalog;
     private final List<Double> seasonWeights;
-    private final Supplier<ScoringRules> scoringLoader;
+    /**
+     * Regole in vigore per una data asta. Prende l'identificativo — null quando nessuna
+     * e' aperta — perche' ogni asta ha le proprie: erano globali, e configurarne una
+     * nuova cambiava i NUMERI mostrati per quelle vecchie.
+     */
+    private final java.util.function.Function<String, ScoringRules> scoringLoader;
     private final Supplier<List<Participant>> participantsLoader;
     private final AuctionArchive archive;
+
+    /**
+     * Copia dentro l'asta indicata le regole di punteggio in vigore adesso. E' un
+     * collaboratore e non codice qui dentro perche' il FORMATO di quel file appartiene
+     * al livello di configurazione: il runtime sa che va fissato, non come si scrive.
+     */
+    private final java.util.function.Consumer<String> scoringSnapshot;
 
     /**
      * L'unico campo mutabile della classe, e volatile: è qui che vive la garanzia di
@@ -66,17 +78,19 @@ public class AuctionRuntime {
     private volatile RuntimeSnapshot current;
 
     public AuctionRuntime(LeagueRules rules, PlayerCatalog catalog, List<Double> seasonWeights,
-                          Supplier<ScoringRules> scoringLoader,
+                          java.util.function.Function<String, ScoringRules> scoringLoader,
                           Supplier<List<Participant>> participantsLoader,
-                          AuctionArchive archive) {
+                          AuctionArchive archive,
+                          java.util.function.Consumer<String> scoringSnapshot) {
         this.rules = rules;
         this.catalog = catalog;
         this.seasonWeights = List.copyOf(seasonWeights);
         this.scoringLoader = scoringLoader;
         this.participantsLoader = participantsLoader;
         this.archive = archive;
+        this.scoringSnapshot = scoringSnapshot;
         this.current = new RuntimeSnapshot(null, null, participantsLoader.get(),
-                ValuationChain.build(rules, scoringLoader.get(), catalog, seasonWeights));
+                ValuationChain.build(rules, scoringLoader.apply(null), catalog, seasonWeights));
     }
 
     /** Lo stato corrente, coerente in tutte le sue parti. Una sola lettura volatile. */
@@ -144,9 +158,12 @@ public class AuctionRuntime {
         if (!archive.exists(auctionId)) {
             throw new IllegalArgumentException("nessuna asta con identificativo " + auctionId);
         }
-        RuntimeSnapshot base = current;
+        // La catena si ricostruisce, non si eredita: ogni asta ha le proprie regole di
+        // punteggio, e riusare quella di prima significherebbe rileggere una rosa gia'
+        // pagata con un modello che non e' quello con cui e' stata comprata.
         current = new RuntimeSnapshot(auctionId, archive.open(auctionId),
-                participantsOf(auctionId), base.chain());
+                participantsOf(auctionId),
+                ValuationChain.build(rules, scoringLoader.apply(auctionId), catalog, seasonWeights));
     }
 
     /**
@@ -198,8 +215,11 @@ public class AuctionRuntime {
         // avanti riconfigurarne un'altra non tocchera' piu' i nomi di questa.
         List<Participant> participants = participantsLoader.get();
         archive.saveParticipants(id, participants);
-        RuntimeSnapshot base = current;
-        current = new RuntimeSnapshot(id, store, participants, base.chain());
+        // E lo stesso per le regole di punteggio: da qui in avanti configurarne altre
+        // non tocchera' i numeri di questa.
+        scoringSnapshot.accept(id);
+        current = new RuntimeSnapshot(id, store, participants,
+                ValuationChain.build(rules, scoringLoader.apply(id), catalog, seasonWeights));
         return id;
     }
 
@@ -222,8 +242,8 @@ public class AuctionRuntime {
      * da cui parte la prossima asta.
      */
     public synchronized void deselect() {
-        RuntimeSnapshot base = current;
-        current = new RuntimeSnapshot(null, null, participantsLoader.get(), base.chain());
+        current = new RuntimeSnapshot(null, null, participantsLoader.get(),
+                ValuationChain.build(rules, scoringLoader.apply(null), catalog, seasonWeights));
     }
 
     /**
@@ -242,7 +262,7 @@ public class AuctionRuntime {
 
     public synchronized void rebuild() {
         RuntimeSnapshot base = current;
-        ScoringRules scoring = scoringLoader.get();
+        ScoringRules scoring = scoringLoader.apply(base.auctionId());
         List<Participant> participants = participantsOf(base.auctionId());
         ValuationChain chain = ValuationChain.build(rules, scoring, catalog, seasonWeights);
         current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, chain);
