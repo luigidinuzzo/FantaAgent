@@ -1,0 +1,30 @@
+/* GENERATO da scripts/palette.mjs — non modificare a mano.
+   Rigenera con: npm run tokens */
+
+:root {
+  --background: oklch(0.2185 0.0327 163.57);
+  --surface: oklch(0.2591 0.0412 163.07);
+  --foreground: oklch(0.9702 0.0091 150.69);
+  --muted-foreground: oklch(0.6942 0.0414 160.28);
+  --accent: oklch(0.8490 0.1484 80.73);
+  --on-accent: oklch(0.1944 0.0398 92.72);
+  --positive: oklch(0.7738 0.1449 153.97);
+  --destructive: oklch(0.6717 0.1635 35.03);
+  --line: rgba(255,255,255,0.15);
+  --line-strong: rgba(255,255,255,0.25);
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-positive: var(--positive);
+  --color-destructive: var(--destructive);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --font-sans: var(--font-sans);
+}
