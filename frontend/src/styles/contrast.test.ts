@@ -1,3 +1,9 @@
+// @vitest-environment node
+//
+// Questo file legge tokens.css da disco con node:fs; l'ambiente jsdom,
+// diventato il default del progetto in questo task, sostituisce il
+// costruttore globale URL e rompe il controllo "scheme file" di
+// readFileSync. Qui serve il vero ambiente Node.
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { PALETTE, LINES, contrastRatio, hexToOklch } from '../../scripts/palette.mjs';
