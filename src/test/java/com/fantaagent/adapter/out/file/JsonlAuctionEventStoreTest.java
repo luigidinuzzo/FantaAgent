@@ -49,6 +49,33 @@ class JsonlAuctionEventStoreTest {
                 new AuctionEvent.PurchaseRevoked(5, T, 3));
     }
 
+    /**
+     * S7: requestId non esisteva prima dell'idempotenza. Un registro scritto da
+     * quella versione ha la riga PlayerPurchased senza la chiave affatto — non con
+     * un {@code "requestId":null} esplicito, che è quanto ogni altro test qui
+     * produce scrivendo con la versione attuale. Jackson deve leggere il campo
+     * assente come null comunque, altrimenti un'asta della scorsa stagione non si
+     * riaprirebbe più.
+     */
+    @Test
+    void deserializesALegacyPurchaseLineMissingTheRequestIdFieldEntirely() throws Exception {
+        Path file = tmp.resolve("events.jsonl");
+        Files.writeString(file,
+                "{\"type\":\"PlayerPurchased\",\"seq\":1,\"at\":\"2026-09-05T20:00:00Z\","
+                + "\"playerId\":\"bastoni\",\"participantId\":\"me\",\"price\":47}\n");
+
+        List<AuctionEvent> reloaded = new JsonlAuctionEventStore(file).load();
+
+        assertThat(reloaded).hasSize(1);
+        AuctionEvent.PlayerPurchased purchased = (AuctionEvent.PlayerPurchased) reloaded.getFirst();
+        assertThat(purchased.seq()).isEqualTo(1L);
+        assertThat(purchased.at()).isEqualTo(T);
+        assertThat(purchased.playerId()).isEqualTo("bastoni");
+        assertThat(purchased.participantId()).isEqualTo("me");
+        assertThat(purchased.price()).isEqualTo(47);
+        assertThat(purchased.requestId()).isNull();
+    }
+
     @Test
     void writesOneJsonObjectPerLine() throws Exception {
         Path file = tmp.resolve("events.jsonl");

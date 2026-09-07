@@ -81,9 +81,12 @@ public class AuctionService {
     }
 
     public AuctionState state() {
-        AuctionScope current = scope.get();
-        return AuctionProjector.project(rules, current.participants(), catalog,
-                current.store().load());
+        return state(scope.get());
+    }
+
+    private AuctionState state(AuctionScope currentScope) {
+        return AuctionProjector.project(rules, currentScope.participants(), catalog,
+                currentScope.store().load());
     }
 
     public String auctionId() {
@@ -102,55 +105,67 @@ public class AuctionService {
      */
     public long recordPurchase(String playerId, String participantId, int price,
                                String requestId) {
-        // Il controllo della chiave precede ogni validazione: un secondo invio
-        // della stessa richiesta deve riuscire come il primo, anche se nel
-        // frattempo quel giocatore risulta venduto — venduto proprio da lei.
-        if (requestId != null) {
-            Optional<Long> already = seqOf(requestId);
-            if (already.isPresent()) {
-                return already.get();
+        AuctionScope currentScope = scope.get();
+        AuctionEventStore currentStore = currentScope.store();
+        // Sezione critica sull'istanza dello store dello scope corrente, dal
+        // controllo della chiave alla scrittura: senza un lock che le lega insieme,
+        // due richieste con la STESSA chiave, rilasciate nello stesso istante,
+        // potevano entrambe leggere "nessuna corrispondenza" in seqOf prima che
+        // l'una o l'altra avesse scritto — e scrivere entrambe, il doppio acquisto
+        // che questo metodo esiste per impedire. Il lock e' sullo store, non sul
+        // metodo o sul servizio, perche' aste diverse non si devono bloccare a
+        // vicenda quando il sotto-progetto 2 ne apre piu' di una.
+        synchronized (currentStore) {
+            // Il controllo della chiave precede ogni validazione: un secondo invio
+            // della stessa richiesta deve riuscire come il primo, anche se nel
+            // frattempo quel giocatore risulta venduto — venduto proprio da lei.
+            if (requestId != null) {
+                Optional<Long> already = seqOf(currentStore, requestId);
+                if (already.isPresent()) {
+                    return already.get();
+                }
             }
-        }
 
-        Player player = catalog.byId(playerId)
-                .orElseThrow(() -> new IllegalArgumentException("giocatore sconosciuto: " + playerId));
-        Participant buyer = participants().stream()
-                .filter(p -> p.id().equals(participantId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "partecipante sconosciuto: " + participantId));
-        if (price < 1) {
-            throw new IllegalArgumentException("il prezzo deve essere almeno 1");
-        }
+            Player player = catalog.byId(playerId)
+                    .orElseThrow(() -> new IllegalArgumentException("giocatore sconosciuto: " + playerId));
+            Participant buyer = currentScope.participants().stream()
+                    .filter(p -> p.id().equals(participantId))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "partecipante sconosciuto: " + participantId));
+            if (price < 1) {
+                throw new IllegalArgumentException("il prezzo deve essere almeno 1");
+            }
 
-        AuctionState current = state();
-        if (current.soldPlayerIds().contains(playerId)) {
-            throw new PurchaseRejectedException(PurchaseRejectedException.Reason.ALREADY_SOLD,
-                    player.name() + " è già stato acquistato");
-        }
-        Squad squad = current.squadOf(buyer.id());
-        if (price > squad.budgetRemaining()) {
-            throw new PurchaseRejectedException(
-                    PurchaseRejectedException.Reason.INSUFFICIENT_BUDGET,
-                    buyer.name() + " ha solo " + squad.budgetRemaining()
-                    + " crediti di budget residuo");
-        }
-        if (!squad.hasRoom(player.role())) {
-            throw new PurchaseRejectedException(
-                    PurchaseRejectedException.Reason.ROLE_SLOTS_EXHAUSTED,
-                    buyer.name() + " ha già coperto tutti gli slot " + player.role());
-        }
+            AuctionState current = state(currentScope);
+            if (current.soldPlayerIds().contains(playerId)) {
+                throw new PurchaseRejectedException(PurchaseRejectedException.Reason.ALREADY_SOLD,
+                        player.name() + " è già stato acquistato");
+            }
+            Squad squad = current.squadOf(buyer.id());
+            if (price > squad.budgetRemaining()) {
+                throw new PurchaseRejectedException(
+                        PurchaseRejectedException.Reason.INSUFFICIENT_BUDGET,
+                        buyer.name() + " ha solo " + squad.budgetRemaining()
+                        + " crediti di budget residuo");
+            }
+            if (!squad.hasRoom(player.role())) {
+                throw new PurchaseRejectedException(
+                        PurchaseRejectedException.Reason.ROLE_SLOTS_EXHAUSTED,
+                        buyer.name() + " ha già coperto tutti gli slot " + player.role());
+            }
 
-        AuctionEvent written = scope.get().store().appendWithNextSeq(
-                seq -> new AuctionEvent.PlayerPurchased(seq, Instant.now(), playerId,
-                        buyer.id(), price, requestId));
-        markChangedInThisSession();
-        return written.seq();
+            AuctionEvent written = currentStore.appendWithNextSeq(
+                    seq -> new AuctionEvent.PlayerPurchased(seq, Instant.now(), playerId,
+                            buyer.id(), price, requestId));
+            markChangedInThisSession();
+            return written.seq();
+        }
     }
 
     /** Il seq dell'acquisto scritto per quella chiave, se c'e' gia' stato. */
-    private Optional<Long> seqOf(String requestId) {
-        return scope.get().store().load().stream()
+    private Optional<Long> seqOf(AuctionEventStore store, String requestId) {
+        return store.load().stream()
                 .filter(AuctionEvent.PlayerPurchased.class::isInstance)
                 .map(AuctionEvent.PlayerPurchased.class::cast)
                 .filter(p -> requestId.equals(p.requestId()))
