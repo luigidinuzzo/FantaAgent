@@ -53,18 +53,31 @@
     <button type="button" id="bidderBid" class="bidder-bid">
       BID <small>spazio</small>
     </button>
-    <button type="button" class="bidder-step" data-step="5">+5</button>
-    <button type="button" class="bidder-step" data-step="10">+10</button>
-    <label class="bidder-jump">porta a
-      <input type="number" id="bidderJump" min="1" inputmode="numeric"
-             aria-label="porta l'offerta a una cifra precisa">
-    </label>
+    <!--/*
+      Tre gruppi, e l'ordine e' quello della frequenza d'uso: si preme BID decine di
+      volte, i salti qualche volta, "aggiudica ora" una volta sola alla fine. Prima
+      stavano tutti in una riga sola con flex-wrap, quindi "aggiudica ora" andava a
+      capo da solo e "porta a" restava schiacciato in coda.
+
+      "aggiudica ora" e' separato da una linea di proposito: chiude l'asta, e non deve
+      stare accanto ai bottoni che si premono di continuo.
+    */-->
+    <div class="bidder-steps">
+      <button type="button" class="bidder-step" data-step="5">+5</button>
+      <button type="button" class="bidder-step" data-step="10">+10</button>
+      <label class="bidder-jump">porta a
+        <input type="number" id="bidderJump" min="1" inputmode="numeric"
+               aria-label="porta l'offerta a una cifra precisa">
+      </label>
+    </div>
     <!--/*
       Ferma il countdown e passa all'aggiudicazione. Serve quando uno dei due
       contendenti si ritira: senza, si dovrebbe restare a guardare un timer che scorre
       su un'asta gia' decisa.
     */-->
-    <button type="button" id="bidderNow" class="bidder-now">aggiudica ora →</button>
+    <div class="bidder-escape">
+      <button type="button" id="bidderNow" class="bidder-now">aggiudica ora →</button>
+    </div>
   </div>
 
   <!--/* Aggiudica sulla pagina proiettata: stesso AuctionService#recordPurchase di

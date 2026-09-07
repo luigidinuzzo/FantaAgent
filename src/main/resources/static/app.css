@@ -536,19 +536,32 @@ body.projected { font-size: 1.15rem; }
   font-weight: 650; text-align: center; font-size: var(--fs-sm);
 }
 
+/* Tre fasce impilate, non una riga che va a capo: l'ordine verticale segue la
+   frequenza d'uso, e ogni gruppo ha una funzione sola. */
 .bidder-controls {
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+  display: grid; gap: var(--s-3);
   padding: var(--s-4) var(--s-5); border-top: 1px solid var(--border);
 }
 .bidder-bid {
-  flex: 1 1 10rem; background: var(--pos); color: #04120A; border-color: var(--pos);
-  font-weight: 700; font-size: var(--fs-md); padding: var(--s-3) var(--s-4);
+  width: 100%; background: var(--pos); color: #04120A; border-color: var(--pos);
+  font-weight: 700; padding: var(--s-4); line-height: 1.15;
+}
+.bidder-steps { display: flex; align-items: center; gap: var(--s-2); }
+/* I due salti occupano lo stesso spazio: sono la stessa cosa a due misure, e darne
+   uno più largo dell'altro suggerirebbe una differenza che non c'è. */
+.bidder-steps .bidder-step { flex: 0 0 4.5rem; }
+.bidder-jump { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; }
+/* Chiude l'asta: sta sotto una linea, lontano dai bottoni che si premono di continuo,
+   perché un click di troppo qui aggiudica invece di rilanciare. */
+.bidder-escape {
+  display: flex; justify-content: flex-end;
+  padding-top: var(--s-3); border-top: 1px solid var(--border);
 }
 .bidder-bid:hover:not(:disabled) { background: #16A34A; border-color: #16A34A; }
 .bidder-bid small { display: block; font-size: var(--fs-xs); font-weight: 400; opacity: .75; }
 .bidder-jump { font-size: var(--fs-xs); color: var(--fg-muted);
                text-transform: uppercase; letter-spacing: .08em; }
-#bidderJump { width: 5rem; margin-left: var(--s-2); }
+#bidderJump { width: 5.5rem; margin-left: 0; text-align: center; }
 .bidder-now { background: transparent; color: var(--fg-muted); }
 .bidder-now:hover { background: var(--surface-2); color: var(--fg); }
 
@@ -568,7 +581,7 @@ body.projected { font-size: 1.15rem; }
 .bidder-error { flex: 1 1 100%; margin: 0; color: var(--neg); font-size: var(--fs-sm); }
 
 .bidder-numbers b.big { font-size: 3.25rem; }
-.bidder-bid { font-size: 1.3rem; }
+.bidder-bid { font-size: 1.35rem; }
 
 /* ---- Home --------------------------------------------------------------- */
 
@@ -615,3 +628,10 @@ body.projected { font-size: 1.15rem; }
    conosce gia' il simbolo: il "title" compare al passaggio del mouse, che in asta non
    si usa, e da tastiera non esiste affatto. */
 .bidder-open-row { font-size: var(--fs-xs); padding: var(--s-1) var(--s-2); }
+
+/* Via le frecce native dai campi numerici: sono disegnate dal browser, cambiano forma
+   su ognuno, e in un campo stretto rubano metà della larghezza utile. Il valore si
+   digita o si porta con i bottoni di salto. */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
