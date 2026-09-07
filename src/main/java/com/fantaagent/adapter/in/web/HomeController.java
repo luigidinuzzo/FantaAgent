@@ -59,6 +59,11 @@ public class HomeController {
      */
     @PostMapping("/aste/nuova")
     public String create() {
+        // Chiude quella eventualmente aperta: la schermata di preparazione distingue le
+        // due modalita' da questo, e senza chiudere si finiva sulle impostazioni
+        // dell'asta in corso — in sola lettura, senza campo per il nome — rinominandone
+        // i partecipanti invece di crearne una nuova.
+        runtime.deselect();
         return "redirect:/impostazioni";
     }
 

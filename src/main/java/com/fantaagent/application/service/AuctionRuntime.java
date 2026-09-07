@@ -146,7 +146,26 @@ public class AuctionRuntime {
         }
         RuntimeSnapshot base = current;
         current = new RuntimeSnapshot(auctionId, archive.open(auctionId),
-                base.participants(), base.chain());
+                participantsOf(auctionId), base.chain());
+    }
+
+    /**
+     * I partecipanti da usare per quell'asta: i suoi, se li ha.
+     *
+     * <p>Nomi e iniziali appartengono alla serata, non all'applicazione. Quando erano
+     * un'unica configurazione globale, configurare una seconda asta riscriveva i nomi
+     * mostrati per la prima: gli acquisti restavano corretti — il registro li lega agli
+     * id — ma le rose comparivano intestate alle persone sbagliate.
+     *
+     * <p>Le aste scritte prima di questa separazione non hanno un proprio elenco e
+     * ricadono su quello generale. E' il meglio possibile senza inventare dati: per
+     * fissare i nomi giusti basta aprire quell'asta e salvarli una volta.
+     */
+    private List<Participant> participantsOf(String auctionId) {
+        if (auctionId == null) {
+            return participantsLoader.get();
+        }
+        return archive.participants(auctionId).orElseGet(participantsLoader);
     }
 
     /**
@@ -175,8 +194,12 @@ public class AuctionRuntime {
         String id = freeId(LocalDate.now().toString());
         AuctionEventStore store = archive.open(id);
         store.appendWithNextSeq(seq -> new AuctionEvent.AuctionStarted(seq, Instant.now(), name));
+        // I partecipanti configurati adesso diventano quelli DI QUESTA asta: da qui in
+        // avanti riconfigurarne un'altra non tocchera' piu' i nomi di questa.
+        List<Participant> participants = participantsLoader.get();
+        archive.saveParticipants(id, participants);
         RuntimeSnapshot base = current;
-        current = new RuntimeSnapshot(id, store, base.participants(), base.chain());
+        current = new RuntimeSnapshot(id, store, participants, base.chain());
         return id;
     }
 
@@ -185,10 +208,42 @@ public class AuctionRuntime {
      * pubblica in blocco. L'asta selezionata non cambia: le impostazioni non sono una
      * proprietà del log.
      */
+    /**
+     * Chiude l'asta aperta senza toccarne il registro: da qui si prepara la prossima.
+     *
+     * <p>Serve perche' la schermata di preparazione distingue le due modalita' da una
+     * cosa sola — se un'asta e' aperta o no. Senza questo, dire "nuova asta" con una
+     * gia' aperta portava alle impostazioni di QUELLA, in sola lettura e senza campo
+     * per il nome, e salvando se ne rinominavano i partecipanti invece di crearne
+     * un'altra. Nessun dato andava perso, ma l'asta nuova non nasceva e quella vecchia
+     * cambiava nomi.
+     *
+     * <p>I partecipanti tornano quelli della configurazione generale, che e' il modello
+     * da cui parte la prossima asta.
+     */
+    public synchronized void deselect() {
+        RuntimeSnapshot base = current;
+        current = new RuntimeSnapshot(null, null, participantsLoader.get(), base.chain());
+    }
+
+    /**
+     * Fissa i partecipanti dell'asta aperta e ripubblica lo snapshot.
+     *
+     * <p>Scrive nell'asta, non nella configurazione generale: rinominare durante una
+     * serata non deve toccare i nomi di quelle gia' concluse.
+     */
+    public synchronized void setParticipants(List<Participant> participants) {
+        RuntimeSnapshot base = current;
+        if (base.auctionId() != null) {
+            archive.saveParticipants(base.auctionId(), participants);
+        }
+        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, base.chain());
+    }
+
     public synchronized void rebuild() {
         RuntimeSnapshot base = current;
         ScoringRules scoring = scoringLoader.get();
-        List<Participant> participants = participantsLoader.get();
+        List<Participant> participants = participantsOf(base.auctionId());
         ValuationChain chain = ValuationChain.build(rules, scoring, catalog, seasonWeights);
         current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, chain);
     }

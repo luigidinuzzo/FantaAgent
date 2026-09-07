@@ -1,6 +1,8 @@
 package com.fantaagent.adapter.out.file;
 
 import com.fantaagent.application.port.out.AuctionArchive;
+import com.fantaagent.config.LeagueMembersSettingsStore;
+import com.fantaagent.domain.league.Participant;
 import com.fantaagent.application.port.out.AuctionEventStore;
 
 import java.io.IOException;
@@ -74,6 +76,33 @@ public class FileAuctionArchive implements AuctionArchive {
         } catch (IOException e) {
             throw new UncheckedIOException("impossibile leggere la data di " + log, e);
         }
+    }
+
+    /**
+     * I partecipanti dell'asta, letti dal suo stesso file.
+     *
+     * <p>Riusa {@link LeagueMembersSettingsStore} puntandolo alla cartella dell'asta:
+     * stesso formato e stesso parser della configurazione generale, quindi un file si
+     * puo' copiare dall'una all'altra e non esistono due modi di scrivere la stessa
+     * cosa che possano divergere.
+     */
+    @Override
+    public Optional<List<Participant>> participants(String auctionId) {
+        return membersOf(auctionId).load();
+    }
+
+    @Override
+    public void saveParticipants(String auctionId, List<Participant> participants) {
+        try {
+            Files.createDirectories(directoryOf(auctionId));
+        } catch (IOException e) {
+            throw new UncheckedIOException("impossibile creare la cartella di " + auctionId, e);
+        }
+        membersOf(auctionId).save(participants);
+    }
+
+    private LeagueMembersSettingsStore membersOf(String auctionId) {
+        return new LeagueMembersSettingsStore(directoryOf(auctionId));
     }
 
     private Path directoryOf(String auctionId) {

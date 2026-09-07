@@ -95,6 +95,22 @@ class HomeControllerTest {
                 .createNew(org.mockito.ArgumentMatchers.anyString());
     }
 
+    /**
+     * "Nuova asta" deve CHIUDERE quella eventualmente aperta.
+     *
+     * <p>La schermata di preparazione distingue le due modalita' da questo. Senza
+     * chiudere, con un'asta gia' aperta si finiva sulle sue impostazioni — in sola
+     * lettura e senza campo per il nome — e salvando se ne rinominavano i partecipanti
+     * invece di crearne una nuova: l'asta non nasceva e quella vecchia cambiava nomi.
+     */
+    @Test
+    void nuovaAstaChiudeQuellaAperta() throws Exception {
+        mockMvc.perform(post("/aste/nuova"))
+                .andExpect(status().is3xxRedirection());
+
+        verify(auctionRuntime).deselect();
+    }
+
     @Test
     void laSchermataDAstaSenzaUnAstaSceltaRimandaAllaHome() throws Exception {
         when(auctionRuntime.hasAuction()).thenReturn(false);

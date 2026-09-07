@@ -1,5 +1,7 @@
 package com.fantaagent.application.port.out;
 
+import com.fantaagent.domain.league.Participant;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -27,4 +29,21 @@ public interface AuctionArchive {
 
     /** Ultima scrittura del log, se l'asta esiste. */
     Optional<Instant> lastWritten(String auctionId);
+
+    /**
+     * I partecipanti DI QUELL'ASTA, se ne ha di propri.
+     *
+     * <p>Ogni asta ha i suoi: nomi e iniziali appartengono alla serata, non
+     * all'applicazione. Tenendoli in un'unica configurazione globale, configurare una
+     * seconda asta riscriveva i nomi mostrati per la prima — gli acquisti restavano
+     * corretti, perche' il registro li lega agli id, ma le rose comparivano intestate
+     * alle persone sbagliate.
+     *
+     * <p>Vuoto per le aste scritte prima di questa separazione: li' si ricade sulla
+     * configurazione generale, che e' il meglio che si possa fare senza inventare dati.
+     */
+    Optional<List<Participant>> participants(String auctionId);
+
+    /** Fissa i partecipanti di quell'asta. */
+    void saveParticipants(String auctionId, List<Participant> participants);
 }

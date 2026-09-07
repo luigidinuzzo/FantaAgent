@@ -116,6 +116,78 @@ class AuctionRuntimeTest {
     }
 
     /**
+     * Ogni asta ha i suoi partecipanti.
+     *
+     * <p>Erano una configurazione globale: preparare una seconda asta riscriveva i nomi
+     * mostrati per la prima. Gli acquisti restavano corretti — il registro li lega agli
+     * id — ma le rose comparivano intestate alle persone sbagliate, che su un tabellone
+     * proiettato e' indistinguibile da un errore di attribuzione.
+     */
+    @Test
+    void configurareUnAstaNuovaNonCambiaINomiDiQuellaPrecedente() {
+        List<Participant> primi = List.of(
+                new Participant("me", "Anna", 'A', true),
+                new Participant("p2", "Bruno", 'B', false));
+        List<Participant> secondi = List.of(
+                new Participant("me", "Zoe", 'Z', true),
+                new Participant("p2", "Yuri", 'Y', false));
+
+        java.util.concurrent.atomic.AtomicReference<List<Participant>> globali =
+                new java.util.concurrent.atomic.AtomicReference<>(primi);
+        AuctionRuntime rt = new AuctionRuntime(RULES,
+                new InMemoryPlayerCatalog(List.of(
+                        new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of()),
+                List.of(1.0), AuctionRuntimeTest::scoring, globali::get, archive);
+
+        String prima = rt.createNew("Prima");
+        assertThat(rt.snapshot().participants()).isEqualTo(primi);
+
+        globali.set(secondi);
+        String seconda = rt.createNew("Seconda");
+        assertThat(rt.snapshot().participants()).isEqualTo(secondi);
+
+        rt.select(prima);
+        assertThat(rt.snapshot().participants())
+                .as("riaprendo la prima si rivedono i suoi nomi")
+                .isEqualTo(primi);
+
+        rt.select(seconda);
+        assertThat(rt.snapshot().participants()).isEqualTo(secondi);
+    }
+
+    /** Rinominare durante una serata resta dentro quella serata. */
+    @Test
+    void rinominareInUnAstaNonTocaLeAltre() {
+        String prima = runtime.createNew("Prima");
+        String seconda = runtime.createNew("Seconda");
+
+        runtime.setParticipants(List.of(
+                new Participant("me", "Rinominato", 'R', true),
+                new Participant("marco", "Marco", 'M', false)));
+        assertThat(runtime.snapshot().participants())
+                .extracting(Participant::name).contains("Rinominato");
+
+        runtime.select(prima);
+        assertThat(runtime.snapshot().participants())
+                .extracting(Participant::name).doesNotContain("Rinominato");
+        assertThat(seconda).isNotEqualTo(prima);
+    }
+
+    /** Un'asta scritta prima della separazione ricade sulla configurazione generale. */
+    @Test
+    void unAstaSenzaPartecipantiPropriUsaQuelliGenerali() throws Exception {
+        String vecchia = "2026-08-30";
+        Path dir = tmp.resolve("auctions").resolve(vecchia);
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("events.jsonl"),
+                "{\"type\":\"AuctionStarted\",\"seq\":1,\"at\":\"2026-08-30T08:00:00Z\"}\n");
+
+        runtime.select(vecchia);
+
+        assertThat(runtime.snapshot().participants()).isEqualTo(PARTICIPANTS);
+    }
+
+    /**
      * Il caso che conta davvero: un'asta esistente con eventi dentro non deve mai
      * essere aperta credendo di crearne una nuova, ne' vedersi toccare il log.
      */

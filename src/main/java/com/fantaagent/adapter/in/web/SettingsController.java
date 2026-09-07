@@ -172,7 +172,13 @@ public class SettingsController {
         if (preparing) {
             store.save(scoring);
         }
+        // La configurazione generale e' il MODELLO per la prossima asta, non i
+        // partecipanti di quella aperta: quelli vivono nell'asta, e riconfigurarne una
+        // nuova non deve piu' riscrivere i nomi mostrati per le precedenti.
         membersStore.save(members);
+        if (!preparing) {
+            runtime.setParticipants(members);
+        }
         auctionStore.save(bidder);
         auctionSettings.set(bidder);
         // Ricostruzione atomica: la catena nuova viene costruita per intero e pubblicata
