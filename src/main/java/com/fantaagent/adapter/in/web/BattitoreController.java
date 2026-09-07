@@ -7,6 +7,8 @@ import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerSearchService;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.AuctionSettingsHolder;
+import com.fantaagent.config.AuctionSettingsStore;
+import com.fantaagent.config.AuctionSettingsValidator;
 import com.fantaagent.domain.player.Player;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -62,15 +64,18 @@ public class BattitoreController {
     private final PlayerCatalog catalog;
     private final AuctionRuntime runtime;
     private final AuctionSettingsHolder auctionSettings;
+    private final AuctionSettingsStore auctionStore;
 
     public BattitoreController(AuctionService auction, PlayerSearchService search,
                                PlayerCatalog catalog, AuctionRuntime runtime,
-                               AuctionSettingsHolder auctionSettings) {
+                               AuctionSettingsHolder auctionSettings,
+                               AuctionSettingsStore auctionStore) {
         this.auction = auction;
         this.search = search;
         this.catalog = catalog;
         this.runtime = runtime;
         this.auctionSettings = auctionSettings;
+        this.auctionStore = auctionStore;
     }
 
     @GetMapping("/battitore")
@@ -167,6 +172,38 @@ public class BattitoreController {
                 .body(csv);
     }
 
+    /**
+     * Cambia la durata del countdown senza lasciare la pagina.
+     *
+     * <p>Prima si doveva uscire dalla schermata proiettata, passare dall'asta e poi
+     * dalle impostazioni: un giro che a meta' asta non si fa, quindi il timer restava
+     * quello sbagliato per tutta la sera. La durata non e' un'informazione strategica —
+     * non entra in alcun calcolo — quindi puo' stare su uno schermo condiviso.
+     *
+     * <p>Il valore si applica al PROSSIMO battitore che si apre: cambiarlo mentre un
+     * countdown scorre lo lascerebbe a meta' fra due durate.
+     *
+     * @param delta scatti da sommare alla durata attuale, positivi o negativi
+     */
+    @PostMapping("/battitore/timer")
+    public String timer(@RequestParam int delta, Model model) {
+        AuctionSettings current = auctionSettings.get();
+        int wanted = Math.clamp(current.bidTimerSeconds() + delta,
+                AuctionSettingsValidator.MIN_SECONDS, AuctionSettingsValidator.MAX_SECONDS);
+        AuctionSettings candidate = new AuctionSettings(wanted, current.beepEnabled());
+
+        // La validazione resta l'autorita' anche se il clamp qui sopra la rende gia'
+        // soddisfatta: due strade per decidere cosa e' valido divergono, prima o poi.
+        if (AuctionSettingsValidator.validate(candidate).isEmpty()) {
+            auctionStore.save(candidate);
+            auctionSettings.set(candidate);
+        }
+        model.addAttribute("bidderSettings", auctionSettings.get());
+        model.addAttribute("bidderMinSeconds", AuctionSettingsValidator.MIN_SECONDS);
+        model.addAttribute("bidderMaxSeconds", AuctionSettingsValidator.MAX_SECONDS);
+        return "battitore :: timerControl";
+    }
+
     @PostMapping("/battitore/revoca")
     public String revoke(@RequestParam long targetSeq, Model model) {
         String message;
@@ -215,6 +252,9 @@ public class BattitoreController {
         model.addAttribute("participants", auction.participants());
         model.addAttribute("phase", auction.state().currentPhase());
         model.addAttribute("phaseDone", PhaseCompletion.of(auction.state()));
+        model.addAttribute("bidderSettings", auctionSettings.get());
+        model.addAttribute("bidderMinSeconds", AuctionSettingsValidator.MIN_SECONDS);
+        model.addAttribute("bidderMaxSeconds", AuctionSettingsValidator.MAX_SECONDS);
         model.addAttribute("message", message);
     }
 }

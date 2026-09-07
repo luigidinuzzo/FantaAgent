@@ -72,6 +72,16 @@ class BattitoreControllerTest {
     @MockitoBean
     private com.fantaagent.application.service.AuctionRuntime auctionRuntime;
 
+    /**
+     * Finto apposta: lo store vero punta alla data-dir del profilo dev e SCRIVEREBBE
+     * davvero il file di impostazioni dentro il progetto.
+     */
+    @MockitoBean
+    private com.fantaagent.config.AuctionSettingsStore auctionStore;
+
+    @Autowired
+    private com.fantaagent.config.AuctionSettingsHolder auctionSettings;
+
     private MockMvc mockMvc;
 
     @BeforeEach
@@ -83,6 +93,61 @@ class BattitoreControllerTest {
         when(auctionService.participants()).thenReturn(PARTICIPANTS);
         when(searchService.search(anyString())).thenReturn(List.of(DIMARCO));
         when(playerCatalog.byId("d1")).thenReturn(Optional.of(DIMARCO));
+        when(auctionStore.file()).thenReturn(java.nio.file.Path.of("res/auction-settings.yml"));
+        when(auctionStore.load()).thenReturn(Optional.empty());
+        auctionSettings.set(com.fantaagent.config.AuctionSettings.DEFAULTS);
+    }
+
+    /**
+     * La durata del countdown si cambia dalla pagina proiettata, senza uscirne. Prima
+     * bisognava passare dall'asta e poi dalle impostazioni: un giro che a meta' asta
+     * non si fa, quindi il timer restava quello sbagliato per tutta la sera.
+     */
+    @Test
+    void laPaginaOffreIlControlloDelTimer() throws Exception {
+        mockMvc.perform(get("/battitore"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("timerControl")))
+                .andExpect(content().string(containsString("/battitore/timer")));
+    }
+
+    /** Il nuovo valore vale subito, non al prossimo riavvio, ed e' scritto su disco. */
+    @Test
+    void cambiareIlTimerHaEffettoSubitoEdEsalvato() throws Exception {
+        mockMvc.perform(post("/battitore/timer").param("delta", "3"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("8s")));
+
+        assertThat(auctionSettings.get().bidTimerSeconds()).isEqualTo(8);
+        verify(auctionStore).save(new com.fantaagent.config.AuctionSettings(8, true));
+    }
+
+    /** L'avviso acustico non si tocca: si cambia la durata, non le altre preferenze. */
+    @Test
+    void cambiareIlTimerNonToccaLAvvisoAcustico() throws Exception {
+        auctionSettings.set(new com.fantaagent.config.AuctionSettings(5, false));
+
+        mockMvc.perform(post("/battitore/timer").param("delta", "1"))
+                .andExpect(status().isOk());
+
+        assertThat(auctionSettings.get().beepEnabled()).isFalse();
+    }
+
+    /**
+     * Agli estremi il valore si ferma invece di uscire dai limiti: un countdown di zero
+     * secondi renderebbe il battitore inutilizzabile senza che nulla spieghi perche'.
+     */
+    @Test
+    void ilTimerSiFermaAiLimiti() throws Exception {
+        mockMvc.perform(post("/battitore/timer").param("delta", "-999"))
+                .andExpect(status().isOk());
+        assertThat(auctionSettings.get().bidTimerSeconds())
+                .isEqualTo(com.fantaagent.config.AuctionSettingsValidator.MIN_SECONDS);
+
+        mockMvc.perform(post("/battitore/timer").param("delta", "999"))
+                .andExpect(status().isOk());
+        assertThat(auctionSettings.get().bidTimerSeconds())
+                .isEqualTo(com.fantaagent.config.AuctionSettingsValidator.MAX_SECONDS);
     }
 
     /**

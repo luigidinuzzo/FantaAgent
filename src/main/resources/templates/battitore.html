@@ -28,6 +28,30 @@
     <h1>BATTITORE</h1>
     <div id="phaseBadge" th:fragment="phaseBadge" class="battitore-phase"
          hx-swap-oob="true">FASE <b th:text="${phase}">D</b></div>
+    <!--/*
+      Durata del countdown, modificabile senza lasciare la pagina. Prima si doveva
+      uscire, passare dall'asta e poi dalle impostazioni: un giro che a meta' asta non
+      si fa, quindi il timer restava quello sbagliato per tutta la sera.
+
+      Due bottoni e nessun campo da digitare: si usa mentre la stanza aspetta, e
+      digitare una cifra richiede di guardare la tastiera. I bottoni si spengono agli
+      estremi invece di sparire, cosi' la larghezza non cambia sotto il puntatore.
+    */-->
+    <div id="timerControl" th:fragment="timerControl" class="battitore-timer">
+      <span class="dim">TIMER</span>
+      <form hx-post="/battitore/timer" hx-target="#timerControl" hx-swap="outerHTML">
+        <input type="hidden" name="delta" value="-1">
+        <button type="submit" aria-label="riduci di un secondo"
+                th:disabled="${bidderSettings.bidTimerSeconds <= bidderMinSeconds}">−</button>
+      </form>
+      <b th:text="${bidderSettings.bidTimerSeconds} + 's'">5s</b>
+      <form hx-post="/battitore/timer" hx-target="#timerControl" hx-swap="outerHTML">
+        <input type="hidden" name="delta" value="1">
+        <button type="submit" aria-label="aumenta di un secondo"
+                th:disabled="${bidderSettings.bidTimerSeconds >= bidderMaxSeconds}">+</button>
+      </form>
+    </div>
+
     <!--/* Piccolo e in fondo: serve a chi conduce, non al pubblico. */-->
     <!--/*
       Link normale e non bottone htmx: il download deve partire dal browser, e uno

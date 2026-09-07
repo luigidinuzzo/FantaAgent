@@ -635,3 +635,15 @@ body.projected { font-size: 1.15rem; }
 input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* Durata del countdown nell'intestazione del battitore. Compatta e a destra del
+   nome dell'asta: è un comando per chi conduce, non un'informazione per la stanza,
+   ma non è nemmeno segreta — la durata non entra in alcun calcolo. */
+.battitore-timer { display: flex; align-items: center; gap: var(--s-2);
+                   margin-left: var(--s-5); font-size: var(--fs-sm); }
+.battitore-timer .dim { font-size: var(--fs-xs); text-transform: uppercase;
+                        letter-spacing: .08em; }
+.battitore-timer b { min-width: 2.5rem; text-align: center; font-size: 1.05rem;
+                     font-variant-numeric: tabular-nums; }
+.battitore-timer form { margin: 0; }
+.battitore-timer button { padding: 0 var(--s-3); line-height: 1.6; font-size: 1.05rem; }
