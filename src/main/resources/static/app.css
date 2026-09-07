@@ -394,22 +394,38 @@ button.save:hover:not(:disabled) { background: #16A34A; }
 .recap-col.me { border-color: var(--pos); }
 .recap-col h2 { font-size: var(--fs-md); margin: 0 0 var(--s-1); }
 .recap-col .meta { color: var(--fg-muted); font-size: var(--fs-sm); margin-bottom: var(--s-3); }
+/* Il ruolo separa i blocchi: la lettera da sola, sospesa fra due elenchi, si legge
+   come un'iniziale di giocatore. Con la linea che prosegue si legge come un titolo. */
 .recap-role {
-  font-size: var(--fs-xs); color: var(--fg-muted); font-weight: 600;
-  text-transform: uppercase; letter-spacing: .08em;
-  margin: var(--s-3) 0 var(--s-1); border-top: 1px solid var(--border); padding-top: var(--s-2);
+  display: flex; align-items: center; gap: var(--s-2);
+  font-size: var(--fs-xs); color: var(--fg-subtle); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .1em;
+  margin: var(--s-3) 0 var(--s-1); padding-top: var(--s-2);
+  border-top: 1px solid var(--border);
 }
+.recap-role::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .recap-role:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
 /* Le caselle hanno tutte la stessa altezza, piene o vuote, e il nome non va MAI a
    capo: e' cio' che tiene la riga n allineata fra tutte le squadre. Un nome lungo che
    andasse su due righe sfaserebbe da li' in giu' l'intera colonna, e per capire a che
    punto e' ciascuno bisognerebbe contare invece di guardare. */
+/* Griglia e non flex con space-between: con space-between la posizione del prezzo
+   dipende da quanto e' lungo il nome, e i prezzi risultano frastagliati riga per riga
+   e colonna per colonna. Qui il prezzo ha una colonna sua, larga uguale ovunque, e si
+   incolonna da solo — anche fra squadre diverse, perche' le colonne del tabellone sono
+   larghe uguali.
+
+   La terza traccia resta riservata anche dove la ✕ non c'e' (casella libera): se
+   comparisse solo quando serve, le righe con e senza si disallineerebbero. */
 .recap-player {
-  display: flex; justify-content: space-between; align-items: center;
-  gap: var(--s-2); padding: var(--s-1) 0; font-size: var(--fs-sm);
+  display: grid; grid-template-columns: minmax(0, 1fr) 2.75rem 1.5rem;
+  align-items: center; gap: var(--s-2);
+  padding: var(--s-1) 0; font-size: var(--fs-sm);
   white-space: nowrap;
 }
 .recap-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.recap-player .price { text-align: right; font-variant-numeric: tabular-nums; }
+.recap-player form { justify-self: end; }
 /* Una casella libera si vede come spazio in attesa, non come dato assente. */
 .recap-player.is-empty { color: var(--fg-subtle); }
 .recap-player.is-empty .recap-name { opacity: .45; }
