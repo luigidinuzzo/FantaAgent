@@ -35,6 +35,14 @@ export function PlayerTable({
           {rows.map((row) => {
             const above = row.margin < 0;
             const selected = row.id === selectedId;
+            // Il nome accessibile porta insieme l'azione e lo stato: un
+            // aria-current da solo annuncerebbe "corrente" senza dire di
+            // cosa, e chi ascolta sentirebbe solo il nome del giocatore.
+            // Il testo visibile nella cella resta il nome nudo — questo e'
+            // cio' che si annuncia all'attivazione, non cio' che si legge.
+            const accessibleLabel = selected
+              ? `${row.name}, selezionato per la valutazione`
+              : `Valuta ${row.name}`;
             return (
               <tr
                 key={row.id}
@@ -44,19 +52,11 @@ export function PlayerTable({
               >
                 <td className="py-0">
                   {/* Il bersaglio e' un bottone vero: raggiungibile da tastiera,
-                      annunciato come azione, e alto abbastanza da essere colpito.
-                      Lo stato di selezione va su questo elemento e non su <tr>:
-                      aria-selected e' uno stato di row supportato solo dentro un
-                      antenato grid o treegrid (widget interattivi), non dentro
-                      un <table> statico come il nostro — li' resterebbe nel DOM
-                      ma invisibile agli assistivi. aria-current e' cio' che si
-                      usa per segnalare l'elemento correntemente attivo in un
-                      insieme quando aria-selected non si applica, ed e'
-                      supportato su qualunque elemento, bottone incluso. */}
+                      annunciato come azione, e alto abbastanza da essere colpito. */}
                   <button
                     type="button"
                     onClick={() => onSelect(row.id)}
-                    aria-current={selected ? 'true' : undefined}
+                    aria-label={accessibleLabel}
                     className="flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     {row.name}
@@ -69,6 +69,11 @@ export function PlayerTable({
                   className={`tnum py-2 text-right ${above ? 'text-destructive' : 'text-accent'}`}
                 >
                   {row.maxBid}
+                  {/* Il colore da solo non e' informazione, e data-above-threshold
+                      non entra nell'albero di accessibilita': e' un data-*, non
+                      un'attributo ARIA. Questo testo e' l'equivalente per chi
+                      non vede, letto insieme al numero. */}
+                  {above ? <span className="sr-only">, oltre il tetto stimato</span> : null}
                 </td>
                 <td className="tnum py-2 text-right text-muted-foreground">
                   {row.fantamediaAttesa.toFixed(1)}

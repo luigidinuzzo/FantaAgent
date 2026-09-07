@@ -46,18 +46,37 @@ describe('PlayerTable', () => {
     expect(onSelect).toHaveBeenCalledTimes(2);
   });
 
-  // aria-selected su <tr> non e' annunciato dagli assistivi qui: lo stato e'
-  // supportato su role=row solo dentro un antenato grid o treegrid (widget
-  // interattivi); il nostro <table> ha invece role=table, statico, dove
-  // aria-selected non e' pertinente — l'attributo resterebbe nel DOM ma
-  // invisibile a chi non vede. Il bottone e' l'elemento interattivo reale,
-  // quindi e' li' che deve stare il segnale: aria-current e' cio' che MDN
-  // indica per "elemento correntemente attivo in un insieme" quando
-  // aria-selected non si applica.
-  it('segnala la riga selezionata agli assistivi tramite il bottone', () => {
-    render(<PlayerTable rows={ROWS} selectedId="d1" onSelect={() => {}} />);
-    expect(screen.getByRole('button', { name: /Dimarco/ })).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByRole('button', { name: /Gatti/ })).not.toHaveAttribute('aria-current');
+  // aria-current da solo annuncia "corrente" senza riferimento: chi ascolta
+  // sente "Dimarco, bottone, corrente" e non sa corrente di cosa. La
+  // correzione vera sta nel nome accessibile del bottone, che dice insieme
+  // l'azione e lo stato — non in un attributo di stato in piu' da decifrare.
+  // Verifichiamo il nome accessibile, non un attributo: e' quello, non
+  // l'attributo, che lo screen reader annuncia per un bottone.
+  it('il nome accessibile del bottone dice l azione e, se selezionata, lo stato', () => {
+    const { rerender } = render(
+      <PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} />,
+    );
+    expect(screen.getByRole('button', { name: 'Valuta Dimarco' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Valuta Gatti' })).toBeInTheDocument();
+
+    rerender(<PlayerTable rows={ROWS} selectedId="d1" onSelect={() => {}} />);
+    expect(
+      screen.getByRole('button', { name: 'Dimarco, selezionato per la valutazione' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Valuta Gatti' })).toBeInTheDocument();
+  });
+
+  // Il colore (destructive contro accent) e data-above-threshold non
+  // raggiungono chi non vede: un data-* non entra nell'albero di
+  // accessibilita' e il colore da solo non e' mai informazione. Il testo
+  // nascosto accanto al tetto e' l'equivalente per chi non vede: si legge
+  // insieme al numero, non lo sostituisce.
+  it('segnala il superamento del tetto anche a chi non vede, non solo col colore', () => {
+    render(<PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} />);
+    expect(within(screen.getByTestId('maxbid-d2')).getByText(/oltre il tetto/)).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId('maxbid-d1')).queryByText(/oltre il tetto/),
+    ).not.toBeInTheDocument();
   });
 
   it('con nessun giocatore invita ad agire invece di restare vuota', () => {
