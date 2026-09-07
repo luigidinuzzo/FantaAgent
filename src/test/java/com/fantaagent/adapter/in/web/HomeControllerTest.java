@@ -96,6 +96,22 @@ class HomeControllerTest {
     }
 
     /**
+     * "Esci" chiude l'asta e riporta alla home.
+     *
+     * <p>Chiude davvero invece di limitarsi a cambiare pagina: un'uscita che lasciasse
+     * l'asta aperta riporterebbe al caso in cui "nuova asta" mostrava le impostazioni
+     * di quella vecchia, rinominandone i partecipanti invece di crearne una.
+     */
+    @Test
+    void uscireChiudeLastaEtornaAllaHome() throws Exception {
+        mockMvc.perform(post("/aste/esci"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
+
+        verify(auctionRuntime).deselect();
+    }
+
+    /**
      * "Nuova asta" deve CHIUDERE quella eventualmente aperta.
      *
      * <p>La schermata di preparazione distingue le due modalita' da questo. Senza

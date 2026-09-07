@@ -45,6 +45,15 @@
        dove lo si chiede, e una seconda via per costruirlo avrebbe potuto divergere
        proprio nei dettagli di byte da cui dipende la riuscita dell'import. */-->
   <a th:href="@{/battitore/esporta}" class="settings-link">↓ esporta rose</a>
+  <!--/*
+    Chiude l'asta e torna alla home. E' un form e non un collegamento perche' cambia
+    stato: lasciare un'asta e' un'azione, non una destinazione, e con un semplice link
+    resterebbe aperta — riportando al caso in cui "nuova asta" mostrava le impostazioni
+    di quella vecchia. Nulla si perde: riaprirla la riporta dov'era.
+  */-->
+  <form method="post" th:action="@{/aste/esci}" class="status-exit">
+    <button type="submit">Esci</button>
+  </form>
 </header>
 
 <!--/* L'elemento resta sempre presente (mai th:if sull'elemento stesso): uno swap

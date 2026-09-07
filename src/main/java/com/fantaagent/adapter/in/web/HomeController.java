@@ -57,6 +57,24 @@ public class HomeController {
      * tornava indietro dalla schermata di conferma lasciava dietro di se' un'asta vuota
      * che restava per sempre nell'elenco, e piu' d'una se ci ripensava piu' volte.
      */
+    /**
+     * Chiude l'asta aperta e torna alla home, da cui se ne sceglie un'altra o se ne
+     * comincia una nuova.
+     *
+     * <p>Chiude davvero invece di limitarsi a cambiare pagina: la schermata di
+     * preparazione distingue le sue due modalita' proprio da questo, e un'uscita che
+     * lasciasse l'asta aperta porterebbe di nuovo al caso in cui "nuova asta" mostrava
+     * le impostazioni di quella vecchia.
+     *
+     * <p>Non si perde nulla: il registro e' su disco e riaprire l'asta la riporta
+     * esattamente dov'era.
+     */
+    @PostMapping("/aste/esci")
+    public String leave() {
+        runtime.deselect();
+        return "redirect:/";
+    }
+
     @PostMapping("/aste/nuova")
     public String create() {
         // Chiude quella eventualmente aperta: la schermata di preparazione distingue le

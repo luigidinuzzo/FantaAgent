@@ -193,6 +193,15 @@ class AuctionControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("/battitore/esporta")));
     }
 
+    /** Dalla schermata d'asta si deve poter uscire per sceglierne un'altra. */
+    @Test
+    void theAuctionPageOffersAnExit() throws Exception {
+        mockMvc.perform(get("/asta"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Esci")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/aste/esci")));
+    }
+
     @Test
     void searchingShowsTheTopResultWithItsNumbers() throws Exception {
         mockMvc.perform(get("/fragments/main").param("cmd", "bast"))
