@@ -17,6 +17,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Il codice gia' scritto compila strict senza un errore: attivarlo non
+       cambia nulla oggi, impedisce domani che il primo "any" implicito o il
+       primo accesso a un campo forse-null entri senza che nessuno lo veda. */
+    "strict": true,
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
