@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { ParticipantView } from '../api/types';
 
 export function BidPanel({
@@ -22,24 +22,41 @@ export function BidPanel({
   const hintId = useId();
 
   const [price, setPrice] = useState(suggestedPrice);
+  const [touched, setTouched] = useState(false);
+
+  // Cambiando giocatore il prezzo deve tornare al tetto di QUEL giocatore. Ma
+  // useValuation (Task 11) rivaluta ogni 5 s anche il giocatore GIA'
+  // selezionato: un'offerta altrui sposta i budget e quindi il tetto puo'
+  // ricalcolarsi pur restando lo stesso giocatore, e da qui (nessun playerId
+  // da confrontare) le due situazioni sono indistinguibili. "touched" e'
+  // esplicito, non dedotto per coincidenza numerica: confrontare il prezzo
+  // con l'ultimo suggerito avrebbe scambiato per "intatto" un prezzo che
+  // l'utente ha ridigitato uguale a quello precedente — correggendo un
+  // refuso, per esempio — un caso reale, non solo teorico.
+  useEffect(() => {
+    if (!touched) setPrice(suggestedPrice);
+  }, [suggestedPrice, touched]);
+
   const [participantId, setParticipantId] = useState(
     participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '',
   );
 
-  // Cambiando giocatore il prezzo deve tornare al tetto di QUEL giocatore. Ma
-  // useValuation (Task 11) rivaluta anche il giocatore GIA' selezionato ogni
-  // 5 s, e un'offerta altrui puo' spostare i budget e quindi il tetto pur
-  // restando lo stesso giocatore: allo sguardo di questo componente le due
-  // situazioni sono identiche, un cambio di suggestedPrice. Senza un playerId
-  // da confrontare, l'unico modo per non confonderle e' guardare se il campo
-  // e' ancora quello che ci avevamo scritto noi l'ultima volta: se l'utente lo
-  // ha gia' cambiato, la rivalutazione non lo sovrascrive in silenzio.
-  const lastSuggested = useRef(suggestedPrice);
+  // La route (Task 17) monta questo pannello con participants=[] finche' la
+  // query dei partecipanti non risolve: il calcolo qui sopra, eseguito una
+  // sola volta al mount, produce sempre ''. Senza risincronizzarlo quando la
+  // lista arriva, il <select> del browser mostrerebbe comunque la prima
+  // opzione (sembra scelto) mentre lo stato resta vuoto — e un invio senza
+  // toccare il menu, il percorso piu' comune, scriverebbe participantId: ''
+  // nel registro d'aggiudicazione. Si risincronizza solo quando la scelta
+  // attuale non e' (piu') fra i partecipanti: una scelta ancora valida
+  // dell'utente non va cancellata da un refetch che ridisegna lo stesso
+  // elenco con un nuovo riferimento d'array.
   useEffect(() => {
-    if (suggestedPrice === lastSuggested.current) return;
-    setPrice((current) => (current === lastSuggested.current ? suggestedPrice : current));
-    lastSuggested.current = suggestedPrice;
-  }, [suggestedPrice]);
+    setParticipantId((current) => {
+      if (participants.some((p) => p.id === current)) return current;
+      return participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '';
+    });
+  }, [participants]);
 
   // Un bottone disabilitato e' annunciato come "non disponibile" e basta: chi
   // vede lo deduce dal bordo tratteggiato della scheda o da "Connessione
@@ -69,7 +86,10 @@ export function BidPanel({
           type="number"
           min={1}
           value={price}
-          onChange={(e) => setPrice(Number(e.target.value))}
+          onChange={(e) => {
+            setTouched(true);
+            setPrice(Number(e.target.value));
+          }}
           aria-invalid={error !== null}
           aria-describedby={error ? errorId : undefined}
           className="tnum mt-1 min-h-11 w-24 border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
