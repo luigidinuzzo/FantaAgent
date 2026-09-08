@@ -105,6 +105,27 @@ La scelta di shadcn su una libreria a batterie incluse è motivata dalla direzio
 visiva: i componenti vanno tematizzati a fondo, e possedere il sorgente è la sola
 via che non combatte contro il tema di qualcun altro.
 
+> **Cosa è arrivato davvero nei sotto-progetti 1–3.** TanStack Query, Tailwind v4,
+> Vitest, Testing Library e Playwright, sì. shadcn/ui, TanStack Table, React Router
+> e `lucide-react`, no — e la loro assenza è deliberata, non un arretrato.
+>
+> - **shadcn/ui e la cartella `src/ui/`**: c'è una schermata sola, i suoi componenti
+>   sono scritti a mano in `src/domain/`, e nessuno di essi è una primitiva
+>   riusabile. Introdurre lo scaffolding di shadcn per possedere il sorgente di
+>   componenti che non esistono ancora sarebbe stato costo senza copertura. `src/ui/`
+>   nascerà quando nascerà la prima primitiva condivisa fra due schermate.
+> - **TanStack Table**: `PlayerTable` è una `<table>` semantica scritta a mano.
+>   L'ordinamento e i filtri, che sono la ragione della libreria, non servono
+>   ancora: la tabella mostra una pagina di venticinque righe già ordinata dal
+>   server.
+> - **React Router**: c'è una rotta sola, montata direttamente. Il router entra alla
+>   seconda.
+> - **`lucide-react`**: non c'è nessuna icona nell'interfaccia spedita. Il vincolo
+>   «icone SVG, mai emoji» resta e vale dalla prima icona in poi.
+>
+> Chi legge la tabella qui sopra sta leggendo la direzione, non l'inventario del
+> repository.
+
 Non c'è SSR e non serve: l'applicazione vive di stato in tempo reale dietro
 autenticazione, non di indicizzazione.
 
@@ -170,8 +191,20 @@ La garanzia viene ricostruita su tre livelli, tutti verificati:
    questa è una regola in più nella stessa suite.
 
 3. **Un test di serializzazione** che chiama `/board` con uno stato d'asta noto e
-   asserisce che il corpo JSON non contiene il valore del tetto calcolato per
-   nessuno dei giocatori presenti.
+   asserisce che nel corpo JSON non compare nessuno dei nomi di campo della
+   valutazione (`maxBid`, `expectedPrice`, `margin`, `hardCap`, `walkAway`,
+   `confidence`, `drivers`, `worthPursuing`). È un controllo di
+   *vocabolario*, non di valore: il test sostituisce `AuctionService` con un
+   doppio, quindi non esiste nessun tetto realmente calcolato con cui confrontare
+   il corpo. Come descritto in origine — «non contiene il valore del tetto
+   calcolato» — il test non poteva fare ciò che la specifica diceva.
+
+   Il controllo di vocabolario resta comunque quello giusto per questo livello: il
+   modo in cui un tetto finisce nel corpo di `/board` è che qualcuno aggiunga un
+   campo, e un campo aggiunto ha un nome. Un test che monti l'asta vera e confronti
+   il corpo con una valutazione reale sarebbe più forte contro il caso residuo — un
+   tetto che esce sotto un nome inventato — ed è un candidato per un
+   sotto-progetto successivo, non un buco da tappare adesso.
 
 Il vincolo passa da «un campo che non esiste» a «un campo che non esiste, più due
 test che lo dimostrano». Non è più debole di prima.
@@ -224,9 +257,15 @@ che divergono mentre qualcuno rilancia sono la classe di difetto più costosa ch
 questa applicazione possa avere.
 
 Concretamente: TanStack Query tiene una **cache** della risposta del server, non
-una copia gestita a mano. Nessun `useState` contiene mai un budget, uno slot, un
-prezzo o una composizione di rosa. L'unico stato realmente client è il countdown
-del battitore, che è già l'unico oggi.
+una copia gestita a mano. La regola, detta in modo che si possa applicare
+meccanicamente: **nessun valore derivato dal server viene rispecchiato in
+`useState`** — un budget, uno slot, una composizione di rosa, un prezzo *letto*
+dall'API si leggono sempre dalla cache della query. Ciò che l'utente scrive è
+invece stato client per definizione: il campo del prezzo di `BidPanel`, che nasce
+inizializzato al tetto suggerito ma da quel momento appartiene a chi digita, e il
+countdown del battitore. La distinzione non è fra tipi di dato ma fra chi ne è
+l'autore: se la verità sta sul server, si interroga; se la sta scrivendo l'utente
+adesso, sta qui.
 
 ### 4.1 Nessun aggiornamento ottimistico sull'aggiudicazione
 
@@ -357,9 +396,14 @@ frontend/src/
 └── styles/       tokens.css
 ```
 
-Le tabelle usano il componente `Table` **semantico** di shadcn con `thead` e
-`tbody`, combinato con TanStack Table per ordinamento e filtri. Mai griglie di
-`div` al posto di una tabella.
+La tabella è una `<table>` **semantica**, con `thead`, `tbody` e `caption`: mai una
+griglia di `div` al posto di una tabella. Questa è la regola, e vale sempre.
+
+> **Nei sotto-progetti 1–3** `src/ui/` non esiste — non c'è ancora una primitiva
+> condivisa fra due schermate — e `PlayerTable` è scritta a mano invece che sopra
+> TanStack Table, perché ordinamento e filtri non servono a una pagina di
+> venticinque righe già ordinata dal server. `routes/` contiene la sola
+> `AuctionRoute`. Il resto dell'albero qui sopra è la forma di arrivo.
 
 ---
 
