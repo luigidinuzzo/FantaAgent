@@ -19,7 +19,6 @@ export const LINES = {
 };
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-const linearToSrgb = (c) => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055);
 
 export function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -49,8 +48,6 @@ export function contrastRatio(a, b) {
   const [hi, lo] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
-
-export { linearToSrgb };
 
 export function renderTokens() {
   const vars = Object.entries(PALETTE).map(([name, hex]) => {

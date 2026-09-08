@@ -3,9 +3,7 @@ import { apiGet, apiPost } from './client';
 import type {
   AuctionStateResponse,
   PhasePageResponse,
-  PlayerSummary,
   PurchaseResponse,
-  Role,
   ValuationResponse,
 } from './types';
 
@@ -13,7 +11,6 @@ const KEYS = {
   state: ['state'] as const,
   phase: (offset: number) => ['phase', offset] as const,
   valuation: (playerId: string) => ['valuation', playerId] as const,
-  search: (q: string) => ['search', q] as const,
 };
 
 export function useAuctionState() {
@@ -35,14 +32,6 @@ export function useValuation(playerId: string | null) {
     queryKey: KEYS.valuation(playerId ?? ''),
     queryFn: () => apiGet<ValuationResponse>(`/players/${playerId}/valuation`),
     enabled: playerId !== null,
-  });
-}
-
-export function useSearch(query: string) {
-  return useQuery({
-    queryKey: KEYS.search(query),
-    queryFn: () => apiGet<PlayerSummary[]>(`/players?q=${encodeURIComponent(query)}`),
-    enabled: query.trim().length > 0,
   });
 }
 
@@ -78,22 +67,6 @@ export function useAssign() {
     // 'success' finche' anche le altre query attive (stato, fase, valutazione)
     // non hanno riletto — e' cosi' che AuctionRoute (Task 17) puo' comporre
     // l'annuncio dell'acquisto dal budget DOPO, non da quello di prima.
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-export function useChangePhase() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (role: Role) => apiPost('/phase', { role }),
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-export function useUndoLast() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => apiPost('/purchases/void-last'),
     onSuccess: () => client.invalidateQueries(),
   });
 }

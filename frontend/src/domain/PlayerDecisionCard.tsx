@@ -16,12 +16,10 @@ function signed(n: number): string {
 export function PlayerDecisionCard({
   valuation,
   stale,
-  bidState,
   children,
 }: {
   valuation: ValuationResponse;
   stale: boolean;
-  bidState?: { currentBid: number };
   children?: ReactNode;
 }) {
   const nameId = `player-name-${valuation.playerId}`;
@@ -70,9 +68,6 @@ export function PlayerDecisionCard({
         <p className="text-sm text-muted-foreground">
           {ROLE_LABEL[valuation.role]}, {valuation.team}
         </p>
-        {bidState ? (
-          <p className="ml-auto text-sm text-accent">offerta a {bidState.currentBid}</p>
-        ) : null}
       </header>
 
       <div className="mt-4 flex flex-wrap items-end gap-8">

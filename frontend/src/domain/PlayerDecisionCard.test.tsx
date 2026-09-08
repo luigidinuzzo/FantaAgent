@@ -61,13 +61,6 @@ describe('PlayerDecisionCard', () => {
     expect(screen.getByTestId('max-bid')).toHaveTextContent('47');
   });
 
-  it('mostra lo stato dell offerta quando c e', () => {
-    render(
-      <PlayerDecisionCard valuation={VALUATION} stale={false} bidState={{ currentBid: 41 }} />,
-    );
-    expect(screen.getByText(/offerta a 41/)).toBeInTheDocument();
-  });
-
   it('quando il dato e stantio espone un avviso per lo screen reader', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale />);
     expect(
