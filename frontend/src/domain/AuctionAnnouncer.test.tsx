@@ -29,6 +29,18 @@ describe('purchaseMessage', () => {
     ).toContain('aggiudicato a Bruno');
   });
 
+  it("usa 'ad' anche davanti a una vocale accentata: la regola e' sul suono, non sull'ASCII", () => {
+    expect(
+      purchaseMessage({
+        playerName: 'Gatti',
+        buyerName: 'Émile',
+        price: 12,
+        myBudgetRemaining: 253,
+        mySlotsRemaining: 16,
+      }),
+    ).toContain('aggiudicato ad Émile');
+  });
+
   it('accorda il singolare quando resta uno slot solo', () => {
     expect(
       purchaseMessage({
