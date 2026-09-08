@@ -4,6 +4,7 @@ import com.fantaagent.adapter.out.file.InMemoryPlayerCatalog;
 import com.fantaagent.adapter.out.file.JsonlAuctionEventStore;
 import com.fantaagent.application.port.out.AuctionEventStore;
 import com.fantaagent.application.port.out.PlayerCatalog;
+import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
 import com.fantaagent.domain.player.Player;
@@ -42,12 +43,28 @@ class IdempotentPurchaseTest {
                 catalog, store);
     }
 
+    /**
+     * Chi risponde al client compone la risposta da questo evento: sul secondo
+     * invio deve descrivere cio' che il log contiene, non cio' che e' appena
+     * arrivato, altrimenti conferma un acquisto a 60 che non e' mai stato scritto.
+     */
+    @Test
+    void ilSecondoInvioRestituisceLAcquistoRegistratoNonQuelloRichiesto() {
+        AuctionService service = service();
+        service.recordPurchase("d1", "anna", 20, "req-1");
+
+        AuctionEvent.PlayerPurchased replay = service.recordPurchase("d1", "anna", 60, "req-1");
+
+        assertThat(replay.price()).isEqualTo(20);
+        assertThat(store.load()).hasSize(1);
+    }
+
     @Test
     void laStessaChiaveNonScriveDueVolte() {
         AuctionService service = service();
 
-        long first = service.recordPurchase("d1", "anna", 20, "req-1");
-        long second = service.recordPurchase("d1", "anna", 20, "req-1");
+        long first = service.recordPurchase("d1", "anna", 20, "req-1").seq();
+        long second = service.recordPurchase("d1", "anna", 20, "req-1").seq();
 
         assertThat(second).isEqualTo(first);
         assertThat(store.load()).hasSize(1);
@@ -108,7 +125,7 @@ class IdempotentPurchaseTest {
             pronti.countDown();
             try {
                 via.await();
-                seqs.add(service.recordPurchase("d1", "anna", 20, "req-simultanea"));
+                seqs.add(service.recordPurchase("d1", "anna", 20, "req-simultanea").seq());
             } catch (Throwable t) {
                 errori.add(t);
             }

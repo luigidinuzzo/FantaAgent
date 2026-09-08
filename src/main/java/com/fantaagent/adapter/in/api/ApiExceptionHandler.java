@@ -2,11 +2,21 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.NoAuctionSelectedException;
 import com.fantaagent.application.service.PurchaseRejectedException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponseException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
 
@@ -15,9 +25,20 @@ import java.net.URI;
  *
  * <p>Limitato al package dell'API: {@code NoAuctionAdvice} continua a servire i
  * controller HTML rimandando alla home, che su un'API non avrebbe senso.
+ *
+ * <p>Estende {@link ResponseEntityExceptionHandler} perche' i soli handler scritti
+ * a mano coprivano le eccezioni di dominio, non quelle che solleva Spring prima
+ * ancora di entrare nel controller: un {@code {seq}} non numerico, un corpo JSON
+ * malformato, un {@code requestId} mancante uscivano con {@code type: about:blank}
+ * e un messaggio in inglese. Il frontend ha un solo punto in cui legge gli errori
+ * ({@code client.ts}) e li distingue per {@code type}: senza uno slug stabile
+ * mostrava quella frase inglese a un utente italiano, classificandola
+ * {@code unknown}. La classe base sa gia' produrre il ProblemDetail giusto con lo
+ * status giusto per ognuna; qui si aggiunge solo cio' che le manca, il {@code type}
+ * sotto il prefisso comune.
  */
 @RestControllerAdvice(basePackages = "com.fantaagent.adapter.in.api")
-public class ApiExceptionHandler {
+public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     static final String TYPE_BASE = "https://fantaagent.local/problems/";
 
@@ -67,6 +88,54 @@ public class ApiExceptionHandler {
     @ExceptionHandler(NothingToUndoException.class)
     ProblemDetail nothingToUndo(NothingToUndoException e) {
         return problem(HttpStatus.CONFLICT, "nothing-to-undo", e.getMessage());
+    }
+
+    /**
+     * Ultima rete: qualunque cosa non prevista esce comunque come problem+json
+     * tipizzato invece che come pagina d'errore HTML, che il frontend proverebbe a
+     * interpretare come JSON fallendo a sua volta e perdendo l'errore vero.
+     */
+    @ExceptionHandler(Exception.class)
+    ProblemDetail unexpected(Exception e) {
+        logger.error("Errore non previsto nell'API", e);
+        return problem(HttpStatus.INTERNAL_SERVER_ERROR, "internal-error",
+                "Errore interno del server.");
+    }
+
+    /**
+     * Unico punto in cui passano tutte le eccezioni gestite dalla classe base: qui
+     * si timbra il {@code type}, cosi' che aggiungere in futuro un caso alla classe
+     * base non riapra il buco dell'{@code about:blank}.
+     */
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body,
+                                                             HttpHeaders headers,
+                                                             HttpStatusCode statusCode,
+                                                             WebRequest request) {
+        ResponseEntity<Object> response =
+                super.handleExceptionInternal(ex, body, headers, statusCode, request);
+        if (response != null && response.getBody() instanceof ProblemDetail problem
+                && problem.getType().equals(URI.create("about:blank"))) {
+            problem.setType(URI.create(TYPE_BASE + frameworkSlug(ex)));
+        }
+        return response;
+    }
+
+    /**
+     * Slug per famiglia di causa, non per classe: al frontend serve sapere se ha
+     * sbagliato l'indirizzo, la forma del corpo o il tipo di un segmento, non quale
+     * classe Spring lo ha rilevato.
+     */
+    private static String frameworkSlug(Exception ex) {
+        return switch (ex) {
+            case NoResourceFoundException ignored -> "unknown-endpoint";
+            case MethodArgumentTypeMismatchException ignored -> "invalid-path-variable";
+            case MethodArgumentNotValidException ignored -> "invalid-body";
+            case HandlerMethodValidationException ignored -> "invalid-body";
+            case HttpMessageNotReadableException ignored -> "malformed-body";
+            case ErrorResponseException ignored -> "invalid-request";
+            default -> "invalid-request";
+        };
     }
 
     static ProblemDetail problem(HttpStatusCode status, String slug, String detail) {

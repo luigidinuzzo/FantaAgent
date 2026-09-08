@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.adapter.in.api.dto.PurchaseDtos;
 import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.player.Role;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -30,10 +31,15 @@ public class PurchaseApi {
     public PurchaseDtos.PurchaseResponse buy(@PathVariable String leagueId,
                                              @Valid @RequestBody PurchaseDtos.PurchaseRequest body) {
         leagues.check(leagueId);
-        long seq = auction.recordPurchase(body.playerId(), body.participantId(),
-                body.price(), body.requestId());
-        return new PurchaseDtos.PurchaseResponse(seq, body.playerId(),
-                body.participantId(), body.price());
+        // La risposta si compone dall'evento scritto, mai dalla richiesta: un
+        // secondo invio della stessa chiave con un corpo diverso non scrive
+        // nulla, e riportare i dati appena ricevuti darebbe un 201 che descrive
+        // un acquisto assente dal registro. L'idempotenza esiste esattamente per
+        // impedire quella contraddizione.
+        AuctionEvent.PlayerPurchased recorded = auction.recordPurchase(
+                body.playerId(), body.participantId(), body.price(), body.requestId());
+        return new PurchaseDtos.PurchaseResponse(recorded.seq(), recorded.playerId(),
+                recorded.participantId(), recorded.price());
     }
 
     @PostMapping("/purchases/{seq}/void")

@@ -100,11 +100,16 @@ public class AuctionService {
     /**
      * @param requestId chiave di idempotenza, o null. Se una richiesta con la
      *                  stessa chiave e' gia' stata registrata, non viene scritto
-     *                  nulla e si restituisce il seq di allora.
-     * @return il seq dell'acquisto registrato
+     *                  nulla e si restituisce l'evento di allora.
+     * @return l'evento effettivamente presente nel log per questa richiesta. Non
+     *         il seq soltanto: chi risponde al client deve poter comporre la
+     *         risposta da cio' che il log contiene davvero. Su un secondo invio
+     *         della stessa chiave con un corpo diverso, i dati della richiesta e
+     *         quelli registrati divergono, e riportare i primi significherebbe
+     *         confermare un acquisto che non e' mai stato scritto.
      */
-    public long recordPurchase(String playerId, String participantId, int price,
-                               String requestId) {
+    public AuctionEvent.PlayerPurchased recordPurchase(String playerId, String participantId,
+                                                       int price, String requestId) {
         AuctionScope currentScope = scope.get();
         AuctionEventStore currentStore = currentScope.store();
         // Sezione critica sull'istanza dello store dello scope corrente, dal
@@ -120,7 +125,8 @@ public class AuctionService {
             // della stessa richiesta deve riuscire come il primo, anche se nel
             // frattempo quel giocatore risulta venduto — venduto proprio da lei.
             if (requestId != null) {
-                Optional<Long> already = seqOf(currentStore, requestId);
+                Optional<AuctionEvent.PlayerPurchased> already =
+                        recordedFor(currentStore, requestId);
                 if (already.isPresent()) {
                     return already.get();
                 }
@@ -159,17 +165,17 @@ public class AuctionService {
                     seq -> new AuctionEvent.PlayerPurchased(seq, Instant.now(), playerId,
                             buyer.id(), price, requestId));
             markChangedInThisSession();
-            return written.seq();
+            return (AuctionEvent.PlayerPurchased) written;
         }
     }
 
-    /** Il seq dell'acquisto scritto per quella chiave, se c'e' gia' stato. */
-    private Optional<Long> seqOf(AuctionEventStore store, String requestId) {
+    /** L'acquisto scritto per quella chiave, se c'e' gia' stato. */
+    private Optional<AuctionEvent.PlayerPurchased> recordedFor(AuctionEventStore store,
+                                                               String requestId) {
         return store.load().stream()
                 .filter(AuctionEvent.PlayerPurchased.class::isInstance)
                 .map(AuctionEvent.PlayerPurchased.class::cast)
                 .filter(p -> requestId.equals(p.requestId()))
-                .map(AuctionEvent.PlayerPurchased::seq)
                 .findFirst();
     }
 
