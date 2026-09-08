@@ -15,6 +15,12 @@ dist-ssr
 # Runtime Node.js scaricato in locale dal profilo Maven "prod"
 node
 
+# Output di Playwright: risultati e report di UNA esecuzione, non codice.
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

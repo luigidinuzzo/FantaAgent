@@ -1,12 +1,23 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { QueryProvider } from './api/QueryProvider';
+import { setAuctionContext } from './api/client';
 import './index.css';
-import { AppShell } from './AppShell';
+import { AuctionRoute } from './routes/AuctionRoute';
+
+// In questo sotto-progetto la lega e' una sola e l'asta e' quella aperta sul
+// server. Il sotto-progetto 3 le prendera' dalla sessione dell'utente.
+setAuctionContext({
+  leagueId: import.meta.env.VITE_LEAGUE_ID ?? 'default',
+  auctionId: import.meta.env.VITE_AUCTION_ID ?? 'corrente',
+});
+
+document.documentElement.classList.add('dark');
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppShell>
-      <p>La schermata d'asta non è ancora stata costruita.</p>
-    </AppShell>
+    <QueryProvider>
+      <AuctionRoute />
+    </QueryProvider>
   </StrictMode>,
 );
