@@ -116,9 +116,17 @@ countdown» devono arrivare a una seconda finestra, e sul server non esiste nien
 sappia.
 
 **Passano per `BroadcastChannel`.** La schermata privata trasmette, la proiezione
-ascolta. Nessuno stato sul server, nessuna riga nel registro, e funziona esattamente nel
-caso reale: il proiettore è il secondo schermo dello stesso portatile, quindi stesso
-browser e stessa origine.
+ascolta.
+
+Il canale porta **solo i fatti che sul server non esistono**: quale giocatore è
+all'asta, a che prezzo, quanto manca. Nome, squadra e ruolo no — quelli sono dati di
+dominio, e farli attraversare un canale fra finestre creerebbe una seconda verità
+accanto al server, che è esattamente ciò che questa migrazione vieta. La proiezione li
+chiede all'endpoint del tabellone, che è autoritativo e sta sotto la regola ArchUnit.
+
+Nessuno stato sul server, nessuna riga nel registro, e funziona esattamente nel caso
+reale: il proiettore è il secondo schermo dello stesso portatile, quindi stesso browser
+e stessa origine.
 
 **Il limite va dichiarato nell'interfaccia, non solo qui.** Se la proiezione viene aperta
 su un altro dispositivo non riceve nulla — e allora deve *dirlo*, con la stessa
@@ -204,7 +212,7 @@ Iscritti durante le tappe 1–3 e
 |---|---|
 | Un metodo HTTP sbagliato su `/api` esce senza `problem+json`: l'eccezione precede la scelta dell'handler, quindi l'advice limitato al package non viene consultato. Stessa correzione già usata per i 404. | 4 |
 | `walkAwayReason` arriva dall'API e nessuna schermata lo mostra — è la ragione per cui lasciar perdere un giocatore | 4 |
-| `<caption>` e larghezza garantita del bersaglio tattile nella tabella di fase | 4 |
+| Larghezza garantita del bersaglio tattile nella tabella di fase — oggi dipende dall'auto-layout e regge per caso | 4 |
 | Tipizzare i due rifiuti di `revokePurchase` | 5 |
 | Il numero del budget nel tabellone è nudo, senza etichetta né unità | 5 |
 | React Router, tolto quando c'era una rotta sola | 4 |
