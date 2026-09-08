@@ -40,14 +40,49 @@ stare.
 
 - Java 25
 - Maven 3.9+
+- Node 22.13+ o 24 — **solo se lavori sul frontend React.** Per fare un'asta non
+  serve: il jar non ha bisogno di Node per partire.
 
 ## Avvio
+
+### Fare un'asta
 
 ```bash
 ./run.sh
 ```
 
-Poi apri <http://localhost:8080>.
+Poi apri <http://localhost:8080>. Da lì si passa dalla home, si sceglie o si crea
+un'asta, e si batte. Sono le schermate Thymeleaf: oggi sono queste a fare l'asta.
+
+Alla prima esecuzione servono i file di configurazione descritti sotto — senza il
+listone in `res/` l'applicazione non parte.
+
+### Lavorare sul frontend React
+
+Due processi, in due terminali. Il backend per primo: il dev server di Vite gli
+inoltra `/api`, quindi senza backend il frontend si apre e non trova niente.
+
+```bash
+# terminale 1 — backend
+./run.sh
+
+# terminale 2 — frontend
+cd frontend
+npm install          # solo la prima volta
+npm run dev
+```
+
+Il frontend sta su <http://localhost:5173>. Non è un secondo modo di fare l'asta:
+è la schermata d'asta React, in costruzione, che parla al backend via API. Il
+backend resta l'unica verità anche in sviluppo — qui dentro non c'è stato di
+dominio e non ci sono mock.
+
+**Serve un'asta già aperta.** Il frontend non ha (ancora) la home per crearne una:
+aprila da <http://localhost:8080>, poi ricarica la pagina su `:5173`. Senza,
+ogni richiesta risponde `409` con «Nessuna asta è aperta» — che è il comportamento
+giusto, non un errore di configurazione.
+
+Il `Ctrl-C` sul terminale del backend lo ferma; `run.sh` non lascia processi dietro.
 
 ## Configurazione
 
@@ -90,8 +125,8 @@ di benvenuto: `index.html` finisce nel jar e nessuna URL lo apre. È voluto, non
 dimenticato. Servirlo adesso vorrebbe dire decidere come convive con le sei rotte
 Thymeleaf, e un prefisso provvisorio tipo `/app/**` creerebbe una URL destinata a
 morire. La tappa 6 toglie quelle rotte e mette il frontend alla radice. Fino ad
-allora lo si sviluppa con `npm run dev` (proxy su `localhost:8080`), e l'asta la si
-fa dalle schermate Thymeleaf.
+allora vale quanto scritto sopra in [Avvio](#avvio): l'asta si fa dalle schermate
+Thymeleaf su `:8080`, il frontend si sviluppa col dev server su `:5173`.
 
 Architettura esagonale leggera in un solo modulo Maven, con i confini fra dominio,
 applicazione e adattatori verificati da ArchUnit invece che raccomandati a parole.
