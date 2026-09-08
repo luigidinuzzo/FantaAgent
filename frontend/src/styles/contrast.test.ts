@@ -9,17 +9,24 @@ import { readFileSync } from 'node:fs';
 import { PALETTE, LINES, contrastRatio, hexToOklch } from '../../scripts/palette.mjs';
 
 // Ogni coppia che la direzione Campo mette davvero una sopra l'altra.
-// 4.5:1 per il testo normale, 3:1 per il testo grande (il tetto, 76px).
+// La soglia segue la DIMENSIONE con cui il colore viene reso, non il ruolo del
+// token: 3:1 vale solo per il testo grande. accent, positive e destructive
+// erano fermi a 3 ma escono a text-sm (14-16px) in PlayerDecisionCard,
+// PlayerTable, ConnectionStatus e LeagueBoard, dove serve 4.5. Li superano
+// gia' tutti: la soglia bassa non proteggeva le dimensioni spedite, e avrebbe
+// lasciato passare la prima ritinteggiatura che le avesse peggiorate.
 const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
   ['foreground', 'background', 4.5],
   ['foreground', 'surface', 4.5],
   ['muted-foreground', 'background', 4.5],
   ['muted-foreground', 'surface', 4.5],
-  ['accent', 'background', 3],
-  ['accent', 'surface', 3],
+  ['accent', 'background', 4.5],
+  ['accent', 'surface', 4.5],
   ['on-accent', 'accent', 4.5],
-  ['positive', 'surface', 3],
-  ['destructive', 'surface', 3],
+  ['positive', 'background', 4.5],
+  ['positive', 'surface', 4.5],
+  ['destructive', 'background', 4.5],
+  ['destructive', 'surface', 4.5],
 ];
 
 describe('palette Campo', () => {

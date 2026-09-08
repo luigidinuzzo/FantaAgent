@@ -5,6 +5,7 @@ import { useAssign, useAuctionState, usePhasePlayers, useValuation } from '../ap
 import { AuctionAnnouncer, purchaseMessage } from '../domain/AuctionAnnouncer';
 import { BidPanel } from '../domain/BidPanel';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
+import { EmptyState } from '../domain/EmptyState';
 import { LeagueBoard } from '../domain/LeagueBoard';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerTable } from '../domain/PlayerTable';
@@ -45,14 +46,20 @@ export function AuctionRoute() {
     if (!me || !buyer) return;
     setAnnouncement(
       purchaseMessage({
-        playerName: valuation.data?.name ?? last.playerId,
+        // Il nome viene dall'input della mutazione, non dalla valutazione
+        // selezionata: quella e' del giocatore su cui si sta guardando ADESSO,
+        // che puo' essere gia' un altro se si e' cliccata un'altra riga mentre
+        // l'aggiudicazione era in volo — si annuncerebbe il nome sbagliato per
+        // l'acquisto giusto. E se la valutazione non e' ancora risolta si
+        // finiva ad annunciare un identificativo numerico nudo.
+        playerName: assign.variables?.playerName ?? last.playerId,
         buyerName: buyer.name,
         price: last.price,
         myBudgetRemaining: me.budgetRemaining,
         mySlotsRemaining: me.slotsRemaining,
       }),
     );
-  }, [assign.data, state.data, valuation.data?.name]);
+  }, [assign.data, assign.variables?.playerName, state.data]);
 
   return (
     <AppShell
@@ -99,14 +106,19 @@ export function AuctionRoute() {
                   // caso che l'alternanza data/error di useAssign() dovrebbe
                   // escludere.
                   setAnnouncement(null);
-                  assign.mutate({ playerId: valuation.data!.playerId, participantId, price });
+                  assign.mutate({
+                    playerId: valuation.data!.playerId,
+                    playerName: valuation.data!.name,
+                    participantId,
+                    price,
+                  });
                 }}
               />
             </PlayerDecisionCard>
           ) : (
-            <p className="border border-dashed border-line p-6 text-sm text-muted-foreground">
+            <EmptyState>
               Scegli un giocatore dalla tabella per vedere quanto conviene spendere.
-            </p>
+            </EmptyState>
           )}
 
           <div className="mt-5">

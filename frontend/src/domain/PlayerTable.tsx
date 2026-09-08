@@ -1,4 +1,7 @@
 import type { PhaseRowView } from '../api/types';
+import { EmptyState } from './EmptyState';
+
+const CAPTION_ID = 'player-table-caption';
 
 export function PlayerTable({
   rows,
@@ -11,16 +14,26 @@ export function PlayerTable({
 }) {
   if (rows.length === 0) {
     // Uno schermo vuoto e' un invito ad agire, non un errore muto.
-    return (
-      <p className="border border-dashed border-line p-6 text-sm text-muted-foreground">
-        Nessun giocatore libero in questa fase. Passa alla fase successiva.
-      </p>
-    );
+    return <EmptyState>Nessun giocatore libero in questa fase. Passa alla fase successiva.</EmptyState>;
   }
 
   return (
-    <div className="overflow-x-auto">
+    // Il contenitore scorre in orizzontale: senza tabIndex chi naviga da
+    // tastiera non ha modo di raggiungere le colonne fuori schermo, perche'
+    // un div che scorre non e' focalizzabile e le celle non lo sono a loro
+    // volta (WCAG 2.1.1). Reso focalizzabile va anche nominato, altrimenti
+    // si annuncia come "gruppo" e basta: la caption fa da nome sia alla
+    // regione sia alla tabella, che finora non ne aveva uno.
+    <div
+      role="region"
+      tabIndex={0}
+      aria-labelledby={CAPTION_ID}
+      className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+    >
       <table className="w-cond w-full border-collapse text-sm">
+        <caption id={CAPTION_ID} className="sr-only">
+          Giocatori liberi nella fase corrente
+        </caption>
         <thead>
           <tr className="border-b border-line-strong text-left text-muted-foreground">
             <th scope="col" className="py-2 font-normal">Giocatore</th>

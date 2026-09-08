@@ -56,16 +56,22 @@ describe('hook', () => {
 
     const { result } = renderHook(() => useAssign(), { wrapper });
 
-    result.current.mutate({ playerId: 'd1', participantId: 'anna', price: 47 });
+    result.current.mutate({ playerId: 'd1', playerName: 'Uno', participantId: 'anna', price: 47 });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const first = JSON.parse(fetchMock.mock.calls[0][1].body).requestId;
 
-    result.current.mutate({ playerId: 'd2', participantId: 'anna', price: 12 });
+    result.current.mutate({ playerId: 'd2', playerName: 'Due', participantId: 'anna', price: 12 });
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     const second = JSON.parse(fetchMock.mock.calls[1][1].body).requestId;
 
     expect(first).toBeTruthy();
     expect(second).not.toBe(first);
+
+    // playerName sta nell'input della mutazione per chi annuncia l'esito, non
+    // per il server: l'API vuole identificativi, e spedirle un campo che non
+    // conosce significa farle ricevere un corpo che non ha mai promesso di
+    // accettare.
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty('playerName');
   });
 
   it('useAssign non scrive in cache prima della conferma del server (nessun optimistic update)', async () => {
@@ -93,7 +99,7 @@ describe('hook', () => {
 
     const { result } = renderHook(() => useAssign(), { wrapper: localWrapper });
 
-    result.current.mutate({ playerId: 'd1', participantId: 'anna', price: 47 });
+    result.current.mutate({ playerId: 'd1', playerName: 'Uno', participantId: 'anna', price: 47 });
     await waitFor(() => expect(result.current.isPending).toBe(true));
 
     // Il fetch e' ancora appeso: se ci fosse un optimistic update, la cache

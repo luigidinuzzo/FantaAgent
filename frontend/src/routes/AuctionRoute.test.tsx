@@ -197,6 +197,43 @@ describe('AuctionRoute', () => {
     }
   });
 
+  /**
+   * L'invariante del canale unico. Due live region che parlano insieme si
+   * sovrappongono e uno screen reader ne perde una: l'utente non vedente
+   * scoprirebbe l'esito di un acquisto a meta'. Finora la controllava solo
+   * Playwright, che gira a mano e vuole un backend acceso — cioe' quasi mai.
+   * L'asserzione vale prima e dopo l'acquisto: e' dopo che l'annuncio esiste,
+   * ed e' li' che una seconda regione potrebbe nascere.
+   */
+  it("la pagina espone una sola live region di stato, prima e dopo l'acquisto", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+
+    const PURCHASE = { seq: 1, playerId: 'p1', participantId: 'anna', price: 7 };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 7)));
+      if (href.includes('/purchases')) return Promise.resolve(jsonResponse(PURCHASE));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(7));
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/aggiudicato/));
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+  });
+
   // Bug 2 (revisione): `announcement` viene solo IMPOSTATO, mai azzerato.
   // Se un secondo invio parte e fallisce, il messaggio di successo del primo
   // resta nella live region "status" mentre BidPanel apre il suo role="alert"

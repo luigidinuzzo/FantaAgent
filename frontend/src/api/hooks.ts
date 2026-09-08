@@ -37,6 +37,15 @@ export function useValuation(playerId: string | null) {
 
 export interface AssignInput {
   playerId: string;
+  /**
+   * Non viaggia sul filo: l'API vuole identificativi, non nomi. Sta qui perche'
+   * chi annuncia l'esito lo ritrova in `variables` accanto a `data`, appaiato
+   * proprio a QUESTA mutazione. Leggerlo invece dalla valutazione in corso
+   * significherebbe nominare il giocatore selezionato adesso, che puo' essere
+   * un altro: un clic su un'altra riga mentre l'aggiudicazione e' in volo
+   * farebbe annunciare l'acquisto sbagliato.
+   */
+  playerName: string;
   participantId: string;
   price: number;
 }
@@ -51,7 +60,9 @@ export function useAssign() {
         // protegge dal doppio invio della STESSA richiesta — un tentativo del
         // browser, non un secondo clic deliberato.
         requestId: crypto.randomUUID(),
-        ...input,
+        playerId: input.playerId,
+        participantId: input.participantId,
+        price: input.price,
       }),
     // Nessun aggiornamento ottimistico: mostrare l'acquisto come riuscito prima
     // che il registro abbia fatto fsync significa mentire nel momento in cui
