@@ -67,9 +67,18 @@ export function useAssign() {
     // Nessun aggiornamento ottimistico: mostrare l'acquisto come riuscito prima
     // che il registro abbia fatto fsync significa mentire nel momento in cui
     // conta di piu'. Si aspetta la conferma, che costa decine di millisecondi.
-    onSuccess: () => {
-      client.invalidateQueries();
-    },
+    //
+    // La promise di invalidateQueries() va RITORNATA, non solo invocata:
+    // Mutation#execute (query-core) dispatcha 'success' — l'evento che rende
+    // data visibile a chi chiama useAssign() — solo DOPO che onSuccess si e'
+    // risolto. Scartare quella promise (un corpo con le graffe, invece di
+    // un'espressione) fa risolvere onSuccess nello stesso turno sincrono, cioe'
+    // prima che il refetch di rete possa completarsi: chi legge assign.data
+    // lo vedrebbe insieme a uno stato ancora vecchio. Ritornarla fa aspettare
+    // 'success' finche' anche le altre query attive (stato, fase, valutazione)
+    // non hanno riletto — e' cosi' che AuctionRoute (Task 17) puo' comporre
+    // l'annuncio dell'acquisto dal budget DOPO, non da quello di prima.
+    onSuccess: () => client.invalidateQueries(),
   });
 }
 

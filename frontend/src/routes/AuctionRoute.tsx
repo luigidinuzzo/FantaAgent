@@ -83,9 +83,24 @@ export function AuctionRoute() {
                 disabled={stale}
                 pending={assign.isPending}
                 error={assignError}
-                onAssign={({ participantId, price }) =>
-                  assign.mutate({ playerId: valuation.data!.playerId, participantId, price })
-                }
+                onAssign={({ participantId, price }) => {
+                  // Un invio NUOVO azzera l'annuncio del precedente qui, nello
+                  // stesso gesto dell'utente — non in un effetto agganciato a
+                  // assign.isPending: quella transizione passa per un
+                  // aggiornamento dello store di react-query che React puo'
+                  // raggruppare con quello immediatamente successivo (verificato:
+                  // un tentativo fallito abbastanza in fretta puo' non produrre
+                  // mai un render con isPending true da solo osservabile). La
+                  // mutazione non pulisce mai `data` da sola finche' non arriva
+                  // un esito nuovo: senza questo, un vecchio "aggiudicato"
+                  // resterebbe nella status region mentre un secondo tentativo,
+                  // appena fallito, apre l'alert di BidPanel — le due live
+                  // region si contraddirebbero nello stesso istante, proprio il
+                  // caso che l'alternanza data/error di useAssign() dovrebbe
+                  // escludere.
+                  setAnnouncement(null);
+                  assign.mutate({ playerId: valuation.data!.playerId, participantId, price });
+                }}
               />
             </PlayerDecisionCard>
           ) : (
