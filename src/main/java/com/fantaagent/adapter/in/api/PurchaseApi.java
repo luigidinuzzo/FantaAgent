@@ -19,18 +19,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class PurchaseApi {
 
     private final LeagueGuard leagues;
+    private final AuctionGuard auctions;
     private final AuctionService auction;
 
-    public PurchaseApi(LeagueGuard leagues, AuctionService auction) {
+    public PurchaseApi(LeagueGuard leagues, AuctionGuard auctions, AuctionService auction) {
         this.leagues = leagues;
+        this.auctions = auctions;
         this.auction = auction;
     }
 
     @PostMapping("/purchases")
     @ResponseStatus(HttpStatus.CREATED)
     public PurchaseDtos.PurchaseResponse buy(@PathVariable String leagueId,
+                                             @PathVariable String auctionId,
                                              @Valid @RequestBody PurchaseDtos.PurchaseRequest body) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         // La risposta si compone dall'evento scritto, mai dalla richiesta: un
         // secondo invio della stessa chiave con un corpo diverso non scrive
         // nulla, e riportare i dati appena ricevuti darebbe un 201 che descrive
@@ -44,15 +48,18 @@ public class PurchaseApi {
 
     @PostMapping("/purchases/{seq}/void")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void voidPurchase(@PathVariable String leagueId, @PathVariable long seq) {
+    public void voidPurchase(@PathVariable String leagueId, @PathVariable String auctionId,
+                             @PathVariable long seq) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         auction.revokePurchase(seq);
     }
 
     @PostMapping("/purchases/void-last")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void voidLast(@PathVariable String leagueId) {
+    public void voidLast(@PathVariable String leagueId, @PathVariable String auctionId) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         if (!auction.undoLast()) {
             throw new NothingToUndoException();
         }
@@ -63,8 +70,10 @@ public class PurchaseApi {
 
     @PostMapping("/phase")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void phase(@PathVariable String leagueId, @Valid @RequestBody PhaseRequest body) {
+    public void phase(@PathVariable String leagueId, @PathVariable String auctionId,
+                      @Valid @RequestBody PhaseRequest body) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         // Il valore di ritorno "era gia' quella fase" non e' un errore: la
         // richiesta esprime uno stato voluto, e quello stato e' gia' vero.
         auction.selectPhase(body.role());

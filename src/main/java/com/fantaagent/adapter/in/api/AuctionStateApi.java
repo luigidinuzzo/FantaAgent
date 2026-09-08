@@ -14,11 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuctionStateApi {
 
     private final LeagueGuard leagues;
+    private final AuctionGuard auctions;
     private final AuctionService auction;
     private final AuctionRuntime runtime;
 
-    public AuctionStateApi(LeagueGuard leagues, AuctionService auction, AuctionRuntime runtime) {
+    public AuctionStateApi(LeagueGuard leagues, AuctionGuard auctions, AuctionService auction,
+                           AuctionRuntime runtime) {
         this.leagues = leagues;
+        this.auctions = auctions;
         this.auction = auction;
         this.runtime = runtime;
     }
@@ -27,6 +30,7 @@ public class AuctionStateApi {
     public StateDtos.AuctionStateResponse state(@PathVariable String leagueId,
                                                 @PathVariable String auctionId) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         // Una sola lettura dello stato per richiesta: rileggerlo per il conteggio
         // dei venduti rifolderebbe il log e potrebbe rispondere su due stati
         // diversi dentro la stessa risposta.

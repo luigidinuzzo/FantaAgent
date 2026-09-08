@@ -102,6 +102,32 @@ class AuctionStateApiTest {
                         .value("https://fantaagent.local/problems/unknown-league"));
     }
 
+    /**
+     * Il letterale riservato: il frontend non conosce nessun identificativo alla
+     * prima richiesta — lo apprende proprio da questa risposta — e senza una via
+     * d'ingresso non potrebbe formulare la chiamata che gliela porta.
+     */
+    @Test
+    void ilLetteraleCorrenteApreLAstaAperta() throws Exception {
+        mvc.perform(get("/api/leagues/default/auctions/corrente/state"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auctionId").value("2026-09-07"));
+    }
+
+    /**
+     * Prima di questo controllo il segmento era decorativo: qualunque valore
+     * rispondeva con l'asta aperta, e /auctions/pippo/state dichiarava
+     * allegramente auctionId "2026-09-07".
+     */
+    @Test
+    void unAstaSconosciutaRisponde404InFormatoProblem() throws Exception {
+        mvc.perform(get("/api/leagues/default/auctions/pippo/state"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/unknown-auction"));
+    }
+
     @Test
     void nessunaAstaSceltaRisponde409InFormatoProblem() throws Exception {
         when(auction.state()).thenThrow(new NoAuctionSelectedException());

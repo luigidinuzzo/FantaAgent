@@ -47,6 +47,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.NOT_FOUND, "unknown-league", e.getMessage());
     }
 
+    @ExceptionHandler(UnknownAuctionException.class)
+    ProblemDetail unknownAuction(UnknownAuctionException e) {
+        return problem(HttpStatus.NOT_FOUND, "unknown-auction", e.getMessage());
+    }
+
     @ExceptionHandler(NoAuctionSelectedException.class)
     ProblemDetail noAuction(NoAuctionSelectedException e) {
         return problem(HttpStatus.CONFLICT, "no-auction-selected",

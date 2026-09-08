@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("dev")
 class PhaseAndVoidApiTest {
 
-    private static final String BASE = "/api/leagues/default/auctions/a1";
+    private static final String BASE = "/api/leagues/default/auctions/corrente";
 
     @Autowired
     private WebApplicationContext context;

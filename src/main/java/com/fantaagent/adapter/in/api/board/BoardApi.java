@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.api.board;
 
+import com.fantaagent.adapter.in.api.AuctionGuard;
 import com.fantaagent.adapter.in.api.LeagueGuard;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.domain.auction.AuctionState;
@@ -21,16 +22,20 @@ import java.util.Map;
 public class BoardApi {
 
     private final LeagueGuard leagues;
+    private final AuctionGuard auctions;
     private final AuctionService auction;
 
-    public BoardApi(LeagueGuard leagues, AuctionService auction) {
+    public BoardApi(LeagueGuard leagues, AuctionGuard auctions, AuctionService auction) {
         this.leagues = leagues;
+        this.auctions = auctions;
         this.auction = auction;
     }
 
     @GetMapping("/board")
-    public BoardDtos.BoardResponse board(@PathVariable String leagueId) {
+    public BoardDtos.BoardResponse board(@PathVariable String leagueId,
+                                         @PathVariable String auctionId) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         AuctionState state = auction.state();
         List<BoardDtos.BoardColumn> columns = auction.participants().stream()
                 .map(p -> column(p, state.squadOf(p.id())))

@@ -18,13 +18,15 @@ import java.util.List;
 public class PlayerApi {
 
     private final LeagueGuard leagues;
+    private final AuctionGuard auctions;
     private final PlayerSearchService search;
     private final PlayerAnalysisService analysis;
     private final PlayerCatalog catalog;
 
-    public PlayerApi(LeagueGuard leagues, PlayerSearchService search,
+    public PlayerApi(LeagueGuard leagues, AuctionGuard auctions, PlayerSearchService search,
                      PlayerAnalysisService analysis, PlayerCatalog catalog) {
         this.leagues = leagues;
+        this.auctions = auctions;
         this.search = search;
         this.analysis = analysis;
         this.catalog = catalog;
@@ -32,17 +34,21 @@ public class PlayerApi {
 
     @GetMapping
     public List<PlayerDtos.PlayerSummary> search(@PathVariable String leagueId,
+                                                 @PathVariable String auctionId,
                                                  @RequestParam(defaultValue = "") String q) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         return search.search(q).stream().map(PlayerDtos.PlayerSummary::from).toList();
     }
 
     @GetMapping("/phase")
     public PlayerDtos.PhasePageResponse phase(
             @PathVariable String leagueId,
+            @PathVariable String auctionId,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "25") int limit) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         return PlayerDtos.PhasePageResponse.from(
                 search.phasePlayers(Math.max(0, offset), clampLimit(limit)));
     }
@@ -65,8 +71,10 @@ public class PlayerApi {
 
     @GetMapping("/{playerId}/valuation")
     public PlayerDtos.ValuationResponse valuation(@PathVariable String leagueId,
+                                                  @PathVariable String auctionId,
                                                   @PathVariable String playerId) {
         leagues.check(leagueId);
+        auctions.check(auctionId);
         Player player = catalog.byId(playerId)
                 .orElseThrow(() -> new UnknownPlayerException(playerId));
         return PlayerDtos.ValuationResponse.from(player, analysis.analyze(playerId));

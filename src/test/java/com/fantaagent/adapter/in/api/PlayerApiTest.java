@@ -67,7 +67,7 @@ class PlayerApiTest {
 
     @Test
     void laRicercaRestituisceIGiocatoriConLaQuotazione() throws Exception {
-        mvc.perform(get("/api/leagues/default/auctions/a1/players?q=bast"))
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players?q=bast"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("d1"))
                 .andExpect(jsonPath("$[0].name").value("Bastoni"))
@@ -78,7 +78,7 @@ class PlayerApiTest {
 
     @Test
     void laValutazionePortaTettoMargineEDriver() throws Exception {
-        mvc.perform(get("/api/leagues/default/auctions/a1/players/d1/valuation"))
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/d1/valuation"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.playerId").value("d1"))
                 .andExpect(jsonPath("$.name").value("Bastoni"))
@@ -99,7 +99,7 @@ class PlayerApiTest {
     void ilGiocatoreSconosciutoRisponde404InFormatoProblem() throws Exception {
         when(catalog.byId("ignoto")).thenReturn(Optional.empty());
 
-        mvc.perform(get("/api/leagues/default/auctions/a1/players/ignoto/valuation"))
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/ignoto/valuation"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.type")
@@ -118,7 +118,7 @@ class PlayerApiTest {
                         List.of(new PlayerSearchService.PhaseRow(BASTONI, RECOMMENDATION, projection)),
                         0, 25, 1));
 
-        mvc.perform(get("/api/leagues/default/auctions/a1/players/phase?offset=0&limit=25"))
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/phase?offset=0&limit=25"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.offset").value(0))
                 .andExpect(jsonPath("$.total").value(1))
@@ -145,7 +145,7 @@ class PlayerApiTest {
         when(search.phasePlayers(anyInt(), anyInt())).thenReturn(
                 new PlayerSearchService.PhasePage(List.of(), 0, PlayerSearchService.PHASE_PAGE_SIZE, 0));
 
-        mvc.perform(get("/api/leagues/default/auctions/a1/players/phase?offset=0&limit=100000"))
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/phase?offset=0&limit=100000"))
                 .andExpect(status().isOk());
 
         // Il tetto si verifica su cio' che il controller chiede al servizio, non solo su

@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("dev")
 class PurchaseApiTest {
 
-    private static final String URL = "/api/leagues/default/auctions/a1/purchases";
+    private static final String URL = "/api/leagues/default/auctions/corrente/purchases";
 
     private static final String BODY = """
             {"requestId":"req-1","playerId":"d1","participantId":"anna","price":47}

@@ -64,7 +64,7 @@ class BoardApiTest {
 
     @Test
     void portaLeRoseConIPrezziPagati() throws Exception {
-        mvc.perform(get("/api/leagues/default/auctions/a1/board"))
+        mvc.perform(get("/api/leagues/default/auctions/corrente/board"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.columns[0].participantName").value("Anna"))
                 .andExpect(jsonPath("$.columns[0].budgetRemaining").value(53))
@@ -84,7 +84,7 @@ class BoardApiTest {
      */
     @Test
     void nonContieneNessunaParolaDelVocabolarioDelleValutazioni() throws Exception {
-        MvcResult result = mvc.perform(get("/api/leagues/default/auctions/a1/board"))
+        MvcResult result = mvc.perform(get("/api/leagues/default/auctions/corrente/board"))
                 .andExpect(status().isOk())
                 .andReturn();
 
