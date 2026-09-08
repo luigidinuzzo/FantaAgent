@@ -15,8 +15,16 @@ non entra nel browser: TanStack Query tiene una cache delle risposte, non una
 copia gestita a mano.
 
 **Tech Stack:** Java 25, Spring Boot 3.5.6, ArchUnit 1.5.0 · Vite, React,
-TypeScript, Tailwind CSS v4, shadcn/ui, TanStack Query, TanStack Table, React
-Router, Vitest, Testing Library, Playwright.
+TypeScript, Tailwind CSS v4, TanStack Query, Vitest, Testing Library, Playwright.
+
+> shadcn/ui, TanStack Table, React Router e `lucide-react` erano previsti e **non
+> sono arrivati**: una schermata sola non ha primitive condivise da possedere, una
+> pagina di venticinque righe già ordinata dal server non ha bisogno di
+> ordinamento e filtri, una rotta sola non ha bisogno di un router, e
+> nell'interfaccia spedita non c'è nessuna icona. Sono rinvii deliberati, non
+> arretrato: il costo di introdurli adesso è certo, la copertura no. Ciò che
+> resta valido è il vincolo — quando la prima icona servirà, sarà un SVG e non
+> un'emoji.
 
 **Spec:** [`docs/superpowers/specs/2026-09-07-frontend-app-api-design.md`](../specs/2026-09-07-frontend-app-api-design.md)
 
@@ -47,7 +55,9 @@ Valori copiati alla lettera dalla spec. Ogni task li assume.
 - **Nessuna risorsa esterna a runtime.** Font auto-ospitati via
   `@fontsource-variable/archivo`. Nessuna richiesta a Google Fonts, nessuna icona
   remota.
-- **Icone SVG** (`lucide-react`), mai emoji.
+- **Icone SVG**, mai emoji (`lucide-react` era la libreria prevista; nei
+  sotto-progetti 1–3 non è arrivata nessuna icona, quindi la dipendenza non è
+  installata — il vincolo vale dalla prima icona in poi).
 - **Bersagli tattili 44×44 px** minimo. Contorno di fuoco sempre visibile.
 - **Movimento 150–300 ms**, solo in risposta a un'azione.
   `prefers-reduced-motion` sopprime transizioni e pulsazioni, **non** il
@@ -119,7 +129,7 @@ ragione va letta prima di eseguirli.
 | `src/api/client.ts` | `fetch` + traduzione di `problem+json` |
 | `src/api/hooks.ts` | hook TanStack Query |
 | `src/domain/PlayerDecisionCard.tsx` | la scheda col tetto |
-| `src/domain/PlayerTable.tsx` | tabella semantica + TanStack Table |
+| `src/domain/PlayerTable.tsx` | tabella semantica, scritta a mano (niente TanStack Table: ordinamento e filtri non servono a una pagina di 25 righe già ordinata dal server) |
 | `src/domain/LeagueBoard.tsx` | barre segmentate per ruolo |
 | `src/domain/BidPanel.tsx` | prezzo, partecipante, aggiudica |
 | `src/domain/ConnectionStatus.tsx` | freschezza del dato |
@@ -4516,3 +4526,24 @@ ancora verdi.
 **Le tappe 4–6 avranno il proprio piano:** battitore e proiezione, home e
 riepilogo e impostazioni, e infine la rimozione dei template. Nessuna di esse va
 iniziata prima che questo piano sia completo e verificato.
+
+### Il frontend impacchettato non è ancora servito
+
+Il profilo Maven `prod` costruisce il frontend e ne copia il risultato dentro il
+jar. Quel risultato **non è raggiungibile da nessuna URL**: `HomeController` mappa
+`/` e `AuctionController` mappa `/asta`, e in Spring MVC una request mapping vince
+sempre sul gestore della pagina di benvenuto, che è ciò che servirebbe
+`index.html`. Non c'è nemmeno un fallback SPA. Chi esegue `mvn -Pprod package`
+oggi paga per intero il costo della build npm e ottiene un jar che contiene
+un'applicazione che nessuno può aprire.
+
+**È una decisione, non una dimenticanza.** Servire il frontend adesso significa
+decidere come convive con le sei rotte Thymeleaf ancora vive, e quella convivenza
+è esattamente ciò che la tappa 6 risolve togliendole di mezzo. Un prefisso
+provvisorio — `/app/**` — creerebbe una URL destinata a morire nel giro di poche
+tappe, e con essa i segnalibri e le abitudini di chi la usa.
+
+Il difetto vero era il silenzio: nulla, né qui né nel README, diceva che il jar
+prodotto contiene un frontend inerte. Ora lo dicono entrambi. Fino alla tappa 6 il
+frontend si sviluppa con `npm run dev` e l'asta si fa dalle schermate Thymeleaf;
+la tappa 6 rimuove i template e mette il frontend alla radice.

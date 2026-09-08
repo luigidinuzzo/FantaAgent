@@ -74,4 +74,31 @@ class ArchitectureTest {
                 .allowEmptyShould(true)
                 .check(classes);
     }
+
+    /**
+     * La pagina proiettata sullo schermo condiviso non deve poter mostrare il
+     * prezzo consigliato. Non basta che l'interfaccia non lo disegni: basta che
+     * l'endpoint lo restituisca, e chiunque apra la scheda di rete del browser —
+     * o punti un telefono sulla stessa URL — lo legge.
+     *
+     * <p>Con Thymeleaf la garanzia era che PublicBidder non avesse il campo. Qui
+     * e' che il package del tabellone non possa nemmeno nominare i tipi da cui un
+     * prezzo consigliato proviene. Chi fa fallire questo test sta per proiettare
+     * i propri tetti sullo schermo che guardano tutti gli avversari.
+     *
+     * <p>Dove si ferma: questa regola vede solo i riferimenti diretti a un tipo
+     * di {@code domain.strategy}. Se AuctionService calcolasse un giorno un
+     * PriceRecommendation al suo interno e restituisse solo l'int che ne esce, il
+     * tabellone potrebbe metterlo in un campo senza nominare mai il tipo
+     * proibito, e questo test non se ne accorgerebbe.
+     */
+    @Test
+    void boardApiCannotReachValuation() {
+        noClasses().that().resideInAPackage("com.fantaagent.adapter.in.api.board..")
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "com.fantaagent.domain.strategy..")
+                .because("il tabellone e' proiettato: non puo' contenere valutazioni")
+                .allowEmptyShould(true)
+                .check(classes);
+    }
 }

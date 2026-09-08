@@ -1,0 +1,18 @@
+@import '@fontsource-variable/archivo';
+@import 'tailwindcss';
+@import './styles/tokens.css';
+
+/* Le cifre confrontate in colonna devono incolonnarsi davvero. Archivo ha le
+   cifre tabulari: qui si chiedono, una volta, per tutto il progetto. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* I tre ruoli ottenuti dall'asse di larghezza della stessa famiglia. */
+.w-cond { font-stretch: 78%; }
+.w-exp  { font-stretch: 118%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
