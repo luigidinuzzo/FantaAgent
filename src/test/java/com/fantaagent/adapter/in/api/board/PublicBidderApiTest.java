@@ -2,6 +2,8 @@ package com.fantaagent.adapter.in.api.board;
 
 import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,17 +44,28 @@ class PublicBidderApiTest {
     @MockitoBean
     private AuctionService auction;
 
+    @MockitoBean
+    private AuctionSettingsHolder settings;
+
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
         when(catalog.byId("d1")).thenReturn(Optional.of(BASTONI));
-        when(auction.auctionId()).thenReturn("2026-09-02");
+        when(settings.get()).thenReturn(AuctionSettings.DEFAULTS);
     }
 
+    /**
+     * 9 e false non sono i default ({@link AuctionSettings#DEFAULTS} vale 5 e true):
+     * scelti apposta perche' un controller che leggesse le impostazioni sbagliate,
+     * o che restituisse delle costanti proprie invece di quelle del bean, uscirebbe
+     * comunque con un numero e un booleano — solo non con questi.
+     */
     @Test
     void portaIlGiocatoreEleImpostazioniDelTimer() throws Exception {
+        when(settings.get()).thenReturn(new AuctionSettings(9, false));
+
         mvc.perform(get(URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.playerId").value("d1"))
@@ -60,8 +73,8 @@ class PublicBidderApiTest {
                 .andExpect(jsonPath("$.team").value("Inter"))
                 .andExpect(jsonPath("$.role").value("D"))
                 .andExpect(jsonPath("$.listPrice").value(20))
-                .andExpect(jsonPath("$.timerSeconds").isNumber())
-                .andExpect(jsonPath("$.beepEnabled").isBoolean());
+                .andExpect(jsonPath("$.timerSeconds").value(9))
+                .andExpect(jsonPath("$.beepEnabled").value(false));
     }
 
     /**
