@@ -6,10 +6,16 @@ import type { BidBroadcast } from './bidChannel';
 import { subscribeBid } from './bidChannel';
 import { BidderDialog } from './BidderDialog';
 
-// La consegna del BroadcastChannel di jsdom e' un vero task del motore, non un
-// microtask: non lo si avanza con vi.advanceTimersByTime (i timer finti non lo
-// toccano) ne' con un microtask esplicito (non basta). setImmediate e' reale
-// anche sotto vi.useFakeTimers, quindi e' l'attesa giusta per farlo arrivare.
+// setImmediate qui e' FINTO, non reale: vi.useFakeTimers fa il fake di ogni
+// timer tranne nextTick e queueMicrotask, e setImmediate non e' fra le
+// eccezioni. Funziona comunque perche' ogni describe che chiama flushChannel
+// usa vi.useFakeTimers({ shouldAdvanceTime: true }): quel flag tiene un
+// intervallo REALE in background che fa avanzare l'orologio finto, e prima o
+// poi smaltisce anche l'immediate finto in coda, consegnando il messaggio del
+// BroadcastChannel. Non e' certo che sia esattamente questo il meccanismo end
+// to end (jsdom non e' stato letto riga per riga) — quel che e' verificato per
+// ripetizione e' che senza shouldAdvanceTime non arriva niente, e con
+// shouldAdvanceTime arriva in modo affidabile.
 function flushChannel() {
   return new Promise<void>((resolve) => setImmediate(resolve));
 }
@@ -72,6 +78,23 @@ describe('BidderDialog', () => {
     await userEvent.keyboard(' ');
     expect(screen.getByTestId('bidder-dialog')).toHaveAttribute('data-over-ceiling', 'false');
     expect(screen.queryByText(/oltre il tuo tetto/i)).not.toBeInTheDocument();
+  });
+
+  it('la barra spaziatrice non rilancia col focus sul bottone Chiudi, ma rilancia appena il focus se ne va', async () => {
+    open();
+    const closeButton = screen.getByRole('button', { name: 'Chiudi' });
+    closeButton.focus();
+
+    // Spazio sul bottone focalizzato e' il gesto normale del browser per
+    // attivarlo (chiudere), non per rilanciare.
+    await userEvent.keyboard(' ');
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('1');
+
+    // Appena il focus torna al caso normale (nessun controllo, si guarda il
+    // tavolo), lo stesso gesto rilancia come sempre.
+    closeButton.blur();
+    await userEvent.keyboard(' ');
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('2');
   });
 
   describe('allo scadere del countdown', () => {
@@ -140,6 +163,26 @@ describe('BidderDialog', () => {
       expect(biddingMessages().at(-1)?.remainingMs).toBeLessThan(remainingAfterRaise!);
 
       unsubscribe();
+    });
+  });
+
+  describe('quando il countdown scade, lo dice anche a chi ascolta', () => {
+    beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+    afterEach(() => vi.useRealTimers());
+
+    it('role="alert" compare solo allo scadere, non prima', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      await user.keyboard(' '); // avvia il countdown, non lo fa scadere
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(5100);
+      });
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/tempo scaduto/i);
     });
   });
 });
