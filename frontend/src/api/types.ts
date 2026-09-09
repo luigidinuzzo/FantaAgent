@@ -80,3 +80,39 @@ export interface PurchaseResponse {
   participantId: string;
   price: number;
 }
+
+export interface BoardSlot {
+  seq: number;
+  playerName: string;
+  price: number;
+}
+
+export interface BoardColumn {
+  participantId: string;
+  participantName: string;
+  me: boolean;
+  budgetRemaining: number;
+  slotsRemaining: number;
+  byRole: Record<Role, BoardSlot[]>;
+}
+
+export interface BoardResponse {
+  auctionId: string;
+  currentPhase: Role;
+  columns: BoardColumn[];
+}
+
+/**
+ * Lo specchio del record Java {@code PublicBidderResponse} — senza campi di
+ * valutazione, perche' l'originale non ne ha. E' il secondo dei quattro posti
+ * in cui la garanzia "il tetto non raggiunge la proiezione" deve reggere.
+ */
+export interface PublicBidderResponse {
+  playerId: string;
+  name: string;
+  team: string;
+  role: Role;
+  listPrice: number;
+  timerSeconds: number;
+  beepEnabled: boolean;
+}

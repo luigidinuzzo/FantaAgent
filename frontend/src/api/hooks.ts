@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from './client';
 import type {
   AuctionStateResponse,
+  BoardResponse,
   PhasePageResponse,
+  PublicBidderResponse,
   PurchaseResponse,
   ValuationResponse,
 } from './types';
@@ -11,6 +13,8 @@ const KEYS = {
   state: ['state'] as const,
   phase: (offset: number) => ['phase', offset] as const,
   valuation: (playerId: string) => ['valuation', playerId] as const,
+  board: ['board'] as const,
+  publicBidder: (playerId: string) => ['public-bidder', playerId] as const,
 };
 
 export function useAuctionState() {
@@ -31,6 +35,28 @@ export function useValuation(playerId: string | null) {
   return useQuery({
     queryKey: KEYS.valuation(playerId ?? ''),
     queryFn: () => apiGet<ValuationResponse>(`/players/${playerId}/valuation`),
+    enabled: playerId !== null,
+  });
+}
+
+export function useBoard() {
+  return useQuery({
+    queryKey: KEYS.board,
+    queryFn: () => apiGet<BoardResponse>('/board'),
+  });
+}
+
+/**
+ * Nome, squadra e ruolo del giocatore all'asta, dall'endpoint del tabellone.
+ *
+ * Non arrivano dal canale fra le finestre di proposito: sono dati di dominio, e il
+ * browser non e' la loro fonte. Il canale porta solo cio' che sul server non esiste —
+ * quale lotto e' aperto, a che prezzo, quanto manca.
+ */
+export function usePublicBidder(playerId: string | null) {
+  return useQuery({
+    queryKey: KEYS.publicBidder(playerId ?? ''),
+    queryFn: () => apiGet<PublicBidderResponse>(`/board/bidder/${playerId}`),
     enabled: playerId !== null,
   });
 }
