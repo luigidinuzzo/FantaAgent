@@ -19,9 +19,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  *
  * <p>Stessa forma di {@link ApiNotFoundAdvice}: senza selettori, perche' e' l'unica che
  * intercetta cio' che non ha un controller, e con il confine deciso guardando il
- * percorso. Fuori da {@code /api/} rilancia la STESSA istanza, che
- * {@code ExceptionHandlerExceptionResolver} legge come "non gestita qui" e passa al
- * resolver successivo: le pagine d'errore dei controller HTML restano quelle di oggi.
+ * percorso. Fuori da {@code /api/} rilancia l'eccezione ricevuta: un rilancio da
+ * dentro un {@code @ExceptionHandler} fa restituire {@code null} a
+ * {@code ExceptionHandlerExceptionResolver}, e il composite passa l'eccezione
+ * ORIGINALE al resolver successivo — cosi' le pagine d'errore dei controller HTML
+ * restano quelle di oggi. Rilanciare la STESSA istanza, invece di una nuova, evita
+ * solo un WARN spurio nel log: non e' cio' che decide il passaggio al resolver
+ * successivo.
  */
 @RestControllerAdvice
 public class ApiMethodNotAllowedAdvice {
