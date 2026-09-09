@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setAuctionContext } from '../api/client';
@@ -400,6 +400,45 @@ describe('AuctionRoute', () => {
     expect(screen.getByLabelText('Prezzo')).toBeInTheDocument();
   });
 
+  // Fix round 1: un lotto alla volta e' aperto sul battitore. Senza
+  // bloccare la tabella, un clic su un'altra riga rimonta BidderDialog
+  // (e' keyed sul playerId) per il nuovo giocatore, buttando via countdown,
+  // prezzo accumulato e beep senza preavviso — e la proiezione, che ascolta
+  // lo stesso canale, vedrebbe il lotto saltare a meta' asta.
+  it('un clic su un altra riga mentre il battitore e aperto non cambia il lotto', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+    await waitFor(() => expect(open).not.toBeDisabled());
+    await userEvent.click(open);
+    expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+
+    const otherRow = screen.getByRole('button', { name: /Giocatore Due/ });
+    expect(otherRow).toBeDisabled();
+    expect(otherRow).toHaveAccessibleDescription(/battitore/i);
+    await userEvent.click(otherRow);
+
+    // Il lotto e' rimasto lo stesso: il battitore mostra ancora Giocatore
+    // Uno, il countdown non e' saltato a un altro playerId.
+    const dialog = screen.getByTestId('bidder-dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText('Giocatore Uno')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Prezzo')).not.toBeInTheDocument();
+
+    // Chiudendo il battitore, la selezione torna deliberatamente possibile.
+    await userEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+    await userEvent.click(screen.getByRole('button', { name: /Valuta Giocatore Due/ }));
+    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(80));
+  });
+
   it("aggiudicare dal battitore passa per la stessa mutazione di BidPanel, non per una seconda", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     let purchaseBody: unknown = null;
@@ -440,6 +479,70 @@ describe('AuctionRoute', () => {
 
       await waitFor(() => expect(purchaseBody).not.toBeNull());
       expect(purchaseBody).toMatchObject({ playerId: 'p1', participantId: 'anna' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Fix round 1: BidderDialog non aveva un prop d'errore. Un'aggiudicazione
+  // fallita dal battitore (budget esaurito, slot pieno, fase cambiata a
+  // meta' rilancio) non arrivava in nessuna forma: il countdown e' gia'
+  // scaduto, il form resta in vista, e nulla — visivo o parlato — diceva
+  // che l'invio non era riuscito. L'utente poteva reinviare alla cieca o
+  // credere che fosse andata a buon fine.
+  it("un'aggiudicazione fallita dal battitore lo dice, anche a chi ascolta", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const PROBLEM = {
+      type: 'https://fantaagent.local/problems/budget-insufficiente',
+      detail: 'Anna ha solo 12 crediti di budget residuo',
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 50)));
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.includes('/board/bidder/p1')) return Promise.resolve(jsonResponse(BIDDER_SETTINGS));
+      if (href.includes('/purchases')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(PROBLEM), {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+      await user.keyboard(' ');
+      await act(async () => {
+        vi.advanceTimersByTime(12_100);
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+
+      await waitFor(() =>
+        expect(screen.getByText('Anna ha solo 12 crediti di budget residuo')).toHaveAttribute(
+          'role',
+          'alert',
+        ),
+      );
+      // Il battitore resta in scena: e' cosi' che si vede l'errore, non un
+      // secondo percorso che lo sostituisce.
+      expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }

@@ -30,7 +30,7 @@ export function PhaseSwitcher({
             disabled={pending || isCurrent}
             aria-label={isCurrent ? `${NOME[role]}, fase corrente` : NOME[role]}
             onClick={() => onChange(role)}
-            className={`min-h-11 px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+            className={`min-h-11 min-w-11 px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
               isCurrent ? 'bg-accent font-bold text-on-accent' : 'border border-line text-muted-foreground'
             }`}
           >

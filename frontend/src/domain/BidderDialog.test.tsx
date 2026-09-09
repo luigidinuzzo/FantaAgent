@@ -45,6 +45,7 @@ function open(overrides = {}) {
       participants={PARTICIPANTS}
       timerSeconds={5}
       beepEnabled={false}
+      error={null}
       onAssign={onAssign}
       onClose={() => {}}
       {...overrides}
@@ -78,6 +79,21 @@ describe('BidderDialog', () => {
     await userEvent.keyboard(' ');
     expect(screen.getByTestId('bidder-dialog')).toHaveAttribute('data-over-ceiling', 'false');
     expect(screen.queryByText(/oltre il tuo tetto/i)).not.toBeInTheDocument();
+  });
+
+  // Bug (fix round 1): il countdown scaduto lascia il form "Aggiudica"
+  // visibile qui, non in BidPanel — se onAssign fallisce (budget esaurito,
+  // slot pieno, fase cambiata a meta' rilancio) e il fallimento non arriva
+  // in nessuna forma, l'utente puo' reinviare alla cieca o credere che sia
+  // andata a buon fine.
+  it("mostra l'errore dell'aggiudicazione quando arriva, anche a chi ascolta", () => {
+    open({ error: 'Anna ha solo 12 crediti di budget residuo' });
+    expect(screen.getByRole('alert')).toHaveTextContent('Anna ha solo 12 crediti di budget residuo');
+  });
+
+  it('senza errore non mostra nessun alert', () => {
+    open({ error: null });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('la barra spaziatrice non rilancia col focus sul bottone Chiudi, ma rilancia appena il focus se ne va', async () => {

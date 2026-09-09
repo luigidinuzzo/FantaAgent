@@ -165,6 +165,7 @@ export function AuctionRoute() {
                   participants={state.data?.participants ?? []}
                   timerSeconds={bidderSettings.data.timerSeconds}
                   beepEnabled={bidderSettings.data.beepEnabled}
+                  error={assignError}
                   onAssign={assignPlayer}
                   onClose={() => setBidderOpen(false)}
                 />
@@ -210,10 +211,17 @@ export function AuctionRoute() {
           )}
 
           <div className="mt-5">
+            {/* Bloccata mentre il battitore e' aperto: un lotto alla volta.
+                Cambiare selezione con un rilancio in corso rimonterebbe
+                BidderDialog (keyed sul playerId) su un altro giocatore,
+                buttando via countdown, prezzo e beep senza preavviso.
+                Abbandonare un lotto resta un gesto deliberato — si chiude
+                il battitore, che e' il controllo che gia' esiste per farlo. */}
             <PlayerTable
               rows={phase.data?.rows ?? []}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              disabled={bidderOpen}
             />
           </div>
         </div>

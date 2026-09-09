@@ -28,6 +28,7 @@ export function BidderDialog({
   participants,
   timerSeconds,
   beepEnabled,
+  error,
   onAssign,
   onClose,
 }: {
@@ -35,6 +36,14 @@ export function BidderDialog({
   participants: ParticipantView[];
   timerSeconds: number;
   beepEnabled: boolean;
+  /**
+   * L'esito di un onAssign fallito (budget esaurito, slot pieno, fase
+   * cambiata a meta' rilancio). Il countdown e' gia' scaduto quando si
+   * arriva a inviare: senza mostrarlo qui, chi ha appena rilanciato non
+   * saprebbe se aggiudicare e' andata a buon fine o no, e potrebbe
+   * reinviare alla cieca.
+   */
+  error: string | null;
   onAssign: (input: { participantId: string; price: number }) => void;
   onClose: () => void;
 }) {
@@ -141,6 +150,19 @@ export function BidderDialog({
         <p className="mt-3 text-sm font-bold text-destructive">
           Sei oltre il tuo tetto di {price - valuation.maxBid}.
           <span className="sr-only"> Questa offerta supera il prezzo massimo consigliato.</span>
+        </p>
+      ) : null}
+
+      {error ? (
+        // role="alert", non un secondo role="status": stessa disciplina
+        // dell'avviso di scadenza qui sotto e dell'errore in BidPanel — un
+        // controllo puntuale, non l'unica live region ambientale dell'app
+        // (che resta AuctionAnnouncer). Senza questo, un'aggiudicazione
+        // fallita qui (a differenza di BidPanel) non avrebbe alcun modo di
+        // arrivare a chi ascolta: il form resta in vista, il countdown e'
+        // gia' scaduto, e nulla direbbe che l'invio non e' riuscito.
+        <p role="alert" className="mt-3 text-sm font-bold text-destructive">
+          {error}
         </p>
       ) : null}
 
