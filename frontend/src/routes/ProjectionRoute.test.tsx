@@ -43,6 +43,30 @@ function stubFetch() {
   vi.stubGlobal('fetch', fetchMock);
 }
 
+function stubFetchBoardError() {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const href = typeof input === 'string' ? input : input.toString();
+    if (href.endsWith('/board')) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ type: 'unknown', detail: 'errore' }), { status: 500 }),
+      );
+    }
+    return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+}
+
+function stubFetchEmptyBoard() {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const href = typeof input === 'string' ? input : input.toString();
+    if (href.endsWith('/board')) {
+      return Promise.resolve(jsonResponse({ ...BOARD, columns: [] }));
+    }
+    return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+  });
+  vi.stubGlobal('fetch', fetchMock);
+}
+
 function renderProjection() {
   render(
     <QueryProvider>
@@ -64,20 +88,53 @@ describe('ProjectionRoute', () => {
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 
-  it('mostra il lotto quando la schermata privata lo trasmette', async () => {
+  it('mostra il lotto quando la schermata privata lo trasmette, e non dice piu di non ricevere', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();
     renderProjection();
     publishBid({ kind: 'bidding', playerId: 'd1', price: 41, remainingMs: 3000, totalMs: 5000 });
     // Il prezzo arriva dal canale ed e' visibile subito; il nome arriva dal server.
     expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
+    expect(screen.queryByText(/non riceve dalla schermata privata/i)).not.toBeInTheDocument();
   });
 
-  it('dice di non ricevere invece di restare ferma fingendo', () => {
+  it('dice di non ricevere invece di restare ferma fingendo, quando il browser non ha il canale', () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();
     vi.stubGlobal('BroadcastChannel', undefined);
     renderProjection();
     expect(screen.getByText(/non riceve dalla schermata privata/i)).toBeInTheDocument();
+  });
+
+  // Bug (revisione): la versione precedente controllava solo se il BROWSER
+  // supporta BroadcastChannel, non se questa finestra ha davvero sentito
+  // l'altra. BroadcastChannel non attraversa mai due dispositivi: su una
+  // proiezione aperta altrove l'API resta definita, quindi quel controllo
+  // varrebbe sempre true, anche senza aver mai sentito nulla — l'esatto
+  // difetto che la specifica vieta. Qui il canale c'e' (non e' stubbato
+  // via), ma nessun messaggio arriva mai: la schermata deve dirlo comunque.
+  it("dice di non ricevere anche quando il canale c'e' ma nessun messaggio arriva mai", () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+    expect(screen.getByText(/non riceve dalla schermata privata/i)).toBeInTheDocument();
+  });
+
+  it('carica correttamente ma non trova nessun tabellone', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetchEmptyBoard();
+    renderProjection();
+    expect(await screen.findByText(/nessun partecipante/i)).toBeInTheDocument();
+  });
+
+  it('dice se i tabelloni non si caricano, invece di mostrare una griglia vuota identica a "nessun partecipante"', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetchBoardError();
+    renderProjection();
+    // QueryProvider ritenta una volta (retry: 1) prima di arrendersi: il
+    // timeout predefinito di findBy non basterebbe ad aspettare quel giro.
+    expect(await screen.findByRole('alert', {}, { timeout: 3000 })).toHaveTextContent(
+      /non riesco a caricare/i,
+    );
   });
 });
