@@ -2,7 +2,17 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ParticipantView, ValuationResponse } from '../api/types';
+import type { BidBroadcast } from './bidChannel';
+import { subscribeBid } from './bidChannel';
 import { BidderDialog } from './BidderDialog';
+
+// La consegna del BroadcastChannel di jsdom e' un vero task del motore, non un
+// microtask: non lo si avanza con vi.advanceTimersByTime (i timer finti non lo
+// toccano) ne' con un microtask esplicito (non basta). setImmediate e' reale
+// anche sotto vi.useFakeTimers, quindi e' l'attesa giusta per farlo arrivare.
+function flushChannel() {
+  return new Promise<void>((resolve) => setImmediate(resolve));
+}
 
 const VALUATION: ValuationResponse = {
   playerId: 'd1', name: 'Bastoni', team: 'Inter', role: 'D', listPrice: 20,
@@ -94,6 +104,42 @@ describe('BidderDialog', () => {
 
       await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
       expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 3 });
+    });
+  });
+
+  describe('il countdown corre senza altri rilanci', () => {
+    beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+    afterEach(() => vi.useRealTimers());
+
+    it('la finestra proiettata continua a sentire il tempo scendere', async () => {
+      // Fissa la regressione: se la pubblicazione dipendesse solo da
+      // playerId/price/timerSeconds (non da countdown.remaining), qui non
+      // arriverebbe nessun altro messaggio dopo il rilancio, e il numero
+      // sull'altra finestra resterebbe fermo mentre il tempo scade davvero.
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+      const biddingMessages = () => seen.filter((m) => m.kind === 'bidding');
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open();
+      await flushChannel(); // il messaggio pubblicato al montaggio
+
+      await user.keyboard(' '); // un solo rilancio: avvia il countdown, poi silenzio
+      await flushChannel();
+      const afterRaiseCount = biddingMessages().length;
+      const remainingAfterRaise = biddingMessages().at(-1)?.remainingMs;
+      expect(remainingAfterRaise).toBeDefined();
+
+      // Un secondo di orologio, senza toccare la tastiera.
+      await act(async () => {
+        vi.advanceTimersByTime(1000);
+      });
+      await flushChannel();
+
+      expect(biddingMessages().length).toBeGreaterThan(afterRaiseCount);
+      expect(biddingMessages().at(-1)?.remainingMs).toBeLessThan(remainingAfterRaise!);
+
+      unsubscribe();
     });
   });
 });

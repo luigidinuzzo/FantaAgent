@@ -55,17 +55,17 @@ export function BidderDialog({
   // Quello che l'altra finestra puo' mostrare e' esattamente quello che le mandiamo:
   // il tetto non e' fra questi campi e il tipo del messaggio non lo prevede.
   //
-  // Le dipendenze NON includono countdown.remaining, che avanza cento volte al
-  // secondo mentre il countdown corre: se lo facessero, ogni tick aprirebbe e
-  // chiuderebbe un BroadcastChannel dieci volte al secondo per niente. Un
-  // rilancio azzera sempre il countdown (countdown.start() qui sopra), quindi
-  // "remaining" e' gia' tornato al pieno nello stesso render in cui "price"
-  // cambia: leggerlo nel corpo dell'effetto, senza elencarlo come dipendenza,
-  // da' comunque il valore giusto. Il conto alla rovescia visibile sull'altra
-  // finestra non viene dai tick di questo canale: viene dallo stesso hook
-  // (Task 4) avviato in sincronia, che e' il comportamento condiviso di cui
-  // parla il commento di useBidCountdown — i dati non attraversano il
-  // confine, il comportamento si'.
+  // countdown.remaining E' nelle dipendenze, e ripubblica cento volte al secondo
+  // mentre il countdown corre: apre e chiude un BroadcastChannel a ogni tick, e
+  // il costo e' reale. Ma il dialogo proiettato (Task 6) mostra il tempo che
+  // resta leggendo bid.remainingMs, e non ha un altro orologio: senza questo
+  // tick il numero sull'altra finestra si fermerebbe al valore dell'ultimo
+  // rilancio e ci resterebbe, immobile, mentre qui il tempo scade per davvero.
+  // Uno schermo proiettato che sembra vivo e non lo e' e' precisamente il
+  // difetto che questa migrazione vuole evitare — peggio di uno schermo che
+  // dichiara di non ricevere piu' nulla. Dieci BroadcastChannel al secondo,
+  // solo mentre un lotto e' aperto, e' il prezzo giusto per un conto alla
+  // rovescia che sull'altra finestra scende davvero.
   useEffect(() => {
     publishBid({
       kind: 'bidding',
@@ -74,7 +74,7 @@ export function BidderDialog({
       remainingMs: countdown.remaining,
       totalMs: timerSeconds * 1000,
     });
-  }, [valuation.playerId, price, timerSeconds]);
+  }, [valuation.playerId, price, timerSeconds, countdown.remaining]);
 
   useEffect(() => () => publishBid({ kind: 'idle' }), []);
 
