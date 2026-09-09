@@ -112,6 +112,12 @@ export function PlayerDecisionCard({
         <p className="mt-3 max-w-[60ch] text-sm text-muted-foreground">{driverText}.</p>
       ) : null}
 
+      {!valuation.worthPursuing && valuation.walkAwayReason ? (
+        <p className="mt-2 max-w-[60ch] text-sm text-destructive">
+          {valuation.walkAwayReason}
+        </p>
+      ) : null}
+
       {children ? <div className="mt-5">{children}</div> : null}
     </section>
   );

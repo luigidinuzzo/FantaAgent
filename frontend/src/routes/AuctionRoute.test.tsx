@@ -292,4 +292,61 @@ describe('AuctionRoute', () => {
     // tentativo, la status non deve ancora recitare il successo del primo.
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
+
+  it('il cambio fase invia il ruolo scelto a /phase', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    let phaseBody: unknown = null;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      if (href.endsWith('/phase')) {
+        phaseBody = init?.body ? JSON.parse(String(init.body)) : null;
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: /^difensori$/i });
+    await userEvent.click(button);
+
+    await waitFor(() => expect(phaseBody).toEqual({ role: 'D' }));
+  });
+
+  it("l'annullamento invia la richiesta di void-last", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const STATE_UNDOABLE = { ...STATE, canUndo: true };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE_UNDOABLE));
+      if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: /annulla/i });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/purchases/void-last'),
+        expect.anything(),
+      ),
+    );
+  });
 });

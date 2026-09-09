@@ -73,6 +73,25 @@ describe('PlayerDecisionCard', () => {
     expect(screen.getByRole('region', { name: 'Bastoni' })).toBeInTheDocument();
   });
 
+  it('quando non conviene mostra anche il perche, walkAwayReason', () => {
+    render(
+      <PlayerDecisionCard
+        valuation={{ ...VALUATION, worthPursuing: false, margin: -4, maxBid: 11 }}
+        stale={false}
+      />,
+    );
+    expect(
+      screen.getByText('oltre 47 il completamento perde più di quanto guadagni'),
+    ).toBeInTheDocument();
+  });
+
+  it('quando conviene non mostra walkAwayReason: non e la ragione per prendere', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
+    expect(
+      screen.queryByText('oltre 47 il completamento perde più di quanto guadagni'),
+    ).not.toBeInTheDocument();
+  });
+
   it('non mostra punteggiatura spuria quando i driver sono assenti o vuoti', () => {
     const { rerender } = render(
       <PlayerDecisionCard valuation={{ ...VALUATION, drivers: [] }} stale={false} />,

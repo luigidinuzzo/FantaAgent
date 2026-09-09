@@ -63,9 +63,11 @@ export function PlayerTable({
                 data-above-threshold={above}
                 className={`border-b border-line ${selected ? 'bg-surface' : ''}`}
               >
-                <td className="py-0">
+                <td className="min-w-11 py-0">
                   {/* Il bersaglio e' un bottone vero: raggiungibile da tastiera,
-                      annunciato come azione, e alto abbastanza da essere colpito. */}
+                      annunciato come azione, e alto abbastanza da essere colpito.
+                      min-w-11 garantisce anche la larghezza minima (44px): senza,
+                      dipende dall'auto-layout della tabella e regge per caso. */}
                   <button
                     type="button"
                     onClick={() => onSelect(row.id)}

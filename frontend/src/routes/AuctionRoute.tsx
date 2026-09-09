@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
-import { useAssign, useAuctionState, usePhasePlayers, useValuation } from '../api/hooks';
+import {
+  useAssign,
+  useAuctionState,
+  useChangePhase,
+  usePhasePlayers,
+  useUndoLast,
+  useValuation,
+} from '../api/hooks';
 import { AuctionAnnouncer, purchaseMessage } from '../domain/AuctionAnnouncer';
 import { BidPanel } from '../domain/BidPanel';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { EmptyState } from '../domain/EmptyState';
 import { LeagueBoard } from '../domain/LeagueBoard';
+import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerTable } from '../domain/PlayerTable';
+import { UndoLastButton } from '../domain/UndoLastButton';
 
 export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -24,6 +33,8 @@ export function AuctionRoute() {
   const phase = usePhasePlayers(0);
   const valuation = useValuation(selectedId);
   const assign = useAssign();
+  const changePhase = useChangePhase();
+  const undoLast = useUndoLast();
 
   const stale = isStale({
     updatedAt: state.dataUpdatedAt || undefined,
@@ -72,6 +83,19 @@ export function AuctionRoute() {
       }
     >
       <AuctionAnnouncer message={announcement} />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <PhaseSwitcher
+          phases={state.data?.phases ?? []}
+          current={state.data?.currentPhase ?? 'P'}
+          onChange={(role) => changePhase.mutate(role)}
+          pending={changePhase.isPending}
+        />
+        <UndoLastButton
+          canUndo={state.data?.canUndo ?? false}
+          onUndo={() => undoLast.mutate()}
+          pending={undoLast.isPending}
+        />
+      </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_16rem]">
         <div>
           {valuation.data ? (

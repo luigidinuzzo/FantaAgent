@@ -6,6 +6,7 @@ import type {
   PhasePageResponse,
   PublicBidderResponse,
   PurchaseResponse,
+  Role,
   ValuationResponse,
 } from './types';
 
@@ -104,6 +105,31 @@ export function useAssign() {
     // 'success' finche' anche le altre query attive (stato, fase, valutazione)
     // non hanno riletto — e' cosi' che AuctionRoute (Task 17) puo' comporre
     // l'annuncio dell'acquisto dal budget DOPO, non da quello di prima.
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
+ * Il cambio fase: era gia' stato scritto e poi rimosso come codice morto
+ * durante la revisione finale delle tappe 1-3, perche' nessuna schermata lo
+ * chiamava. Ora la schermata privata (Task 7) lo chiama.
+ */
+export function useChangePhase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (role: Role) => apiPost('/phase', { role }),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
+ * Annulla l'ultimo acquisto. Stessa storia di {@link useChangePhase}: scritto,
+ * rimosso perche' inutilizzato, riportato perche' la schermata ora esiste.
+ */
+export function useUndoLast() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost('/purchases/void-last'),
     onSuccess: () => client.invalidateQueries(),
   });
 }
