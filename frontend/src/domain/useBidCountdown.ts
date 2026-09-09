@@ -16,7 +16,10 @@ export interface BidCountdown {
   start: () => void;
   /** Ferma senza far scadere. */
   stop: () => void;
-  /** Riporta al valore pieno lasciando il countdown in corsa: e' un rilancio. */
+  /**
+   * Riporta al valore pieno: e' un rilancio. Non tocca `running` — se il
+   * countdown era fermo (scaduto o dopo `stop()`), resta fermo.
+   */
   reset: () => void;
 }
 
@@ -98,7 +101,7 @@ function beep(): void {
     osc.stop(ctx.currentTime + 0.15);
     osc.onended = () => void ctx.close();
   } catch {
-    // Un browser che rifiuta l'audio senza un gesto dell'utente non deve fermare il
+    // Qualunque cosa nel percorso audio lanci un'eccezione non deve fermare il
     // countdown: il numero che scende e' l'informazione, il beep e' un di piu'.
   }
 }

@@ -57,4 +57,20 @@ describe('useBidCountdown', () => {
     act(() => { vi.advanceTimersByTime(10000); });
     expect(onExpire).not.toHaveBeenCalled();
   });
+
+  it('reset da fermo riporta al pieno ma non rimette in corsa', () => {
+    const onExpire = vi.fn();
+    const { result } = renderHook(() =>
+      useBidCountdown({ seconds: 5, beepEnabled: false, onExpire }),
+    );
+    act(() => result.current.start());
+    act(() => { vi.advanceTimersByTime(1000); });
+    act(() => result.current.stop());
+    act(() => result.current.reset());
+    expect(result.current.remaining).toBe(5000);
+    expect(result.current.running).toBe(false);
+    act(() => { vi.advanceTimersByTime(10000); });
+    expect(result.current.remaining).toBe(5000);
+    expect(onExpire).not.toHaveBeenCalled();
+  });
 });
