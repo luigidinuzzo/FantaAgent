@@ -1,9 +1,19 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setAuctionContext } from '../api/client';
 import { QueryProvider } from '../api/QueryProvider';
+import type { BidBroadcast } from '../domain/bidChannel';
+import { subscribeBid } from '../domain/bidChannel';
+import { STALE_AFTER_MS } from '../domain/ConnectionStatus';
 import { AuctionRoute } from './AuctionRoute';
+
+// setImmediate finto ma smaltito da vi.useFakeTimers({ shouldAdvanceTime:
+// true }), stesso meccanismo usato in BidderDialog.test.tsx per far arrivare
+// i messaggi del BroadcastChannel sotto orologio finto.
+function flushChannel() {
+  return new Promise<void>((resolve) => setImmediate(resolve));
+}
 
 const STATE = {
   auctionId: 'a1',
@@ -63,6 +73,49 @@ function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
     status: 200,
     headers: { 'content-type': 'application/json' },
+  });
+}
+
+// timerSeconds volutamente lontano da 5: se il battitore montato dalla route
+// mostrasse "5s" invece di questo valore, sarebbe la prova che qualcuno ha
+// fissato la costante invece di leggerla dalle preferenze reali.
+const BIDDER_SETTINGS = {
+  playerId: 'p1', name: 'Giocatore Uno', team: 'AAA', role: 'P', listPrice: 1,
+  timerSeconds: 12, beepEnabled: true,
+};
+
+/**
+ * Un fetchMock che copre tutte le rotte usate da AuctionRoute: stato, fase,
+ * valutazione dei due giocatori fissi, preferenze del battitore, e le tre
+ * scritture (acquisto, cambio fase, annullamento). Le route dei nuovi test
+ * (battitore, cambio fase, annullamento) hanno tutte bisogno delle stesse
+ * rotte di base: costruirlo una volta evita che ogni test ripeta l'elenco e
+ * dimentichi una voce.
+ */
+function fullFetchMock({
+  purchase,
+  onWriteCall,
+}: {
+  purchase?: unknown;
+  onWriteCall?: (body: unknown) => void;
+} = {}) {
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const href = typeof input === 'string' ? input : input.toString();
+    if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 50)));
+    if (href.includes('/players/p2/valuation')) return Promise.resolve(jsonResponse(valuation('p2', 80)));
+    if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+    if (href.includes('/board/bidder/p1')) return Promise.resolve(jsonResponse(BIDDER_SETTINGS));
+    if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
+    if (href.includes('/purchases')) {
+      onWriteCall?.(init?.body ? JSON.parse(String(init.body)) : null);
+      return Promise.resolve(jsonResponse(purchase ?? { seq: 1, playerId: 'p1', participantId: 'anna', price: 50 }));
+    }
+    if (href.includes('/phase')) {
+      onWriteCall?.(init?.body ? JSON.parse(String(init.body)) : null);
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+    return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
   });
 }
 
@@ -291,6 +344,173 @@ describe('AuctionRoute', () => {
     // Nello stesso istante in cui l'alert mostra l'errore del secondo
     // tentativo, la status non deve ancora recitare il successo del primo.
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  // Addizione 1: la proiezione diventata di sola lettura toglie a BidPanel
+  // il monopolio dell'aggiudicazione per un lotto conteso. Senza montare
+  // BidderDialog da qualche parte, il componente scritto nel Task 5 e'
+  // codice morto e la proiezione (che ascolta solo 'bidding'/'idle') non
+  // riceverebbe mai nulla: aspetterebbe un messaggio che nessuno spedisce.
+  it('un controllo apre il battitore per il giocatore selezionato, con le preferenze vere', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(50));
+
+    const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+    await waitFor(() => expect(open).not.toBeDisabled());
+    await userEvent.click(open);
+
+    expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+    // 12s, non 5s: se il numero letto qui fosse una costante fissa nella
+    // route invece delle preferenze restituite da usePublicBidder, questa
+    // asserzione lo scoprirebbe.
+    expect(screen.getByText('12s')).toBeInTheDocument();
+    expect(screen.getByTestId('bidder-ceiling')).toHaveTextContent('50');
+  });
+
+  it('chiudere il battitore torna al pannello di aggiudicazione diretta', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+    await waitFor(() => expect(open).not.toBeDisabled());
+    await userEvent.click(open);
+    expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+
+    expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
+    // BidPanel e' di nuovo la' — non un secondo percorso di aggiudicazione,
+    // lo stesso pannello di sempre.
+    expect(screen.getByLabelText('Prezzo')).toBeInTheDocument();
+  });
+
+  it("aggiudicare dal battitore passa per la stessa mutazione di BidPanel, non per una seconda", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    let purchaseBody: unknown = null;
+    vi.stubGlobal(
+      'fetch',
+      fullFetchMock({
+        purchase: { seq: 9, playerId: 'p1', participantId: 'anna', price: 1 },
+        onWriteCall: (body) => { purchaseBody = body; },
+      }),
+    );
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+
+      // La barra spaziatrice e' il gesto che avvia il countdown (si veda
+      // BidderDialog): senza, il tempo resta fermo al valore pieno e non
+      // scade mai da solo.
+      await user.keyboard(' ');
+
+      // Il countdown (12 s, dalle preferenze) deve scadere prima che il form
+      // "Aggiudica a" del battitore compaia.
+      await act(async () => {
+        vi.advanceTimersByTime(12_100);
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+
+      await waitFor(() => expect(purchaseBody).not.toBeNull());
+      expect(purchaseBody).toMatchObject({ playerId: 'p1', participantId: 'anna' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  describe('il battito di vita verso la proiezione', () => {
+    afterEach(() => vi.useRealTimers());
+
+    // Addizione 2: finche' nessuno pubblica MAI nulla quando non c'e' un
+    // lotto in corso, la proiezione (Task 6) non puo' distinguere "non
+    // connesso" da "nessun lotto aperto": in entrambi i casi il canale resta
+    // silenzioso. Il battito rompe l'ambiguita'.
+    it('pubblica un segno di vita a intervalli regolari quando nessun lotto e aperto', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fullFetchMock());
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      // Un intervallo comodamente piu' corto della soglia di staleness
+      // (STALE_AFTER_MS) usata dalla proiezione: qui basta avanzare di un
+      // terzo di quella soglia per essere certi che almeno un battito sia
+      // scattato, qualunque sia l'esatta cadenza scelta dalla route.
+      await act(async () => {
+        vi.advanceTimersByTime(STALE_AFTER_MS / 3);
+      });
+      await flushChannel();
+
+      expect(seen.some((m) => m.kind === 'idle')).toBe(true);
+      unsubscribe();
+    });
+
+    it('smette di pubblicare il battito mentre il battitore privato e aperto', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fullFetchMock());
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+      expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+
+      // Solo ORA si comincia ad ascoltare: il battito emesso prima
+      // dell'apertura (durante il caricamento delle preferenze) non conta,
+      // quello che conta e' cosa arriva mentre il lotto e' aperto.
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+
+      await act(async () => {
+        vi.advanceTimersByTime(STALE_AFTER_MS);
+      });
+      await flushChannel();
+
+      expect(seen.some((m) => m.kind === 'idle')).toBe(false);
+      unsubscribe();
+    });
   });
 
   it('il cambio fase invia il ruolo scelto a /phase', async () => {
