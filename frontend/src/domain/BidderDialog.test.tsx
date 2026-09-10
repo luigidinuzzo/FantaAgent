@@ -201,23 +201,88 @@ describe('BidderDialog', () => {
       expect(screen.getByRole('alert')).toHaveTextContent(/tempo scaduto/i);
     });
 
-    // Fix round 2 (revisione finale): senza questo callback la route non ha
-    // modo di sapere che il countdown e' scaduto, e non puo' far ripartire
-    // il battito di vita verso la proiezione (useIdleHeartbeat) mentre il
-    // dialogo resta aperto in attesa dell'aggiudicazione.
-    it('avverte il chiamante quando il countdown scade', async () => {
-      const onExpire = vi.fn();
+  });
+
+  // Ruling (revisione finale, seconda passata): la prima versione di questo
+  // fix faceva ripartire il battito 'idle' della route allo scadere del
+  // countdown. Idle fa sparire il lotto dalla proiezione: si scambiava un
+  // falso allarme tardivo con uno schermo muto immediato, proprio
+  // nell'istante in cui la sala guarda il prezzo per scegliere l'acquirente.
+  // La correzione sta qui, non nella route: il dialogo continua a
+  // pubblicare da solo lo stesso lotto (prezzo congelato, remainingMs a
+  // zero) a un ritmo basso, cosi' la proiezione continua a MOSTRARE il
+  // lotto — non solo a "sentire qualcosa" — per tutta la durata
+  // dell'aggiudicazione. Idle resta riservato a quando il dialogo chiude
+  // per davvero (si veda il cleanup-on-unmount qui sotto).
+  describe('dopo la scadenza, mentre il dialogo resta aperto per l\'aggiudicazione', () => {
+    beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+    afterEach(() => vi.useRealTimers());
+
+    it('continua a pubblicare lo stesso lotto (prezzo congelato), mai idle', async () => {
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      open({ onExpire });
+      open();
+      await flushChannel();
 
-      await user.keyboard(' ');
-      expect(onExpire).not.toHaveBeenCalled();
+      await user.keyboard('  '); // prezzo a 3, avvia il countdown
+      await flushChannel();
 
+      await act(async () => {
+        vi.advanceTimersByTime(5100); // scade
+      });
+      await flushChannel();
+      const afterExpiryCount = seen.length;
+
+      // Comodamente oltre un ciclo di ripubblicazione, ma ben dentro la
+      // soglia di staleness della proiezione: deve arrivare almeno un altro
+      // messaggio, e deve essere lo stesso lotto, non idle.
       await act(async () => {
         vi.advanceTimersByTime(5100);
       });
+      await flushChannel();
 
-      expect(onExpire).toHaveBeenCalledTimes(1);
+      expect(seen.length).toBeGreaterThan(afterExpiryCount);
+      expect(seen.every((m) => m.kind === 'bidding')).toBe(true);
+      const last = seen.at(-1);
+      expect(last).toMatchObject({ kind: 'bidding', playerId: 'd1', price: 3, remainingMs: 0 });
+
+      unsubscribe();
+    });
+
+    it('chiudere il dialogo (smontandolo) pubblica idle, e solo allora', async () => {
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { unmount } = render(
+        <BidderDialog
+          valuation={VALUATION}
+          participants={PARTICIPANTS}
+          timerSeconds={5}
+          beepEnabled={false}
+          error={null}
+          onAssign={() => {}}
+          onClose={() => {}}
+        />,
+      );
+      await flushChannel();
+
+      await user.keyboard(' ');
+      await act(async () => {
+        vi.advanceTimersByTime(5100);
+      });
+      await flushChannel();
+
+      expect(seen.some((m) => m.kind === 'idle')).toBe(false);
+
+      unmount();
+      await flushChannel();
+
+      expect(seen.at(-1)).toEqual({ kind: 'idle' });
+
+      unsubscribe();
     });
   });
 

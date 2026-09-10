@@ -217,6 +217,39 @@ describe('ProjectionRoute', () => {
     expect(screen.getByText(/carico i tabelloni/i)).toBeInTheDocument();
   });
 
+  // Ruling (revisione finale, seconda passata): dopo la scadenza del
+  // countdown il prezzo non cambia piu', e BidderDialog continua a
+  // ripubblicarlo congelato (remainingMs: 0) invece di lasciare che il
+  // canale ammutolisca o che un idle lo cancelli. La proiezione deve
+  // continuare a MOSTRARLO — non solo a non dichiararsi disconnessa.
+  it('un lotto scaduto (remainingMs a zero) resta visibile, col prezzo raggiunto', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+
+    publishBid({ kind: 'bidding', playerId: 'd1', price: 41, remainingMs: 0 });
+
+    expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
+    expect(screen.getByTestId('public-clock')).toHaveTextContent('0');
+    expect(screen.queryByText(/non riceve dalla schermata privata/i)).not.toBeInTheDocument();
+  });
+
+  // L'altra meta' della stessa correzione: idle deve restare univoco
+  // ("nessun lotto aperto") e far sparire il lotto SOLO quando arriva
+  // davvero — cioe' quando il dialogo privato chiude per davvero.
+  it('idle dopo un lotto fa sparire il lotto dalla proiezione', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+
+    publishBid({ kind: 'bidding', playerId: 'd1', price: 41, remainingMs: 0 });
+    expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
+
+    publishBid({ kind: 'idle' });
+
+    await waitFor(() => expect(screen.queryByTestId('public-price')).not.toBeInTheDocument());
+  });
+
   describe('lo stato del server', () => {
     afterEach(() => vi.useRealTimers());
 

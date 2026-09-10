@@ -615,14 +615,17 @@ describe('AuctionRoute', () => {
       unsubscribe();
     });
 
-    // Finding 1 (revisione finale): dopo la scadenza del countdown,
-    // BidderDialog smette di pubblicare (i suoi valori si congelano) ma
-    // resta aperto in attesa dell'aggiudicazione — spesso piu' di 15 s,
-    // mentre il tavolo discute chi ha vinto. Senza questo fix nessuno
-    // pubblica niente per tutto quel tempo, la proiezione dichiara "non
-    // ricevo" e il lotto sparisce dallo schermo condiviso nel momento
-    // esatto in cui conta di piu'.
-    it('il battito riprende quando il countdown scade, anche col battitore ancora aperto', async () => {
+    // Ruling (revisione finale, seconda passata): la prima versione di
+    // questo fix faceva ripartire QUESTO battito (che parla solo in 'idle')
+    // allo scadere del countdown. Idle fa sparire il lotto dalla
+    // proiezione — si scambiava un falso allarme tardivo (il difetto
+    // originale) con uno schermo muto immediato, proprio nell'istante in
+    // cui la sala guarda il prezzo per scegliere l'acquirente. La
+    // correzione e' in BidderDialog (che continua a pubblicare da solo lo
+    // stesso lotto dopo la scadenza — si veda BidderDialog.test.tsx), non
+    // qui: questo battito resta sospeso per l'intera durata in cui il
+    // dialogo e' montato, scaduto o no.
+    it('non pubblica mai idle mentre il battitore e aperto, scaduto o non', async () => {
       setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
       vi.stubGlobal('fetch', fullFetchMock());
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -643,11 +646,42 @@ describe('AuctionRoute', () => {
       const seen: BidBroadcast[] = [];
       const unsubscribe = subscribeBid((m) => seen.push(m));
 
-      // Il countdown scade a 12 s; il battitore resta aperto ben oltre,
-      // in attesa che si scelga l'acquirente.
+      // Ben oltre la scadenza (12 s) e oltre la soglia di staleness della
+      // proiezione: il battitore resta aperto in attesa dell'acquirente.
       await act(async () => {
-        vi.advanceTimersByTime(12_100);
+        vi.advanceTimersByTime(STALE_AFTER_MS + 2_000);
       });
+      await flushChannel();
+
+      expect(seen.some((m) => m.kind === 'idle')).toBe(false);
+      // BidderDialog continua a pubblicare da solo (a ritmo basso, dopo la
+      // scadenza): il canale non e' silenzioso, e' solo 'idle' che non
+      // deve mai comparire mentre il dialogo e' ancora aperto.
+      expect(seen.some((m) => m.kind === 'bidding')).toBe(true);
+      unsubscribe();
+    });
+
+    it('chiudere il battitore pubblica idle', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fullFetchMock());
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+
+      await user.click(screen.getByRole('button', { name: 'Chiudi' }));
       await flushChannel();
 
       expect(seen.some((m) => m.kind === 'idle')).toBe(true);

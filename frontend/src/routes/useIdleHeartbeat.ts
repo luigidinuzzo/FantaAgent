@@ -23,16 +23,18 @@ export const HEARTBEAT_INTERVAL_MS = 5_000;
  * resterebbe silenzioso, e la proiezione dichiarerebbe di non ricevere anche durante
  * una pausa perfettamente sana.
  *
- * <p>`suppress` va passato true SOLO mentre qualcun altro sta gia' pubblicando
- * abbastanza spesso da conto suo — {@code BidderDialog} pubblica 'bidding' dieci volte
- * al secondo mentre il countdown corre. Non basta che il dialogo sia aperto: quella
- * pubblicazione si ferma nell'istante in cui il countdown scade (i suoi valori si
- * congelano), ma il dialogo resta aperto ben oltre, in attesa che si scelga
- * l'acquirente. Il chiamante deve quindi passare "il dialogo e' aperto E il countdown
- * non e' scaduto", non il solo "il dialogo e' aperto": altrimenti, per tutta la durata
- * dell'aggiudicazione — spesso piu' dei 15 s di soglia, mentre il tavolo discute —
- * nessuno pubblica niente, la proiezione dichiara "non ricevo" e il lotto sparisce
- * dallo schermo condiviso nel momento esatto in cui conta di piu' mostrarlo.
+ * <p>`suppress` va passato true per l'INTERA durata in cui {@code BidderDialog} e'
+ * montato, non solo mentre il countdown corre: quel dialogo pubblica da conto suo per
+ * tutto il tempo che resta aperto — 'bidding' dieci volte al secondo mentre il
+ * countdown corre, poi lo stesso lotto congelato a un ritmo piu' basso dopo la scadenza
+ * (si veda {@code POST_EXPIRY_REPUBLISH_MS} in BidderDialog) — e pubblica 'idle' da
+ * solo al proprio smontaggio. Sospendere qui SOLO durante il countdown e riprendere a
+ * "aperto ma scaduto" sembrerebbe innocuo ma non lo e': questo battito parla solo in
+ * 'idle', e 'idle' mentre un lotto e' ancora in attesa di aggiudicazione farebbe
+ * sparire il prezzo dalla proiezione nell'istante esatto in cui la sala lo guarda per
+ * scegliere l'acquirente — un falso "nessun lotto aperto" al posto del falso allarme di
+ * disconnessione che questo fix voleva togliere. 'idle' deve restare univoco: "nessun
+ * lotto e' aperto", non "il countdown si e' fermato".
  *
  * <p>Pubblica anche UNA VOLTA subito, non solo sull'intervallo: senza, una proiezione
  * aperta (o riportata da `suppress: true` a `false`) proprio in quell'istante

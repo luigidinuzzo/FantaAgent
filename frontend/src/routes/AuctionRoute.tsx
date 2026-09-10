@@ -27,10 +27,6 @@ export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bidderOpen, setBidderOpen] = useState(false);
-  // Vero dal momento in cui il countdown del battitore scade fino alla
-  // chiusura del dialogo: serve SOLO a far ripartire il battito di vita
-  // (si veda useIdleHeartbeat) mentre l'aggiudicazione e' ancora in corso.
-  const [dialogExpired, setDialogExpired] = useState(false);
   const bidderHintId = useId();
 
   // Un tick al secondo: serve solo a far invecchiare il "da quanto tempo".
@@ -53,12 +49,15 @@ export function AuctionRoute() {
   const bidderSettings = usePublicBidder(selectedId);
 
   // Battito di vita per la proiezione (si veda useIdleHeartbeat per il
-  // perche' e il come). Si ferma SOLO mentre BidderDialog sta gia'
-  // pubblicando da conto suo: dialogo aperto e countdown non ancora scaduto.
-  // Appena il countdown scade il dialogo smette di pubblicare ma resta
-  // aperto in attesa dell'aggiudicazione — e' per questo che la condizione
-  // e' "aperto E non scaduto", non il solo "aperto".
-  useIdleHeartbeat(bidderOpen && !dialogExpired);
+  // perche' e il come). Si ferma per tutta la durata in cui il battitore
+  // e' aperto, scaduto o non: BidderDialog pubblica da conto suo per
+  // l'intera durata del dialogo — 'bidding' dieci volte al secondo mentre
+  // il countdown corre, poi lo stesso lotto congelato a un ritmo piu' basso
+  // dopo la scadenza — e pubblica 'idle' da solo quando smonta. Un 'idle'
+  // pubblicato qui in parallelo, PRIMA che il dialogo chiuda per davvero,
+  // farebbe sparire il lotto dalla proiezione durante l'aggiudicazione:
+  // 'idle' deve significare una cosa sola, "nessun lotto aperto".
+  useIdleHeartbeat(bidderOpen);
 
   const stale = isStale({
     updatedAt: state.dataUpdatedAt || undefined,
@@ -104,7 +103,6 @@ export function AuctionRoute() {
     // meno riscontro di quanto ne riceve chi ascolta. No-op se si stava
     // aggiudicando da BidPanel (bidderOpen e' gia' false).
     setBidderOpen(false);
-    setDialogExpired(false);
   }, [assign.data, assign.variables?.playerName, state.data]);
 
   // Azzera l'errore (e il risultato) della mutazione condivisa quando cambia
@@ -221,11 +219,7 @@ export function AuctionRoute() {
                   disabled={stale}
                   pending={assign.isPending}
                   onAssign={assignPlayer}
-                  onClose={() => {
-                    setBidderOpen(false);
-                    setDialogExpired(false);
-                  }}
-                  onExpire={() => setDialogExpired(true)}
+                  onClose={() => setBidderOpen(false)}
                 />
               ) : (
                 <>

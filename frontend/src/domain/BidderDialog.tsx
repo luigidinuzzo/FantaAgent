@@ -23,6 +23,20 @@ function isTypingTarget(target: EventTarget | null): boolean {
  * questa migrazione ricalca: un flag si dimentica, un campo assente no. Il countdown, la
  * tastiera e l'audio arrivano da un hook condiviso perche' non toccano valutazioni.
  */
+
+// Il ritmo con cui il dialogo continua a ripubblicare il lotto DOPO la
+// scadenza, mentre resta aperto in attesa dell'aggiudicazione. Non deriva
+// da STALE_AFTER_MS (ConnectionStatus) per lo stesso motivo per cui
+// HEARTBEAT_INTERVAL_MS (useIdleHeartbeat) non ne deriva: sono timing
+// indipendenti, e farne dipendere l'uno dall'altro per divisione li
+// accoppierebbe in silenzio se quella soglia cambiasse. Il valore e' scelto
+// per stare comodamente dentro quella soglia (15 s) — qui coincide con
+// HEARTBEAT_INTERVAL_MS per coerenza fra i due, non perche' uno derivi
+// dall'altro. Piu' spesso non servirebbe: dopo la scadenza il prezzo non
+// cambia piu', a differenza di mentre il countdown corre (li' i dieci al
+// secondo servono a far scendere il numero sull'altra finestra).
+const POST_EXPIRY_REPUBLISH_MS = 5_000;
+
 export function BidderDialog({
   valuation,
   participants,
@@ -33,7 +47,6 @@ export function BidderDialog({
   pending = false,
   onAssign,
   onClose,
-  onExpire,
 }: {
   valuation: ValuationResponse;
   participants: ParticipantView[];
@@ -65,13 +78,6 @@ export function BidderDialog({
   pending?: boolean;
   onAssign: (input: { participantId: string; price: number }) => void;
   onClose: () => void;
-  /**
-   * Avvisa il chiamante quando il countdown scade, cosi' che possa far
-   * ripartire il battito di vita verso la proiezione (useIdleHeartbeat):
-   * questo dialogo smette di pubblicare 'bidding' nello stesso istante, e
-   * resta aperto ben oltre, in attesa che si scelga l'acquirente.
-   */
-  onExpire?: () => void;
 }) {
   const [price, setPrice] = useState(1);
   const [expired, setExpired] = useState(false);
@@ -82,10 +88,7 @@ export function BidderDialog({
   const countdown = useBidCountdown({
     seconds: timerSeconds,
     beepEnabled,
-    onExpire: () => {
-      setExpired(true);
-      onExpire?.();
-    },
+    onExpire: () => setExpired(true),
   });
 
   // Stessa disciplina di BidPanel: un bottone disabilitato e' annunciato
@@ -141,6 +144,33 @@ export function BidderDialog({
       remainingMs: countdown.remaining,
     });
   }, [valuation.playerId, price, countdown.remaining]);
+
+  // Dopo la scadenza il countdown non ripubblica piu' (countdown.remaining
+  // resta fermo a 0, e l'effetto sopra non ha altro da cui ripartire), ma
+  // il dialogo resta aperto ben oltre — spesso piu' dei 15 s di soglia,
+  // mentre il tavolo discute chi ha vinto. Senza continuare a pubblicare,
+  // la proiezione smetterebbe di sentire qualcosa e o darebbe un falso
+  // allarme di disconnessione, o (se la route rispondesse con un battito
+  // 'idle' proprio) perderebbe il lotto nell'istante esatto in cui la sala
+  // guarda il prezzo. Si ripubblica lo STESSO lotto, congelato — e' la
+  // verita': il prezzo non cambia piu' finche' non si aggiudica — a un
+  // ritmo basso apposta (POST_EXPIRY_REPUBLISH_MS), perche' niente cambia
+  // fra un ciclo e l'altro. 'idle' resta riservato a quando il dialogo
+  // chiude per davvero (l'effetto di cleanup qui sotto): pubblicarlo
+  // mentre un lotto e' ancora in attesa di aggiudicazione gli farebbe
+  // significare due cose diverse.
+  useEffect(() => {
+    if (!expired) return;
+    const id = setInterval(() => {
+      publishBid({
+        kind: 'bidding',
+        playerId: valuation.playerId,
+        price,
+        remainingMs: 0,
+      });
+    }, POST_EXPIRY_REPUBLISH_MS);
+    return () => clearInterval(id);
+  }, [expired, valuation.playerId, price]);
 
   useEffect(() => () => publishBid({ kind: 'idle' }), []);
 
