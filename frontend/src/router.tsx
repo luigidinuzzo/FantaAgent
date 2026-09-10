@@ -13,13 +13,20 @@ import { SettingsRoute } from './routes/SettingsRoute';
 //
 // Le impostazioni hanno un indirizzo proprio perche' e' dove un'asta nasce: la home
 // (Task 9) ci porta con un link, senza creare niente da sola.
-const router = createBrowserRouter([
+//
+// Esportato (non solo passato a createBrowserRouter) perche' AppShell.test.tsx lo
+// scorre per verificare che OGNI rotta qui elencata sia raggiungibile da un link
+// nella barra comune — la reazione strutturale a due revisioni consecutive che
+// hanno trovato "una rotta aggiunta e nessuno che la collega".
+export const routeDefinitions = [
   { path: '/', element: <HomeRoute /> },
   { path: '/asta', element: <AuctionRoute /> },
   { path: '/proiezione', element: <ProjectionRoute /> },
   { path: '/impostazioni', element: <SettingsRoute /> },
   { path: '/riepilogo', element: <RecapRoute /> },
-]);
+];
+
+const router = createBrowserRouter(routeDefinitions);
 
 export function AppRouter() {
   return <RouterProvider router={router} />;

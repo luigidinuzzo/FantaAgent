@@ -72,6 +72,11 @@ export function ProjectionRoute() {
 
   return (
     <AppShell
+      // Il vincolo permanente della proiezione (zero pulsanti, zero caselle di
+      // testo) si estende alla navigazione che AppShell offre alle altre
+      // schermate: e' una seconda schermata su un proiettore, senza nessun
+      // controllo, nemmeno un link.
+      nav={false}
       slotStatus={
         <ConnectionStatus
           updatedAt={board.dataUpdatedAt || undefined}
