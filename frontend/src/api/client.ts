@@ -7,13 +7,22 @@ export class ProblemError extends Error {
   readonly type: string;
   readonly detail: string;
   readonly status: number;
+  /**
+   * Il corpo JSON intero della risposta problem, indistinto. ProblemError non deve
+   * conoscere la forma di ogni corpo di errore dell'API — un campo tipizzato qui
+   * costringerebbe ogni nuovo endpoint che aggiunge una proprieta' a modificare
+   * questa classe. Chi chiama restringe il tipo da solo per la proprieta' che gli
+   * interessa (es. `errors` per le impostazioni).
+   */
+  readonly body: unknown;
 
-  constructor(type: string, detail: string, status: number) {
+  constructor(type: string, detail: string, status: number, body: unknown) {
     super(detail);
     this.name = 'ProblemError';
     this.type = type;
     this.detail = detail;
     this.status = status;
+    this.body = body;
   }
 
   /** L'ultimo segmento del type: e' su questo che l'interfaccia decide. */
@@ -45,11 +54,17 @@ async function toProblem(response: Response): Promise<ProblemError> {
       body.type ?? 'unknown',
       body.detail ?? response.statusText,
       response.status,
+      body,
     );
   } catch {
     // Un 502 da un proxy, o la connessione caduta a meta' risposta: non c'e'
     // un corpo problem da leggere, ma chi chiama deve gestire un errore solo.
-    return new ProblemError('unknown', `Errore di rete (${response.status})`, response.status);
+    return new ProblemError(
+      'unknown',
+      `Errore di rete (${response.status})`,
+      response.status,
+      null,
+    );
   }
 }
 
@@ -94,5 +109,18 @@ export async function apiLeaguePost<T>(path: string, body?: unknown): Promise<T 
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+/**
+ * Gemello di {@link apiPost} che si ferma alla lega, per le scritture che vogliono
+ * PUT invece di POST — le impostazioni della lega (task 10/11), che non creano una
+ * risorsa nuova ogni volta ma sostituiscono quella che c'e'.
+ */
+export async function apiLeaguePut<T>(path: string, body: unknown): Promise<T | null> {
+  return request<T>(leagueUrl(path), {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify(body),
   });
 }
