@@ -219,6 +219,36 @@ describe('SettingsRoute', () => {
   });
 
   /**
+   * Prima del fix, il bottone tornava da "Salvo…" a "Salva" e basta: nessuna
+   * conferma che il salvataggio fosse andato a buon fine. Va nello stesso, unico
+   * nodo di alert usato per gli errori — non un secondo role="status".
+   */
+  it('un salvataggio riuscito ad asta aperta lo conferma', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/settings') && init?.method === 'PUT') {
+        return Promise.resolve(jsonResponse({ auctionId: null }));
+      }
+      return Promise.resolve(jsonResponse({ ...SETTINGS, auctionOpen: true }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <QueryProvider>
+        <MemoryRouter>
+          <SettingsRoute />
+        </MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+
+    expect(await screen.findByText(/salvat/i)).toBeInTheDocument();
+    // Un solo alert, come per gli errori: non un secondo role="status".
+    expect(screen.queryAllByRole('status')).toHaveLength(0);
+  });
+
+  /**
    * settingsErrorsOf si fermava a un livello di restringimento: verificava che
    * "errors" fosse un oggetto e poi si fidava del resto. Un corpo con
    * {@code errors.participants} una STRINGA invece di un array (un backend rotto,

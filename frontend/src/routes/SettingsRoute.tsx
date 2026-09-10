@@ -104,6 +104,12 @@ export function SettingsRoute() {
   // ma va detto comunque nello stesso, unico role="alert" — tacere sarebbe lasciare
   // chi ascolta senza sapere che il salvataggio non e' andato a buon fine.
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Solo quando si RESTA sulla schermata (asta gia' aperta: nessuna navigazione a
+  // /asta) — altrimenti il bottone tornava da "Salvo…" a "Salva" senza nessun segno
+  // che il salvataggio fosse riuscito. Nello stesso, unico nodo di alert usato per
+  // gli errori: non un secondo role="status", che il vincolo di questa schermata
+  // vieta.
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!settings.data || form) return;
@@ -139,6 +145,9 @@ export function SettingsRoute() {
 
   const auctionOpen = settings.data.auctionOpen;
   const summary = errorSummary(errors) ?? saveError;
+  // Errore e conferma non convivono mai: submit li azzera entrambi prima di
+  // ripartire (vedi sotto), quindi al piu' uno dei due e' non-null qui.
+  const alertMessage = summary ?? savedMessage;
 
   return (
     <AppShell>
@@ -150,11 +159,16 @@ export function SettingsRoute() {
           e.preventDefault();
           setErrors(NO_ERRORS);
           setSaveError(null);
+          setSavedMessage(null);
           save.mutate(form, {
             onSuccess: (result) => {
               // Un'asta e' nata: si va a batterla. Restare qui vorrebbe dire
               // guardare le impostazioni di una serata gia' cominciata.
-              if (result?.auctionId) navigate('/asta');
+              if (result?.auctionId) {
+                navigate('/asta');
+                return;
+              }
+              setSavedMessage('Impostazioni salvate.');
             },
             onError: (error) => {
               if (error instanceof ProblemError && error.slug === 'invalid-settings') {
@@ -256,10 +270,15 @@ export function SettingsRoute() {
 
           {/* Un solo annuncio, col conto e il dove: tre alert di sezione che si
               popolano insieme se ne mangerebbero due. Il dettaglio sta accanto
-              a ciascuna sezione, raggiungibile navigando. */}
-          {summary ? (
-            <p role="alert" className="text-sm font-bold text-destructive">
-              {summary}
+              a ciascuna sezione, raggiungibile navigando. Stesso nodo anche per
+              la conferma di un salvataggio riuscito: colore positivo invece di
+              destructive, non un secondo role="status". */}
+          {alertMessage ? (
+            <p
+              role="alert"
+              className={`text-sm font-bold ${summary ? 'text-destructive' : 'text-positive'}`}
+            >
+              {alertMessage}
             </p>
           ) : null}
         </div>
