@@ -3,6 +3,23 @@ import type { ParticipantSettings } from '../api/types';
 import { SectionErrors } from './SectionErrors';
 
 /**
+ * Un identificativo nuovo per un partecipante appena aggiunto, con ripiego.
+ *
+ * <p>{@code crypto.randomUUID()} esiste solo in un contesto sicuro (HTTPS o
+ * localhost): su un semplice {@code http://} da un tablet in LAN — plausibile la
+ * sera dell'asta, prima che qualcuno pensi al certificato — e' `undefined`, e
+ * chiamarlo lancerebbe un TypeError che "Aggiungi partecipante" non si aspetta. Il
+ * ripiego non deve essere crittograficamente robusto: serve solo a distinguere le
+ * righe del modulo fra loro, non a proteggere niente.
+ */
+function newParticipantId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
  * I partecipanti alla serata.
  *
  * <p>L'iniziale ha un campo suo e non si deduce dal nome: e' quella che il comando
@@ -97,7 +114,7 @@ export function ParticipantsFieldset({
         onClick={() =>
           onChange([
             ...value,
-            { id: crypto.randomUUID(), name: '', initial: '', me: value.length === 0 },
+            { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
           ])
         }
         className="mt-3 min-h-11 border border-line px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
