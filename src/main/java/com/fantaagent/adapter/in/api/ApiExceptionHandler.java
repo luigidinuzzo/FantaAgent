@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.NoAuctionSelectedException;
 import com.fantaagent.application.service.PurchaseRejectedException;
+import com.fantaagent.application.service.PurchaseRevocationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -83,6 +84,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
             case INSUFFICIENT_BUDGET -> "insufficient-budget";
             case ROLE_SLOTS_EXHAUSTED -> "role-slots-exhausted";
         };
+    }
+
+    /**
+     * Vince sul gestore di {@link IllegalArgumentException} per specificita' della
+     * gerarchia, non per posizione nel file: Spring sceglie il gestore piu' vicino al
+     * tipo lanciato. L'ordine di dichiarazione non conta.
+     */
+    @ExceptionHandler(PurchaseRevocationException.class)
+    ProblemDetail revocation(PurchaseRevocationException e) {
+        boolean notFound = e.reason() == PurchaseRevocationException.Reason.NOT_FOUND;
+        return problem(notFound ? HttpStatus.NOT_FOUND : HttpStatus.CONFLICT,
+                notFound ? "purchase-not-found" : "purchase-already-revoked",
+                e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

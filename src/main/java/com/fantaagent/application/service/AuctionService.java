@@ -222,10 +222,13 @@ public class AuctionService {
             }
         }
         if (!exists) {
-            throw new IllegalArgumentException("nessun acquisto con id " + targetSeq);
+            throw new PurchaseRevocationException(PurchaseRevocationException.Reason.NOT_FOUND,
+                    "nessun acquisto con id " + targetSeq);
         }
         if (revoked.contains(targetSeq)) {
-            throw new IllegalArgumentException("acquisto già annullato");
+            throw new PurchaseRevocationException(
+                    PurchaseRevocationException.Reason.ALREADY_REVOKED,
+                    "acquisto già annullato");
         }
 
         store.appendWithNextSeq(seq -> new AuctionEvent.PurchaseRevoked(seq, Instant.now(), targetSeq));

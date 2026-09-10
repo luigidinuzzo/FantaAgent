@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PurchaseRejectedException;
+import com.fantaagent.application.service.PurchaseRevocationException;
 import com.fantaagent.domain.auction.AuctionEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.time.Instant;
 
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,7 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("dev")
 class PurchaseApiTest {
 
-    private static final String URL = "/api/leagues/default/auctions/corrente/purchases";
+    private static final String BASE = "/api/leagues/default/auctions/corrente";
+    private static final String URL = BASE + "/purchases";
 
     private static final String BODY = """
             {"requestId":"req-1","playerId":"d1","participantId":"anna","price":47}
@@ -121,6 +125,34 @@ class PurchaseApiTest {
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.type")
                         .value("https://fantaagent.local/problems/invalid-body"));
+    }
+
+    @Test
+    void revocareUnIdInesistenteDa404Tipizzato() throws Exception {
+        doThrow(new PurchaseRevocationException(PurchaseRevocationException.Reason.NOT_FOUND,
+                "nessun acquisto con id 999"))
+                .when(auction).revokePurchase(999);
+
+        mvc.perform(post(BASE + "/purchases/999/void"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/purchase-not-found"));
+    }
+
+    @Test
+    void revocareDueVolteDa409Tipizzato() throws Exception {
+        doNothing()
+                .doThrow(new PurchaseRevocationException(
+                        PurchaseRevocationException.Reason.ALREADY_REVOKED,
+                        "acquisto già annullato"))
+                .when(auction).revokePurchase(1);
+
+        mvc.perform(post(BASE + "/purchases/1/void")).andExpect(status().isNoContent());
+
+        mvc.perform(post(BASE + "/purchases/1/void"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/purchase-already-revoked"));
     }
 
     private static AuctionEvent.PlayerPurchased purchased(long seq, String playerId,
