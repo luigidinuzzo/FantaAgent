@@ -102,4 +102,57 @@ class SettingsApiTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.errors.participants[0]").isString());
     }
+
+    /**
+     * Un corpo senza la chiave "bidder" (un client rotto, un proxy che la perde per
+     * strada) e' un errore del chiamante, non del server: deve cadere nel 422 tipizzato
+     * che questo endpoint costruisce, non nel ramo generico "internal-error" per una
+     * NullPointerException su {@code body.bidder().bidTimerSeconds()}.
+     */
+    @Test
+    void senzaBattitoreNonEsplodeInUnErroreInternoMaTornaUn422() throws Exception {
+        mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON).content("""
+                {
+                  "auctionName": "Prova",
+                  "participants": [
+                    { "id": "anna", "name": "Anna", "initial": "A", "me": true }
+                  ],
+                  "scoring": {
+                    "defenceModifierEnabled": false,
+                    "defendersCounted": 3,
+                    "thresholds": [ { "minAverage": 0, "bonus": 0 } ],
+                    "goalBonus": { "P": 0, "D": 0, "C": 0, "A": 0 },
+                    "assist": 1, "penaltyScored": 3, "penaltyMissed": -3,
+                    "penaltySaved": 3, "yellowCard": -0.5, "redCard": -1,
+                    "goalConceded": -1, "cleanSheet": 1, "confirmed": true
+                  }
+                }
+                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/invalid-settings"))
+                .andExpect(jsonPath("$.errors.bidder[0]").isString());
+    }
+
+    /**
+     * Stessa storia per "scoring", ma solo in preparazione: ad asta aperta quella
+     * chiave non si legge nemmeno (vedi la classe {@link SettingsApi}), quindi la
+     * NullPointerException di {@code settingsOf} scattava solo qui.
+     */
+    @Test
+    void senzaPunteggioInPreparazioneNonEsplodeInUnErroreInternoMaTornaUn422() throws Exception {
+        mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON).content("""
+                {
+                  "auctionName": "Prova",
+                  "bidder": { "bidTimerSeconds": 5, "beepEnabled": true },
+                  "participants": [
+                    { "id": "anna", "name": "Anna", "initial": "A", "me": true }
+                  ]
+                }
+                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/invalid-settings"))
+                .andExpect(jsonPath("$.errors.scoring[0]").isString());
+    }
 }

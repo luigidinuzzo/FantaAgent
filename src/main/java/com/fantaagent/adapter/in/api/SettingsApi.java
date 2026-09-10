@@ -43,7 +43,12 @@ import java.util.Map;
 @RequestMapping("/api/leagues/{leagueId}/settings")
 public class SettingsApi {
 
-    /** Lo stesso limite di {@code SettingsController}: due schermate, una regola. */
+    /**
+     * Lo stesso NUMERO di {@code SettingsController#MAX_NAME}, non la stessa costante:
+     * ognuna e' dichiarata per conto suo, e i due messaggi d'errore sono duplicati a
+     * mano nei due file. Muore con {@code SettingsController} nella tappa 6, quando la
+     * schermata Thymeleaf lascia il posto a questa e resta una sola dichiarazione.
+     */
     static final int MAX_NAME = 60;
 
     private final LeagueGuard leagues;
@@ -106,8 +111,16 @@ public class SettingsApi {
         // scartarli, contraddirebbe esattamente l'invariante appena documentato.
         ScoringSettings scoring = null;
         if (preparing) {
-            scoring = settingsOf(body.scoring());
-            errors.get("scoring").addAll(ScoringSettingsValidator.validate(scoring));
+            // Una chiave "scoring" assente (corpo malformato, non un modulo compilato
+            // male) e' un errore del CHIAMANTE: deve cadere nel 422 tipizzato qui sotto,
+            // non nella NullPointerException che settingsOf() solleverebbe leggendo un
+            // record null, che il ramo generico avrebbe riportato come "internal-error".
+            if (body.scoring() == null) {
+                errors.get("scoring").add("Le impostazioni del punteggio sono obbligatorie.");
+            } else {
+                scoring = settingsOf(body.scoring());
+                errors.get("scoring").addAll(ScoringSettingsValidator.validate(scoring));
+            }
         }
 
         List<Participant> members = new ArrayList<>();
@@ -124,9 +137,18 @@ public class SettingsApi {
         }
         errors.get("participants").addAll(LeagueMembersSettingsValidator.validate(members));
 
-        AuctionSettings bidder = new AuctionSettings(body.bidder().bidTimerSeconds(),
-                body.bidder().beepEnabled());
-        errors.get("bidder").addAll(AuctionSettingsValidator.validate(bidder));
+        // Stessa storia del "scoring" qui sopra: una chiave "bidder" assente e' un
+        // corpo malformato, non un modulo compilato male, e deve cadere nello stesso
+        // 422 tipizzato invece che nella NullPointerException su
+        // body.bidder().bidTimerSeconds() che il ramo generico avrebbe riportato come
+        // "internal-error".
+        AuctionSettings bidder = null;
+        if (body.bidder() == null) {
+            errors.get("bidder").add("Le preferenze del battitore sono obbligatorie.");
+        } else {
+            bidder = new AuctionSettings(body.bidder().bidTimerSeconds(), body.bidder().beepEnabled());
+            errors.get("bidder").addAll(AuctionSettingsValidator.validate(bidder));
+        }
 
         if (errors.values().stream().anyMatch(list -> !list.isEmpty())) {
             throw new InvalidSettingsException(errors);
