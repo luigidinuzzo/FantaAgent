@@ -14,13 +14,6 @@ export interface BidCountdown {
   running: boolean;
   /** Azzera e avvia. */
   start: () => void;
-  /** Ferma senza far scadere. */
-  stop: () => void;
-  /**
-   * Riporta al valore pieno: e' un rilancio. Non tocca `running` — se il
-   * countdown era fermo (scaduto o dopo `stop()`), resta fermo.
-   */
-  reset: () => void;
 }
 
 export function useBidCountdown({
@@ -32,6 +25,15 @@ export function useBidCountdown({
   beepEnabled: boolean;
   onExpire: () => void;
 }): BidCountdown {
+  // Limite noto, non un bug da questa parte: se `seconds` cambia MENTRE il
+  // countdown e' fermo (non ancora avviato, o scaduto), `total` cambia ma
+  // `remaining` (impostato solo al mount e in `start()`) non si aggiorna
+  // finche' non arriva il prossimo `start()`. Oggi e' irraggiungibile —
+  // BidderDialog e' keyed su playerId e monta una volta risolte le
+  // preferenze, quindi `seconds` non cambia mai a dialogo aperto. Diventa
+  // raggiungibile quando le impostazioni (tappa 5) permettono di cambiare
+  // il timer A DIALOGO APERTO: va risolto li', col chiamante davanti, non
+  // qui a occhi chiusi.
   const total = seconds * 1000;
   const [remaining, setRemaining] = useState(total);
   const [running, setRunning] = useState(false);
@@ -71,14 +73,7 @@ export function useBidCountdown({
     setRunning(true);
   }, [total]);
 
-  const stop = useCallback(() => setRunning(false), []);
-
-  const reset = useCallback(() => {
-    deadline.current = Date.now() + total;
-    setRemaining(total);
-  }, [total]);
-
-  return { remaining, running, start, stop, reset };
+  return { remaining, running, start };
 }
 
 /**
