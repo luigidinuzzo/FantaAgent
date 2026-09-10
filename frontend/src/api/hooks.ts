@@ -168,6 +168,19 @@ export function useUndoLast() {
 }
 
 /**
+ * Revoca un acquisto preciso, per {@code seq} — non l'ultimo per forza: il riepilogo
+ * (Task 13) lascia scegliere quale, riga per riga, cosa che {@link useUndoLast} non
+ * puo' fare perche' parla solo dell'ultimo evento del registro.
+ */
+export function useVoidPurchase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (seq: number) => apiPost(`/purchases/${seq}/void`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
  * Le impostazioni della lega — battitore, partecipanti, punteggio — non dell'asta
  * corrente, quindi {@link apiLeagueGet} e non {@link apiGet}.
  */

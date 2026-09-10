@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { AuctionRoute } from './routes/AuctionRoute';
 import { HomeRoute } from './routes/HomeRoute';
 import { ProjectionRoute } from './routes/ProjectionRoute';
+import { RecapRoute } from './routes/RecapRoute';
 import { SettingsRoute } from './routes/SettingsRoute';
 
 // La proiezione ha una URL propria perche' va aperta in una seconda finestra, sul
@@ -17,6 +18,7 @@ const router = createBrowserRouter([
   { path: '/asta', element: <AuctionRoute /> },
   { path: '/proiezione', element: <ProjectionRoute /> },
   { path: '/impostazioni', element: <SettingsRoute /> },
+  { path: '/riepilogo', element: <RecapRoute /> },
 ]);
 
 export function AppRouter() {
