@@ -217,4 +217,67 @@ describe('SettingsRoute', () => {
     await userEvent.type(timer, '45');
     expect(timer).toHaveValue(45);
   });
+
+  /**
+   * settingsErrorsOf si fermava a un livello di restringimento: verificava che
+   * "errors" fosse un oggetto e poi si fidava del resto. Un corpo con
+   * {@code errors.participants} una STRINGA invece di un array (un backend rotto,
+   * un proxy che lo trasforma) dava `errors.participants.length === 4` (la
+   * lunghezza della stringa "boom"), un riassunto «4 errori: 4 in partecipanti» e
+   * poi SectionErrors che chiama `.map` su una stringa — un crash del render,
+   * ancora peggio del silenzio che questo stesso meccanismo dovrebbe evitare.
+   */
+  it('un corpo con una sezione non a forma di array non crasha, e dice comunque qualcosa', async () => {
+    renderSettings(() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            type: 'https://fantaagent.local/problems/invalid-settings',
+            detail: 'Alcune impostazioni non sono valide.',
+            errors: { participants: 'boom' },
+          },
+          422,
+        ),
+      ),
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+
+    // Non crasha (il render arriva fino a un alert) e non mostra un conteggio
+    // inventato dalla lunghezza della stringa: cade nel ramo generico, che dice
+    // almeno il `detail` del problem.
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(/alcune impostazioni non sono valide/i);
+  });
+
+  /**
+   * Una chiave sconosciuta (non una delle quattro fisse) non deve comparire nel
+   * riassunto: prima si prendevano le chiavi dalla RISPOSTA, e SECTION_NAMES[k] su
+   * una chiave che non conosce restituisce undefined — «2 in undefined».
+   */
+  it('una chiave sconosciuta nel corpo non finisce nel riassunto come "undefined"', async () => {
+    renderSettings(() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            type: 'https://fantaagent.local/problems/invalid-settings',
+            detail: 'Alcune impostazioni non sono valide.',
+            errors: {
+              auction: [], participants: ['Serve un nome unico.'], scoring: [], bidder: [],
+              sorpresa: ['non dovrebbe apparire'],
+            },
+          },
+          422,
+        ),
+      ),
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+
+    expect(await screen.findByText('Serve un nome unico.')).toBeInTheDocument();
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).not.toHaveTextContent(/undefined/i);
+  });
 });

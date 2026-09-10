@@ -30,17 +30,55 @@ function errorSummary(errors: SettingsErrors): string | null {
   return `${total} ${total === 1 ? 'errore' : 'errori'}: ${parts.join(', ')}.`;
 }
 
+/** Un elenco di stringhe, e nient'altro — cio' che ogni chiave di SettingsErrors deve essere. */
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 /**
  * Restringe {@link ProblemError#body}: la classe porta il corpo indistinto apposta
  * (vedi il commento su di lei), quindi chi legge un 422 di questo endpoint deve
  * verificare da solo che la forma sia quella attesa, con la stessa cautela con cui
- * si legge qualunque JSON arrivato dalla rete.
+ * si legge qualunque JSON arrivato dalla rete — per OGNI chiave, non solo per il
+ * primo livello.
+ *
+ * <p>Restringere un solo livello (verificare che "errors" fosse un oggetto e poi
+ * fidarsi del resto) lasciava passare un corpo come
+ * {@code {"errors": {"participants": "boom"}}}: {@code errors.participants.length}
+ * leggeva la lunghezza della STRINGA "boom" (4), il riassunto diceva «4 errori: 4 in
+ * partecipanti», e {@link SectionErrors} chiamando {@code .map} su una stringa
+ * crashava il render — peggio del silenzio che questo stesso meccanismo esiste per
+ * evitare (commit af64cd1).
+ *
+ * <p>Le chiavi si prendono da {@link NO_ERRORS}, non dalla risposta: una chiave in
+ * piu' che il corpo porta (un campo aggiunto in futuro, un typo) non deve finire nel
+ * riassunto — {@code SECTION_NAMES[k]} su una chiave che non conosce darebbe «in
+ * undefined».
  */
 function settingsErrorsOf(body: unknown): SettingsErrors | null {
   if (typeof body !== 'object' || body === null || !('errors' in body)) return null;
   const errors = (body as { errors: unknown }).errors;
   if (typeof errors !== 'object' || errors === null) return null;
-  return { ...NO_ERRORS, ...errors };
+  const record = errors as Record<string, unknown>;
+
+  const result = { ...NO_ERRORS };
+  let anyRealError = false;
+  for (const key of Object.keys(NO_ERRORS) as Array<keyof SettingsErrors>) {
+    const value = record[key];
+    if (isStringArray(value)) {
+      result[key] = value;
+      if (value.length > 0) anyRealError = true;
+    }
+    // Un valore presente ma della forma sbagliata (o assente) resta [] — il
+    // valore di NO_ERRORS con cui `result` e' partito — invece di propagare un
+    // dato che romperebbe SectionErrors piu' a valle.
+  }
+  // Un 422 invalid-settings porta sempre almeno un errore vero (e' per questo che
+  // il server l'ha mandato): se dopo aver scartato le voci mal formate non ne
+  // resta nessuno, il corpo non aveva la forma attesa — e va trattato come tale,
+  // cadendo nel ramo generico che mostra almeno il `detail` del problem, non
+  // silenziosamente come "nessun errore".
+  return anyRealError ? result : null;
 }
 
 /**
