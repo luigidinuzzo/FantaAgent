@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiPost } from './client';
+import { apiGet, apiLeagueGet, apiLeaguePost, apiPost } from './client';
 import type {
+  AuctionCard,
   AuctionStateResponse,
   BoardResponse,
   PhasePageResponse,
@@ -16,7 +17,36 @@ const KEYS = {
   valuation: (playerId: string) => ['valuation', playerId] as const,
   board: ['board'] as const,
   publicBidder: (playerId: string) => ['public-bidder', playerId] as const,
+  auctions: ['auctions'] as const,
 };
+
+/**
+ * L'elenco delle aste della lega: non sta sotto il contesto dell'asta
+ * corrente, quindi passa da {@link apiLeagueGet} e non da {@link apiGet}.
+ */
+export function useAuctions() {
+  return useQuery({
+    queryKey: KEYS.auctions,
+    queryFn: () => apiLeagueGet<AuctionCard[]>('/auctions'),
+  });
+}
+
+export function useSelectAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (auctionId: string) =>
+      apiLeaguePost(`/auctions/${encodeURIComponent(auctionId)}/select`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useLeaveAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiLeaguePost('/auctions/current/leave'),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
 
 export function useAuctionState() {
   return useQuery({

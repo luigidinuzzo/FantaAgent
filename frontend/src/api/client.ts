@@ -34,6 +34,10 @@ function url(path: string): string {
   return `/api/leagues/${context.leagueId}/auctions/${context.auctionId}${path}`;
 }
 
+function leagueUrl(path: string): string {
+  return `/api/leagues/${encodeURIComponent(context.leagueId)}${path}`;
+}
+
 async function toProblem(response: Response): Promise<ProblemError> {
   try {
     const body = await response.json();
@@ -49,8 +53,8 @@ async function toProblem(response: Response): Promise<ProblemError> {
   }
 }
 
-async function request<T>(path: string, init: RequestInit): Promise<T | null> {
-  const response = await fetch(url(path), init);
+async function request<T>(resolvedUrl: string, init: RequestInit): Promise<T | null> {
+  const response = await fetch(resolvedUrl, init);
   if (!response.ok) {
     throw await toProblem(response);
   }
@@ -61,11 +65,32 @@ async function request<T>(path: string, init: RequestInit): Promise<T | null> {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
-  return (await request<T>(path, { headers: { accept: 'application/json' } })) as T;
+  return (await request<T>(url(path), { headers: { accept: 'application/json' } })) as T;
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T | null> {
-  return request<T>(path, {
+  return request<T>(url(path), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+/**
+ * Gemello di {@link apiGet} che si ferma alla lega: le rotte dell'archivio
+ * (l'elenco delle aste, il passaggio da una all'altra) non stanno sotto
+ * un'asta particolare, quindi non passano dal segmento `/auctions/{id}`
+ * che {@link url} aggiunge.
+ */
+export async function apiLeagueGet<T>(path: string): Promise<T> {
+  return (await request<T>(leagueUrl(path), {
+    headers: { accept: 'application/json' },
+  })) as T;
+}
+
+/** Gemello di {@link apiPost} che si ferma alla lega. Vedi {@link apiLeagueGet}. */
+export async function apiLeaguePost<T>(path: string, body?: unknown): Promise<T | null> {
+  return request<T>(leagueUrl(path), {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),

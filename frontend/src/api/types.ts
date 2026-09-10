@@ -1,5 +1,18 @@
 export type Role = 'P' | 'D' | 'C' | 'A';
 
+/**
+ * Una riga della home: quanto basta a riconoscere un'asta fra le altre.
+ * Specchio del record Java {@code AuctionsDtos.AuctionCard}.
+ */
+export interface AuctionCard {
+  id: string;
+  label: string;
+  lastWritten: string | null;
+  purchases: number;
+  phase: Role;
+  selected: boolean;
+}
+
 export interface ParticipantView {
   id: string;
   name: string;
