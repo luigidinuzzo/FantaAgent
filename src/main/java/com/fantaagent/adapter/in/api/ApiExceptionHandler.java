@@ -95,6 +95,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.CONFLICT, "nothing-to-undo", e.getMessage());
     }
 
+    @ExceptionHandler(InvalidSettingsException.class)
+    ProblemDetail invalidSettings(InvalidSettingsException e) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-settings",
+                "Alcune impostazioni non sono valide.");
+        // Per sezione e non per campo: i validatori restituiscono frasi in italiano, non
+        // coppie campo-messaggio, e la loro firma serve anche a SettingsController, la
+        // schermata Thymeleaf su /impostazioni che questa tappa lascia intatta. Nella
+        // tappa 6 i validatori crescono un metodo per-campo e questo diventa il suo
+        // appiattimento.
+        problem.setProperty("errors", e.errors());
+        return problem;
+    }
+
     /**
      * Ultima rete: qualunque cosa non prevista esce comunque come problem+json
      * tipizzato invece che come pagina d'errore HTML, che il frontend proverebbe a
