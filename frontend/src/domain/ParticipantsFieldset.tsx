@@ -25,13 +25,13 @@ export function ParticipantsFieldset({
   }
 
   return (
-    <fieldset className="border border-line p-4">
-      <legend
-        className="px-2 font-bold"
-        aria-describedby={errors.length > 0 ? errorsId : undefined}
-      >
-        Partecipanti
-      </legend>
+    <fieldset
+      className="border border-line p-4"
+      aria-describedby={errors.length > 0 ? errorsId : undefined}
+    >
+      {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
+          stesso — un group — che supporta una descrizione, non la legend. */}
+      <legend className="px-2 font-bold">Partecipanti</legend>
 
       <table className="w-full text-sm">
         <caption className="sr-only">
