@@ -83,4 +83,23 @@ describe('PlayerTable', () => {
     render(<PlayerTable rows={[]} selectedId={null} onSelect={() => {}} />);
     expect(screen.getByText(/Nessun giocatore libero in questa fase/)).toBeInTheDocument();
   });
+
+  // Fix round 1: un lotto e' aperto sul battitore alla volta. Senza
+  // bloccare la tabella, un clic vagante su un'altra riga mentre il
+  // battitore e' aperto cambia il giocatore sotto un rilancio in corso —
+  // countdown, prezzo accumulato e beep perduti senza preavviso, e la
+  // proiezione (che ascolta lo stesso canale) vedrebbe il lotto saltare a
+  // meta' asta. Abbandonare un lotto resta un gesto deliberato: si chiude
+  // il battitore, non si clicca altrove per sbaglio.
+  it('quando la selezione e bloccata i bottoni delle righe sono disabilitati e lo dicono a chi ascolta', () => {
+    render(<PlayerTable rows={ROWS} selectedId="d1" onSelect={() => {}} disabled />);
+    const button = screen.getByRole('button', { name: /Dimarco/ });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription(/battitore/i);
+  });
+
+  it('quando non e bloccata i bottoni restano normali', () => {
+    render(<PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} />);
+    expect(screen.getByRole('button', { name: /Dimarco/ })).not.toBeDisabled();
+  });
 });

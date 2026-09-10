@@ -38,4 +38,17 @@ public final class BoardDtos {
 
     public record BoardResponse(String auctionId, Role currentPhase, List<BoardColumn> columns) {
     }
+
+    /**
+     * Il giocatore all'asta come lo vede lo schermo condiviso.
+     *
+     * <p>Sta qui, e non fra i DTO dell'API, per la stessa ragione degli altri record di
+     * questo file: cosi' la regola ArchUnit che vieta a questo package di raggiungere
+     * {@code domain.strategy} copre anche lui. Un battitore proiettato che potesse
+     * nominare una valutazione sarebbe il modo piu' diretto di perdere l'asta.
+     */
+    public record PublicBidderResponse(String playerId, String name, String team,
+                                       Role role, int listPrice,
+                                       int timerSeconds, boolean beepEnabled) {
+    }
 }

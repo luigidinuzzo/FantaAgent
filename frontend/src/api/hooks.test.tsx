@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setAuctionContext } from './client';
-import { useAssign, useAuctionState } from './hooks';
+import { useAssign, useAuctionState, useChangePhase, useUndoLast } from './hooks';
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
@@ -119,5 +119,36 @@ describe('hook', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     // Solo dopo la conferma: invalidateQueries segna la query da rileggere.
     expect(client.getQueryState(['state'])?.isInvalidated).toBe(true);
+  });
+
+  it('useChangePhase invia il ruolo scelto a /phase', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 204 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useChangePhase(), { wrapper });
+    result.current.mutate('C');
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const [calledUrl, init] = fetchMock.mock.calls[0];
+    expect(String(calledUrl)).toContain('/phase');
+    expect(JSON.parse(init.body)).toEqual({ role: 'C' });
+  });
+
+  it('useUndoLast invia una richiesta senza corpo a /purchases/void-last', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, { status: 204 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { result } = renderHook(() => useUndoLast(), { wrapper });
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const [calledUrl] = fetchMock.mock.calls[0];
+    expect(String(calledUrl)).toContain('/purchases/void-last');
   });
 });

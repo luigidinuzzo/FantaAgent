@@ -1,3 +1,6 @@
+import type { Role } from '../api/types';
+import { ROLE_LABEL } from './PhaseSwitcher';
+
 export interface PurchaseAnnouncement {
   playerName: string;
   buyerName: string;
@@ -36,6 +39,20 @@ export function purchaseMessage(a: PurchaseAnnouncement): string {
     `${plural(a.myBudgetRemaining, 'credito', 'crediti')} e ` +
     `${plural(a.mySlotsRemaining, 'slot', 'slot')}.`
   );
+}
+
+/**
+ * Il cambio fase e l'annullamento (Task 7) tornano alla schermata privata dopo essere
+ * stati rimossi come codice morto nelle tappe 1-3: entrambi cambiano visibilmente il
+ * tabellone, ma senza una frase qui chi ascolta non avrebbe modo di saperlo — il
+ * bottone si limiterebbe a riattivarsi.
+ */
+export function phaseChangedMessage(role: Role): string {
+  return `Fase cambiata: ora si contendono i ${ROLE_LABEL[role]}.`;
+}
+
+export function undoMessage(): string {
+  return "L'ultimo acquisto e' stato annullato.";
 }
 
 /**

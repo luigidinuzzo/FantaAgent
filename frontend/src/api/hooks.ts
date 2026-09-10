@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiPost } from './client';
 import type {
   AuctionStateResponse,
+  BoardResponse,
   PhasePageResponse,
+  PublicBidderResponse,
   PurchaseResponse,
+  Role,
   ValuationResponse,
 } from './types';
 
@@ -11,6 +14,8 @@ const KEYS = {
   state: ['state'] as const,
   phase: (offset: number) => ['phase', offset] as const,
   valuation: (playerId: string) => ['valuation', playerId] as const,
+  board: ['board'] as const,
+  publicBidder: (playerId: string) => ['public-bidder', playerId] as const,
 };
 
 export function useAuctionState() {
@@ -31,6 +36,28 @@ export function useValuation(playerId: string | null) {
   return useQuery({
     queryKey: KEYS.valuation(playerId ?? ''),
     queryFn: () => apiGet<ValuationResponse>(`/players/${playerId}/valuation`),
+    enabled: playerId !== null,
+  });
+}
+
+export function useBoard() {
+  return useQuery({
+    queryKey: KEYS.board,
+    queryFn: () => apiGet<BoardResponse>('/board'),
+  });
+}
+
+/**
+ * Nome, squadra e ruolo del giocatore all'asta, dall'endpoint del tabellone.
+ *
+ * Non arrivano dal canale fra le finestre di proposito: sono dati di dominio, e il
+ * browser non e' la loro fonte. Il canale porta solo cio' che sul server non esiste —
+ * quale lotto e' aperto, a che prezzo, quanto manca.
+ */
+export function usePublicBidder(playerId: string | null) {
+  return useQuery({
+    queryKey: KEYS.publicBidder(playerId ?? ''),
+    queryFn: () => apiGet<PublicBidderResponse>(`/board/bidder/${playerId}`),
     enabled: playerId !== null,
   });
 }
@@ -78,6 +105,31 @@ export function useAssign() {
     // 'success' finche' anche le altre query attive (stato, fase, valutazione)
     // non hanno riletto — e' cosi' che AuctionRoute (Task 17) puo' comporre
     // l'annuncio dell'acquisto dal budget DOPO, non da quello di prima.
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
+ * Il cambio fase: era gia' stato scritto e poi rimosso come codice morto
+ * durante la revisione finale delle tappe 1-3, perche' nessuna schermata lo
+ * chiamava. Ora la schermata privata (Task 7) lo chiama.
+ */
+export function useChangePhase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (role: Role) => apiPost('/phase', { role }),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
+ * Annulla l'ultimo acquisto. Stessa storia di {@link useChangePhase}: scritto,
+ * rimosso perche' inutilizzato, riportato perche' la schermata ora esiste.
+ */
+export function useUndoLast() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiPost('/purchases/void-last'),
     onSuccess: () => client.invalidateQueries(),
   });
 }

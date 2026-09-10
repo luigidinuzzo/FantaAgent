@@ -64,16 +64,13 @@ class ApiProblemShapeTest {
                         .value("https://fantaagent.local/problems/malformed-body"));
     }
 
-    /**
-     * Il 405 non deve diventare un 404: il percorso esiste, e' il metodo a essere
-     * sbagliato. E' la ragione per cui la rotta sconosciuta e' gestita da un advice
-     * e non da un controller mappato su {@code /api/**}, che vincerebbe il
-     * confronto anche quando il metodo non corrisponde.
-     */
     @Test
-    void ilMetodoSbagliatoRestaUn405() throws Exception {
+    void ilMetodoSbagliatoEsceInProblemJson() throws Exception {
         mvc.perform(get(BASE + "/purchases"))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/method-not-allowed"));
     }
 
     @Test

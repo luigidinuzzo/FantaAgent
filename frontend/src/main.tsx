@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryProvider } from './api/QueryProvider';
 import { setAuctionContext } from './api/client';
 import './index.css';
-import { AuctionRoute } from './routes/AuctionRoute';
+import { AppRouter } from './router';
 
 // In questo sotto-progetto la lega e' una sola e l'asta e' quella aperta sul
 // server. Il sotto-progetto 3 le prendera' dalla sessione dell'utente.
@@ -17,7 +17,7 @@ document.documentElement.classList.add('dark');
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryProvider>
-      <AuctionRoute />
+      <AppRouter />
     </QueryProvider>
   </StrictMode>,
 );

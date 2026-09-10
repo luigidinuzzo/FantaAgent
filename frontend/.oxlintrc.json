@@ -4,5 +4,25 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/domain/PublicBidderDialog.tsx", "src/routes/ProjectionRoute.tsx"],
+      "rules": {
+        "no-restricted-imports": ["error", {
+          "patterns": [
+            {
+              "group": ["**/PlayerDecisionCard*", "**/BidderDialog*"],
+              "message": "La proiezione non puo' importare componenti che mostrano valutazioni."
+            },
+            {
+              "group": ["**/api/hooks", "**/api/types"],
+              "importNames": ["useValuation", "ValuationResponse"],
+              "message": "La proiezione non puo' nominare il tipo della valutazione: e' l'equivalente, a questa altezza, della regola ArchUnit che lo vieta in Java."
+            }
+          ]
+        }]
+      }
+    }
+  ]
 }

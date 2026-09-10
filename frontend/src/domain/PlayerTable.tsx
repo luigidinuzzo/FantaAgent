@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { PhaseRowView } from '../api/types';
 import { EmptyState } from './EmptyState';
 
@@ -7,11 +8,23 @@ export function PlayerTable({
   rows,
   selectedId,
   onSelect,
+  disabled = false,
 }: {
   rows: PhaseRowView[];
   selectedId: string | null;
   onSelect: (playerId: string) => void;
+  /**
+   * Un lotto alla volta e' aperto sul battitore: mentre lo e', la
+   * selezione resta bloccata, non solo scoraggiata. Un clic vagante su
+   * un'altra riga cambierebbe il giocatore sotto un rilancio in corso —
+   * countdown, prezzo e beep perduti senza preavviso. Abbandonare un lotto
+   * resta un gesto deliberato (si chiude il battitore), non un incidente
+   * di un clic.
+   */
+  disabled?: boolean;
 }) {
+  const lockedHintId = useId();
+
   if (rows.length === 0) {
     // Uno schermo vuoto e' un invito ad agire, non un errore muto.
     return <EmptyState>Nessun giocatore libero in questa fase. Passa alla fase successiva.</EmptyState>;
@@ -63,14 +76,18 @@ export function PlayerTable({
                 data-above-threshold={above}
                 className={`border-b border-line ${selected ? 'bg-surface' : ''}`}
               >
-                <td className="py-0">
+                <td className="min-w-11 py-0">
                   {/* Il bersaglio e' un bottone vero: raggiungibile da tastiera,
-                      annunciato come azione, e alto abbastanza da essere colpito. */}
+                      annunciato come azione, e alto abbastanza da essere colpito.
+                      min-w-11 garantisce anche la larghezza minima (44px): senza,
+                      dipende dall'auto-layout della tabella e regge per caso. */}
                   <button
                     type="button"
                     onClick={() => onSelect(row.id)}
                     aria-label={accessibleLabel}
-                    className="flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    disabled={disabled}
+                    aria-describedby={disabled ? lockedHintId : undefined}
+                    className="flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                   >
                     {row.name}
                   </button>
@@ -99,6 +116,11 @@ export function PlayerTable({
           })}
         </tbody>
       </table>
+      {disabled ? (
+        <span id={lockedHintId} className="sr-only">
+          Selezione bloccata: chiudi il battitore per scegliere un altro giocatore.
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -18,11 +18,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  *
  * <p>Questo advice e' quindi senza selettori — l'unica forma che intercetta anche
  * cio' che non ha un controller — e sceglie da se' il proprio confine guardando il
- * percorso. Fuori da {@code /api/} rilancia la STESSA istanza ricevuta:
- * {@code ExceptionHandlerExceptionResolver} lo interpreta come "non gestita da qui"
- * e passa la mano al resolver successivo, che e' esattamente cio' che accadeva
- * prima. Le pagine d'errore dei controller HTML restano quelle di oggi: erano fuori
- * dal perimetro di questo sotto-progetto.
+ * percorso. Fuori da {@code /api/} rilancia l'eccezione ricevuta: un rilancio da
+ * dentro un {@code @ExceptionHandler} fa restituire {@code null} a
+ * {@code ExceptionHandlerExceptionResolver}, e il composite passa l'eccezione
+ * ORIGINALE al resolver successivo — esattamente cio' che accadeva prima. Rilanciare
+ * la STESSA istanza, invece di una nuova, evita solo un WARN spurio nel log: non e'
+ * cio' che decide il passaggio al resolver successivo. Le pagine d'errore dei
+ * controller HTML restano quelle di oggi: erano fuori dal perimetro di questo
+ * sotto-progetto.
  *
  * <p>La via alternativa — un controller vero mappato su {@code /api/**} — e' stata
  * provata e scartata: un handler pieno vince sul confronto per metodo, e un GET su
