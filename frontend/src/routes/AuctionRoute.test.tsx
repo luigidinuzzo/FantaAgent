@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { setAuctionContext } from '../api/client';
 import { QueryProvider } from '../api/QueryProvider';
 import type { BidBroadcast } from '../domain/bidChannel';
@@ -148,7 +149,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -222,7 +223,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -274,7 +275,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -324,7 +325,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -357,7 +358,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -382,7 +383,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -411,7 +412,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -455,7 +456,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -519,7 +520,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -565,7 +566,7 @@ describe('AuctionRoute', () => {
 
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -590,7 +591,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -633,7 +634,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -669,7 +670,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -706,7 +707,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -730,7 +731,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -761,7 +762,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -783,7 +784,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -810,7 +811,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -868,7 +869,7 @@ describe('AuctionRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
         <QueryProvider>
-          <AuctionRoute />
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
         </QueryProvider>,
       );
 
@@ -926,7 +927,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -953,7 +954,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -990,7 +991,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 
@@ -1015,7 +1016,7 @@ describe('AuctionRoute', () => {
 
     render(
       <QueryProvider>
-        <AuctionRoute />
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
       </QueryProvider>,
     );
 

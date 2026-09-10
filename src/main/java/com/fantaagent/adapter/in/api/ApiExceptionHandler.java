@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.NoAuctionSelectedException;
 import com.fantaagent.application.service.PurchaseRejectedException;
+import com.fantaagent.application.service.PurchaseRevocationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -85,6 +86,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         };
     }
 
+    /**
+     * Vince sul gestore di {@link IllegalArgumentException} per specificita' della
+     * gerarchia, non per posizione nel file: Spring sceglie il gestore piu' vicino al
+     * tipo lanciato. L'ordine di dichiarazione non conta.
+     */
+    @ExceptionHandler(PurchaseRevocationException.class)
+    ProblemDetail revocation(PurchaseRevocationException e) {
+        boolean notFound = e.reason() == PurchaseRevocationException.Reason.NOT_FOUND;
+        return problem(notFound ? HttpStatus.NOT_FOUND : HttpStatus.CONFLICT,
+                notFound ? "purchase-not-found" : "purchase-already-revoked",
+                e.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     ProblemDetail invalid(IllegalArgumentException e) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-request", e.getMessage());
@@ -93,6 +107,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(NothingToUndoException.class)
     ProblemDetail nothingToUndo(NothingToUndoException e) {
         return problem(HttpStatus.CONFLICT, "nothing-to-undo", e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidSettingsException.class)
+    ProblemDetail invalidSettings(InvalidSettingsException e) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-settings",
+                "Alcune impostazioni non sono valide.");
+        // Per sezione e non per campo: i validatori restituiscono frasi in italiano, non
+        // coppie campo-messaggio, e la loro firma serve anche a SettingsController, la
+        // schermata Thymeleaf su /impostazioni che questa tappa lascia intatta. Nella
+        // tappa 6 i validatori crescono un metodo per-campo e questo diventa il suo
+        // appiattimento.
+        problem.setProperty("errors", e.errors());
+        return problem;
     }
 
     /**

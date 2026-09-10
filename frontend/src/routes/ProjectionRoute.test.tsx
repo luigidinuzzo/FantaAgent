@@ -111,6 +111,20 @@ describe('ProjectionRoute', () => {
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 
+  /**
+   * AppShell (revisione finale) ha guadagnato una barra di navigazione condivisa
+   * da ogni schermata — ma la proiezione e' una seconda schermata su un
+   * proiettore, e il suo vincolo permanente e' zero chrome. Un link e'
+   * role="link", non role="button", quindi il test sopra non lo vedrebbe: va
+   * verificato a parte che non ce ne sia NESSUNO, nemmeno il nome-come-link.
+   */
+  it('non mostra nessun link di navigazione, nemmeno il nome', () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+
   it('mostra il lotto quando la schermata privata lo trasmette, e non dice piu di non ricevere', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();

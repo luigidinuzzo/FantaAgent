@@ -1,12 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiPost } from './client';
+import {
+  apiGet,
+  apiLeagueGet,
+  apiLeaguePost,
+  apiLeaguePut,
+  apiPost,
+  apiPostToAuction,
+} from './client';
 import type {
+  AuctionCard,
   AuctionStateResponse,
   BoardResponse,
   PhasePageResponse,
   PublicBidderResponse,
   PurchaseResponse,
   Role,
+  SaveSettingsRequest,
+  SaveSettingsResult,
+  SettingsResponse,
   ValuationResponse,
 } from './types';
 
@@ -16,7 +27,36 @@ const KEYS = {
   valuation: (playerId: string) => ['valuation', playerId] as const,
   board: ['board'] as const,
   publicBidder: (playerId: string) => ['public-bidder', playerId] as const,
+  auctions: ['auctions'] as const,
 };
+
+/**
+ * L'elenco delle aste della lega: non sta sotto il contesto dell'asta
+ * corrente, quindi passa da {@link apiLeagueGet} e non da {@link apiGet}.
+ */
+export function useAuctions() {
+  return useQuery({
+    queryKey: KEYS.auctions,
+    queryFn: () => apiLeagueGet<AuctionCard[]>('/auctions'),
+  });
+}
+
+export function useSelectAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (auctionId: string) =>
+      apiLeaguePost(`/auctions/${encodeURIComponent(auctionId)}/select`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useLeaveAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiLeaguePost('/auctions/current/leave'),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
 
 export function useAuctionState() {
   return useQuery({
@@ -130,6 +170,56 @@ export function useUndoLast() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => apiPost('/purchases/void-last'),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export interface VoidPurchaseInput {
+  /**
+   * L'asta a cui appartiene {@code seq}, NON quella del contesto della finestra
+   * (pinnato a {@link AuctionGuard#CURRENT} da main.tsx): {@code seq} e' un numero
+   * per registro, e un tab di riepilogo lasciato aperto su un'asta mentre altrove
+   * si passa a un'altra manderebbe altrimenti quel numero al registro sbagliato,
+   * dove puo' coincidere con l'acquisto di un giocatore diverso. Va letto dalla
+   * risposta della board ({@link BoardResponse#auctionId}), non dal contesto.
+   */
+  auctionId: string;
+  seq: number;
+}
+
+/**
+ * Revoca un acquisto preciso, per {@code seq} — non l'ultimo per forza: il riepilogo
+ * (Task 13) lascia scegliere quale, riga per riga, cosa che {@link useUndoLast} non
+ * puo' fare perche' parla solo dell'ultimo evento del registro.
+ */
+export function useVoidPurchase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: VoidPurchaseInput) =>
+      apiPostToAuction(input.auctionId, `/purchases/${input.seq}/void`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
+ * Le impostazioni della lega — battitore, partecipanti, punteggio — non dell'asta
+ * corrente, quindi {@link apiLeagueGet} e non {@link apiGet}.
+ */
+export function useSettings() {
+  return useQuery({
+    queryKey: ['settings'] as const,
+    queryFn: () => apiLeagueGet<SettingsResponse>('/settings'),
+    // Le impostazioni non cambiano da sole: nessuno le riscrive mentre le guardi.
+    // Interrogare il server ogni cinque secondi per un modulo fermo e' solo rumore.
+    refetchInterval: false,
+  });
+}
+
+export function useSaveSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveSettingsRequest) =>
+      apiLeaguePut<SaveSettingsResult>('/settings', input),
     onSuccess: () => client.invalidateQueries(),
   });
 }
