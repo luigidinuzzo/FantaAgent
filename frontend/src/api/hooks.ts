@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiLeagueGet, apiLeaguePost, apiLeaguePut, apiPost } from './client';
+import {
+  apiGet,
+  apiLeagueGet,
+  apiLeaguePost,
+  apiLeaguePut,
+  apiPost,
+  apiPostToAuction,
+} from './client';
 import type {
   AuctionCard,
   AuctionStateResponse,
@@ -167,6 +174,19 @@ export function useUndoLast() {
   });
 }
 
+export interface VoidPurchaseInput {
+  /**
+   * L'asta a cui appartiene {@code seq}, NON quella del contesto della finestra
+   * (pinnato a {@link AuctionGuard#CURRENT} da main.tsx): {@code seq} e' un numero
+   * per registro, e un tab di riepilogo lasciato aperto su un'asta mentre altrove
+   * si passa a un'altra manderebbe altrimenti quel numero al registro sbagliato,
+   * dove puo' coincidere con l'acquisto di un giocatore diverso. Va letto dalla
+   * risposta della board ({@link BoardResponse#auctionId}), non dal contesto.
+   */
+  auctionId: string;
+  seq: number;
+}
+
 /**
  * Revoca un acquisto preciso, per {@code seq} — non l'ultimo per forza: il riepilogo
  * (Task 13) lascia scegliere quale, riga per riga, cosa che {@link useUndoLast} non
@@ -175,7 +195,8 @@ export function useUndoLast() {
 export function useVoidPurchase() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (seq: number) => apiPost(`/purchases/${seq}/void`),
+    mutationFn: (input: VoidPurchaseInput) =>
+      apiPostToAuction(input.auctionId, `/purchases/${input.seq}/void`),
     onSuccess: () => client.invalidateQueries(),
   });
 }

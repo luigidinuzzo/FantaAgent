@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ProblemError, apiGet, apiLeaguePut, apiPost, setAuctionContext } from './client';
+import {
+  ProblemError,
+  apiGet,
+  apiLeaguePut,
+  apiPost,
+  apiPostToAuction,
+  setAuctionContext,
+} from './client';
 
 describe('client API', () => {
   beforeEach(() => {
@@ -78,6 +85,24 @@ describe('client API', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/leagues/default/settings',
       expect.objectContaining({ method: 'PUT' }),
+    );
+  });
+
+  /**
+   * `seq` e' per-registro: un tab lasciato aperto su un'asta e uno switch su
+   * un'altra basterebbero, con l'indirizzo pinnato a {@code corrente}, a mandare
+   * un {@code seq} al registro sbagliato. {@link apiPostToAuction} indirizza
+   * l'asta passata esplicitamente, non quella del contesto della finestra.
+   */
+  it("apiPostToAuction indirizza l'asta passata, non quella del contesto", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiPostToAuction('2025-08-30', '/purchases/7/void');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/leagues/default/auctions/2025-08-30/purchases/7/void',
+      expect.objectContaining({ method: 'POST' }),
     );
   });
 

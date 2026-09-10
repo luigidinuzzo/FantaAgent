@@ -47,6 +47,15 @@ function leagueUrl(path: string): string {
   return `/api/leagues/${encodeURIComponent(context.leagueId)}${path}`;
 }
 
+/**
+ * Come {@link url}, ma con l'identificativo dell'asta passato dal chiamante invece
+ * di quello fissato in {@link context}. Vedi {@link apiPostToAuction}.
+ */
+function auctionUrl(auctionId: string, path: string): string {
+  return `/api/leagues/${encodeURIComponent(context.leagueId)}/auctions/`
+    + `${encodeURIComponent(auctionId)}${path}`;
+}
+
 async function toProblem(response: Response): Promise<ProblemError> {
   try {
     const body = await response.json();
@@ -85,6 +94,35 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T | null> {
   return request<T>(url(path), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+/**
+ * Gemello di {@link apiPost} che indirizza un'asta precisa invece di quella del
+ * {@link context} — pinnato per l'intera sessione dalla finestra (vedi
+ * {@code main.tsx}), non necessariamente quella a cui appartiene il dato che si
+ * sta scrivendo.
+ *
+ * <p>Esiste per la revoca di un acquisto dal riepilogo (task 13): {@code seq} e'
+ * un numero PER REGISTRO, e la risposta del tabellone porta gia' l'{@code
+ * auctionId} a cui appartiene. Indirizzarla con {@link apiPost} — che risolve
+ * sempre sul letterale {@link AuctionGuard#CURRENT} o sull'ultima asta selezionata
+ * — significherebbe che una schermata di riepilogo lasciata aperta su un'asta,
+ * mentre da un'altra finestra si passa a un'asta diversa, spedirebbe quel {@code
+ * seq} al registro sbagliato: la guardia lato server lo respinge con 404
+ * unknown-auction quando i due id non coincidono, ma solo se la richiesta porta
+ * per davvero l'id giusto DEL RIEPILOGO, non quello — possibilmente cambiato nel
+ * frattempo — della finestra.
+ */
+export async function apiPostToAuction<T>(
+  auctionId: string,
+  path: string,
+  body?: unknown,
+): Promise<T | null> {
+  return request<T>(auctionUrl(auctionId, path), {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),

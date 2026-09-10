@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import { useBoard, useVoidPurchase } from '../api/hooks';
@@ -22,49 +23,90 @@ const ROLE_NAMES: Record<Role, string> = {
 export function RecapRoute() {
   const board = useBoard();
   const voidPurchase = useVoidPurchase();
+  // Solo la riga in volo si disabilita: `voidPurchase.isPending` da solo e' un
+  // booleano UNICO condiviso da ogni riga di ogni colonna, e disabiliterebbe anche
+  // il bottone di un acquisto diverso da quello che si sta annullando.
+  const [pendingSeq, setPendingSeq] = useState<number | null>(null);
 
-  const error =
+  const voidError =
     voidPurchase.error instanceof ProblemError ? voidPurchase.error : null;
+
+  // Un solo alert, mai due insieme: stessa disciplina delle impostazioni
+  // (SettingsRoute), qui applicata ai due possibili — l'errore della revoca e
+  // l'errore di caricamento della board. L'errore della revoca ha la precedenza
+  // perche' e' il piu' recente dei due gesti dell'utente.
+  const alertMessage = voidError
+    ? voidErrorMessage(voidError)
+    : board.isError
+      ? 'Non riesco a caricare le rose.'
+      : null;
+
+  function handleVoid(seq: number) {
+    if (!board.data) return;
+    setPendingSeq(seq);
+    voidPurchase.mutate(
+      // L'asta a cui appartiene questo seq e' quella che LA BOARD ha appena letto,
+      // non necessariamente quella del contesto della finestra: un riepilogo
+      // lasciato aperto su un'asta mentre altrove si e' passati a un'altra
+      // spedirebbe altrimenti il seq al registro sbagliato — vedi useVoidPurchase.
+      { auctionId: board.data.auctionId, seq },
+      { onSettled: () => setPendingSeq(null) },
+    );
+  }
 
   return (
     <AppShell>
       <h1 className="w-exp mb-4 text-xl font-extrabold">Riepilogo</h1>
 
-      {error ? (
+      {alertMessage ? (
         // role="alert", non un secondo role="status": l'unica live region
         // ambientale della pagina resta AuctionAnnouncer.
-        //
-        // I due rifiuti del task 12 dicono cose diverse e vanno mostrati diversi:
-        // "not-found" invita a ricaricare (l'acquisto non esiste più, forse un
-        // altro dispositivo l'ha già revocato), "already-revoked" dice che è
-        // già fatto — ripetere il tentativo non servirebbe a niente.
         <p role="alert" className="mb-4 text-sm font-bold text-destructive">
-          {error.slug === 'purchase-not-found'
-            ? "Quell'acquisto non c'è più: ricarica la pagina."
-            : error.detail}
+          {alertMessage}
         </p>
       ) : null}
 
       {board.isLoading ? (
         <p className="text-sm text-muted-foreground">Carico le rose…</p>
-      ) : board.isError ? (
-        <p role="alert" className="text-sm text-destructive">
-          Non riesco a caricare le rose.
-        </p>
-      ) : (
+      ) : board.isError ? null : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {(board.data?.columns ?? []).map((column) => (
             <Roster
               key={column.participantId}
               column={column}
-              onVoid={(seq) => voidPurchase.mutate(seq)}
-              pending={voidPurchase.isPending}
+              onVoid={handleVoid}
+              pendingSeq={pendingSeq}
             />
           ))}
         </div>
       )}
     </AppShell>
   );
+}
+
+/**
+ * I tre rifiuti possibili della revoca dicono cose diverse, e la schermata deve
+ * dirle diverse:
+ * <ul>
+ *   <li>{@code unknown-auction}: la guardia lato server ha rifiutato l'asta
+ *       indirizzata — il tab e' stantio, l'asta aperta e' cambiata altrove. Non e'
+ *       lo stesso caso di "l'acquisto non c'e' piu'": qui e' l'ASTA a non essere
+ *       (piu') quella giusta, e ricaricare la pagina la fa riallineare.
+ *   <li>{@code purchase-not-found}: l'acquisto non esiste nel registro giusto —
+ *       forse un altro dispositivo l'ha gia' revocato.
+ *   <li>{@code purchase-already-revoked}: c'e', ma e' gia' stato annullato —
+ *       ripetere il tentativo non servirebbe a niente.
+ * </ul>
+ */
+function voidErrorMessage(error: ProblemError): string {
+  switch (error.slug) {
+    case 'unknown-auction':
+      return "L'asta aperta è cambiata: ricarica la pagina.";
+    case 'purchase-not-found':
+      return "Quell'acquisto non c'è più: ricarica la pagina.";
+    default:
+      return error.detail;
+  }
 }
 
 /** «✕», ma come tratto vettoriale: il vincolo vuole icone SVG, mai emoji. */
@@ -89,11 +131,11 @@ function CancelIcon() {
 function Roster({
   column,
   onVoid,
-  pending,
+  pendingSeq,
 }: {
   column: BoardColumn;
   onVoid: (seq: number) => void;
-  pending: boolean;
+  pendingSeq: number | null;
 }) {
   const empty = ROLES.every((r) => column.byRole[r].length === 0);
 
@@ -127,7 +169,7 @@ function Roster({
                     <td className="py-1 text-right">
                       <button
                         type="button"
-                        disabled={pending}
+                        disabled={pendingSeq === slot.seq}
                         onClick={() => onVoid(slot.seq)}
                         aria-label={`Annulla l'acquisto di ${slot.playerName}`}
                         className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-muted-foreground disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
