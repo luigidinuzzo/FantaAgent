@@ -86,4 +86,48 @@ class AuctionsApiTest {
 
         verify(runtime).deselect();
     }
+
+    /**
+     * Selezionare l'asta gia' aperta e' uno stato ordinario della home, non un errore:
+     * capita riaprendo la stessa scheda, o cliccando due volte "Riprendi" per distrazione.
+     */
+    @Test
+    void selezionaUnAstaGiaAperta() throws Exception {
+        mvc.perform(post("/api/leagues/default/auctions/2026-09-02/select"))
+                .andExpect(status().isNoContent());
+
+        verify(runtime).select("2026-09-02");
+    }
+
+    /**
+     * Un archivio senza nessuna asta e' lo stato in cui la lega si trova prima della
+     * prima serata: la home deve poterlo leggere come elenco vuoto, non come errore.
+     */
+    @Test
+    void unArchivioVuotoTornaUnElencoVuoto() throws Exception {
+        when(runtime.auctions()).thenReturn(List.of());
+
+        mvc.perform(get("/api/leagues/default/auctions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    /**
+     * {@code select} rilancia qualunque {@code IllegalArgumentException}, non solo
+     * quella per un identificativo assente: {@link AuctionRuntime#select} chiama anche
+     * {@code ValuationChain.build}, e un guasto di configurazione vero non deve
+     * perdere la sua causa dietro il messaggio generico "asta sconosciuta".
+     */
+    @Test
+    void unErroreDiversoDallIdentificativoNonPerdeLaCausa() throws Exception {
+        IllegalArgumentException guasto =
+                new IllegalArgumentException("catena di valutazione non costruibile");
+        doThrow(guasto).when(runtime).select("2025-08-30");
+
+        mvc.perform(post("/api/leagues/default/auctions/2025-08-30/select"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/unknown-auction"));
+    }
 }

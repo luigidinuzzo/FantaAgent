@@ -47,7 +47,11 @@ public class AuctionsApi {
         try {
             runtime.select(auctionId);
         } catch (IllegalArgumentException e) {
-            throw new UnknownAuctionException(auctionId);
+            // Non solo "id assente dall'archivio": select ricostruisce anche la catena
+            // di valutazione, che puo' rifiutare un guasto di configurazione vero con
+            // la stessa eccezione. Scartare la causa renderebbe i due casi
+            // indistinguibili nei log — la si incatena qui.
+            throw new UnknownAuctionException(auctionId, e);
         }
     }
 
