@@ -129,3 +129,65 @@ export interface PublicBidderResponse {
   timerSeconds: number;
   beepEnabled: boolean;
 }
+
+export interface BidderSettings {
+  bidTimerSeconds: number;
+  beepEnabled: boolean;
+}
+
+export interface ParticipantSettings {
+  id: string;
+  name: string;
+  initial: string;
+  me: boolean;
+}
+
+export interface ScoringStep {
+  minAverage: number;
+  bonus: number;
+}
+
+/**
+ * `thresholds` non ha un editor in questa tappa (task 6 gliene dara' uno): il
+ * valore che arriva da {@link SettingsResponse} deve tornare al server invariato
+ * dentro {@link SaveSettingsRequest}, non riscritto o appiattito.
+ */
+export interface ScoringSection {
+  defenceModifierEnabled: boolean;
+  defendersCounted: number;
+  thresholds: ScoringStep[];
+  goalBonus: Record<Role, number>;
+  assist: number;
+  penaltyScored: number;
+  penaltyMissed: number;
+  penaltySaved: number;
+  yellowCard: number;
+  redCard: number;
+  goalConceded: number;
+  cleanSheet: number;
+  confirmed: boolean;
+}
+
+export interface SettingsResponse {
+  bidder: BidderSettings;
+  participants: ParticipantSettings[];
+  scoring: ScoringSection;
+  /** Ad asta aperta i parametri di punteggio sono bloccati: cambiarli riscriverebbe
+   *  i numeri con cui una rosa gia' pagata era stata valutata. */
+  auctionOpen: boolean;
+}
+
+export interface SaveSettingsRequest {
+  auctionName: string;
+  bidder: BidderSettings;
+  participants: ParticipantSettings[];
+  scoring: ScoringSection;
+}
+
+export interface SaveSettingsResult {
+  /** L'id dell'asta appena nata, oppure null se ne era gia' aperta una. */
+  auctionId: string | null;
+}
+
+/** Le quattro chiavi ci sono sempre, anche vuote. */
+export type SettingsErrors = Record<'auction' | 'participants' | 'scoring' | 'bidder', string[]>;

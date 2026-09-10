@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiGet, apiLeagueGet, apiLeaguePost, apiPost } from './client';
+import { apiGet, apiLeagueGet, apiLeaguePost, apiLeaguePut, apiPost } from './client';
 import type {
   AuctionCard,
   AuctionStateResponse,
@@ -8,6 +8,9 @@ import type {
   PublicBidderResponse,
   PurchaseResponse,
   Role,
+  SaveSettingsRequest,
+  SaveSettingsResult,
+  SettingsResponse,
   ValuationResponse,
 } from './types';
 
@@ -160,6 +163,29 @@ export function useUndoLast() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => apiPost('/purchases/void-last'),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/**
+ * Le impostazioni della lega — battitore, partecipanti, punteggio — non dell'asta
+ * corrente, quindi {@link apiLeagueGet} e non {@link apiGet}.
+ */
+export function useSettings() {
+  return useQuery({
+    queryKey: ['settings'] as const,
+    queryFn: () => apiLeagueGet<SettingsResponse>('/settings'),
+    // Le impostazioni non cambiano da sole: nessuno le riscrive mentre le guardi.
+    // Interrogare il server ogni cinque secondi per un modulo fermo e' solo rumore.
+    refetchInterval: false,
+  });
+}
+
+export function useSaveSettings() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SaveSettingsRequest) =>
+      apiLeaguePut<SaveSettingsResult>('/settings', input),
     onSuccess: () => client.invalidateQueries(),
   });
 }
