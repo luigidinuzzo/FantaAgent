@@ -4,6 +4,7 @@ import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import { useSaveSettings, useSettings } from '../api/hooks';
 import type { SaveSettingsRequest, SettingsErrors } from '../api/types';
+import { NumberField } from '../domain/NumberField';
 import { ParticipantsFieldset } from '../domain/ParticipantsFieldset';
 import { ScoringFieldset } from '../domain/ScoringFieldset';
 import { SectionErrors } from '../domain/SectionErrors';
@@ -177,13 +178,12 @@ export function SettingsRoute() {
           <div className="flex flex-wrap gap-4">
             <label className="text-sm">
               Secondi di countdown
-              <input
-                type="number"
+              <NumberField
                 value={form.bidder.bidTimerSeconds}
-                onChange={(e) =>
+                onChange={(bidTimerSeconds) =>
                   setForm({
                     ...form,
-                    bidder: { ...form.bidder, bidTimerSeconds: Number(e.target.value) },
+                    bidder: { ...form.bidder, bidTimerSeconds },
                   })
                 }
                 className="tnum mt-1 block min-h-11 w-32 border border-line bg-transparent px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"

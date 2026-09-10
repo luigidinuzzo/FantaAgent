@@ -201,4 +201,20 @@ describe('SettingsRoute', () => {
     expect(await screen.findByText('Primo problema sul nome.')).toBeInTheDocument();
     expect(screen.getByText('Secondo problema sul nome.')).toBeInTheDocument();
   });
+
+  /**
+   * Stesso idioma di ScoringFieldset (Number(e.target.value) su un controllato),
+   * qui sul timer del battitore: svuotare il campo non deve forzarlo a 0 prima
+   * che l'utente abbia finito di digitare il nuovo valore.
+   */
+  it('svuotare il campo dei secondi non lo forza a 0 prima di finire di digitare', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+
+    const timer = await screen.findByLabelText(/secondi/i);
+    await userEvent.clear(timer);
+    expect(timer).toHaveValue(null);
+
+    await userEvent.type(timer, '45');
+    expect(timer).toHaveValue(45);
+  });
 });

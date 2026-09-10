@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { ScoringSection } from '../api/types';
+import { NumberField } from './NumberField';
 import { SectionErrors } from './SectionErrors';
 
 /**
@@ -42,13 +43,13 @@ export function ScoringFieldset({
   const lockId = useId();
 
   return (
-    <fieldset className="border border-line p-4">
-      <legend
-        className="px-2 font-bold"
-        aria-describedby={errors.length > 0 ? errorsId : undefined}
-      >
-        Punteggio
-      </legend>
+    <fieldset
+      className="border border-line p-4"
+      aria-describedby={errors.length > 0 ? errorsId : undefined}
+    >
+      {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
+          stesso — un group — che supporta una descrizione, non la legend. */}
+      <legend className="px-2 font-bold">Punteggio</legend>
 
       {disabled ? (
         <p id={lockId} className="mb-3 text-sm text-muted-foreground">
@@ -60,12 +61,11 @@ export function ScoringFieldset({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-sm">
           Difensori conteggiati
-          <input
-            type="number"
+          <NumberField
             value={value.defendersCounted}
             disabled={disabled}
             aria-describedby={disabled ? lockId : undefined}
-            onChange={(e) => onChange({ ...value, defendersCounted: Number(e.target.value) })}
+            onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
             className="tnum mt-1 block min-h-11 w-full border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
         </label>
@@ -73,13 +73,12 @@ export function ScoringFieldset({
         {NUMERIC.map(({ key, label }) => (
           <label key={key} className="text-sm">
             {label}
-            <input
-              type="number"
+            <NumberField
               step="0.5"
               value={value[key] as number}
               disabled={disabled}
               aria-describedby={disabled ? lockId : undefined}
-              onChange={(e) => onChange({ ...value, [key]: Number(e.target.value) })}
+              onChange={(next) => onChange({ ...value, [key]: next })}
               className="tnum mt-1 block min-h-11 w-full border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             />
           </label>
@@ -88,16 +87,15 @@ export function ScoringFieldset({
         {(['P', 'D', 'C', 'A'] as const).map((role) => (
           <label key={role} className="text-sm">
             Gol segnato — {role}
-            <input
-              type="number"
+            <NumberField
               step="0.5"
               value={value.goalBonus[role]}
               disabled={disabled}
               aria-describedby={disabled ? lockId : undefined}
-              onChange={(e) =>
+              onChange={(next) =>
                 onChange({
                   ...value,
-                  goalBonus: { ...value.goalBonus, [role]: Number(e.target.value) },
+                  goalBonus: { ...value.goalBonus, [role]: next },
                 })
               }
               className="tnum mt-1 block min-h-11 w-full border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
