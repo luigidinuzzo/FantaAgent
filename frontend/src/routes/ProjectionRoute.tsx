@@ -3,7 +3,7 @@ import { AppShell } from '../AppShell';
 import { useBoard, usePublicBidder } from '../api/hooks';
 import type { BidBroadcast } from '../domain/bidChannel';
 import { subscribeBid } from '../domain/bidChannel';
-import { isStale } from '../domain/ConnectionStatus';
+import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { EmptyState } from '../domain/EmptyState';
 import { PublicBidderDialog } from '../domain/PublicBidderDialog';
 
@@ -22,10 +22,21 @@ const ROLE_ORDER = ['P', 'D', 'C', 'A'] as const;
  * attraversa mai due dispositivi o due processi, vive solo dentro lo stesso browser.
  * L'unica prova onesta di essere davvero in ascolto dell'altra finestra e' aver
  * sentito qualcosa di recente — lo stesso principio di {@link isStale}, qui applicato
- * al canale fra le finestre invece che al server. Finche' il Task 7 non aggiunge un
- * battito dalla finestra privata, "niente sentito di recente" resta vero anche
- * quando semplicemente non c'e' ancora un lotto aperto: la schermata avvisera' piu'
- * spesso di quanto servirebbe, ma non fingera' mai di sapere quel che non sa.
+ * al canale fra le finestre invece che al server. La finestra privata (useIdleHeartbeat)
+ * pubblica un segno di vita a intervalli regolari anche senza lotti aperti, apposta
+ * perche' questa distinzione sia possibile: senza quel battito, "niente sentito di
+ * recente" sarebbe vero anche durante una pausa perfettamente sana, e la schermata
+ * avviserebbe senza motivo.
+ *
+ * <p>Le due segnalazioni di staleness — canale e server — sono indipendenti e
+ * mostrate separatamente: {@link ConnectionStatus} nella testata dice se `useBoard()`
+ * e' fresco, l'avviso qui sotto dice se il canale e' vivo. React Query lascia
+ * `isError` false su un REFETCH fallito quando c'e' gia' un dato in cache (resta
+ * `status: 'success'`), quindi senza ConnectionStatus la proiezione mostrerebbe rose e
+ * budget congelati all'infinito se il server cadesse dopo il primo caricamento —
+ * proprio lo schermo che finge di essere aggiornato che questa migrazione vieta.
+ * Nessuna delle due frasi afferma la freschezza dell'ALTRA fonte: quando entrambe
+ * sono stantie insieme, non devono contraddirsi.
  */
 export function ProjectionRoute() {
   const board = useBoard();
@@ -60,16 +71,29 @@ export function ProjectionRoute() {
   const canReceive = hasChannel && !isStale({ updatedAt: lastHeardAt, isError: false, now });
 
   return (
-    <AppShell>
+    <AppShell
+      slotStatus={
+        <ConnectionStatus
+          updatedAt={board.dataUpdatedAt || undefined}
+          isError={board.isError}
+          now={now}
+        />
+      }
+    >
       {/* Nascosto alla vista, non dall'albero di accessibilita': una schermata con
           contenuto vero deve avere un h1 che chi ascolta puo' raggiungere, anche se
           chi guarda il proiettore non ha bisogno di leggere la parola "Proiezione". */}
       <h1 className="sr-only">Proiezione</h1>
 
       {!canReceive ? (
+        // Non afferma nulla sulla freschezza dei tabelloni: quella e'
+        // responsabilita' di ConnectionStatus qui sopra, non di questo
+        // avviso. Le due segnalazioni sono indipendenti — se dicesse "i
+        // tabelloni sono aggiornati" mentre il server e' anche lui stantio,
+        // le due frasi si contraddirebbero nello stesso istante.
         <p className="border border-dashed border-line p-6 text-sm text-accent">
-          Questa finestra non riceve dalla schermata privata: i tabelloni qui sotto sono
-          aggiornati, il giocatore all'asta no.
+          Questa finestra non riceve dalla schermata privata: il giocatore all'asta non
+          e' visibile qui.
         </p>
       ) : null}
 
