@@ -145,4 +145,60 @@ describe('SettingsRoute', () => {
       SETTINGS.scoring.thresholds,
     );
   });
+
+  /**
+   * Un 422 con lo slug giusto ma senza la mappa `errors` (un proxy che riscrive il
+   * corpo, un bug futuro nel controller): non deve sparire in silenzio. Chi ha
+   * premuto "Salva" deve sentire ALMENO il `detail` del problem, non il bottone
+   * che smette di girare senza dire perche'.
+   */
+  it('un 422 invalid-settings senza mappa errors mostra comunque un annuncio', async () => {
+    renderSettings(() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            type: 'https://fantaagent.local/problems/invalid-settings',
+            detail: 'Corpo del problem inatteso.',
+          },
+          422,
+        ),
+      ),
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(/corpo del problem inatteso/i);
+  });
+
+  /**
+   * Il progetto esiste anche per questo: i validatori tornano l'elenco COMPLETO
+   * degli errori, non il primo. Se in futuro il nome dell'asta ne accumula due,
+   * la schermata non ne deve mostrare solo uno.
+   */
+  it("mostra tutti gli errori del nome dell'asta, non solo il primo", async () => {
+    renderSettings(() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            type: 'https://fantaagent.local/problems/invalid-settings',
+            detail: 'Alcune impostazioni non sono valide.',
+            errors: {
+              auction: ['Primo problema sul nome.', 'Secondo problema sul nome.'],
+              participants: [],
+              scoring: [],
+              bidder: [],
+            },
+          },
+          422,
+        ),
+      ),
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+
+    expect(await screen.findByText('Primo problema sul nome.')).toBeInTheDocument();
+    expect(screen.getByText('Secondo problema sul nome.')).toBeInTheDocument();
+  });
 });

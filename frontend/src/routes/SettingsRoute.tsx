@@ -119,8 +119,15 @@ export function SettingsRoute() {
             },
             onError: (error) => {
               if (error instanceof ProblemError && error.slug === 'invalid-settings') {
-                setErrors(settingsErrorsOf(error.body) ?? NO_ERRORS);
-                return;
+                const parsed = settingsErrorsOf(error.body);
+                // Solo qui ci si ferma: un corpo che non ha la forma attesa (un proxy
+                // che lo riscrive, un controller che smette di mandare `errors`) non
+                // deve fermarsi comunque a valle in silenzio — deve cadere nel ramo
+                // generico sotto, che almeno dice il `detail` del problem.
+                if (parsed) {
+                  setErrors(parsed);
+                  return;
+                }
               }
               setSaveError(
                 error instanceof ProblemError
@@ -141,11 +148,9 @@ export function SettingsRoute() {
               onChange={(e) => setForm({ ...form, auctionName: e.target.value })}
               className="mt-1 block min-h-11 w-full max-w-md border border-line bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             />
-            {errors.auction.length > 0 ? (
-              <span id={auctionNameErrorId} className="mt-1 block text-sm text-destructive">
-                {errors.auction[0]}
-              </span>
-            ) : null}
+            {/* Tutti i messaggi, non solo il primo: i validatori tornano l'elenco
+                completo apposta, ed e' il motivo per cui questo task esiste. */}
+            <SectionErrors id={auctionNameErrorId} errors={errors.auction} />
           </label>
         ) : null}
 
