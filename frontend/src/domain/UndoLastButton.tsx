@@ -9,11 +9,16 @@ import { useId } from 'react';
  * funzionare.
  */
 export function UndoLastButton({
-  canUndo, onUndo, pending,
+  canUndo, onUndo, pending, error,
 }: {
   canUndo: boolean;
   onUndo: () => void;
   pending: boolean;
+  /**
+   * Un annullamento rifiutato dal server. Senza mostrarlo, il bottone si
+   * riattiva e nulla dice che il tentativo non e' andato a buon fine.
+   */
+  error?: string | null;
 }) {
   const hintId = useId();
   const reason = !canUndo ? 'Nessun acquisto da annullare.' : null;
@@ -30,6 +35,13 @@ export function UndoLastButton({
         {pending ? 'Annullo…' : 'Annulla ultimo'}
       </button>
       {reason ? <span id={hintId} className="sr-only">{reason}</span> : null}
+      {error ? (
+        // role="alert", non un secondo role="status": l'unica live region
+        // ambientale della pagina resta AuctionAnnouncer.
+        <p role="alert" className="w-full text-sm font-bold text-destructive">
+          {error}
+        </p>
+      ) : null}
     </>
   );
 }

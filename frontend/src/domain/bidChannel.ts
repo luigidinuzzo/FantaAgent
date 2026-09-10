@@ -22,7 +22,6 @@ export type BidBroadcast =
       playerId: string;
       price: number;
       remainingMs: number;
-      totalMs: number;
     };
 
 const NAME = 'fantaagent-bid';

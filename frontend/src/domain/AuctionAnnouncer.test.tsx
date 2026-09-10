@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { AuctionAnnouncer, purchaseMessage } from './AuctionAnnouncer';
+import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } from './AuctionAnnouncer';
 
 describe('purchaseMessage', () => {
   it('dice chi ha preso chi, a quanto, e cosa resta a me', () => {
@@ -51,6 +51,21 @@ describe('purchaseMessage', () => {
         mySlotsRemaining: 1,
       }),
     ).toContain('Ti restano 1 credito e 1 slot.');
+  });
+});
+
+// Fix round 2 (revisione finale): il cambio fase e l'annullamento tornano
+// alla schermata privata (Task 7) e riuscivano in silenzio — il tabellone
+// cambiava visibilmente, ma chi ascolta non aveva modo di saperlo.
+describe('phaseChangedMessage', () => {
+  it('dice quale fase e ora corrente', () => {
+    expect(phaseChangedMessage('D')).toBe('Fase cambiata: ora si contendono i difensori.');
+  });
+});
+
+describe('undoMessage', () => {
+  it("dice che l'ultimo acquisto e' stato annullato", () => {
+    expect(undoMessage()).toBe("L'ultimo acquisto e' stato annullato.");
   });
 });
 

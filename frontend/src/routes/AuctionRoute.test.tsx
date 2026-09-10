@@ -614,6 +614,45 @@ describe('AuctionRoute', () => {
       expect(seen.some((m) => m.kind === 'idle')).toBe(false);
       unsubscribe();
     });
+
+    // Finding 1 (revisione finale): dopo la scadenza del countdown,
+    // BidderDialog smette di pubblicare (i suoi valori si congelano) ma
+    // resta aperto in attesa dell'aggiudicazione — spesso piu' di 15 s,
+    // mentre il tavolo discute chi ha vinto. Senza questo fix nessuno
+    // pubblica niente per tutto quel tempo, la proiezione dichiara "non
+    // ricevo" e il lotto sparisce dallo schermo condiviso nel momento
+    // esatto in cui conta di piu'.
+    it('il battito riprende quando il countdown scade, anche col battitore ancora aperto', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fullFetchMock());
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+      await user.keyboard(' '); // avvia il countdown (12 s, dalle preferenze)
+
+      const seen: BidBroadcast[] = [];
+      const unsubscribe = subscribeBid((m) => seen.push(m));
+
+      // Il countdown scade a 12 s; il battitore resta aperto ben oltre,
+      // in attesa che si scelga l'acquirente.
+      await act(async () => {
+        vi.advanceTimersByTime(12_100);
+      });
+      await flushChannel();
+
+      expect(seen.some((m) => m.kind === 'idle')).toBe(true);
+      unsubscribe();
+    });
   });
 
   it('il cambio fase invia il ruolo scelto a /phase', async () => {
@@ -671,5 +710,285 @@ describe('AuctionRoute', () => {
         expect.anything(),
       ),
     );
+  });
+
+  // Minor (revisione finale): AppShell rende un <main> spoglio, e solo
+  // ProjectionRoute aggiungeva un h1 (sr-only). Chi ascolta aveva un titolo
+  // di primo livello su una schermata e niente sull'altra.
+  it('ha un h1 (sr-only) come la proiezione', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+  });
+
+  // Product gap (revisione finale): non esisteva nessun modo di raggiungere
+  // /proiezione dall'applicazione — bisognava digitare l'indirizzo a mano.
+  // Un link (role="link", non "button"): la proiezione resta a zero bottoni.
+  it("offre un collegamento per aprire la proiezione sul secondo schermo", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const link = await screen.findByRole('link', { name: /proiezione/i });
+    expect(link).toHaveAttribute('href', '/proiezione');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  // Fix round 2 (revisione finale, finding 4): l'aggiudicazione dal
+  // battitore non chiudeva mai il dialogo. Dopo un'aggiudicazione riuscita
+  // il dialogo restava in scena col prezzo vinto e un bottone Aggiudica
+  // ancora attivo — l'unica conferma per un operatore che vede era
+  // AuctionAnnouncer, che e' sr-only: meno riscontro di quanto ne riceve chi
+  // ascolta.
+  it("un'aggiudicazione riuscita dal battitore chiude il dialogo", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal(
+      'fetch',
+      fullFetchMock({ purchase: { seq: 9, playerId: 'p1', participantId: 'anna', price: 3 } }),
+    );
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+      await user.keyboard(' ');
+      await act(async () => {
+        vi.advanceTimersByTime(12_100);
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+
+      await waitFor(() => expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument());
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Fix round 2 (revisione finale, finding 4): l'errore della mutazione
+  // resta in useAssign finche' un'altra mutate() non si risolve. Riaprendo
+  // il battitore per un giocatore diverso, il fallimento del precedente
+  // lampeggiava per un istante prima che il nuovo invio (mai fatto) potesse
+  // sovrascriverlo.
+  it("riaprire il battitore per un altro giocatore non mostra il fallimento del precedente", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const PROBLEM = {
+      type: 'https://fantaagent.local/problems/budget-insufficiente',
+      detail: 'Anna ha solo 12 crediti di budget residuo',
+    };
+    const BIDDER_SETTINGS_P2 = { ...BIDDER_SETTINGS, playerId: 'p2', name: 'Giocatore Due' };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 50)));
+      if (href.includes('/players/p2/valuation')) return Promise.resolve(jsonResponse(valuation('p2', 80)));
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.includes('/board/bidder/p1')) return Promise.resolve(jsonResponse(BIDDER_SETTINGS));
+      if (href.includes('/board/bidder/p2')) return Promise.resolve(jsonResponse(BIDDER_SETTINGS_P2));
+      if (href.includes('/purchases')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(PROBLEM), {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      render(
+        <QueryProvider>
+          <AuctionRoute />
+        </QueryProvider>,
+      );
+
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      let open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+      await user.keyboard(' ');
+      await act(async () => {
+        vi.advanceTimersByTime(12_100);
+      });
+      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+      await waitFor(() =>
+        expect(screen.getByText('Anna ha solo 12 crediti di budget residuo')).toBeInTheDocument(),
+      );
+
+      // Il dialogo resta apposta in scena (l'aggiudicazione e' fallita): lo
+      // si chiude a mano, come farebbe un operatore che rinuncia al lotto.
+      await user.click(screen.getByRole('button', { name: 'Chiudi' }));
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Due/ }));
+      open = await screen.findByRole('button', { name: /battitore per Giocatore Due/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+
+      expect(screen.queryByText('Anna ha solo 12 crediti di budget residuo')).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Fix round 2 (revisione finale, finding 5): changePhase/undoLast non
+  // avevano nessun percorso di fallimento: un rifiuto del server rieffettivava
+  // il bottone e non diceva niente a nessuno.
+  it('un cambio fase rifiutato lo dice, anche a chi ascolta', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const PROBLEM = {
+      type: 'https://fantaagent.local/problems/fase-non-modificabile',
+      detail: 'Non puoi cambiare fase: ci sono lotti ancora aperti',
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      if (href.endsWith('/phase')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(PROBLEM), {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: /^difensori$/i });
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Non puoi cambiare fase: ci sono lotti ancora aperti',
+      ),
+    );
+  });
+
+  it('un cambio fase riuscito lo annuncia a chi ascolta', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      if (href.endsWith('/phase')) return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: /^difensori$/i });
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(/fase cambiata/i),
+    );
+  });
+
+  it('un annullamento rifiutato lo dice, anche a chi ascolta', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const STATE_UNDOABLE = { ...STATE, canUndo: true };
+    const PROBLEM = {
+      type: 'https://fantaagent.local/problems/niente-da-annullare',
+      detail: 'Niente da annullare',
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE_UNDOABLE));
+      if (href.includes('/purchases/void-last')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(PROBLEM), {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: /annulla/i });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    await userEvent.click(button);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Niente da annullare'));
+  });
+
+  it('un annullamento riuscito lo annuncia a chi ascolta', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const STATE_UNDOABLE = { ...STATE, canUndo: true };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE_UNDOABLE));
+      if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <AuctionRoute />
+      </QueryProvider>,
+    );
+
+    const button = await screen.findByRole('button', { name: /annulla/i });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    await userEvent.click(button);
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/annullato/i));
   });
 });

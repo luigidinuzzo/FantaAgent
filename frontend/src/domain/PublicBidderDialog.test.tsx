@@ -7,7 +7,6 @@ const BID = {
   playerId: 'd1',
   price: 41,
   remainingMs: 3000,
-  totalMs: 5000,
 };
 
 const PLAYER = {

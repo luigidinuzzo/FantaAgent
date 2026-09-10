@@ -200,5 +200,63 @@ describe('BidderDialog', () => {
 
       expect(screen.getByRole('alert')).toHaveTextContent(/tempo scaduto/i);
     });
+
+    // Fix round 2 (revisione finale): senza questo callback la route non ha
+    // modo di sapere che il countdown e' scaduto, e non puo' far ripartire
+    // il battito di vita verso la proiezione (useIdleHeartbeat) mentre il
+    // dialogo resta aperto in attesa dell'aggiudicazione.
+    it('avverte il chiamante quando il countdown scade', async () => {
+      const onExpire = vi.fn();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ onExpire });
+
+      await user.keyboard(' ');
+      expect(onExpire).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(5100);
+      });
+
+      expect(onExpire).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Fix round 2 (revisione finale): senza un guard su `pending`, un secondo
+  // clic su Aggiudica mentre il primo invio e' ancora in volo manda una
+  // SECONDA POST /purchases con un requestId nuovo (la chiave non protegge
+  // da un secondo clic deliberato). Il registro rifiuta il duplicato, ma
+  // l'operatore vede un 422 "gia' acquistato" subito dopo un'aggiudicazione
+  // che in realta' era riuscita.
+  describe('mentre un invio e in volo o i dati non sono aggiornati', () => {
+    beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
+    afterEach(() => vi.useRealTimers());
+
+    async function openExpired(overrides = {}) {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onAssign = open(overrides);
+      await user.keyboard(' ');
+      await act(async () => {
+        vi.advanceTimersByTime(5100);
+      });
+      return { onAssign, user };
+    }
+
+    it('pending disabilita il bottone Aggiudica e lo rietichetta', async () => {
+      await openExpired({ pending: true });
+      const button = screen.getByRole('button', { name: 'Aggiudico…' });
+      expect(button).toBeDisabled();
+    });
+
+    it('disabled (dati stantii) disabilita il bottone Aggiudica, e lo dice a chi ascolta', async () => {
+      await openExpired({ disabled: true });
+      const button = screen.getByRole('button', { name: 'Aggiudica' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAccessibleDescription(/non sono aggiornat/i);
+    });
+
+    it('ne pending ne disabled: il bottone resta attivo', async () => {
+      await openExpired({ pending: false, disabled: false });
+      expect(screen.getByRole('button', { name: 'Aggiudica' })).not.toBeDisabled();
+    });
   });
 });

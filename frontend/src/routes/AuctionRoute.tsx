@@ -10,29 +10,27 @@ import {
   useUndoLast,
   useValuation,
 } from '../api/hooks';
-import { AuctionAnnouncer, purchaseMessage } from '../domain/AuctionAnnouncer';
-import { publishBid } from '../domain/bidChannel';
+import type { Role } from '../api/types';
+import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } from '../domain/AuctionAnnouncer';
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
-import { ConnectionStatus, isStale, STALE_AFTER_MS } from '../domain/ConnectionStatus';
+import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { EmptyState } from '../domain/EmptyState';
 import { LeagueBoard } from '../domain/LeagueBoard';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerTable } from '../domain/PlayerTable';
 import { UndoLastButton } from '../domain/UndoLastButton';
-
-// Un terzo della soglia di staleness che la proiezione (ConnectionStatus,
-// Task 6) usa per decidere se il canale fra le finestre e' vivo: lo stesso
-// margine con cui quella soglia e' il triplo del ritmo di aggiornamento
-// dello stato (5 s). "Comodamente piu' breve" qui significa questo rapporto,
-// non un numero scelto a caso — letto da STALE_AFTER_MS, non duplicato.
-const HEARTBEAT_INTERVAL_MS = STALE_AFTER_MS / 3;
+import { useIdleHeartbeat } from './useIdleHeartbeat';
 
 export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bidderOpen, setBidderOpen] = useState(false);
+  // Vero dal momento in cui il countdown del battitore scade fino alla
+  // chiusura del dialogo: serve SOLO a far ripartire il battito di vita
+  // (si veda useIdleHeartbeat) mentre l'aggiudicazione e' ancora in corso.
+  const [dialogExpired, setDialogExpired] = useState(false);
   const bidderHintId = useId();
 
   // Un tick al secondo: serve solo a far invecchiare il "da quanto tempo".
@@ -54,23 +52,13 @@ export function AuctionRoute() {
   // questa lettura deve spostarsi li'.
   const bidderSettings = usePublicBidder(selectedId);
 
-  // Battito di vita per la proiezione. Finche' nessun lotto e' aperto sul
-  // battitore privato, questa finestra pubblica comunque qualcosa a
-  // intervalli regolari: senza, ConnectionStatus/isStale della proiezione
-  // (Task 6) non potrebbe distinguere "non connesso" da "nessun lotto
-  // aperto" — in entrambi i casi il canale resterebbe silenzioso, e il
-  // messaggio "non ricevo dalla finestra privata" comparirebbe anche durante
-  // una pausa perfettamente sana.
-  //
-  // Si ferma mentre il battitore e' aperto: BidderDialog pubblica gia'
-  // 'bidding' dieci volte al secondo, e un 'idle' pubblicato in parallelo da
-  // un intervallo indipendente oscurerebbe a intermittenza il lotto corrente
-  // sull'altra finestra, un fotogramma su due.
-  useEffect(() => {
-    if (bidderOpen) return;
-    const id = setInterval(() => publishBid({ kind: 'idle' }), HEARTBEAT_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [bidderOpen]);
+  // Battito di vita per la proiezione (si veda useIdleHeartbeat per il
+  // perche' e il come). Si ferma SOLO mentre BidderDialog sta gia'
+  // pubblicando da conto suo: dialogo aperto e countdown non ancora scaduto.
+  // Appena il countdown scade il dialogo smette di pubblicare ma resta
+  // aperto in attesa dell'aggiudicazione — e' per questo che la condizione
+  // e' "aperto E non scaduto", non il solo "aperto".
+  useIdleHeartbeat(bidderOpen && !dialogExpired);
 
   const stale = isStale({
     updatedAt: state.dataUpdatedAt || undefined,
@@ -80,6 +68,10 @@ export function AuctionRoute() {
 
   const assignError =
     assign.error instanceof ProblemError ? assign.error.detail : null;
+  const changePhaseError =
+    changePhase.error instanceof ProblemError ? changePhase.error.detail : null;
+  const undoError =
+    undoLast.error instanceof ProblemError ? undoLast.error.detail : null;
 
   // L'annuncio si compone DOPO la conferma del server, dallo stato appena
   // riletto: e' la stessa disciplina del bottone, detta a parole. Comporlo dai
@@ -106,7 +98,30 @@ export function AuctionRoute() {
         mySlotsRemaining: me.slotsRemaining,
       }),
     );
+    // Un'aggiudicazione riuscita chiude il battitore: senza, il dialogo
+    // resta in scena col prezzo vinto e un bottone Aggiudica ancora attivo,
+    // e l'unica conferma per chi vede sarebbe AuctionAnnouncer — sr-only,
+    // meno riscontro di quanto ne riceve chi ascolta. No-op se si stava
+    // aggiudicando da BidPanel (bidderOpen e' gia' false).
+    setBidderOpen(false);
+    setDialogExpired(false);
   }, [assign.data, assign.variables?.playerName, state.data]);
+
+  // Azzera l'errore (e il risultato) della mutazione condivisa quando cambia
+  // il giocatore selezionato o si apre il battitore: senza, l'errore di
+  // un'aggiudicazione fallita per UN giocatore resta appeso in useAssign()
+  // finche' un'altra mutate() non si risolve, e riaprendo il battitore per
+  // un giocatore diverso lampeggia per un istante il fallimento del
+  // precedente — un difetto preesistente in BidPanel, non nuovo qui.
+  useEffect(() => {
+    assign.reset();
+    // `assign` (l'intero oggetto della mutazione, non solo `.reset`) e'
+    // deliberatamente FUORI dalle dipendenze: e' un riferimento nuovo a ogni
+    // render di useMutation, e includerlo farebbe girare questo effetto a
+    // ogni render invece che solo al cambio di giocatore o all'apertura del
+    // battitore, che e' l'unico momento in cui deve azzerare l'errore.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, bidderOpen]);
 
   // Condiviso fra BidPanel e BidderDialog: due controlli per raggiungere LA
   // STESSA mutazione, non due percorsi di aggiudicazione. Un invio nuovo
@@ -123,28 +138,65 @@ export function AuctionRoute() {
     });
   }
 
+  // Il cambio fase e l'annullamento non hanno numeri da riportare dopo
+  // un'attesa (a differenza del budget di un'aggiudicazione): l'annuncio
+  // qui puo' comporsi subito nel callback della singola chiamata, senza la
+  // stessa attesa "dallo stato appena riletto" che serve invece ad
+  // assignPlayer.
+  function changePhaseTo(role: Role) {
+    changePhase.mutate(role, {
+      onSuccess: () => setAnnouncement(phaseChangedMessage(role)),
+    });
+  }
+
+  function undo() {
+    undoLast.mutate(undefined, {
+      onSuccess: () => setAnnouncement(undoMessage()),
+    });
+  }
+
   return (
     <AppShell
       slotStatus={
-        <ConnectionStatus
-          updatedAt={state.dataUpdatedAt || undefined}
-          isError={state.isError}
-          now={now}
-        />
+        <>
+          {/* Product gap (revisione finale): non esisteva nessun modo di
+              raggiungere /proiezione dall'applicazione — bisognava digitare
+              l'indirizzo a mano. target="_blank": va aperta in una seconda
+              finestra, sul secondo schermo, non al posto di questa. */}
+          <a
+            href="/proiezione"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-11 items-center text-sm font-bold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            Apri la proiezione sul secondo schermo
+          </a>
+          <ConnectionStatus
+            updatedAt={state.dataUpdatedAt || undefined}
+            isError={state.isError}
+            now={now}
+          />
+        </>
       }
     >
+      {/* Nascosto alla vista, non dall'albero di accessibilita': come su
+          /proiezione, chi ascolta deve avere un h1 da cui partire anche se
+          chi guarda il portatile non ha bisogno di leggere la parola "Asta". */}
+      <h1 className="sr-only">Asta</h1>
       <AuctionAnnouncer message={announcement} />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <PhaseSwitcher
           phases={state.data?.phases ?? []}
           current={state.data?.currentPhase ?? 'P'}
-          onChange={(role) => changePhase.mutate(role)}
+          onChange={changePhaseTo}
           pending={changePhase.isPending}
+          error={changePhaseError}
         />
         <UndoLastButton
           canUndo={state.data?.canUndo ?? false}
-          onUndo={() => undoLast.mutate()}
+          onUndo={undo}
           pending={undoLast.isPending}
+          error={undoError}
         />
       </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_16rem]">
@@ -166,8 +218,14 @@ export function AuctionRoute() {
                   timerSeconds={bidderSettings.data.timerSeconds}
                   beepEnabled={bidderSettings.data.beepEnabled}
                   error={assignError}
+                  disabled={stale}
+                  pending={assign.isPending}
                   onAssign={assignPlayer}
-                  onClose={() => setBidderOpen(false)}
+                  onClose={() => {
+                    setBidderOpen(false);
+                    setDialogExpired(false);
+                  }}
+                  onExpire={() => setDialogExpired(true)}
                 />
               ) : (
                 <>

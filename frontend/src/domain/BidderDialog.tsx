@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { ParticipantView, ValuationResponse } from '../api/types';
 import { publishBid } from './bidChannel';
 import { useBidCountdown } from './useBidCountdown';
@@ -29,8 +29,11 @@ export function BidderDialog({
   timerSeconds,
   beepEnabled,
   error,
+  disabled = false,
+  pending = false,
   onAssign,
   onClose,
+  onExpire,
 }: {
   valuation: ValuationResponse;
   participants: ParticipantView[];
@@ -44,19 +47,56 @@ export function BidderDialog({
    * reinviare alla cieca.
    */
   error: string | null;
+  /**
+   * Vero quando i dati mostrati (budget, tetto) non sono aggiornati.
+   * Stessa guardia che BidPanel applica da tappa 3: senza, un lotto poteva
+   * essere aggiudicato mentre la testata mostra "Connessione persa" e i
+   * numeri sullo schermo sono vecchi — il battitore non erediterebbe una
+   * protezione che BidPanel ha gia'.
+   */
+  disabled?: boolean;
+  /**
+   * Vero mentre l'invio precedente e' ancora in volo. Senza, un secondo
+   * clic su Aggiudica manda una seconda POST /purchases con un requestId
+   * nuovo (la chiave protegge dal doppio invio della STESSA richiesta, non
+   * da un secondo clic deliberato): il registro rifiuta il duplicato, ma
+   * l'operatore vede un errore subito dopo un'aggiudicazione riuscita.
+   */
+  pending?: boolean;
   onAssign: (input: { participantId: string; price: number }) => void;
   onClose: () => void;
+  /**
+   * Avvisa il chiamante quando il countdown scade, cosi' che possa far
+   * ripartire il battito di vita verso la proiezione (useIdleHeartbeat):
+   * questo dialogo smette di pubblicare 'bidding' nello stesso istante, e
+   * resta aperto ben oltre, in attesa che si scelga l'acquirente.
+   */
+  onExpire?: () => void;
 }) {
   const [price, setPrice] = useState(1);
   const [expired, setExpired] = useState(false);
   const [participantId, setParticipantId] = useState(
     participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '',
   );
+  const hintId = useId();
   const countdown = useBidCountdown({
     seconds: timerSeconds,
     beepEnabled,
-    onExpire: () => setExpired(true),
+    onExpire: () => {
+      setExpired(true);
+      onExpire?.();
+    },
   });
+
+  // Stessa disciplina di BidPanel: un bottone disabilitato e' annunciato
+  // come "non disponibile" e basta, chi ascolta non deduce il perche' dal
+  // bordo della scheda o dalla testata. Le due ragioni non sono la stessa
+  // situazione: l'attesa si scioglie da sola, lo stantio no.
+  const disabledReason = pending
+    ? 'Invio in corso: attendi la conferma del server.'
+    : disabled
+      ? 'Aggiudica non disponibile: i valori mostrati non sono aggiornati.'
+      : null;
 
   const overCeiling = valuation.maxBid > 0 && price > valuation.maxBid;
 
@@ -99,9 +139,8 @@ export function BidderDialog({
       playerId: valuation.playerId,
       price,
       remainingMs: countdown.remaining,
-      totalMs: timerSeconds * 1000,
     });
-  }, [valuation.playerId, price, timerSeconds, countdown.remaining]);
+  }, [valuation.playerId, price, countdown.remaining]);
 
   useEffect(() => () => publishBid({ kind: 'idle' }), []);
 
@@ -198,10 +237,19 @@ export function BidderDialog({
             </label>
             <button
               type="submit"
-              className="min-h-11 bg-accent px-5 font-bold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+              disabled={disabled || pending}
+              aria-describedby={disabledReason ? hintId : undefined}
+              className="min-h-11 bg-accent px-5 font-bold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
             >
-              Aggiudica
+              {pending ? 'Aggiudico…' : 'Aggiudica'}
             </button>
+            {disabledReason ? (
+              // Statico, non una live region: l'unica di quel tipo nella pagina
+              // resta AuctionAnnouncer.
+              <span id={hintId} className="sr-only">
+                {disabledReason}
+              </span>
+            ) : null}
           </form>
         </>
       ) : (
