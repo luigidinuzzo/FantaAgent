@@ -12,6 +12,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Il giocatore all'asta e le preferenze del battitore (timer, beep), per il dialogo
+ * proiettato — senza valutazione.
+ *
+ * <p>Vive in {@code adapter.in.api.board}, insieme ai DTO della proiezione, non
+ * accanto agli altri endpoint dell'API: non e' una scelta di ordine, e' cio' che mette
+ * questa classe sotto la regola ArchUnit che vieta a questo package di raggiungere
+ * {@code domain.strategy}. Da qui non e' possibile costruire una risposta che porti un
+ * prezzo consigliato nemmeno per errore di chi scrive un metodo nuovo — la build fallirebbe.
+ */
 @RestController
 @RequestMapping("/api/leagues/{leagueId}/auctions/{auctionId}/board")
 public class PublicBidderApi {

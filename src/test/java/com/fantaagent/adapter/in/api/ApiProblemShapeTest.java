@@ -66,7 +66,7 @@ class ApiProblemShapeTest {
 
     @Test
     void ilMetodoSbagliatoEsceInProblemJson() throws Exception {
-        mvc.perform(get("/api/leagues/default/auctions/corrente/purchases"))
+        mvc.perform(get(BASE + "/purchases"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.type")
