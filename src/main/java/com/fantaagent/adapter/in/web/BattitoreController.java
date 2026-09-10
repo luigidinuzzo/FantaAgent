@@ -17,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.nio.charset.StandardCharsets;
@@ -46,6 +47,7 @@ import java.util.Optional;
  * a mano sul proprio foglio.
  */
 @Controller
+@RequestMapping("/legacy")
 public class BattitoreController {
 
     /** Poche righe: la lista sta su uno schermo condiviso, non e' un catalogo da sfogliare. */
@@ -81,7 +83,7 @@ public class BattitoreController {
     @GetMapping("/battitore")
     public String page(Model model) {
         if (!runtime.hasAuction()) {
-            return "redirect:/";
+            return "redirect:/legacy";
         }
         populate(model, null);
         model.addAttribute("results", List.<Player>of());

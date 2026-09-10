@@ -17,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ import java.util.Map;
  * {@link AuctionRuntime} di ricostruire l'intera catena e di pubblicarla in blocco.
  */
 @Controller
+@RequestMapping("/legacy")
 public class SettingsController {
 
     /** Oltre non e' piu' un nome ma un appunto, e non entra in nessuna intestazione. */
@@ -187,7 +189,7 @@ public class SettingsController {
 
         if (preparing) {
             runtime.createNew(name);
-            return "redirect:/asta";
+            return "redirect:/legacy/asta";
         }
 
         populate(model);

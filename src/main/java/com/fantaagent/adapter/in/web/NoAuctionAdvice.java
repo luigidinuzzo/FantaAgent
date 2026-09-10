@@ -20,9 +20,9 @@ public class NoAuctionAdvice {
     @ExceptionHandler(NoAuctionSelectedException.class)
     public ModelAndView toHome(HttpServletRequest request, HttpServletResponse response) {
         if (request.getHeader("HX-Request") != null) {
-            response.setHeader("HX-Redirect", "/");
+            response.setHeader("HX-Redirect", "/legacy");
             return new ModelAndView("fragments/empty :: empty");
         }
-        return new ModelAndView("redirect:/");
+        return new ModelAndView("redirect:/legacy");
     }
 }

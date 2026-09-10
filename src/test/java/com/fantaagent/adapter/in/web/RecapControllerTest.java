@@ -95,7 +95,7 @@ class RecapControllerTest {
     void showsOneColumnPerParticipantWithBudgetSlotsAndPlayersByRole() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());
 
-        mockMvc.perform(get("/riepilogo"))
+        mockMvc.perform(get("/legacy/riepilogo"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Marco")))
                 .andExpect(content().string(containsString("Bastoni")))
@@ -107,10 +107,10 @@ class RecapControllerTest {
     void theRecapPageOffersTheRosterExport() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());
 
-        mockMvc.perform(get("/riepilogo"))
+        mockMvc.perform(get("/legacy/riepilogo"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("esporta rose")))
-                .andExpect(content().string(containsString("/battitore/esporta")));
+                .andExpect(content().string(containsString("/legacy/battitore/esporta")));
     }
 
     /**
@@ -122,7 +122,7 @@ class RecapControllerTest {
     void ogniColonnaMostraTutteLeCaselleDellaRosa() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());
 
-        String html = mockMvc.perform(get("/riepilogo"))
+        String html = mockMvc.perform(get("/legacy/riepilogo"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -140,11 +140,12 @@ class RecapControllerTest {
     void thePageLinksBackToTheAuctionPage() throws Exception {
         when(auctionService.state()).thenReturn(stateWithOnePurchase());
 
-        // La schermata d'asta ora sta su /asta: "/" e' la home che chiede quale asta
-        // aprire, e un link alla home non riporterebbe l'utente dove stava lavorando.
-        mockMvc.perform(get("/riepilogo"))
+        // La schermata d'asta sta su /legacy/asta: /legacy e' la home (delle pagine
+        // vecchie) che chiede quale asta aprire, e un link alla home non riporterebbe
+        // l'utente dove stava lavorando.
+        mockMvc.perform(get("/legacy/riepilogo"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("href=\"/asta\"")));
+                .andExpect(content().string(containsString("href=\"/legacy/asta\"")));
     }
 
     @Test
@@ -153,7 +154,7 @@ class RecapControllerTest {
         when(auctionService.state()).thenReturn(
                 AuctionProjector.project(RULES, PARTICIPANTS, id -> Role.D, List.of()));
 
-        mockMvc.perform(post("/riepilogo/revoca").param("targetSeq", "7"))
+        mockMvc.perform(post("/legacy/riepilogo/revoca").param("targetSeq", "7"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("rimosso")));
 
@@ -166,7 +167,7 @@ class RecapControllerTest {
                 .when(auctionService).revokePurchase(999L);
         when(auctionService.state()).thenReturn(stateWithOnePurchase());
 
-        mockMvc.perform(post("/riepilogo/revoca").param("targetSeq", "999"))
+        mockMvc.perform(post("/legacy/riepilogo/revoca").param("targetSeq", "999"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("nessun acquisto con id 999")))
                 .andExpect(content().string(not(containsString("Exception"))));

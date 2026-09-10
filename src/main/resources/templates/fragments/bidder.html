@@ -9,7 +9,7 @@
      riga: sono garanzie del browser, non nostre, e sono esattamente quelle che servono
      quando si batte l'asta guardando la stanza invece dello schermo.
 
-  2) Il form di aggiudicazione punta a /assign, lo stesso della barra comando, della
+  2) Il form di aggiudicazione punta a /legacy/assign, lo stesso della barra comando, della
      scheda di analisi e della tabella di fase. Nessuna quinta via, piu' debole, per
      registrare un acquisto: identica validazione, identici messaggi di rifiuto.
 
@@ -107,7 +107,7 @@
     a timer scaduto resta da fare una cosa sola: dire chi se l'e' aggiudicato.
   */-->
   <form id="bidderAssign" class="bidder-assign" hidden
-        hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
+        hx-post="/legacy/assign" hx-target="#main" hx-swap="outerHTML">
     <input type="hidden" name="playerId" th:value="${bidder.player.id}">
     <label>A CHI
       <select name="participantId" id="bidderWho">

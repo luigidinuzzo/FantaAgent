@@ -58,7 +58,7 @@ class HomeControllerTest {
                 new AuctionRuntime.AuctionSummary("2026-09-01", "Lega Brontolo",
                         Instant.parse("2026-09-01T08:41:00Z"), 25, Role.D, false)));
 
-        mockMvc.perform(get("/"))
+        mockMvc.perform(get("/legacy"))
                 .andExpect(status().isOk())
                 // Il nome dato all'asta, e sotto l'identificativo: e' quest'ultimo il
                 // nome della cartella su disco, ed e' cio' che si cerca andando a
@@ -73,9 +73,9 @@ class HomeControllerTest {
 
     @Test
     void riprendereSelezionaQuellAstaEApreLaSchermataDAsta() throws Exception {
-        mockMvc.perform(post("/aste/riprendi").param("auctionId", "current"))
+        mockMvc.perform(post("/legacy/aste/riprendi").param("auctionId", "current"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/asta"));
+                .andExpect(redirectedUrl("/legacy/asta"));
 
         verify(auctionRuntime).select("current");
     }
@@ -87,9 +87,9 @@ class HomeControllerTest {
      */
     @Test
     void nuovaAstaPortaAllaPreparazioneSenzaCrearneAncoraUna() throws Exception {
-        mockMvc.perform(post("/aste/nuova"))
+        mockMvc.perform(post("/legacy/aste/nuova"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/impostazioni"));
+                .andExpect(redirectedUrl("/legacy/impostazioni"));
 
         verify(auctionRuntime, org.mockito.Mockito.never())
                 .createNew(org.mockito.ArgumentMatchers.anyString());
@@ -104,9 +104,9 @@ class HomeControllerTest {
      */
     @Test
     void uscireChiudeLastaEtornaAllaHome() throws Exception {
-        mockMvc.perform(post("/aste/esci"))
+        mockMvc.perform(post("/legacy/aste/esci"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"));
+                .andExpect(redirectedUrl("/legacy"));
 
         verify(auctionRuntime).deselect();
     }
@@ -121,7 +121,7 @@ class HomeControllerTest {
      */
     @Test
     void nuovaAstaChiudeQuellaAperta() throws Exception {
-        mockMvc.perform(post("/aste/nuova"))
+        mockMvc.perform(post("/legacy/aste/nuova"))
                 .andExpect(status().is3xxRedirection());
 
         verify(auctionRuntime).deselect();
@@ -131,17 +131,17 @@ class HomeControllerTest {
     void laSchermataDAstaSenzaUnAstaSceltaRimandaAllaHome() throws Exception {
         when(auctionRuntime.hasAuction()).thenReturn(false);
 
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"));
+                .andExpect(redirectedUrl("/legacy"));
     }
 
     @Test
     void ilRiepilogoSenzaUnAstaSceltaRimandaAllaHome() throws Exception {
         when(auctionRuntime.hasAuction()).thenReturn(false);
 
-        mockMvc.perform(get("/riepilogo"))
+        mockMvc.perform(get("/legacy/riepilogo"))
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"));
+                .andExpect(redirectedUrl("/legacy"));
     }
 }
