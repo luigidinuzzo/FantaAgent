@@ -52,6 +52,26 @@ describe('ParticipantsFieldset', () => {
   });
 
   /**
+   * Il nome accessibile del bottone "Togli" deve dire QUALE riga toglie, non solo
+   * il suo contenuto testuale: uno spazio scritto DENTRO lo <span sr-only> (invece
+   * che nel nodo di testo prima di lui) si perde nel calcolo del nome accessibile
+   * anche se resta visibile in {@code textContent} — "TogliAnna", non "Togli Anna".
+   * getByRole con `name` e' l'unica delle due che lo scoprirebbe: un'asserzione su
+   * {@code textContent} sarebbe passata anche col bug.
+   */
+  it('il bottone "Togli" ha per nome accessibile "Togli" seguito dal nome della riga', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
+        onChange={() => {}}
+        errors={{}}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Togli Anna' })).toBeInTheDocument();
+  });
+
+  /**
    * crypto.randomUUID() non esiste fuori da un contesto sicuro — plausibile su
    * http:// da un tablet in LAN la sera dell'asta. "Aggiungi partecipante" non
    * deve lanciare in quel caso.

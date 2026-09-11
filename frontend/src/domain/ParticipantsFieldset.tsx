@@ -124,7 +124,7 @@ export function ParticipantsFieldset({
                     onClick={() => onChange(value.filter((_, j) => j !== i))}
                     className="min-h-11 min-w-11 px-2 text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   >
-                    Togli<span className="sr-only"> {p.name}</span>
+                    Togli <span className="sr-only">{p.name}</span>
                   </button>
                 </td>
               </tr>
