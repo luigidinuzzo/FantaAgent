@@ -76,17 +76,30 @@ class ScoringSettingsValidatorTest {
     /**
      * La ragione per cui il metodo vecchio resta: SettingsController lo usa, e i suoi
      * test asseriscono queste frasi. Appiattire non deve cambiarle ne' riordinarle.
+     *
+     * <p>Pin sulle frasi LETTERALI, nell'ORDINE letterale — non su un confronto con
+     * {@code validateByField(...).values()...}: quel confronto sarebbe tautologico,
+     * perche' {@code validate} e' DEFINITO come quel flatten e concorderebbe con se
+     * stesso anche se un controllo futuro venisse spostato altrove nel metodo. Le
+     * cinque frasi qui sotto attraversano quattro rami diversi — defendersCounted,
+     * la riga 2 della tabella, i quattro ruoli mancanti nell'ordine di
+     * {@code Role.values()}, e assist — nell'ordine in cui quei rami girano oggi.
      */
     @Test
-    void ilMetodoVecchioResituisceLeStesseFrasiNelloStessoOrdine() {
+    void ilMetodoVecchioResituisceLeFrasiLetteraliNellOrdineDeiControlli() {
         ScoringSettings broken = new ScoringSettings(true, 0, List.of(
                 new ScoringSettings.Step(6.0, 1.0),
-                new ScoringSettings.Step(6.4, 3.0)),
+                new ScoringSettings.Step(5.0, 2.0)),
                 Map.of(), Double.NaN, 3, -3, 3, -0.5, -1, -1, 0, true);
 
-        assertThat(ScoringSettingsValidator.validate(broken))
-                .containsExactlyElementsOf(
-                        ScoringSettingsValidator.validateByField(broken).values().stream()
-                                .flatMap(List::stream).toList());
+        assertThat(ScoringSettingsValidator.validate(broken)).containsExactly(
+                "I difensori conteggiati devono essere fra 1 e 10: indicato 0.",
+                "Riga 2: la media 5.0 non è maggiore della precedente 6.0. "
+                        + "Le soglie vanno in ordine crescente.",
+                "Manca il bonus gol per il ruolo P.",
+                "Manca il bonus gol per il ruolo D.",
+                "Manca il bonus gol per il ruolo C.",
+                "Manca il bonus gol per il ruolo A.",
+                "Il valore per «assist» non è un numero valido.");
     }
 }

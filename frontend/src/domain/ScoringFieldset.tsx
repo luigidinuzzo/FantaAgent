@@ -30,7 +30,16 @@ const NUMERIC: Array<{ key: keyof ScoringSection; label: string }> = [
   { key: 'cleanSheet', label: 'Porta inviolata' },
 ];
 
-/** Le chiavi che il validatore Java non conosce per campo restano qui, per l'insieme. */
+/**
+ * Non "chiavi che il validatore non conosce": {@code thresholds} e
+ * {@code thresholds[N]} sono chiavi che ScoringSettingsValidator nomina
+ * precisamente (task 16). Restano qui, a livello di fieldset, per la ragione
+ * gia' detta nel docstring della classe — le soglie non hanno un editor in
+ * questa tappa, quindi non c'e' un controllo a cui accostare il loro errore.
+ * {@code scoring} invece e' davvero sintetica: la scrive {@code SettingsApi}
+ * quando l'intera sezione punteggio manca dal corpo, e nessun validatore la
+ * conosce.
+ */
 function isGeneralKey(key: string): boolean {
   return key === 'thresholds' || key.startsWith('thresholds[') || key === 'scoring';
 }

@@ -54,15 +54,19 @@ class AuctionSettingsValidatorTest {
 
     /**
      * La ragione per cui il metodo vecchio resta: SettingsController lo usa, e i suoi
-     * test asseriscono queste frasi. Appiattire non deve cambiarle ne' riordinarle.
+     * test asseriscono queste frasi. Appiattire non deve cambiarle.
+     *
+     * <p>Pin sulla frase LETTERALE, non su un confronto con {@code
+     * validateByField(...).values()...}: quel confronto sarebbe tautologico, perche'
+     * {@code validate} e' DEFINITO come quel flatten — concorderebbe con se stesso
+     * anche se l'ordine delle chiavi cambiasse. Con un solo controllo in questo
+     * validatore non c'e' un ordine da riordinare, ma il nome del test non deve
+     * promettere una fedelta' che l'asserzione non verifica.
      */
     @Test
-    void ilMetodoVecchioResituisceLeStesseFrasiNelloStessoOrdine() {
-        AuctionSettings rotte = new AuctionSettings(500, true);
-
-        assertThat(AuctionSettingsValidator.validate(rotte))
-                .containsExactlyElementsOf(
-                        AuctionSettingsValidator.validateByField(rotte).values().stream()
-                                .flatMap(List::stream).toList());
+    void ilMetodoVecchioResituisceLaFraseLetteraleDelCampo() {
+        assertThat(AuctionSettingsValidator.validate(new AuctionSettings(500, true)))
+                .containsExactly(
+                        "La durata del timer deve essere fra 1 e 120 secondi: indicati 500.");
     }
 }

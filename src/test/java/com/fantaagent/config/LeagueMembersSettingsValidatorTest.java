@@ -84,16 +84,30 @@ class LeagueMembersSettingsValidatorTest {
     /**
      * La ragione per cui il metodo vecchio resta: SettingsController lo usa, e i suoi
      * test asseriscono queste frasi. Appiattire non deve cambiarle ne' riordinarle.
+     *
+     * <p>Pin sulle frasi LETTERALI, nell'ORDINE letterale — non su un confronto con
+     * {@code validateByField(...).values()...}: quel confronto sarebbe tautologico,
+     * perche' {@code validate} e' DEFINITO come quel flatten e concorderebbe con se
+     * stesso anche se un controllo futuro venisse spostato altrove nel metodo.
+     * "me" ha nome vuoto E iniziale mancante (due errori di riga, nell'ordine in
+     * cui il ciclo li controlla su quella riga); poi "A" e' duplicata fra anna e
+     * bruno (un errore dell'insieme); poi nessuno e' segnato come «tu» (un altro
+     * errore dell'insieme) — quattro frasi, attraverso tutti i rami tranne
+     * l'insieme vuoto e il "piu' di un proprietario", gia' pinnati altrove.
      */
     @Test
-    void ilMetodoVecchioResituisceLeStesseFrasiNelloStessoOrdine() {
+    void ilMetodoVecchioResituisceLeFrasiLetteraliNellOrdineDeiControlli() {
         List<Participant> rotti = List.of(
                 new Participant("me", " ", ' ', false),
-                new Participant("marco", "Marco", 'M', false));
+                new Participant("anna", "Anna", 'A', false),
+                new Participant("bruno", "Bruno", 'A', false));
 
-        assertThat(LeagueMembersSettingsValidator.validate(rotti))
-                .containsExactlyElementsOf(
-                        LeagueMembersSettingsValidator.validateByField(rotti).values().stream()
-                                .flatMap(List::stream).toList());
+        assertThat(LeagueMembersSettingsValidator.validate(rotti)).containsExactly(
+                "Il partecipante con id «me» non può avere un nome vuoto.",
+                "Il partecipante « » non ha un'iniziale.",
+                "L'iniziale «A» è usata da più partecipanti (Anna, Bruno): deve essere "
+                        + "unica perché il comando «giocatore prezzo iniziale» la usa per "
+                        + "riconoscere l'acquirente.",
+                "Nessun partecipante è segnato come «tu»: deve essercene esattamente uno.");
     }
 }
