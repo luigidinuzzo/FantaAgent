@@ -62,6 +62,19 @@ class LegacyLinkPrefixTest {
     private static final Pattern JAVA_HEADER_PATH = Pattern.compile(
             "setHeader\\([^,]+,\\s*\"(/[^\"]*)\"\\)");
 
+    /**
+     * Cattura la URL di un {@code htmx.ajax('VERBO', '/...')} o di un
+     * {@code fetch('/...')} negli script statici — la terza sede in cui vive un
+     * indirizzo delle pagine vecchie, dopo i template e il Java del package. E'
+     * quella che questo guardiano non guardava affatto: due scorciatoie da tastiera
+     * di {@code app.js} sono rimaste puntate a {@code /undo} e
+     * {@code /fragments/targets} invece che a {@code /legacy/...} e nessun test se ne
+     * accorgeva, perche' htmx non applica lo swap su una risposta d'errore e il
+     * fallimento resta silenzioso.
+     */
+    private static final Pattern JS_CALL = Pattern.compile(
+            "(?:htmx\\.ajax\\('[A-Z]+',\\s*'|fetch\\(')(/[^'\"\\s]*)");
+
     @Test
     void ogniCollegamentoDellePagineVecchieStaSottoLegacy() throws IOException {
         List<String> fuoriPosto = new ArrayList<>();
@@ -139,5 +152,37 @@ class LegacyLinkPrefixTest {
                 Path.of("src/main/java/com/fantaagent/adapter/in/web/NoAuctionAdvice.java"),
                 StandardCharsets.UTF_8);
         assertThat(JAVA_HEADER_PATH.matcher(advice).results()).isNotEmpty();
+    }
+
+    /**
+     * Stesso controllo dei due sopra, ma sulla terza sede: gli script statici serviti
+     * dalla radice. {@code htmx.min.js} e' escluso perche' vendorizzato — non e'
+     * codice di questo progetto, e un indirizzo al suo interno non sarebbe comunque
+     * un collegamento verso le pagine vecchie.
+     */
+    @Test
+    void nessunoScriptStaticoChiamaLePagineVecchieSenzaPrefisso() throws IOException {
+        List<String> fuoriPosto = new ArrayList<>();
+        try (Stream<Path> files = Files.walk(Path.of("src/main/resources/static"))) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".js")
+                    && !p.getFileName().toString().equals("htmx.min.js")).toList()) {
+                collectFuoriPosto(file, Files.readString(file, StandardCharsets.UTF_8),
+                        JS_CALL, fuoriPosto);
+            }
+        }
+
+        assertThat(fuoriPosto)
+                .describedAs("indirizzi non prefissati negli script statici: htmx non applica "
+                        + "lo swap su una risposta d'errore, quindi una scorciatoia puntata alla "
+                        + "vecchia URL fallisce in silenzio invece di dare un qualunque segnale")
+                .isEmpty();
+    }
+
+    /** Se il pattern JS non trova niente, il test sopra passerebbe a vuoto. */
+    @Test
+    void ilPatternJsTrovaDavveroLeChiamate() throws IOException {
+        String appJs = Files.readString(
+                Path.of("src/main/resources/static/app.js"), StandardCharsets.UTF_8);
+        assertThat(JS_CALL.matcher(appJs).results()).isNotEmpty();
     }
 }
