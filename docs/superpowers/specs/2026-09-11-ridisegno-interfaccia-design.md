@@ -24,8 +24,8 @@ Data: 11 settembre 2026.
 | Il confine API, i DTO, i codici di errore | Ogni componente di presentazione in `frontend/src` |
 | L'architettura esagonale e la regola ArchUnit sul tabellone | La palette: quattro colori nuovi, nessuno tolto |
 | L'append-only, l'undo per compensazione | L'instradamento: `/riepilogo` sparisce come pagina |
-| Le cinque garanzie del sotto-progetto 1 | Una funzione nuova: la ricerca per nome |
-| `adapter/in/web` e i suoi 87 test | Un endpoint nuovo, e un metodo nuovo nel servizio di ricerca |
+| Le cinque garanzie del sotto-progetto 1 | La ricerca per nome, che l'API offre gia' e nessuna schermata chiama |
+| `adapter/in/web` e i suoi 87 test | Un parametro in piu' su un endpoint che esiste |
 
 **La direzione visiva non cambia direzione.** La palette «Campo» — fondo verde scuro,
 accento oro, linee bianche in alfa — resta quella. Quello che i mockup portano è la
@@ -296,35 +296,40 @@ aggiornata è il difetto peggiore di tutta questa migrazione.
 lì che serve: un giocatore chiamato al tavolo non è quasi mai il prossimo della
 tabella di fase.
 
-Oggi la ricerca per nome esiste **solo in `/legacy`**. È uno dei due motivi per cui
-quelle pagine sono ancora necessarie.
+Oggi la ricerca per nome si usa **solo da `/legacy`**. È uno dei due motivi per cui
+quelle pagine sono ancora necessarie — e, come si vede sotto, il motivo è che nessuno
+nel frontend nuovo chiama un endpoint che c'è già.
 
-### 8.1 L'endpoint
+### 8.1 L'endpoint esiste già
 
-`GET /api/leagues/{leagueId}/auctions/{auctionId}/players/search?q=&role=`
+`GET /api/leagues/{leagueId}/auctions/{auctionId}/players?q=` è in `PlayerApi` dalla
+tappa 1, accanto a `/phase` e `/{playerId}/valuation`, sotto lo stesso `AuctionGuard`.
+Restituisce `PlayerSummary` — identificativo, nome, squadra, ruolo, quotazione — e
+`PlayerSearchService.search` scarta già i giocatori venduti e taglia a otto risultati.
 
-Vive in `PlayersApi`, accanto a `/phase` e `/{playerId}/valuation`, sotto lo stesso
-`AuctionGuard`. Restituisce righe leggere: identificativo, nome, squadra, ruolo,
-quotazione.
+**Nessuna schermata React lo chiama.** È stato costruito con il confine API e poi non
+consumato da nessuno: la ricerca «non c'è» nel frontend nuovo, non nel backend. Questo
+riduce il lavoro a un parametro e a un pezzo di interfaccia, non a un endpoint.
 
-**Non restituisce valutazioni.** `PlayerSearchService.search` non le calcola, e
-calcolarle costa qualche decina di millisecondi ciascuna — otto risultati a ogni
-tasto premuto sarebbero centinaia di millisecondi buttati per numeri che l'utente non
-sta ancora guardando. Si sceglie un risultato, e la valutazione arriva dall'endpoint
-che esiste già.
+**Non restituisce valutazioni, e non deve cominciare a farlo.** Calcolarne otto a ogni
+tasto premuto costerebbe un centinaio di millisecondi per numeri che l'utente non sta
+ancora guardando. Si sceglie un risultato, e la valutazione arriva dall'endpoint che
+c'è.
 
-Il parametro `role` è opzionale: assente significa «tutti».
+### 8.2 Il parametro che manca
 
-### 8.2 Il servizio
+Il filtro `TUTTI P D C A` del mockup ha bisogno di un `role` opzionale — assente
+significa «tutti».
 
-`PlayerSearchService` guadagna un metodo che accetta il filtro di ruolo e il limite.
-Il metodo `search(String)` esistente **non si tocca**: lo usano i controller
+`PlayerSearchService.search(String)` **non si tocca**: lo chiamano i controller
 Thymeleaf, e cambiarne il comportamento cambierebbe il frontend vecchio che
-sopravvive apposta per confronto.
+sopravvive apposta per confronto. Il filtro arriva in un metodo nuovo accanto a lui.
 
-Il filtro va applicato *dentro* la ricerca, non sui risultati: filtrare dopo aver
-tagliato a otto svuoterebbe l'elenco ogni volta che i primi otto sono del ruolo
-sbagliato.
+Il filtro va applicato **prima** del taglio a otto, non dopo: filtrare i risultati già
+tagliati svuoterebbe l'elenco ogni volta che i primi otto sono del ruolo sbagliato. E
+la finestra di candidati che il metodo chiede al dominio deve allargarsi quando un
+ruolo è richiesto, perché con il filtro attivo gran parte dei candidati viene scartata
+prima di contare.
 
 ### 8.3 Nel browser
 
