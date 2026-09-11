@@ -9,6 +9,14 @@ export const PALETTE = {
   'on-accent':        '#1B1400',
   positive:           '#5FD08A',
   destructive:        '#E86A4B',
+  // I quattro ruoli. NON riusano positive e destructive nonostante la
+  // somiglianza cromatica (il difensore e' verde, l'attaccante e' rosso): sono
+  // coincidenze, non lo stesso significato. Il giorno in cui "positivo"
+  // diventasse blu, i difensori non devono seguirlo.
+  'role-p':           '#FFA552',
+  'role-d':           '#7BDB9E',
+  'role-c':           '#7FC4FF',
+  'role-a':           '#FF8FA3',
 };
 
 // Le righe del campo sono bianco con alfa: restano in rgba, perché il loro

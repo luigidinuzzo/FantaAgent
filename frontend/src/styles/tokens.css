@@ -10,6 +10,10 @@
   --on-accent: oklch(0.1944 0.0398 92.72);
   --positive: oklch(0.7738 0.1449 153.97);
   --destructive: oklch(0.6717 0.1635 35.03);
+  --role-p: oklch(0.7969 0.1443 60.82);
+  --role-d: oklch(0.8161 0.1265 154.59);
+  --role-c: oklch(0.7972 0.1095 245.56);
+  --role-a: oklch(0.7752 0.1362 9.34);
   --line: rgba(255,255,255,0.15);
   --line-strong: rgba(255,255,255,0.25);
   --font-sans: 'Archivo Variable', system-ui, sans-serif;
@@ -24,6 +28,10 @@
   --color-on-accent: var(--on-accent);
   --color-positive: var(--positive);
   --color-destructive: var(--destructive);
+  --color-role-p: var(--role-p);
+  --color-role-d: var(--role-d);
+  --color-role-c: var(--role-c);
+  --color-role-a: var(--role-a);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --font-sans: var(--font-sans);

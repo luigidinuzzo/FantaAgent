@@ -27,12 +27,33 @@ const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
   ['positive', 'surface', 4.5],
   ['destructive', 'background', 4.5],
   ['destructive', 'surface', 4.5],
+  // I quattro ruoli escono come testo dentro una pillola e come fascia sopra la
+  // griglia delle rose: 4.5, non 3, perche' e' testo piccolo, esattamente come
+  // accent, positive e destructive qui sopra.
+  ['role-p', 'background', 4.5],
+  ['role-p', 'surface', 4.5],
+  ['role-d', 'background', 4.5],
+  ['role-d', 'surface', 4.5],
+  ['role-c', 'background', 4.5],
+  ['role-c', 'surface', 4.5],
+  ['role-a', 'background', 4.5],
+  ['role-a', 'surface', 4.5],
 ];
 
 describe('palette Campo', () => {
   it.each(PAIRS)('%s su %s raggiunge %s:1', (fg, bg, min) => {
     expect(contrastRatio(PALETTE[fg], PALETTE[bg])).toBeGreaterThanOrEqual(min);
   });
+
+  // Nella griglia delle rose la fascia di ruolo e' PIENA e porta la lettera in
+  // scuro sopra di se': e' una coppia che il ciclo qui sopra non tocca, perche'
+  // li il ruolo e' il fondo e non il testo.
+  it.each(['role-p', 'role-d', 'role-c', 'role-a'] as const)(
+    'on-accent raggiunge 4.5:1 sopra %s',
+    (role) => {
+      expect(contrastRatio(PALETTE['on-accent'], PALETTE[role])).toBeGreaterThanOrEqual(4.5);
+    },
+  );
 
   it('tokens.css è rigenerato dalla palette corrente', () => {
     const css = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
