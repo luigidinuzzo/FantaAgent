@@ -73,25 +73,46 @@ describe('ScoringFieldset', () => {
   });
 
   /**
-   * Le soglie non hanno un campo qui (vedi il commento sulla classe): i loro
-   * errori — chiave {@code "thresholds[1]"}, la seconda riga — restano descritti
-   * dal fieldset, non da un controllo che non esiste. Una <legend> fornisce il
-   * NOME accessibile del fieldset; descriverla con aria-describedby non e' una
-   * relazione garantita dagli screen reader. E' il <fieldset> — un group — che
-   * supporta davvero una descrizione.
+   * Le soglie hanno un campo adesso (task 18, {@link ThresholdsTable}): l'errore
+   * di riga (chiave {@code "thresholds[1]"}, la seconda riga) sta accanto al SUO
+   * controllo, non piu' nell'elenco generico del fieldset — e non vi finisce
+   * anche una seconda volta.
    */
-  it('descrive gli errori delle soglie sul fieldset, non sulla legend', () => {
+  it("descrive gli errori delle soglie accanto alla riga che li causa, non sul fieldset", () => {
+    const scoring: ScoringSection = {
+      ...SCORING,
+      defenceModifierEnabled: true,
+      thresholds: [{ minAverage: 0, bonus: 0 }, { minAverage: 3, bonus: 1 }],
+    };
     render(
       <ScoringFieldset
-        value={SCORING}
+        value={scoring}
         onChange={() => {}}
         errors={{ 'thresholds[1]': ['Riga 2: la media non può essere negativa.'] }}
         disabled={false}
       />,
     );
 
+    const field = screen.getByLabelText(/soglia da media, riga 2/i);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAccessibleDescription(/riga 2/i);
+
     const group = screen.getByRole('group', { name: 'Punteggio' });
-    expect(group).toHaveAccessibleDescription(/riga 2/i);
+    expect(group).not.toHaveAccessibleDescription(/riga 2/i);
+  });
+
+  /**
+   * La tabella non ha ragione di essere modificabile quando il motore la ignora
+   * del tutto (task 18): {@code disabled} qui e' false (asta chiusa), eppure la
+   * tabella deve risultare disattivata perche' {@code SCORING.defenceModifierEnabled}
+   * e' false.
+   */
+  it('disabilita la tabella delle soglie quando il modificatore e spento, anche ad asta chiusa', () => {
+    render(
+      <ScoringFieldset value={SCORING} onChange={() => {}} errors={{}} disabled={false} />,
+    );
+
+    expect(screen.getByLabelText(/soglia da media, riga 1/i)).toBeDisabled();
   });
 
   /**

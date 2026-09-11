@@ -2,6 +2,7 @@ import { useId } from 'react';
 import type { ScoringSection } from '../api/types';
 import { FieldErrors } from './FieldErrors';
 import { NumberField } from './NumberField';
+import { ThresholdsTable } from './ThresholdsTable';
 
 /**
  * I bonus e i malus con cui si calcola quanto rende un giocatore.
@@ -10,14 +11,13 @@ import { NumberField } from './NumberField';
  * scritti a mano diciassette volte: sono lo stesso controllo diciassette volte, e
  * ripeterne il markup significherebbe diciassette posti in cui sbagliare una classe.
  *
- * <p>Le soglie del modificatore di difesa ({@code value.thresholds}) non hanno un
- * editor qui: hanno un'interfaccia propria (righe che si aggiungono, ordine
- * crescente, bonus non decrescente) rimandata a un'altra tappa. Questo componente
- * non le legge né le scrive — {@code onChange} passa sempre l'oggetto {@code value}
- * completo con lo spread, quindi {@code thresholds} attraversa il modulo invariato
- * fino al salvataggio. I loro errori (chiavi {@code "thresholds"} e
- * {@code "thresholds[N]"}) restano percio' a livello di fieldset — non c'e' un
- * campo preciso a cui accostarli — invece che su un controllo che non esiste.
+ * <p>Le soglie del modificatore di difesa ({@code value.thresholds}) hanno la loro
+ * interfaccia in {@link ThresholdsTable} (task 18: righe che si aggiungono e si
+ * tolgono, ordine crescente, bonus non decrescente — mostrati, non imposti). Questo
+ * componente si limita a passargliele con lo spread, come ogni altro campo: la
+ * disabilita anche quando il modificatore stesso e' spento
+ * ({@code !value.defenceModifierEnabled}), non solo ad asta aperta, perche' una
+ * tabella che il motore ignora non ha ragione di essere modificabile.
  */
 const NUMERIC: Array<{ key: keyof ScoringSection; label: string }> = [
   { key: 'assist', label: 'Assist' },
@@ -31,17 +31,15 @@ const NUMERIC: Array<{ key: keyof ScoringSection; label: string }> = [
 ];
 
 /**
- * Non "chiavi che il validatore non conosce": {@code thresholds} e
- * {@code thresholds[N]} sono chiavi che ScoringSettingsValidator nomina
- * precisamente (task 16). Restano qui, a livello di fieldset, per la ragione
- * gia' detta nel docstring della classe — le soglie non hanno un editor in
- * questa tappa, quindi non c'e' un controllo a cui accostare il loro errore.
- * {@code scoring} invece e' davvero sintetica: la scrive {@code SettingsApi}
- * quando l'intera sezione punteggio manca dal corpo, e nessun validatore la
- * conosce.
+ * {@code thresholds} e {@code thresholds[N]} non sono piu' generiche (task 18):
+ * {@link ThresholdsTable} le legge dal suo stesso oggetto {@code errors} e le mostra
+ * accanto alla riga giusta, quindi non devono anche finire nell'elenco di questo
+ * fieldset — ci finirebbero due volte. {@code scoring} resta l'unica chiave
+ * davvero sintetica: la scrive {@code SettingsApi} quando l'intera sezione
+ * punteggio manca dal corpo, e nessun validatore la conosce.
  */
 function isGeneralKey(key: string): boolean {
-  return key === 'thresholds' || key.startsWith('thresholds[') || key === 'scoring';
+  return key === 'scoring';
 }
 
 function errorsFor(errors: Record<string, string[]>, key: string): string[] {
@@ -62,10 +60,14 @@ export function ScoringFieldset({
   const baseId = useId();
   const groupErrorsId = `${baseId}-group`;
   const lockId = `${baseId}-lock`;
+  // Ad asta aperta e' bloccata come ogni altro campo qui; a modificatore spento
+  // e' bloccata anche ad asta chiusa, perche' il motore la ignora del tutto
+  // (ScoringSettings.toScoringRules) e non ha senso lasciarla modificabile.
+  const thresholdsDisabled = disabled || !value.defenceModifierEnabled;
 
-  // Le soglie non hanno un campo qui (vedi il commento sulla classe): i loro errori,
-  // e quelli dell'intera sezione se il corpo la omettesse del tutto, si accumulano
-  // in questo elenco unico e restano descritti dal fieldset, non da un controllo.
+  // La sola chiave davvero sintetica (vedi il commento su isGeneralKey) si
+  // accumula in questo elenco unico e resta descritta dal fieldset, non da un
+  // controllo.
   const generalErrors = Object.entries(errors)
     .filter(([key]) => isGeneralKey(key))
     .flatMap(([, messages]) => messages);
@@ -175,6 +177,15 @@ export function ScoringFieldset({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        <ThresholdsTable
+          value={value.thresholds}
+          onChange={(thresholds) => onChange({ ...value, thresholds })}
+          disabled={thresholdsDisabled}
+          errors={errors}
+        />
       </div>
 
       <FieldErrors id={groupErrorsId} errors={generalErrors} />

@@ -148,9 +148,10 @@ export interface ScoringStep {
 }
 
 /**
- * `thresholds` non ha un editor in questa tappa (task 6 gliene dara' uno): il
- * valore che arriva da {@link SettingsResponse} deve tornare al server invariato
- * dentro {@link SaveSettingsRequest}, non riscritto o appiattito.
+ * `thresholds` ha il suo editor in `ThresholdsTable` (task 18): righe che si
+ * aggiungono e si tolgono, entrambe le colonne decimali. Il valore che arriva da
+ * {@link SettingsResponse} torna al server dentro {@link SaveSettingsRequest} con
+ * qualunque modifica l'utente gli abbia fatto — non riscritto o appiattito.
  */
 export interface ScoringSection {
   defenceModifierEnabled: boolean;
