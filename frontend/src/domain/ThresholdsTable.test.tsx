@@ -154,10 +154,13 @@ describe('ThresholdsTable', () => {
   /**
    * "thresholds" senza indice riguarda la tabella nel suo insieme (tabella vuota
    * col modificatore attivo), non una riga: non ha un controllo a cui accostarsi,
-   * quindi resta un elenco a fine tabella — stesso idioma di "participants" in
-   * ParticipantsFieldset.
+   * quindi il gruppo che avvolge la tabella la descrive con aria-describedby —
+   * stesso idioma del <fieldset> di ParticipantsFieldset. getByText da solo non
+   * lo proverebbe: il testo potrebbe stare sullo schermo senza che nessun
+   * controllo lo referenzi, che e' esattamente il difetto che questo test
+   * doveva scoprire e non scopriva.
    */
-  it("mostra l'errore dell'insieme in coda alla tabella", () => {
+  it("descrive l'errore dell'insieme sul gruppo che avvolge la tabella", () => {
     render(
       <Harness
         initial={[]}
@@ -165,6 +168,7 @@ describe('ThresholdsTable', () => {
       />,
     );
 
-    expect(screen.getByText(/la tabella è vuota/i)).toBeInTheDocument();
+    const group = screen.getByRole('group');
+    expect(group).toHaveAccessibleDescription(/la tabella è vuota/i);
   });
 });

@@ -124,19 +124,29 @@ describe('ScoringFieldset', () => {
    * interagibile anche a modificatore spento — se lo bloccassimo insieme alla
    * tabella che governa, non si potrebbe piu' riaccenderlo da qui — e deve
    * raggiungere il salvataggio come ogni altro campo, con lo spread.
+   *
+   * <p>Il payload da solo non basta a provare che il checkbox "accende" la
+   * tabella: bisogna vedere i SUOI campi tornare modificabili dopo il click,
+   * non solo che {@code defenceModifierEnabled} e' true nell'oggetto salvato.
    */
   it('accende il modificatore di difesa dal suo checkbox, e lo manda al salvataggio', async () => {
     const captured: { value: ScoringSection | null } = { value: null };
     render(<Harness onCommit={(v) => { captured.value = v; }} />);
 
     const checkbox = screen.getByRole('checkbox', { name: /modificatore di difesa attivo/i });
+    const minField = screen.getByLabelText(/soglia da media, riga 1/i);
     expect(checkbox).not.toBeChecked();
     expect(checkbox).not.toBeDisabled();
+    expect(minField).toBeDisabled();
 
     await userEvent.click(checkbox);
 
     expect(checkbox).toBeChecked();
     expect(captured.value?.defenceModifierEnabled).toBe(true);
+    // La tabella era disabilitata SOLO perche' il modificatore era spento
+    // (asta chiusa in questo harness): accenderlo deve quindi renderla
+    // davvero modificabile, non solo cambiare un booleano nel payload.
+    expect(minField).not.toBeDisabled();
   });
 
   /**

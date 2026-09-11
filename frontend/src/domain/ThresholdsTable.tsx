@@ -36,9 +36,10 @@ const REASON_TEXT: Record<ThresholdsTableDisabledReason, string> = {
  * che al salvataggio.
  *
  * <p>Entrambe le colonne usano {@link NumberField} e non un {@code <input type="number">}
- * controllato a mano: la media e' tipicamente un decimale ("6,75") e il bonus della prima
- * riga puo' essere negativo, gli stessi due casi per cui NumberField esiste (vedi il suo
- * docstring).
+ * controllato a mano: la media e' tipicamente un decimale ("6,75") e il bonus di
+ * QUALUNQUE riga puo' essere negativo (il validatore vincola solo l'ordine relativo
+ * fra righe, non il segno), gli stessi due casi per cui NumberField esiste (vedi il
+ * suo docstring).
  *
  * <p>{@code disabledReason} e' {@code null} quando la tabella e' modificabile, o una
  * delle due cause quando non lo e'. Non e' un booleano piu' un motivo separato — che
@@ -67,7 +68,14 @@ export function ThresholdsTable({
   }
 
   return (
-    <div>
+    // role="group" + aria-describedby e' lo stesso idioma del <fieldset> di
+    // ParticipantsFieldset per il suo errore d'insieme ("participants"): qui
+    // non c'e' un <fieldset> proprio (questo componente vive dentro quello di
+    // ScoringFieldset), ma "thresholds" e' comunque un errore SENZA un
+    // controllo a cui accostarsi, e senza questo aria-describedby il testo
+    // sarebbe leggibile solo a schermo — nessun controllo lo referenzierebbe,
+    // quindi chi ascolta tabulando i controlli non lo incontrerebbe mai.
+    <div role="group" aria-describedby={tableErrors.length > 0 ? tableErrorsId : undefined}>
       {disabledReason !== null ? (
         <p id={lockId} className="mb-2 text-sm text-muted-foreground">
           {REASON_TEXT[disabledReason]}
