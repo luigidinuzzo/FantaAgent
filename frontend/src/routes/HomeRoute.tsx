@@ -2,11 +2,44 @@ import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import { useAuctions, useLeaveAuction, useSelectAuction } from '../api/hooks';
+import type { AuctionCard } from '../api/types';
 import { EmptyState } from '../domain/EmptyState';
+import { RoleBadge } from '../domain/RoleBadge';
 
 const QUANDO = new Intl.DateTimeFormat('it-IT', {
   day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
+
+/**
+ * Il testo dell'unico invito a creare un'asta quando non ce n'e' nessuna. Una sola
+ * stringa, richiamata sia quando l'elenco e' del tutto vuoto sia (altrove, nella
+ * colonna destra) quando esistono aste ma nessuna e' aperta — cosi' non ne nascono
+ * due leggermente diverse da tenere d'accordo.
+ */
+const NESSUNA_ASTA_TESTO =
+  'Nessuna asta ancora. Cominciane una: partecipanti e regole di punteggio ' +
+  'vengono copiati dentro, e non cambieranno più.';
+
+/** Il martelletto della card-eroe: decorazione, non informazione — aria-hidden. */
+function GavelIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 48 48"
+      className="h-12 w-12 shrink-0 text-accent"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="6" y="20" width="14" height="8" rx="1.5" transform="rotate(-45 13 24)" />
+      <line x1="19" y1="13" x2="27" y2="21" />
+      <line x1="10" y1="30" x2="22" y2="42" />
+      <line x1="4" y1="40" x2="30" y2="40" />
+    </svg>
+  );
+}
 
 /**
  * La home: l'elenco delle aste della lega, con un modo per riprenderne una
@@ -41,6 +74,9 @@ export function HomeRoute() {
         : null;
   const alertMessage = mutationErrorMessage ?? loadErrorMessage;
 
+  const list: AuctionCard[] = auctions.data ?? [];
+  const openAuction = list.find((a) => a.selected);
+
   function resume(id: string) {
     select.mutate(id, { onSuccess: () => navigate('/asta') });
   }
@@ -62,72 +98,157 @@ export function HomeRoute() {
 
   return (
     <AppShell chrome="side">
-      <h1 className="w-exp text-xl font-extrabold">Le tue aste</h1>
+      {/* Il titolo esiste per chi ascolta: la card-eroe sotto e' gia' visivamente
+          il punto di partenza della pagina, un h1 visibile qui sopra la
+          duplicherebbe. */}
+      <h1 className="sr-only">Le tue aste</h1>
 
-      {auctions.isLoading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Carico le aste…</p>
-      ) : auctions.isError ? (
-        // Nessun testo qui: il messaggio (loadErrorMessage) vive nell'unico
-        // role="alert" in fondo alla pagina, non duplicato in due posti.
-        null
-      ) : (auctions.data ?? []).length === 0 ? (
-        <div className="mt-4">
-          <EmptyState>
-            Nessuna asta ancora. Cominciane una: partecipanti e regole di punteggio
-            vengono copiati dentro, e non cambieranno più.
-          </EmptyState>
+      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <div>
+          {/* La card-eroe: un bersaglio solo, grande, in cima alla colonna. "Crea
+              asta" chiude PRIMA l'asta eventualmente aperta (vedi startNew) e solo
+              dopo va alle impostazioni: non crea niente da sola, l'asta nasce quando
+              le impostazioni vengono confermate. Creare qui lascerebbe dietro aste
+              vuote per chi si ferma alla schermata di conferma — e' gia' successo, ed
+              e' il motivo per cui il flusso e' fatto cosi'. */}
+          <div className="flex flex-wrap items-center gap-6 rounded-2xl border border-line-strong bg-[radial-gradient(120%_90%_at_20%_0%,var(--color-surface)_0%,var(--color-background)_75%)] p-6">
+            <GavelIcon />
+            <div className="min-w-0 flex-1">
+              <p className="w-exp text-lg font-extrabold">Comincia una nuova asta</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Partecipanti e regole di punteggio si copiano dentro, e non
+                cambieranno più.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={startNew}
+              disabled={leave.isPending}
+              className="min-h-11 shrink-0 rounded-full bg-positive px-6 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              Crea asta
+            </button>
+          </div>
+
+          {auctions.isLoading ? (
+            <p className="mt-6 text-sm text-muted-foreground">Carico le aste…</p>
+          ) : auctions.isError ? (
+            // Nessun testo qui: il messaggio (loadErrorMessage) vive nell'unico
+            // role="alert" in fondo alla pagina, non duplicato in due posti.
+            null
+          ) : list.length === 0 ? (
+            <div className="mt-6">
+              <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
+            </div>
+          ) : (
+            <ul className="mt-6 space-y-2">
+              {list.map((a) => (
+                <li
+                  key={a.id}
+                  className="flex items-center gap-4 rounded-xl border border-line px-4 py-3"
+                >
+                  {/* Il pallino e' decorazione — il fatto sta nel testo "In corso"
+                      qui sotto, non nel colore. */}
+                  <span
+                    aria-hidden="true"
+                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                      a.selected ? 'bg-positive' : 'bg-muted-foreground'
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold">
+                      {a.label}
+                      {a.selected ? (
+                        // Parita' con la home Thymeleaf (che segna la riga con la classe
+                        // CSS "sel"), ma raggiungibile anche da chi ascolta: senza questo
+                        // testo React non diceva MAI quale asta fosse quella aperta — un
+                        // difetto che si aggiunge al critico qui sopra, perche' senza
+                        // saperlo e' facile premere "Crea asta" credendo che nessuna
+                        // asta sia in corso.
+                        <span className="ml-2 text-xs font-bold text-accent">In corso</span>
+                      ) : null}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                      <RoleBadge role={a.phase} />
+                      {/* .tnum: la data si confronta riga per riga in colonna, come i
+                          numeri qui accanto — senza cifre tabulari non si allinea. */}
+                      <span className="tnum">
+                        {a.lastWritten ? QUANDO.format(new Date(a.lastWritten)) : 'mai scritta'}
+                      </span>
+                      {' · '}
+                      {/*
+                        Il numero e "acquisti" stanno nello stesso nodo apposta: non e' una
+                        necessita' di accessibilita' (l'accessible name unisce comunque il
+                        testo di tutti i discendenti) ma di test — getByText di Testing
+                        Library concatena solo i nodi-testo DIRETTI di un elemento, saltando
+                        quelli dentro un figlio-elemento. Con <span>{a.purchases}</span>
+                        seguito da testo "acquisti" fuori dallo span, nessun nodo avrebbe
+                        contenuto la stringa intera "3 acquisti" da trovare.
+                      */}
+                      <span className="tnum">{a.purchases} acquisti</span>
+                      {' · fase '}
+                      {a.phase}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={select.isPending}
+                    onClick={() => resume(a.id)}
+                    aria-label={`Riprendi ${a.label}`}
+                    className="ml-auto min-h-11 shrink-0 rounded-full bg-accent px-4 font-bold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+                  >
+                    Riprendi
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      ) : (
-        <ul className="mt-4 space-y-2">
-          {(auctions.data ?? []).map((a) => (
-            <li key={a.id} className="flex items-center gap-4 border border-line p-4">
-              <div className="min-w-0">
-                <p className="font-bold">
-                  {a.label}
-                  {a.selected ? (
-                    // Parita' con la home Thymeleaf (che segna la riga con la classe
-                    // CSS "sel"), ma raggiungibile anche da chi ascolta: senza questo
-                    // testo React non diceva MAI quale asta fosse quella aperta — un
-                    // difetto che si aggiunge al critico qui sopra, perche' senza
-                    // saperlo e' facile premere "Nuova asta" credendo che nessuna
-                    // asta sia in corso.
-                    <span className="ml-2 text-xs font-bold text-accent">In corso</span>
-                  ) : null}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {/* .tnum: la data si confronta riga per riga in colonna, come i
-                      numeri qui accanto — senza cifre tabulari non si allinea. */}
-                  <span className="tnum">
-                    {a.lastWritten ? QUANDO.format(new Date(a.lastWritten)) : 'mai scritta'}
-                  </span>
-                  {' · '}
-                  {/*
-                    Il numero e "acquisti" stanno nello stesso nodo apposta: non e' una
-                    necessita' di accessibilita' (l'accessible name unisce comunque il
-                    testo di tutti i discendenti) ma di test — getByText di Testing
-                    Library concatena solo i nodi-testo DIRETTI di un elemento, saltando
-                    quelli dentro un figlio-elemento. Con <span>{a.purchases}</span>
-                    seguito da testo "acquisti" fuori dallo span, nessun nodo avrebbe
-                    contenuto la stringa intera "3 acquisti" da trovare.
-                  */}
-                  <span className="tnum">{a.purchases} acquisti</span>
-                  {' · fase '}
-                  {a.phase}
-                </p>
-              </div>
+
+        {/*
+          La colonna destra: l'asta aperta, in grande, oppure l'invito a
+          cominciarne una. Il nome, il conteggio acquisti e "In corso" NON sono
+          ripetuti qui parola per parola come nella riga-pillola sopra: sono la
+          stessa asta, quindi lo stesso testo isolato in un nodo apparirebbe due
+          volte nella pagina, e getByText (qui e nei test di questo file) si aspetta
+          un solo nodo per corrispondenza esatta. Impastare nome e conteggio dentro
+          una frase più lunga evita la duplicazione senza nascondere l'informazione.
+        */}
+        <aside>
+          {openAuction ? (
+            <div className="rounded-2xl border border-line-strong bg-surface p-6">
+              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                Asta aperta
+              </p>
+              <p className="mt-2 w-exp text-xl font-extrabold">
+                Stai continuando {openAuction.label}
+              </p>
+              <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <RoleBadge role={openAuction.phase} />
+                <span>fase {openAuction.phase}</span>
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Acquisti finora: <span className="tnum">{openAuction.purchases}</span>
+              </p>
               <button
                 type="button"
                 disabled={select.isPending}
-                onClick={() => resume(a.id)}
-                aria-label={`Riprendi ${a.label}`}
-                className="ml-auto min-h-11 bg-accent px-4 font-bold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+                onClick={() => resume(openAuction.id)}
+                className="mt-4 min-h-11 w-full rounded-full bg-positive px-4 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Riprendi
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+          ) : list.length === 0 ? (
+            // Il caso "nessuna asta in assoluto" e' gia' detto una volta, a sinistra:
+            // ripeterlo qui identico produrrebbe due nodi con lo stesso testo — di
+            // nuovo la stessa ambiguita' per getByText.
+            null
+          ) : (
+            <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
+          )}
+        </aside>
+      </div>
 
       {alertMessage ? (
         // role="alert", non un secondo role="status": l'unica live region
@@ -136,22 +257,6 @@ export function HomeRoute() {
           {alertMessage}
         </p>
       ) : null}
-
-      {/*
-        "Nuova asta" chiude PRIMA l'asta eventualmente aperta (vedi startNew) e solo
-        dopo va alle impostazioni: non crea niente da sola, l'asta nasce quando le
-        impostazioni vengono confermate. Creare qui lascerebbe dietro aste vuote per chi
-        si ferma alla schermata di conferma — e' gia' successo, ed e' il motivo per cui
-        il flusso e' fatto cosi'.
-      */}
-      <button
-        type="button"
-        onClick={startNew}
-        disabled={leave.isPending}
-        className="mt-6 inline-flex min-h-11 items-center border border-line-strong px-4 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        Nuova asta
-      </button>
     </AppShell>
   );
 }

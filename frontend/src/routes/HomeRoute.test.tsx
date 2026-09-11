@@ -14,6 +14,18 @@ const CARDS = [
     purchases: 200, phase: 'A', selected: false },
 ];
 
+// Le due carte dei test del ridisegno: una sola aperta, una sola chiusa — quanto
+// basta a verificare che la riga dica la fase giusta senza tirare in mezzo
+// l'intero elenco CARDS sopra.
+const OPEN_AUCTION = {
+  id: '2026-09-02', label: 'Lega No Name', lastWritten: '2026-09-02T13:08:41Z',
+  purchases: 3, phase: 'D', selected: true,
+};
+const CLOSED_AUCTION = {
+  id: '2025-08-30', label: 'Lega Passata', lastWritten: '2025-08-30T20:00:00Z',
+  purchases: 2, phase: 'A', selected: false,
+};
+
 const SETTINGS_CLOSED = {
   bidder: { bidTimerSeconds: 5, beepEnabled: true },
   participants: [{ id: 'anna', name: 'Anna', initial: 'A', me: true }],
@@ -80,7 +92,7 @@ describe('HomeRoute', () => {
 
   /**
    * E' la rotta radice: senza questi due rami, un caricamento lento o un errore di
-   * rete mostrano il titolo, un elenco vuoto e il controllo "nuova asta" — niente
+   * rete mostrano il titolo, un elenco vuoto e il controllo "crea asta" — niente
    * che dica cosa sta succedendo, a chi guarda o a chi ascolta.
    */
   it('mentre carica lo dice, invece di sembrare una lega senza aste', () => {
@@ -133,13 +145,13 @@ describe('HomeRoute', () => {
   });
 
   /**
-   * Il difetto critico della revisione finale: "Nuova asta" portava alle
+   * Il difetto critico della revisione finale: "Crea asta" portava alle
    * impostazioni di un'asta ancora aperta senza chiuderla — in sola lettura, senza
    * campo per il nome — e confermare rinominava i partecipanti di quella invece di
    * cominciarne una. Il bottone deve chiudere l'asta aperta PRIMA di andare alle
    * impostazioni, che a quel punto offrono il campo del nome.
    */
-  it('"nuova asta" chiude prima l\'asta aperta, cosi le impostazioni offrono il nome', async () => {
+  it('"crea asta" chiude prima l\'asta aperta, cosi le impostazioni offrono il nome', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const href = typeof input === 'string' ? input : input.toString();
       if (href.endsWith('/auctions')) return Promise.resolve(json(CARDS));
@@ -165,7 +177,7 @@ describe('HomeRoute', () => {
       </QueryProvider>,
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: /nuova asta/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /crea asta/i }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -199,7 +211,7 @@ describe('HomeRoute', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
 
-    await userEvent.click(await screen.findByRole('button', { name: /nuova asta/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /crea asta/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/errore interno/i);
   });
@@ -259,5 +271,72 @@ describe('HomeRoute', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  /**
+   * Nel mockup e' la card-eroe: un bersaglio solo, grande, in cima alla colonna.
+   * Il test non misura i pixel — misura che esista un comando con quel nome e che
+   * faccia la cosa giusta, cioe' lasciare l'asta aperta PRIMA di navigare (vedi
+   * startNew e il difetto critico che documenta).
+   */
+  it("il pulsante di creazione e' il piu' prominente, e porta alle impostazioni", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/auctions')) return Promise.resolve(json([OPEN_AUCTION]));
+      if (href.endsWith('/auctions/current/leave')) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      if (href.endsWith('/settings') && !init?.method) return Promise.resolve(json(SETTINGS_CLOSED));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
+
+    const router = createMemoryRouter(
+      [
+        { path: '/', element: <HomeRoute /> },
+        { path: '/impostazioni', element: <SettingsRoute /> },
+      ],
+      { initialEntries: ['/'] },
+    );
+    render(
+      <QueryProvider>
+        <RouterProvider router={router} />
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /crea asta/i }));
+
+    // L'asta aperta va lasciata (leave, chiamato una volta) PRIMA che le
+    // impostazioni compaiano: vederle, e vederle con il campo del nome, prova che
+    // la navigazione e' avvenuta solo dopo la conferma della richiesta di uscita.
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/auctions/current/leave'),
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+    expect(
+      fetchMock.mock.calls.filter(([input]) =>
+        (typeof input === 'string' ? input : input.toString()).endsWith('/auctions/current/leave'),
+      ),
+    ).toHaveLength(1);
+    expect(await screen.findByLabelText(/nome dell'asta/i)).toBeInTheDocument();
+  });
+
+  it("l'asta aperta si riconosce anche senza vedere il pallino", async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, CLOSED_AUCTION])));
+    renderHome();
+
+    // Il pallino colorato del mockup e' decorazione. Il fatto sta nel testo.
+    expect(await screen.findByText('In corso')).toBeInTheDocument();
+  });
+
+  it('ogni riga dice fase e acquisti, non solo il nome', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+
+    expect(await screen.findByText(/2 acquisti/)).toBeInTheDocument();
+    expect(screen.getByText(/fase/i)).toBeInTheDocument();
   });
 });
