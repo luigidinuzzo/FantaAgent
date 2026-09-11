@@ -105,14 +105,53 @@ describe('ScoringFieldset', () => {
    * La tabella non ha ragione di essere modificabile quando il motore la ignora
    * del tutto (task 18): {@code disabled} qui e' false (asta chiusa), eppure la
    * tabella deve risultare disattivata perche' {@code SCORING.defenceModifierEnabled}
-   * e' false.
+   * e' false — e con un motivo che dice PROPRIO questo, non uno generico che
+   * andrebbe bene anche per l'asta aperta.
    */
   it('disabilita la tabella delle soglie quando il modificatore e spento, anche ad asta chiusa', () => {
     render(
       <ScoringFieldset value={SCORING} onChange={() => {}} errors={{}} disabled={false} />,
     );
 
-    expect(screen.getByLabelText(/soglia da media, riga 1/i)).toBeDisabled();
+    const field = screen.getByLabelText(/soglia da media, riga 1/i);
+    expect(field).toBeDisabled();
+    expect(field).toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
+  });
+
+  /**
+   * Il checkbox e' l'UNICO modo di riaccendere il modificatore da questa
+   * schermata (task 18: prima esisteva solo sotto /legacy). Deve restare
+   * interagibile anche a modificatore spento — se lo bloccassimo insieme alla
+   * tabella che governa, non si potrebbe piu' riaccenderlo da qui — e deve
+   * raggiungere il salvataggio come ogni altro campo, con lo spread.
+   */
+  it('accende il modificatore di difesa dal suo checkbox, e lo manda al salvataggio', async () => {
+    const captured: { value: ScoringSection | null } = { value: null };
+    render(<Harness onCommit={(v) => { captured.value = v; }} />);
+
+    const checkbox = screen.getByRole('checkbox', { name: /modificatore di difesa attivo/i });
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).not.toBeDisabled();
+
+    await userEvent.click(checkbox);
+
+    expect(checkbox).toBeChecked();
+    expect(captured.value?.defenceModifierEnabled).toBe(true);
+  });
+
+  /**
+   * Ad asta aperta il checkbox si blocca come ogni altro campo della sezione
+   * (stesso {@code lockId} di "Difensori conteggiati" qui sopra), non perche'
+   * la tabella lo sia: e' "asta in corso" a bloccarlo, non "modificatore spento".
+   */
+  it('blocca il checkbox del modificatore ad asta aperta, e dice perche', () => {
+    render(
+      <ScoringFieldset value={SCORING} onChange={() => {}} errors={{}} disabled />,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: /modificatore di difesa attivo/i });
+    expect(checkbox).toBeDisabled();
+    expect(checkbox).toHaveAccessibleDescription(/asta in corso/i);
   });
 
   /**

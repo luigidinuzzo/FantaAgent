@@ -2,7 +2,7 @@ import { useId } from 'react';
 import type { ScoringSection } from '../api/types';
 import { FieldErrors } from './FieldErrors';
 import { NumberField } from './NumberField';
-import { ThresholdsTable } from './ThresholdsTable';
+import { ThresholdsTable, type ThresholdsTableDisabledReason } from './ThresholdsTable';
 
 /**
  * I bonus e i malus con cui si calcola quanto rende un giocatore.
@@ -14,10 +14,12 @@ import { ThresholdsTable } from './ThresholdsTable';
  * <p>Le soglie del modificatore di difesa ({@code value.thresholds}) hanno la loro
  * interfaccia in {@link ThresholdsTable} (task 18: righe che si aggiungono e si
  * tolgono, ordine crescente, bonus non decrescente — mostrati, non imposti). Questo
- * componente si limita a passargliele con lo spread, come ogni altro campo: la
- * disabilita anche quando il modificatore stesso e' spento
- * ({@code !value.defenceModifierEnabled}), non solo ad asta aperta, perche' una
- * tabella che il motore ignora non ha ragione di essere modificabile.
+ * componente si limita a passargliele con lo spread, come ogni altro campo. Il
+ * checkbox che accende e spegne il modificatore ({@code defenceModifierEnabled})
+ * vive qui accanto alla tabella che governa — prima di questo task esisteva solo
+ * sotto {@code /legacy} — ed e' lui stesso, non la tabella, a restare modificabile
+ * quando la tabella non lo e' piu' perche' il motore la ignora: altrimenti un
+ * modificatore spento per errore non si potrebbe piu' riaccendere da qui.
  */
 const NUMERIC: Array<{ key: keyof ScoringSection; label: string }> = [
   { key: 'assist', label: 'Assist' },
@@ -60,10 +62,16 @@ export function ScoringFieldset({
   const baseId = useId();
   const groupErrorsId = `${baseId}-group`;
   const lockId = `${baseId}-lock`;
-  // Ad asta aperta e' bloccata come ogni altro campo qui; a modificatore spento
-  // e' bloccata anche ad asta chiusa, perche' il motore la ignora del tutto
-  // (ScoringSettings.toScoringRules) e non ha senso lasciarla modificabile.
-  const thresholdsDisabled = disabled || !value.defenceModifierEnabled;
+  // Le due cause sono distinte apposta (non un OR appiattito in un booleano):
+  // ThresholdsTable deve poter dire ALLA PERSONA quale delle due si applica.
+  // "Asta in corso" vince quando entrambe valgono, stessa priorita' degli altri
+  // campi qui sotto (disabled ? lockId : ...): e' la causa che disabilita anche
+  // il checkbox del modificatore, quindi e' anche la piu' "esterna" delle due.
+  const thresholdsDisabledReason: ThresholdsTableDisabledReason | null = disabled
+    ? 'auction-open'
+    : !value.defenceModifierEnabled
+      ? 'modifier-off'
+      : null;
 
   // La sola chiave davvero sintetica (vedi il commento su isGeneralKey) si
   // accumula in questo elenco unico e resta descritta dal fieldset, non da un
@@ -180,12 +188,31 @@ export function ScoringFieldset({
       </div>
 
       <div className="mt-4">
-        <ThresholdsTable
-          value={value.thresholds}
-          onChange={(thresholds) => onChange({ ...value, thresholds })}
-          disabled={thresholdsDisabled}
-          errors={errors}
-        />
+        {/* Il checkbox resta interagibile anche a modificatore spento — solo
+            "asta in corso" lo blocca, come ogni altro campo qui — perche' e'
+            lui stesso l'unico modo di riaccenderlo: se lo disabilitassimo
+            insieme alla tabella, un modificatore spento non si potrebbe piu'
+            riaccendere da questa schermata. */}
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.defenceModifierEnabled}
+            disabled={disabled}
+            aria-describedby={disabled ? lockId : undefined}
+            onChange={(e) => onChange({ ...value, defenceModifierEnabled: e.target.checked })}
+            className="h-11 w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          />
+          Modificatore di difesa attivo
+        </label>
+
+        <div className="mt-2">
+          <ThresholdsTable
+            value={value.thresholds}
+            onChange={(thresholds) => onChange({ ...value, thresholds })}
+            disabledReason={thresholdsDisabledReason}
+            errors={errors}
+          />
+        </div>
       </div>
 
       <FieldErrors id={groupErrorsId} errors={generalErrors} />

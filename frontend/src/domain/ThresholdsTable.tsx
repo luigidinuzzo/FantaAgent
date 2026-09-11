@@ -8,6 +8,20 @@ function errorsFor(errors: Record<string, string[]>, key: string): string[] {
 }
 
 /**
+ * Perche' la tabella e' disattivata — le due cause sono distinte apposta, non
+ * un solo booleano: chi ascolta merita di sapere QUALE si applica, non solo che
+ * una delle due si applica (vedi {@code REASON_TEXT} sotto).
+ */
+export type ThresholdsTableDisabledReason = 'auction-open' | 'modifier-off';
+
+const REASON_TEXT: Record<ThresholdsTableDisabledReason, string> = {
+  'auction-open':
+    'Asta in corso: le soglie sono bloccate, perché cambiarle riscriverebbe i numeri con cui una rosa già pagata era stata valutata.',
+  'modifier-off':
+    'Il modificatore di difesa non è attivo: queste soglie non hanno alcun effetto sul calcolo, quindi non si possono modificare da qui.',
+};
+
+/**
  * La tabella del modificatore di difesa: da questa media in su, questo bonus.
  *
  * <p>Il validatore ({@code ScoringSettingsValidator}, task 16) impone due regole su
@@ -25,18 +39,24 @@ function errorsFor(errors: Record<string, string[]>, key: string): string[] {
  * controllato a mano: la media e' tipicamente un decimale ("6,75") e il bonus della prima
  * riga puo' essere negativo, gli stessi due casi per cui NumberField esiste (vedi il suo
  * docstring).
+ *
+ * <p>{@code disabledReason} e' {@code null} quando la tabella e' modificabile, o una
+ * delle due cause quando non lo e'. Non e' un booleano piu' un motivo separato — che
+ * potrebbe disaccordarsi (disabilitata ma senza motivo, o viceversa) — e' l'UNICA
+ * fonte di verita' per entrambi: {@code disabled = disabledReason !== null}.
  */
 export function ThresholdsTable({
   value,
   onChange,
-  disabled,
+  disabledReason,
   errors,
 }: {
   value: ScoringStep[];
   onChange: (next: ScoringStep[]) => void;
-  disabled: boolean;
+  disabledReason: ThresholdsTableDisabledReason | null;
   errors: Record<string, string[]>;
 }) {
+  const disabled = disabledReason !== null;
   const baseId = useId();
   const lockId = `${baseId}-lock`;
   const tableErrorsId = `${baseId}-table`;
@@ -48,16 +68,9 @@ export function ThresholdsTable({
 
   return (
     <div>
-      {disabled ? (
-        // Il "perche'" e' un fatto sempre vero indipendentemente dalla causa
-        // effettiva: ScoringFieldset appiattisce "asta in corso" e "modificatore
-        // spento" in questo solo booleano prima di passarlo (a differenza dei
-        // suoi altri campi, disabilitati per la sola causa "asta in corso").
-        // Il testo non punta quindi a UNA causa specifica, che sarebbe falsa
-        // nell'altro caso.
+      {disabledReason !== null ? (
         <p id={lockId} className="mb-2 text-sm text-muted-foreground">
-          Le soglie contano solo quando il modificatore di difesa è attivo, e non si
-          possono modificare a asta aperta: qui non hanno effetto immediato.
+          {REASON_TEXT[disabledReason]}
         </p>
       ) : null}
 

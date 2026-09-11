@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import type { ScoringStep } from '../api/types';
-import { ThresholdsTable } from './ThresholdsTable';
+import { ThresholdsTable, type ThresholdsTableDisabledReason } from './ThresholdsTable';
 
 const STEPS: ScoringStep[] = [
   { minAverage: 0, bonus: 0 },
@@ -14,12 +14,12 @@ const STEPS: ScoringStep[] = [
 function Harness({
   initial,
   errors,
-  disabled,
+  disabledReason,
   onCommit,
 }: {
   initial: ScoringStep[];
   errors?: Record<string, string[]>;
-  disabled?: boolean;
+  disabledReason?: ThresholdsTableDisabledReason | null;
   onCommit?: (v: ScoringStep[]) => void;
 }) {
   const [value, setValue] = useState(initial);
@@ -30,7 +30,7 @@ function Harness({
         setValue(next);
         onCommit?.(next);
       }}
-      disabled={disabled ?? false}
+      disabledReason={disabledReason ?? null}
       errors={errors ?? {}}
     />
   );
@@ -91,7 +91,7 @@ describe('ThresholdsTable', () => {
   });
 
   it('a modificatore disattivo la tabella e disabilitata e dice perche', () => {
-    render(<Harness initial={STEPS} disabled />);
+    render(<Harness initial={STEPS} disabledReason="modifier-off" />);
 
     const minField = screen.getByLabelText(/soglia da media, riga 1/i);
     const bonusField = screen.getByLabelText(/bonus, riga 1/i);
@@ -101,8 +101,24 @@ describe('ThresholdsTable', () => {
     expect(screen.getByRole('button', { name: /togli riga 1/i })).toBeDisabled();
 
     // Il perche' e' raggiungibile da chi ascolta, non solo da chi vede: e' la
-    // descrizione accessibile del campo, non solo un testo a schermo.
-    expect(minField).toHaveAccessibleDescription(/modificatore di difesa/i);
+    // descrizione accessibile del campo, non solo un testo a schermo. Dice
+    // QUALE delle due cause si applica ("modificatore"), non una frase che
+    // vale per entrambe indistintamente.
+    expect(minField).toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
+  });
+
+  /**
+   * L'altra causa possibile ha un testo diverso e distinguibile: chi ascolta deve
+   * poter sapere che qui e' l'asta, non il modificatore, a bloccare la tabella —
+   * altrimenti "disattivata e dice perche'" direbbe sempre la stessa mezza verita'.
+   */
+  it("ad asta aperta la tabella e disabilitata con un motivo diverso da quello del modificatore spento", () => {
+    render(<Harness initial={STEPS} disabledReason="auction-open" />);
+
+    const minField = screen.getByLabelText(/soglia da media, riga 1/i);
+    expect(minField).toBeDisabled();
+    expect(minField).toHaveAccessibleDescription(/asta in corso/i);
+    expect(minField).not.toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
   });
 
   /**
