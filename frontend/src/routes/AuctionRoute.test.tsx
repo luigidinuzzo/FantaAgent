@@ -1026,4 +1026,98 @@ describe('AuctionRoute', () => {
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/annullato/i));
   });
+
+  // Difetto grave (revisione finale): la route leggeva sempre usePhasePlayers(0),
+  // senza controllo di paginazione. Un giocatore classificato 26esimo o oltre
+  // nella fase aperta non era raggiungibile da nessun clic, quindi non valutabile
+  // ne' acquistabile dalla SPA. L'API portava gia' offset/total/hasPrevious/hasNext
+  // in PhasePageResponse: mancava solo la lettura.
+  describe('la paginazione della fase', () => {
+    const PAGE1 = { ...PHASE, total: 40, hasPrevious: false, hasNext: true };
+    const PAGE2 = {
+      rows: [
+        {
+          id: 'p3', name: 'Giocatore Tre', team: 'CCC', role: 'P', listPrice: 1,
+          maxBid: 40, expectedPrice: 12, margin: 3, fantamediaAttesa: 5.9, titolaritaPercent: 60,
+        },
+      ],
+      offset: 25, pageSize: 25, total: 40, hasPrevious: true, hasNext: false,
+    };
+
+    function pageFromHref(href: string): unknown {
+      const offset = new URL(href, 'http://localhost').searchParams.get('offset');
+      return offset === '25' ? PAGE2 : PAGE1;
+    }
+
+    it('un secondo giocatore ranked oltre la prima pagina e ora raggiungibile sfogliando', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      const fetchMock = vi.fn((input: RequestInfo | URL) => {
+        const href = typeof input === 'string' ? input : input.toString();
+        if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(pageFromHref(href)));
+        if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 50)));
+        if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+        return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      // Prima pagina: seleziona Giocatore Uno, la sua valutazione si carica.
+      await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(50));
+      expect(screen.queryByText('Giocatore Tre')).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /pagina successiva/i }));
+
+      // Giocatore Tre, invisibile a offset 0, e' ora in tabella: e' la prova che
+      // sfogliare raggiunge davvero il resto della fase.
+      expect(await screen.findByText('Giocatore Tre')).toBeInTheDocument();
+      // La selezione precedente (e la sua valutazione) non e' stata disturbata
+      // dal cambio pagina: cambiare pagina non e' selezionare un altro giocatore.
+      expect(screen.getByLabelText('Prezzo')).toHaveValue(50);
+    });
+
+    it('cambiare fase riporta la paginazione a pagina 1', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      const requestedOffsets: string[] = [];
+      let phaseChanged = false;
+      const fetchMock = vi.fn((input: RequestInfo | URL) => {
+        const href = typeof input === 'string' ? input : input.toString();
+        if (href.includes('/players/phase')) {
+          const offset = new URL(href, 'http://localhost').searchParams.get('offset') ?? '';
+          requestedOffsets.push(offset);
+          return Promise.resolve(jsonResponse(offset === '25' ? PAGE2 : PAGE1));
+        }
+        if (href.endsWith('/state')) {
+          return Promise.resolve(jsonResponse(phaseChanged ? { ...STATE, currentPhase: 'D' } : STATE));
+        }
+        if (href.endsWith('/phase')) {
+          phaseChanged = true;
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      await userEvent.click(await screen.findByRole('button', { name: /pagina successiva/i }));
+      await waitFor(() => expect(requestedOffsets).toContain('25'));
+
+      await userEvent.click(screen.getByRole('button', { name: /^difensori$/i }));
+
+      // L'ultima richiesta di fase dopo il cambio deve tornare a offset 0, non
+      // restare appesa a 25 — l'offset della fase precedente non significa nulla
+      // in quella nuova.
+      await waitFor(() => expect(requestedOffsets[requestedOffsets.length - 1]).toBe('0'));
+    });
+  });
 });

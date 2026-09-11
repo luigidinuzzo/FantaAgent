@@ -18,6 +18,7 @@ import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { EmptyState } from '../domain/EmptyState';
 import { LeagueBoard } from '../domain/LeagueBoard';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
+import { PhasePager } from '../domain/PhasePager';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerTable } from '../domain/PlayerTable';
 import { UndoLastButton } from '../domain/UndoLastButton';
@@ -27,6 +28,7 @@ export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bidderOpen, setBidderOpen] = useState(false);
+  const [pageOffset, setPageOffset] = useState(0);
   const bidderHintId = useId();
 
   // Un tick al secondo: serve solo a far invecchiare il "da quanto tempo".
@@ -36,7 +38,19 @@ export function AuctionRoute() {
   }, []);
 
   const state = useAuctionState();
-  const phase = usePhasePlayers(0);
+  const currentPhase = state.data?.currentPhase;
+  // Un cambio fase riparte da pagina 1: l'offset della fase precedente non ha
+  // alcun significato in quella nuova, e senza questo effetto un salto a una
+  // pagina profonda (es. offset 75 nei portieri) resterebbe impostato entrando
+  // nei difensori, che magari non arrivano nemmeno a 75 giocatori — la tabella
+  // apparirebbe vuota senza che nulla lo spieghi. Non tocca selectedId: la
+  // selezione (e il battitore) sono un'altra fase concettualmente, e restano
+  // intatti finche' non e' l'utente a chiuderli.
+  useEffect(() => {
+    setPageOffset(0);
+  }, [currentPhase]);
+
+  const phase = usePhasePlayers(pageOffset);
   const valuation = useValuation(selectedId);
   const assign = useAssign();
   const changePhase = useChangePhase();
@@ -275,6 +289,20 @@ export function AuctionRoute() {
               onSelect={setSelectedId}
               disabled={bidderOpen}
             />
+            {/* Cambiare pagina non tocca selectedId: un giocatore scelto in una
+                pagina precedente resta scelto (valutazione e battitore intatti,
+                se aperto) anche se la sua riga scorre fuori vista sfogliando. */}
+            {phase.data ? (
+              <PhasePager
+                offset={phase.data.offset}
+                pageSize={phase.data.pageSize}
+                total={phase.data.total}
+                hasPrevious={phase.data.hasPrevious}
+                hasNext={phase.data.hasNext}
+                onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
+                onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
+              />
+            ) : null}
           </div>
         </div>
 
