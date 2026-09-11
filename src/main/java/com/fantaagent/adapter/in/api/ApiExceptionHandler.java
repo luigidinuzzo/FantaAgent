@@ -113,11 +113,10 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     ProblemDetail invalidSettings(InvalidSettingsException e) {
         ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-settings",
                 "Alcune impostazioni non sono valide.");
-        // Per sezione e non per campo: i validatori restituiscono frasi in italiano, non
-        // coppie campo-messaggio, e la loro firma serve anche a SettingsController, la
-        // schermata Thymeleaf su /impostazioni che questa tappa lascia intatta. Nella
-        // tappa 6 i validatori crescono un metodo per-campo e questo diventa il suo
-        // appiattimento.
+        // Per campo, non per sezione: i tre validatori espongono validateByField
+        // apposta (task 16), e SettingsApi ne unisce le mappe. validate() — le sole
+        // frasi, senza le chiavi — resta per SettingsController, la schermata
+        // Thymeleaf su /legacy che questa tappa lascia intatta.
         problem.setProperty("errors", e.errors());
         return problem;
     }

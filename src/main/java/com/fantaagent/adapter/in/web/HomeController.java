@@ -6,6 +6,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.Instant;
@@ -25,6 +26,7 @@ import java.util.Locale;
  * datato ancora libero.
  */
 @Controller
+@RequestMapping("/legacy")
 public class HomeController {
 
     private static final DateTimeFormatter WHEN =
@@ -37,7 +39,7 @@ public class HomeController {
         this.runtime = runtime;
     }
 
-    @GetMapping("/")
+    @GetMapping
     public String home(Model model) {
         model.addAttribute("auctions", cards());
         return "home";
@@ -46,7 +48,7 @@ public class HomeController {
     @PostMapping("/aste/riprendi")
     public String resume(@RequestParam String auctionId) {
         runtime.select(auctionId);
-        return "redirect:/asta";
+        return "redirect:/legacy/asta";
     }
 
     /**
@@ -72,7 +74,7 @@ public class HomeController {
     @PostMapping("/aste/esci")
     public String leave() {
         runtime.deselect();
-        return "redirect:/";
+        return "redirect:/legacy";
     }
 
     @PostMapping("/aste/nuova")
@@ -82,7 +84,7 @@ public class HomeController {
         // dell'asta in corso — in sola lettura, senza campo per il nome — rinominandone
         // i partecipanti invece di crearne una nuova.
         runtime.deselect();
-        return "redirect:/impostazioni";
+        return "redirect:/legacy/impostazioni";
     }
 
     private List<ViewModels.AuctionCard> cards() {

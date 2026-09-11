@@ -15,7 +15,7 @@ const SETTINGS = {
   scoring: {
     defenceModifierEnabled: false,
     defendersCounted: 3,
-    thresholds: [{ minAverage: 0, bonus: 0 }],
+    thresholds: [{ minAverage: 0, bonus: 0 }, { minAverage: 4, bonus: 1 }],
     goalBonus: { P: 0, D: 0, C: 0, A: 0 },
     assist: 1, penaltyScored: 3, penaltyMissed: -3, penaltySaved: 3,
     yellowCard: -0.5, redCard: -1, goalConceded: -1, cleanSheet: 1,
@@ -68,7 +68,7 @@ describe('SettingsRoute', () => {
     expect(await screen.findByLabelText(/nome dell'asta/i)).toBeInTheDocument();
   });
 
-  it('mostra gli errori accanto alla loro sezione, e ne annuncia il conto una volta sola', async () => {
+  it('mostra gli errori accanto al loro campo, e ne annuncia il conto una volta sola', async () => {
     renderSettings(() =>
       Promise.resolve(
         jsonResponse(
@@ -76,10 +76,8 @@ describe('SettingsRoute', () => {
             type: 'https://fantaagent.local/problems/invalid-settings',
             detail: 'Alcune impostazioni non sono valide.',
             errors: {
-              auction: [],
               participants: ["L'iniziale «A» è usata da più partecipanti."],
-              scoring: ['Riga 2: la media non può essere negativa.'],
-              bidder: [],
+              'thresholds[1]': ['Riga 2: la media non può essere negativa.'],
             },
           },
           422,
@@ -90,13 +88,18 @@ describe('SettingsRoute', () => {
     await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
 
     expect(await screen.findByText(/l'iniziale «a» è usata/i)).toBeInTheDocument();
-    expect(screen.getByText(/riga 2/i)).toBeInTheDocument();
+    // Match esatto: il riassunto in fondo contiene anch'esso "riga 2" (nella sua
+    // forma «riga 2 della tabella soglie»), e un match generico su /riga 2/i
+    // troverebbe entrambi i nodi.
+    expect(screen.getByText('Riga 2: la media non può essere negativa.')).toBeInTheDocument();
 
     const alerts = screen.getAllByRole('alert');
     expect(alerts).toHaveLength(1);
     expect(alerts[0]).toHaveTextContent(/2 errori/i);
     expect(alerts[0]).toHaveTextContent(/partecipanti/i);
-    expect(alerts[0]).toHaveTextContent(/punteggio/i);
+    // Il riassunto ora nomina il CAMPO, non la sezione "punteggio" di prima: le
+    // soglie non hanno un campo proprio, quindi la riga della tabella.
+    expect(alerts[0]).toHaveTextContent(/riga 2 della tabella/i);
   });
 
   it('ad asta aperta i parametri di punteggio sono bloccati, e dice perche', async () => {
@@ -119,11 +122,12 @@ describe('SettingsRoute', () => {
   });
 
   /**
-   * Il valore delle soglie non ha un editor in questa tappa (task 6 gliene dara' uno):
-   * un salvataggio deve rispedirlo al server tale e quale, non appiattirlo o perderlo,
-   * o il round-trip che questa tappa promette silenziosamente non regge.
+   * Le soglie non toccate devono tornare al server tali e quali, non appiattite o
+   * perse: {@link ThresholdsTable} (task 18) le legge e le scrive con lo spread
+   * come ogni altro campo, ma nessun test lo verifica se non si preme "Salva"
+   * senza avere aperto quello specifico modulo.
    */
-  it('rispedisce le soglie del modificatore di difesa invariate', async () => {
+  it('rispedisce le soglie del modificatore di difesa non toccate, invariate', async () => {
     let sentBody: unknown = null;
     const fetchMock = renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
     fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
@@ -144,6 +148,49 @@ describe('SettingsRoute', () => {
     expect((sentBody as { scoring: { thresholds: unknown } }).scoring.thresholds).toEqual(
       SETTINGS.scoring.thresholds,
     );
+  });
+
+  /**
+   * Il caso che il test sopra non copre: la tabella adesso ha un editor (task 18),
+   * quindi un salvataggio deve mandare la riga COME L'UTENTE L'HA MODIFICATA, non
+   * il valore arrivato dal server. Il modificatore deve essere attivo perche' la
+   * tabella sia modificabile — altrimenti {@code ScoringFieldset} la disabilita.
+   */
+  it("invia la soglia modificata dall'utente, non quella arrivata dal server", async () => {
+    const settingsWithModifierOn = {
+      ...SETTINGS,
+      scoring: { ...SETTINGS.scoring, defenceModifierEnabled: true },
+    };
+    let sentBody: unknown = null;
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/settings') && init?.method === 'PUT') {
+        sentBody = JSON.parse(init.body as string);
+        return Promise.resolve(jsonResponse({ auctionId: null }));
+      }
+      if (href.endsWith('/settings')) return Promise.resolve(jsonResponse(settingsWithModifierOn));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <QueryProvider>
+        <MemoryRouter>
+          <SettingsRoute />
+        </MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const field = await screen.findByLabelText(/soglia da media, riga 1/i);
+    await userEvent.clear(field);
+    await userEvent.type(field, '6.75');
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }));
+
+    await waitFor(() => expect(sentBody).not.toBeNull());
+    expect(
+      (sentBody as { scoring: { thresholds: Array<{ minAverage: number }> } }).scoring
+        .thresholds[0].minAverage,
+    ).toBe(6.75);
   });
 
   /**
@@ -185,10 +232,7 @@ describe('SettingsRoute', () => {
             type: 'https://fantaagent.local/problems/invalid-settings',
             detail: 'Alcune impostazioni non sono valide.',
             errors: {
-              auction: ['Primo problema sul nome.', 'Secondo problema sul nome.'],
-              participants: [],
-              scoring: [],
-              bidder: [],
+              auctionName: ['Primo problema sul nome.', 'Secondo problema sul nome.'],
             },
           },
           422,
@@ -254,7 +298,7 @@ describe('SettingsRoute', () => {
    * {@code errors.participants} una STRINGA invece di un array (un backend rotto,
    * un proxy che lo trasforma) dava `errors.participants.length === 4` (la
    * lunghezza della stringa "boom"), un riassunto «4 errori: 4 in partecipanti» e
-   * poi SectionErrors che chiama `.map` su una stringa — un crash del render,
+   * poi FieldErrors che chiama `.map` su una stringa — un crash del render,
    * ancora peggio del silenzio che questo stesso meccanismo dovrebbe evitare.
    */
   it('un corpo con una sezione non a forma di array non crasha, e dice comunque qualcosa', async () => {
@@ -282,9 +326,10 @@ describe('SettingsRoute', () => {
   });
 
   /**
-   * Una chiave sconosciuta (non una delle quattro fisse) non deve comparire nel
-   * riassunto: prima si prendevano le chiavi dalla RISPOSTA, e SECTION_NAMES[k] su
-   * una chiave che non conosce restituisce undefined — «2 in undefined».
+   * Le chiavi sono di campo e non si conoscono tutte in anticipo (task 16): una
+   * chiave che {@code fieldLabel} non riconosce (un campo futuro, un typo) deve
+   * comunque poter comparire nel riassunto — mostrando se stessa, non
+   * "undefined" come farebbe una mappa fissa indicizzata su una chiave assente.
    */
   it('una chiave sconosciuta nel corpo non finisce nel riassunto come "undefined"', async () => {
     renderSettings(() =>
@@ -294,7 +339,7 @@ describe('SettingsRoute', () => {
             type: 'https://fantaagent.local/problems/invalid-settings',
             detail: 'Alcune impostazioni non sono valide.',
             errors: {
-              auction: [], participants: ['Serve un nome unico.'], scoring: [], bidder: [],
+              participants: ['Serve un nome unico.'],
               sorpresa: ['non dovrebbe apparire'],
             },
           },

@@ -63,21 +63,22 @@ class SettingsApiTest {
     }
 
     /**
-     * Le quattro chiavi ci sono sempre, anche quando sono vuote: il client non deve
-     * distinguere "nessun errore in questa sezione" da "questa sezione non c'e'".
+     * Le chiavi sono ora di campo, non di sezione: un corpo altrimenti valido con
+     * solo il timer fuori intervallo produce solo la chiave di quel campo, non le
+     * quattro chiavi fisse di sezione che il vecchio contratto teneva sempre presenti.
      */
     @Test
-    void unTimerImpossibileTornaSottoLaChiaveDelBattitore() throws Exception {
+    void unTimerImpossibileTornaSottoLaChiaveDelCampo() throws Exception {
         mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
                         .content(SettingsBodies.valid("Prova", 500)))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.type")
                         .value("https://fantaagent.local/problems/invalid-settings"))
-                .andExpect(jsonPath("$.errors.bidder").isArray())
-                .andExpect(jsonPath("$.errors.bidder[0]").isString())
-                .andExpect(jsonPath("$.errors.participants").isArray())
-                .andExpect(jsonPath("$.errors.scoring").isArray())
-                .andExpect(jsonPath("$.errors.auction").isArray());
+                .andExpect(jsonPath("$.errors.bidTimerSeconds").isArray())
+                .andExpect(jsonPath("$.errors.bidTimerSeconds[0]").isString())
+                .andExpect(jsonPath("$.errors.participants").doesNotExist())
+                .andExpect(jsonPath("$.errors.defendersCounted").doesNotExist())
+                .andExpect(jsonPath("$.errors.auctionName").doesNotExist());
     }
 
     /**
@@ -89,8 +90,8 @@ class SettingsApiTest {
         mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
                         .content(SettingsBodies.valid("", 5)))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.errors.auction[0]").isString())
-                .andExpect(jsonPath("$.errors.bidder").isEmpty());
+                .andExpect(jsonPath("$.errors.auctionName[0]").isString())
+                .andExpect(jsonPath("$.errors.bidTimerSeconds").doesNotExist());
     }
 
     @Test

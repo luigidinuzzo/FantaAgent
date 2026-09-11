@@ -21,7 +21,7 @@
 <th:block xmlns:th="http://www.thymeleaf.org">
 
 <div id="phaseTable" th:fragment="phaseTable"
-     th:hx-get="@{/fragments/phase-players(offset=${phasePage.offset})}"
+     th:hx-get="@{/legacy/fragments/phase-players(offset=${phasePage.offset})}"
      hx-trigger="fantaStateChanged from:body" hx-swap="outerHTML">
   <h3>GIOCATORI FASE <span th:text="${phase}">D</span>
     <span class="dim">— per quotazione Fantacalcio.it</span>
@@ -54,12 +54,12 @@
   */-->
   <div class="phase-nav" th:unless="${phasePage.rows.isEmpty()}">
     <button type="button" th:disabled="${!phasePage.hasPrevious()}"
-            th:hx-get="@{/fragments/phase-players(offset=${phasePage.previousOffset()})}"
+            th:hx-get="@{/legacy/fragments/phase-players(offset=${phasePage.previousOffset()})}"
             hx-target="#phaseTable" hx-swap="outerHTML">← precedenti</button>
     <span class="dim">pagina <b th:text="${phasePage.pageNumber()}">1</b>
       di <span th:text="${phasePage.pageCount()}">13</span></span>
     <button type="button" th:disabled="${!phasePage.hasNext()}"
-            th:hx-get="@{/fragments/phase-players(offset=${phasePage.nextOffset()})}"
+            th:hx-get="@{/legacy/fragments/phase-players(offset=${phasePage.nextOffset()})}"
             hx-target="#phaseTable" hx-swap="outerHTML">successivi →</button>
   </div>
 </div>
@@ -75,14 +75,14 @@
     <td>
       <!--/* Due modi, due situazioni diverse: "batti" quando il giocatore va all'asta e
            il prezzo lo decidera' la stanza; il form qui accanto quando il prezzo e'
-           gia' noto e resta solo da registrarlo. Entrambi finiscono su /assign. */-->
+           gia' noto e resta solo da registrarlo. Entrambi finiscono su /legacy/assign. */-->
       <button type="button" class="bidder-open bidder-open-row" title="batti l'asta"
-              th:hx-get="@{/asta/battitore(playerId=${r.player.id})}"
+              th:hx-get="@{/legacy/asta/battitore(playerId=${r.player.id})}"
               hx-target="#bidderMount" hx-swap="innerHTML">⏱ batti</button>
-      <!--/* Stesso /assign dell'articolo di analisi: identica validazione, identici
+      <!--/* Stesso /legacy/assign dell'articolo di analisi: identica validazione, identici
            messaggi di rifiuto in italiano — nessuna seconda via per registrare un
            acquisto. */-->
-      <form class="assign-row" hx-post="/assign" hx-target="#main" hx-swap="outerHTML">
+      <form class="assign-row" hx-post="/legacy/assign" hx-target="#main" hx-swap="outerHTML">
         <input type="hidden" name="playerId" th:value="${r.player.id}">
         <input type="number" name="price" min="1" class="assign-price"
                th:value="${r.recommendation.maxBid}">

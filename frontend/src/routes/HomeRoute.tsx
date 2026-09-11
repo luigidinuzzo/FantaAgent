@@ -20,16 +20,26 @@ export function HomeRoute() {
   const leave = useLeaveAuction();
   const navigate = useNavigate();
 
-  // Un solo alert, mai due insieme: al piu' una delle due mutazioni e' in errore
-  // in un dato momento, ma comporle in un'unica variabile tiene la disciplina
-  // esplicita invece di lasciarla implicita nel fatto che i due gesti si
-  // escludono a vicenda.
-  const alertMessage =
+  // Un fallimento della lista (background refetch, indipendente da qualunque
+  // gesto) e un fallimento di una mutazione (select/leave, appena tentata
+  // dall'utente) sono due condizioni indipendenti — niente le esclude a
+  // vicenda come invece accade fra select e leave. Comporle in un'unica
+  // variabile, con l'errore di mutazione che vince perche' e' la risposta al
+  // gesto piu' recente, e' quello che tiene un solo role="alert" alla volta:
+  // due live region che parlano nello stesso istante si sovrappongono, e uno
+  // screen reader ne perde una.
+  const loadErrorMessage = auctions.isError
+    ? auctions.error instanceof ProblemError
+      ? auctions.error.detail
+      : "Errore di rete: l'elenco delle aste non si è caricato. Riprova."
+    : null;
+  const mutationErrorMessage =
     select.error instanceof ProblemError
       ? select.error.detail
       : leave.error instanceof ProblemError
         ? leave.error.detail
         : null;
+  const alertMessage = mutationErrorMessage ?? loadErrorMessage;
 
   function resume(id: string) {
     select.mutate(id, { onSuccess: () => navigate('/asta') });
@@ -57,11 +67,9 @@ export function HomeRoute() {
       {auctions.isLoading ? (
         <p className="mt-4 text-sm text-muted-foreground">Carico le aste…</p>
       ) : auctions.isError ? (
-        <p role="alert" className="mt-4 text-sm font-bold text-destructive">
-          {auctions.error instanceof ProblemError
-            ? auctions.error.detail
-            : "Errore di rete: l'elenco delle aste non si è caricato. Riprova."}
-        </p>
+        // Nessun testo qui: il messaggio (loadErrorMessage) vive nell'unico
+        // role="alert" in fondo alla pagina, non duplicato in due posti.
+        null
       ) : (auctions.data ?? []).length === 0 ? (
         <div className="mt-4">
           <EmptyState>

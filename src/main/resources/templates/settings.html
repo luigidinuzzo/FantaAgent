@@ -14,7 +14,7 @@
     un'asta invece che iniziarne una), ad asta aperta si torna all'asta. La schermata
     d'asta e' l'unica da cui si raggiunge tutto il resto.
   */-->
-  <a class="back" th:href="${setup} ? @{/} : @{/asta}"
+  <a class="back" th:href="${setup} ? @{/legacy} : @{/legacy/asta}"
      th:text="${setup} ? '← indietro alla home' : '← indietro all\'asta'">← indietro</a>
 
   <h1 th:text="${setup} ? 'Prepara la nuova asta' : 'Impostazioni'">Impostazioni</h1>
@@ -53,7 +53,7 @@
     <ul><li th:each="e : ${errors}" th:text="${e}">errore</li></ul>
   </div>
 
-  <form method="post" th:action="@{/impostazioni}">
+  <form method="post" th:action="@{/legacy/impostazioni}">
 
     <h2 th:if="${setup}">NOME DELL'ASTA</h2>
     <p class="note" th:if="${setup}">

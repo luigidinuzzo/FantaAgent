@@ -20,6 +20,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Controller
+@RequestMapping("/legacy")
 public class AuctionController {
 
     private static final int TARGET_ROWS = 10;
@@ -39,7 +41,7 @@ public class AuctionController {
      * c'e' un'asta ripresa) proprio perché uno swap out-of-band può sostituire
      * solo un elemento che la risposta contiene davvero — se th:if lo rimuovesse
      * dal markup, un banner già mostrato non potrebbe più essere ripulito.
-     * La ricerca dal vivo (GET /fragments/main) non cambia stato e continua a
+     * La ricerca dal vivo (GET /legacy/fragments/main) non cambia stato e continua a
      * restituire il solo pannello principale.
      */
     private static final String UPDATE_VIEW = "fragments/update :: update";
@@ -79,7 +81,7 @@ public class AuctionController {
     @GetMapping("/asta")
     public String index(Model model) {
         if (!runtime.hasAuction()) {
-            return "redirect:/";
+            return "redirect:/legacy";
         }
         populateShell(model);
         model.addAttribute("panel", new ViewModels.MainPanel(List.of(), null, null));
@@ -89,7 +91,7 @@ public class AuctionController {
     @GetMapping("/fragments/main")
     public String main(@RequestParam(name = "cmd", defaultValue = "") String q, Model model) {
         // La ricerca non cambia stato: nessuna necessità di aggiornare status/board.
-        // Deve passare dallo stesso CommandParser di /command: appena l'utente digita
+        // Deve passare dallo stesso CommandParser di /legacy/command: appena l'utente digita
         // anche il prezzo ("bast 47") il termine di ricerca è solo "bast", altrimenti
         // la ricerca sul testo grezzo non trova nulla e il pannello di analisi — con
         // sopra il max bid — sparisce proprio mentre l'utente decide quanto offrire.
@@ -244,12 +246,13 @@ public class AuctionController {
     /**
      * Il popup del battitore per un giocatore, versione PRIVATA: porta con se' il max
      * bid, e va servita solo alla schermata d'asta sul portatile di chi conduce. La
-     * pagina proiettata usa /battitore/popup, che monta un modello senza valutazioni.
+     * pagina proiettata usa /legacy/battitore/popup, che monta un modello senza
+     * valutazioni.
      *
      * <p>Non cambia stato: il countdown e i
      * rilanci vivono interamente nel browser e non toccano il registro. Un rilancio non
      * e' un fatto dell'asta — solo l'aggiudicazione lo e', e quella passa dallo stesso
-     * /assign di sempre. Scrivere sul registro ad ogni tap significherebbe riempirlo di
+     * /legacy/assign di sempre. Scrivere sul registro ad ogni tap significherebbe riempirlo di
      * eventi che non e' possibile annullare in modo sensato.
      */
     @GetMapping("/asta/battitore")

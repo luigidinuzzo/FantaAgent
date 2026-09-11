@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
@@ -202,5 +202,62 @@ describe('HomeRoute', () => {
     await userEvent.click(await screen.findByRole('button', { name: /nuova asta/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/errore interno/i);
+  });
+
+  /**
+   * Difetto della revisione finale: il fallimento di una mutazione (select/leave)
+   * e il fallimento del refetch periodico della lista (refetchInterval, in
+   * QueryProvider) sono due condizioni indipendenti — niente le esclude a
+   * vicenda come invece accade fra select e leave. Un "Riprendi" fallito seguito
+   * da un refetch fallito rendeva due role="alert" insieme: due live region che
+   * parlano nello stesso istante si sovrappongono, e uno screen reader ne perde
+   * una.
+   */
+  it('un refetch della lista fallito dopo un Riprendi fallito non mostra due alert insieme', async () => {
+    let auctionsCalls = 0;
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/auctions')) {
+        auctionsCalls += 1;
+        if (auctionsCalls === 1) return Promise.resolve(json(CARDS));
+        return Promise.resolve(
+          json({ type: 'https://fantaagent.local/problems/internal-error',
+            detail: 'Errore interno del server.' }, 500),
+        );
+      }
+      if (href.includes('/select')) {
+        return Promise.resolve(
+          json({ type: 'https://fantaagent.local/problems/internal-error',
+            detail: 'Selezione fallita.' }, 500),
+        );
+      }
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderHome();
+
+      await user.click(await screen.findByRole('button', { name: /riprendi lega no name/i }));
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/selezione fallita/i));
+
+      // Il refetch periodico (refetchInterval 5s) fallisce a sua volta, e la
+      // query riprova una volta (retry: 1) prima di arrendersi. A piccoli
+      // passi, non un unico salto: react-query concatena una promise di
+      // ritardo fra un tentativo e il successivo, e un solo salto grande non
+      // da' occasione a quella catena di avanzare un anello alla volta.
+      for (let i = 0; i < 6; i++) {
+        // eslint-disable-next-line no-await-in-loop
+        await act(async () => {
+          vi.advanceTimersByTime(2_000);
+        });
+      }
+
+      await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(1));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

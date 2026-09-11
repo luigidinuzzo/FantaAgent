@@ -15,9 +15,9 @@
     destinazione.
   */-->
   <div class="nav">
-    <a th:href="@{/asta}">← indietro all'asta</a>
+    <a th:href="@{/legacy/asta}">← indietro all'asta</a>
     <!--/* Stesso endpoint del bottone sulla pagina proiettata. */-->
-    <a th:href="@{/battitore/esporta}">↓ esporta rose</a>
+    <a th:href="@{/legacy/battitore/esporta}">↓ esporta rose</a>
   </div>
 
   <h1>Riepilogo</h1>
@@ -47,7 +47,7 @@
                type="submit" solo dopo la conferma, non prima: se lo script manca,
                il fallimento è "il bottone non risponde", mai "un click rimuove
                l'acquisto in silenzio". */-->
-          <form method="post" th:action="@{/riepilogo/revoca}" th:if="${p.filled()}">
+          <form method="post" th:action="@{/legacy/riepilogo/revoca}" th:if="${p.filled()}">
             <input type="hidden" name="targetSeq" th:value="${p.seq}">
             <button type="button" class="revoke-btn" title="rimuovi">✕</button>
           </form>

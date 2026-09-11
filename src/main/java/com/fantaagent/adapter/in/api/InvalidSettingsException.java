@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Le impostazioni rifiutate, con gli errori raggruppati per sezione.
+ * Le impostazioni rifiutate, con gli errori raggruppati per campo (task 16: prima
+ * erano quattro sezioni fisse, ora sono le chiavi che {@code validateByField}
+ * restituisce, unite da {@code SettingsApi}).
  *
  * <p>Porta la mappa intera e non il primo errore: i validatori restituiscono l'elenco
  * completo per una ragione — riportarne uno per volta costringerebbe a tre giri per

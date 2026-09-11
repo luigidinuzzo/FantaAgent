@@ -115,7 +115,7 @@ class SettingsControllerTest {
      */
     private static MockHttpServletRequestBuilder form(String auctionName, String timerSeconds,
                                                       String initial1, String initial2) {
-        return post("/impostazioni")
+        return post("/legacy/impostazioni")
                 .param("auctionName", auctionName)
                 .param("defenceModifierEnabled", "true")
                 .param("defendersCounted", "3")
@@ -164,7 +164,7 @@ class SettingsControllerTest {
      */
     @Test
     void laPreparazioneHaUnSoloFormEUnSoloPulsante() throws Exception {
-        String html = mockMvc.perform(get("/impostazioni"))
+        String html = mockMvc.perform(get("/legacy/impostazioni"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -177,7 +177,7 @@ class SettingsControllerTest {
     /** Da qui si torna solo indietro: nessuna scorciatoia verso altre pagine. */
     @Test
     void laPreparazioneOffreSoloIlRitornoAllaHome() throws Exception {
-        mockMvc.perform(get("/impostazioni"))
+        mockMvc.perform(get("/legacy/impostazioni"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("indietro alla home")))
                 .andExpect(content().string(not(containsString("/riepilogo"))))
@@ -192,7 +192,7 @@ class SettingsControllerTest {
     void laConfermaSalvaTuttoEcreaLastaConIlSuoNome() throws Exception {
         mockMvc.perform(fullForm())
                 .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/asta"));
+                .andExpect(redirectedUrl("/legacy/asta"));
 
         verify(scoringStore).save(any());
         verify(membersStore).save(any());
@@ -268,7 +268,7 @@ class SettingsControllerTest {
     void adAstaApertaSiTornaSoloAllAsta() throws Exception {
         running();
 
-        mockMvc.perform(get("/impostazioni"))
+        mockMvc.perform(get("/legacy/impostazioni"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("indietro all")))
                 .andExpect(content().string(containsString("Sola lettura")))

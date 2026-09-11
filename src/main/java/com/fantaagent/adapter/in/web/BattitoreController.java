@@ -5,6 +5,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.application.service.RosterCsvExporter;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.config.AuctionSettingsStore;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.nio.charset.StandardCharsets;
@@ -46,6 +48,7 @@ import java.util.Optional;
  * a mano sul proprio foglio.
  */
 @Controller
+@RequestMapping("/legacy")
 public class BattitoreController {
 
     /** Poche righe: la lista sta su uno schermo condiviso, non e' un catalogo da sfogliare. */
@@ -81,7 +84,7 @@ public class BattitoreController {
     @GetMapping("/battitore")
     public String page(Model model) {
         if (!runtime.hasAuction()) {
-            return "redirect:/";
+            return "redirect:/legacy";
         }
         populate(model, null);
         model.addAttribute("results", List.<Player>of());
@@ -127,7 +130,7 @@ public class BattitoreController {
     /**
      * Registra l'aggiudicazione dalla pagina proiettata.
      *
-     * <p>Endpoint distinto da /assign solo perche' deve rendere una pagina diversa:
+     * <p>Endpoint distinto da /legacy/assign solo perche' deve rendere una pagina diversa:
      * l'acquisto passa dallo stesso {@link AuctionService#recordPurchase}, con la stessa
      * validazione e gli stessi messaggi di rifiuto. La regola che conta e' che esista
      * una sola via per REGISTRARE un acquisto, non una sola per disegnarlo.

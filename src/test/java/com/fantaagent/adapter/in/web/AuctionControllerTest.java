@@ -106,7 +106,7 @@ class AuctionControllerTest {
      */
     @Test
     void ilBattitorePortaMaxBidEdurataDelCountdown() throws Exception {
-        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+        mockMvc.perform(get("/legacy/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("data-max-bid=\"47\"")))
@@ -118,7 +118,7 @@ class AuctionControllerTest {
     /** La tendina dell'aggiudicazione deve elencare tutti i partecipanti, non solo me. */
     @Test
     void ilBattitoreElencaTuttiIpartecipanti() throws Exception {
-        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+        mockMvc.perform(get("/legacy/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Marco")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Io")));
@@ -131,7 +131,7 @@ class AuctionControllerTest {
      */
     @Test
     void aprireIlBattitoreNonRegistraAlcunAcquisto() throws Exception {
-        mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+        mockMvc.perform(get("/legacy/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk());
 
         verify(auctionService, org.mockito.Mockito.never())
@@ -150,7 +150,7 @@ class AuctionControllerTest {
      */
     @Test
     void ilPopupPrivatoOffreGliStessiComandiDiQuelloProiettato() throws Exception {
-        String html = mockMvc.perform(get("/asta/battitore").param("playerId", "d1"))
+        String html = mockMvc.perform(get("/legacy/asta/battitore").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -169,7 +169,7 @@ class AuctionControllerTest {
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {
         when(playerCatalog.byId("ignoto")).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/asta/battitore").param("playerId", "ignoto"))
+        mockMvc.perform(get("/legacy/asta/battitore").param("playerId", "ignoto"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("bidderDialog"))));
@@ -177,7 +177,7 @@ class AuctionControllerTest {
 
     @Test
     void servesTheAuctionPage() throws Exception {
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("FASE")));
     }
@@ -187,24 +187,24 @@ class AuctionControllerTest {
      *  nei dettagli di byte da cui dipende la riuscita dell'import. */
     @Test
     void theAuctionPageOffersTheRosterExport() throws Exception {
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("esporta rose")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/battitore/esporta")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/legacy/battitore/esporta")));
     }
 
     /** Dalla schermata d'asta si deve poter uscire per sceglierne un'altra. */
     @Test
     void theAuctionPageOffersAnExit() throws Exception {
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Esci")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("/aste/esci")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("/legacy/aste/esci")));
     }
 
     @Test
     void searchingShowsTheTopResultWithItsNumbers() throws Exception {
-        mockMvc.perform(get("/fragments/main").param("cmd", "bast"))
+        mockMvc.perform(get("/legacy/fragments/main").param("cmd", "bast"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("47")))
@@ -213,7 +213,7 @@ class AuctionControllerTest {
 
     @Test
     void aCommandWithAPriceRecordsAPurchaseForMe() throws Exception {
-        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47"))
                 .andExpect(status().isOk());
 
         verify(auctionService).recordPurchase("d1", "me", 47);
@@ -223,7 +223,7 @@ class AuctionControllerTest {
     void aCommandWithAnInitialRecordsAPurchaseForThatParticipant() throws Exception {
         when(auctionService.byInitial('M')).thenReturn(Optional.of(PARTICIPANTS.get(1)));
 
-        mockMvc.perform(post("/command").param("cmd", "bast 47 m"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47 m"))
                 .andExpect(status().isOk());
 
         verify(auctionService).recordPurchase("d1", "marco", 47);
@@ -231,7 +231,7 @@ class AuctionControllerTest {
 
     @Test
     void aCommandWithoutAPriceOnlySearches() throws Exception {
-        mockMvc.perform(post("/command").param("cmd", "bast"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")));
 
@@ -244,7 +244,7 @@ class AuctionControllerTest {
         org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
                 .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
 
-        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         org.hamcrest.Matchers.containsString("già stato acquistato")));
@@ -252,7 +252,7 @@ class AuctionControllerTest {
 
     @Test
     void aSuccessfulPurchaseTellsPhaseTableToRefreshItself() throws Exception {
-        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("HX-Trigger", "fantaStateChanged"));
     }
@@ -262,14 +262,14 @@ class AuctionControllerTest {
         org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
                 .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
 
-        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47"))
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("HX-Trigger"));
     }
 
     @Test
     void assignRecordsAPurchaseForTheChosenParticipantAtTheEnteredPrice() throws Exception {
-        mockMvc.perform(post("/assign")
+        mockMvc.perform(post("/legacy/assign")
                         .param("playerId", "d1")
                         .param("participantId", "marco")
                         .param("price", "47"))
@@ -284,7 +284,7 @@ class AuctionControllerTest {
         org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
                 .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
 
-        mockMvc.perform(post("/assign")
+        mockMvc.perform(post("/legacy/assign")
                         .param("playerId", "d1")
                         .param("participantId", "marco")
                         .param("price", "47"))
@@ -295,7 +295,7 @@ class AuctionControllerTest {
 
     @Test
     void aSuccessfulAssignmentTellsPhaseTableToRefreshItself() throws Exception {
-        mockMvc.perform(post("/assign")
+        mockMvc.perform(post("/legacy/assign")
                         .param("playerId", "d1")
                         .param("participantId", "marco")
                         .param("price", "47"))
@@ -308,7 +308,7 @@ class AuctionControllerTest {
         org.mockito.Mockito.doThrow(new IllegalArgumentException("Bastoni è già stato acquistato"))
                 .when(auctionService).recordPurchase(eq("d1"), anyString(), anyInt());
 
-        mockMvc.perform(post("/assign")
+        mockMvc.perform(post("/legacy/assign")
                         .param("playerId", "d1")
                         .param("participantId", "marco")
                         .param("price", "47"))
@@ -320,7 +320,7 @@ class AuctionControllerTest {
     void selectingAPhaseAsksTheServiceForThatExactRoleAndRefreshesTheTable() throws Exception {
         when(auctionService.selectPhase(Role.P)).thenReturn(true);
 
-        mockMvc.perform(post("/phase/select").param("role", "P"))
+        mockMvc.perform(post("/legacy/phase/select").param("role", "P"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("HX-Trigger", "fantaStateChanged"));
 
@@ -331,7 +331,7 @@ class AuctionControllerTest {
     void selectingThePhaseAlreadyInUseNeitherMovesNorClaimsToHaveMoved() throws Exception {
         when(auctionService.selectPhase(Role.P)).thenReturn(false);
 
-        mockMvc.perform(post("/phase/select").param("role", "P"))
+        mockMvc.perform(post("/legacy/phase/select").param("role", "P"))
                 .andExpect(status().isOk())
                 .andExpect(header().doesNotExist("HX-Trigger"))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("sei già in fase")));
@@ -339,7 +339,7 @@ class AuctionControllerTest {
 
     @Test
     void theStatusBarOffersEveryPhaseAndMarksTheCurrentOne() throws Exception {
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("vai a")))
                 // La fase corrente e' P: il suo bottone e' segnato e disabilitato,
@@ -360,7 +360,7 @@ class AuctionControllerTest {
                         new AuctionEvent.PlayerPurchased(3L, java.time.Instant.now(), "d2", "marco", 10)));
         when(auctionService.state()).thenReturn(completa);
 
-        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("completa")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("vai alla fase")))
@@ -371,7 +371,7 @@ class AuctionControllerTest {
 
     @Test
     void thePhaseCompleteNoticeIsHiddenWhileTheRoleStillHasFreeSlots() throws Exception {
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
                         "(?s).*<div id=\"phaseDone\"[^>]*hidden[^>]*>.*")));
@@ -385,7 +385,7 @@ class AuctionControllerTest {
                         new AuctionEvent.PlayerPurchased(3L, java.time.Instant.now(), "a2", "marco", 10)));
         when(auctionService.state()).thenReturn(ultimaCompleta);
 
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("completa")))
                 .andExpect(content().string(org.hamcrest.Matchers.not(
@@ -396,7 +396,7 @@ class AuctionControllerTest {
     void undoIsExposed() throws Exception {
         when(auctionService.undoLast()).thenReturn(true);
 
-        mockMvc.perform(post("/undo")).andExpect(status().isOk());
+        mockMvc.perform(post("/legacy/undo")).andExpect(status().isOk());
 
         verify(auctionService).undoLast();
     }
@@ -406,7 +406,7 @@ class AuctionControllerTest {
         // Stato senza holdings: state() nel @BeforeEach è già proiettato da una lista
         // vuota di eventi, quindi canUndo deve risultare false e il bottone disabilitato
         // — sempre presente, mai nascosto, così la sua posizione resta prevedibile.
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString(
                         "annulla ultimo")))
@@ -420,7 +420,7 @@ class AuctionControllerTest {
                 List.of(new AuctionEvent.PlayerPurchased(1L, java.time.Instant.now(), "d1", "me", 47)));
         when(auctionService.state()).thenReturn(afterPurchase);
 
-        mockMvc.perform(get("/asta"))
+        mockMvc.perform(get("/legacy/asta"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.matchesPattern(
@@ -436,7 +436,7 @@ class AuctionControllerTest {
                 List.of(new AuctionEvent.PlayerPurchased(1L, java.time.Instant.now(), "d1", "me", 47)));
         when(auctionService.state()).thenReturn(afterPurchase);
 
-        mockMvc.perform(post("/command").param("cmd", "bast 47"))
+        mockMvc.perform(post("/legacy/command").param("cmd", "bast 47"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("53")));
 
@@ -449,7 +449,7 @@ class AuctionControllerTest {
         // sul testo grezzo "bast 47" invece che sul solo termine "bast", la ricerca non
         // troverebbe nulla e il pannello di analisi — con sopra il max bid — sparirebbe
         // proprio mentre l'utente digita ancora il prezzo.
-        mockMvc.perform(get("/fragments/main").param("cmd", "bast 47"))
+        mockMvc.perform(get("/legacy/fragments/main").param("cmd", "bast 47"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("47")))
@@ -462,7 +462,7 @@ class AuctionControllerTest {
     void theLiveSearchFragmentNeverContainsTheCommandInput() throws Exception {
         // #cmd deve vivere fuori dalla regione sostituita a ogni ricerca: se ricomparisse
         // qui, uno swap durante la digitazione lo svuoterebbe di nuovo (il difetto A).
-        mockMvc.perform(get("/fragments/main").param("cmd", "bast"))
+        mockMvc.perform(get("/legacy/fragments/main").param("cmd", "bast"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(
                         org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("id=\"cmd\""))));
@@ -480,7 +480,7 @@ class AuctionControllerTest {
         when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
                 .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 0, 25, 1));
 
-        mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
+        mockMvc.perform(get("/legacy/fragments/phase-players").param("offset", "0"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("GIOCATORI FASE")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Bastoni")))
@@ -500,7 +500,7 @@ class AuctionControllerTest {
         when(searchService.phasePlayers(25, PlayerSearchService.PHASE_PAGE_SIZE))
                 .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 25, 25, 60));
 
-        mockMvc.perform(get("/fragments/phase-players").param("offset", "25"))
+        mockMvc.perform(get("/legacy/fragments/phase-players").param("offset", "25"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("GIOCATORI FASE")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("pagina")))
@@ -524,7 +524,7 @@ class AuctionControllerTest {
         when(searchService.phasePlayers(50, PlayerSearchService.PHASE_PAGE_SIZE))
                 .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 50, 25, 60));
 
-        mockMvc.perform(get("/fragments/phase-players").param("offset", "50"))
+        mockMvc.perform(get("/legacy/fragments/phase-players").param("offset", "50"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
                         "(?s).*id=\"phaseTable\"[^>]*hx-get=\"[^\"]*offset=50\".*")));
@@ -538,7 +538,7 @@ class AuctionControllerTest {
         when(searchService.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE))
                 .thenReturn(new PlayerSearchService.PhasePage(List.of(row), 0, 25, 1));
 
-        mockMvc.perform(get("/fragments/phase-players").param("offset", "0"))
+        mockMvc.perform(get("/legacy/fragments/phase-players").param("offset", "0"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("precedenti")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("successivi")))

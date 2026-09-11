@@ -25,7 +25,7 @@ function Harness({ onCommit }: { onCommit: (v: ScoringSection) => void }) {
         setValue(next);
         onCommit(next);
       }}
-      errors={[]}
+      errors={{}}
       disabled={false}
     />
   );
@@ -73,21 +73,114 @@ describe('ScoringFieldset', () => {
   });
 
   /**
-   * Una <legend> fornisce il NOME accessibile del fieldset; descriverla con
-   * aria-describedby non e' una relazione garantita dagli screen reader. E' il
-   * <fieldset> — un group — che supporta davvero una descrizione.
+   * Le soglie hanno un campo adesso (task 18, {@link ThresholdsTable}): l'errore
+   * di riga (chiave {@code "thresholds[1]"}, la seconda riga) sta accanto al SUO
+   * controllo, non piu' nell'elenco generico del fieldset — e non vi finisce
+   * anche una seconda volta.
    */
-  it('descrive gli errori sul fieldset, non sulla legend', () => {
+  it("descrive gli errori delle soglie accanto alla riga che li causa, non sul fieldset", () => {
+    const scoring: ScoringSection = {
+      ...SCORING,
+      defenceModifierEnabled: true,
+      thresholds: [{ minAverage: 0, bonus: 0 }, { minAverage: 3, bonus: 1 }],
+    };
     render(
       <ScoringFieldset
-        value={SCORING}
+        value={scoring}
         onChange={() => {}}
-        errors={['Riga 2: la media non può essere negativa.']}
+        errors={{ 'thresholds[1]': ['Riga 2: la media non può essere negativa.'] }}
         disabled={false}
       />,
     );
 
+    const field = screen.getByLabelText(/soglia da media, riga 2/i);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAccessibleDescription(/riga 2/i);
+
     const group = screen.getByRole('group', { name: 'Punteggio' });
-    expect(group).toHaveAccessibleDescription(/riga 2/i);
+    expect(group).not.toHaveAccessibleDescription(/riga 2/i);
+  });
+
+  /**
+   * La tabella non ha ragione di essere modificabile quando il motore la ignora
+   * del tutto (task 18): {@code disabled} qui e' false (asta chiusa), eppure la
+   * tabella deve risultare disattivata perche' {@code SCORING.defenceModifierEnabled}
+   * e' false — e con un motivo che dice PROPRIO questo, non uno generico che
+   * andrebbe bene anche per l'asta aperta.
+   */
+  it('disabilita la tabella delle soglie quando il modificatore e spento, anche ad asta chiusa', () => {
+    render(
+      <ScoringFieldset value={SCORING} onChange={() => {}} errors={{}} disabled={false} />,
+    );
+
+    const field = screen.getByLabelText(/soglia da media, riga 1/i);
+    expect(field).toBeDisabled();
+    expect(field).toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
+  });
+
+  /**
+   * Il checkbox e' l'UNICO modo di riaccendere il modificatore da questa
+   * schermata (task 18: prima esisteva solo sotto /legacy). Deve restare
+   * interagibile anche a modificatore spento — se lo bloccassimo insieme alla
+   * tabella che governa, non si potrebbe piu' riaccenderlo da qui — e deve
+   * raggiungere il salvataggio come ogni altro campo, con lo spread.
+   *
+   * <p>Il payload da solo non basta a provare che il checkbox "accende" la
+   * tabella: bisogna vedere i SUOI campi tornare modificabili dopo il click,
+   * non solo che {@code defenceModifierEnabled} e' true nell'oggetto salvato.
+   */
+  it('accende il modificatore di difesa dal suo checkbox, e lo manda al salvataggio', async () => {
+    const captured: { value: ScoringSection | null } = { value: null };
+    render(<Harness onCommit={(v) => { captured.value = v; }} />);
+
+    const checkbox = screen.getByRole('checkbox', { name: /modificatore di difesa attivo/i });
+    const minField = screen.getByLabelText(/soglia da media, riga 1/i);
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).not.toBeDisabled();
+    expect(minField).toBeDisabled();
+
+    await userEvent.click(checkbox);
+
+    expect(checkbox).toBeChecked();
+    expect(captured.value?.defenceModifierEnabled).toBe(true);
+    // La tabella era disabilitata SOLO perche' il modificatore era spento
+    // (asta chiusa in questo harness): accenderlo deve quindi renderla
+    // davvero modificabile, non solo cambiare un booleano nel payload.
+    expect(minField).not.toBeDisabled();
+  });
+
+  /**
+   * Ad asta aperta il checkbox si blocca come ogni altro campo della sezione
+   * (stesso {@code lockId} di "Difensori conteggiati" qui sopra), non perche'
+   * la tabella lo sia: e' "asta in corso" a bloccarlo, non "modificatore spento".
+   */
+  it('blocca il checkbox del modificatore ad asta aperta, e dice perche', () => {
+    render(
+      <ScoringFieldset value={SCORING} onChange={() => {}} errors={{}} disabled />,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: /modificatore di difesa attivo/i });
+    expect(checkbox).toBeDisabled();
+    expect(checkbox).toHaveAccessibleDescription(/asta in corso/i);
+  });
+
+  /**
+   * Un campo con un input proprio (task 16) riceve l'errore accanto al SUO
+   * controllo, non in un elenco generico in coda al fieldset — stesso idioma del
+   * nome dell'asta in SettingsRoute.
+   */
+  it('descrive un campo numerico sul suo controllo', () => {
+    render(
+      <ScoringFieldset
+        value={SCORING}
+        onChange={() => {}}
+        errors={{ assist: ['Il valore per «assist» non è un numero valido.'] }}
+        disabled={false}
+      />,
+    );
+
+    const field = screen.getByLabelText(/^assist$/i);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAccessibleDescription(/assist.*non è un numero/i);
   });
 });

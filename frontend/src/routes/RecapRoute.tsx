@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AppShell } from '../AppShell';
-import { ProblemError } from '../api/client';
+import { auctionExportUrl, ProblemError } from '../api/client';
 import { useBoard, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
 
@@ -56,7 +56,25 @@ export function RecapRoute() {
 
   return (
     <AppShell>
-      <h1 className="w-exp mb-4 text-xl font-extrabold">Riepilogo</h1>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h1 className="w-exp text-xl font-extrabold">Riepilogo</h1>
+
+        {board.data ? (
+          // <a href download>, non una fetch: e' il browser a dover gestire il
+          // salvataggio, e una fetch costringerebbe a costruire un blob per
+          // riottenere esattamente cio' che il browser fa da solo. L'auctionId
+          // e' quello che LA BOARD ha appena letto, non quello del contesto della
+          // finestra — stesso motivo della revoca, vedi handleVoid.
+          <a
+            href={auctionExportUrl(board.data.auctionId)}
+            download
+            className="flex min-h-11 items-center gap-2 border border-line px-3 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <DownloadIcon />
+            Scarica il CSV delle rose
+          </a>
+        ) : null}
+      </div>
 
       {alertMessage ? (
         // role="alert", non un secondo role="status": l'unica live region
@@ -107,6 +125,27 @@ function voidErrorMessage(error: ProblemError): string {
     default:
       return error.detail;
   }
+}
+
+/** Una freccia verso un trattino, come tratto vettoriale: mai un'emoji. */
+function DownloadIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 2v8" />
+      <path d="M4.5 7.5 8 11l3.5-3.5" />
+      <path d="M2.5 13.5h11" />
+    </svg>
+  );
 }
 
 /** «✕», ma come tratto vettoriale: il vincolo vuole icone SVG, mai emoji. */

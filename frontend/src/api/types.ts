@@ -148,9 +148,10 @@ export interface ScoringStep {
 }
 
 /**
- * `thresholds` non ha un editor in questa tappa (task 6 gliene dara' uno): il
- * valore che arriva da {@link SettingsResponse} deve tornare al server invariato
- * dentro {@link SaveSettingsRequest}, non riscritto o appiattito.
+ * `thresholds` ha il suo editor in `ThresholdsTable` (task 18): righe che si
+ * aggiungono e si tolgono, entrambe le colonne decimali. Il valore che arriva da
+ * {@link SettingsResponse} torna al server dentro {@link SaveSettingsRequest} con
+ * qualunque modifica l'utente gli abbia fatto — non riscritto o appiattito.
  */
 export interface ScoringSection {
   defenceModifierEnabled: boolean;
@@ -189,5 +190,10 @@ export interface SaveSettingsResult {
   auctionId: string | null;
 }
 
-/** Le quattro chiavi ci sono sempre, anche vuote. */
-export type SettingsErrors = Record<'auction' | 'participants' | 'scoring' | 'bidder', string[]>;
+/**
+ * Le chiavi sono di campo, non di sezione (task 16: {@code bidTimerSeconds},
+ * {@code defendersCounted}, {@code participants[<id>].name}…), e una chiave compare
+ * solo se ha davvero un errore — un id di partecipante o un indice di riga non si
+ * possono elencare tutti in anticipo come le quattro sezioni fisse di prima.
+ */
+export type SettingsErrors = Record<string, string[]>;

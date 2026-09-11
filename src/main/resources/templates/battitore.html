@@ -39,13 +39,13 @@
     */-->
     <div id="timerControl" th:fragment="timerControl" class="battitore-timer">
       <span class="dim">TIMER</span>
-      <form hx-post="/battitore/timer" hx-target="#timerControl" hx-swap="outerHTML">
+      <form hx-post="/legacy/battitore/timer" hx-target="#timerControl" hx-swap="outerHTML">
         <input type="hidden" name="delta" value="-1">
         <button type="submit" aria-label="riduci di un secondo"
                 th:disabled="${bidderSettings.bidTimerSeconds <= bidderMinSeconds}">−</button>
       </form>
       <b th:text="${bidderSettings.bidTimerSeconds} + 's'">5s</b>
-      <form hx-post="/battitore/timer" hx-target="#timerControl" hx-swap="outerHTML">
+      <form hx-post="/legacy/battitore/timer" hx-target="#timerControl" hx-swap="outerHTML">
         <input type="hidden" name="delta" value="1">
         <button type="submit" aria-label="aumenta di un secondo"
                 th:disabled="${bidderSettings.bidTimerSeconds >= bidderMaxSeconds}">+</button>
@@ -59,9 +59,9 @@
       manda Content-Disposition attachment fa esattamente la cosa giusta senza una
       riga di JavaScript.
     */-->
-    <a class="battitore-export" th:href="@{/battitore/esporta}"
+    <a class="battitore-export" th:href="@{/legacy/battitore/esporta}"
        th:download="'rose.csv'">↓ ESPORTA</a>
-    <a class="battitore-exit" th:href="@{/asta}">← la mia asta</a>
+    <a class="battitore-exit" th:href="@{/legacy/asta}">← la mia asta</a>
   </header>
 
   <!--/*
@@ -80,7 +80,7 @@
     <input type="text" id="battitoreSearch" name="q" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
            data-1p-ignore data-lpignore="true" autofocus
            placeholder="cerca un giocatore nel listone…"
-           hx-get="/battitore/cerca" hx-trigger="keyup changed delay:150ms"
+           hx-get="/legacy/battitore/cerca" hx-trigger="keyup changed delay:150ms"
            hx-target="#results" hx-swap="outerHTML">
   </div>
 
@@ -98,10 +98,10 @@
         <span class="dim" th:text="${p.role} + ' · ' + ${p.team}">P · Milan</span>
       </span>
       <button type="button" class="battitore-result-bid"
-              th:hx-get="@{/battitore/popup(playerId=${p.id})}"
+              th:hx-get="@{/legacy/battitore/popup(playerId=${p.id})}"
               hx-target="#bidderMount" hx-swap="innerHTML">⏱ batti</button>
       <button type="button" class="battitore-result-now"
-              th:hx-get="@{/battitore/popup(playerId=${p.id}, subito=true)}"
+              th:hx-get="@{/legacy/battitore/popup(playerId=${p.id}, subito=true)}"
               hx-target="#bidderMount" hx-swap="innerHTML">assegna</button>
     </div>
   </div>
@@ -125,7 +125,7 @@
       <span>Fase <b th:text="${phaseDone.phase}">P</b> completa: nessuno ha più
         uno slot libero per questo ruolo.</span>
       <form th:if="${phaseDone.nextPhase != null}"
-            hx-post="/battitore/fase" hx-target="#board" hx-swap="outerHTML">
+            hx-post="/legacy/battitore/fase" hx-target="#board" hx-swap="outerHTML">
         <button type="submit">vai alla fase <span th:text="${phaseDone.nextPhase}">D</span> →</button>
       </form>
       <span class="dim" th:if="${phaseDone.nextPhase == null}">è l'ultima fase.</span>
@@ -150,8 +150,8 @@
                  silenzio i crediti di un partecipante. Il bottone e' type="button" e
                  diventa type="submit" solo dopo la conferma (recap.js): se lo script
                  non si carica il bottone non risponde, invece di rimuovere. */-->
-            <form method="post" th:action="@{/battitore/revoca}" th:if="${p.filled()}"
-                  hx-post="/battitore/revoca" hx-target="#board" hx-swap="outerHTML">
+            <form method="post" th:action="@{/legacy/battitore/revoca}" th:if="${p.filled()}"
+                  hx-post="/legacy/battitore/revoca" hx-target="#board" hx-swap="outerHTML">
               <input type="hidden" name="targetSeq" th:value="${p.seq}">
               <button type="button" class="revoke-btn" title="rimuovi">✕</button>
             </form>

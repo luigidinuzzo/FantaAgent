@@ -20,7 +20,7 @@
     </p>
   </header>
 
-  <form method="post" th:action="@{/aste/nuova}">
+  <form method="post" th:action="@{/legacy/aste/nuova}">
     <button class="primary" type="submit">Nuova asta</button>
   </form>
 
@@ -50,7 +50,7 @@
           <td th:text="${a.purchases}">25</td>
           <td><span class="badge" th:text="${a.phase}">D</span></td>
           <td>
-            <form method="post" th:action="@{/aste/riprendi}">
+            <form method="post" th:action="@{/legacy/aste/riprendi}">
               <input type="hidden" name="auctionId" th:value="${a.id}">
               <button type="submit">Riprendi</button>
             </form>

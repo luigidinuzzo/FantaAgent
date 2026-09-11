@@ -7,28 +7,68 @@ import { ParticipantsFieldset } from './ParticipantsFieldset';
 
 function Harness({ initial }: { initial: ParticipantSettings[] }) {
   const [value, setValue] = useState(initial);
-  return <ParticipantsFieldset value={value} onChange={setValue} errors={[]} />;
+  return <ParticipantsFieldset value={value} onChange={setValue} errors={{}} />;
 }
 
 describe('ParticipantsFieldset', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   /**
-   * Una <legend> fornisce il NOME accessibile del fieldset; descriverla con
-   * aria-describedby non e' una relazione garantita dagli screen reader. E' il
-   * <fieldset> — un group — che supporta davvero una descrizione.
+   * L'iniziale duplicata riguarda l'insieme, non una riga (chiave
+   * {@code "participants"}): resta descritta dal fieldset. Una <legend> fornisce
+   * il NOME accessibile del fieldset; descriverla con aria-describedby non e' una
+   * relazione garantita dagli screen reader. E' il <fieldset> — un group — che
+   * supporta davvero una descrizione.
    */
-  it('descrive gli errori sul fieldset, non sulla legend', () => {
+  it("descrive gli errori dell'insieme sul fieldset, non sulla legend", () => {
     render(
       <ParticipantsFieldset
         value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
         onChange={() => {}}
-        errors={["L'iniziale «A» è usata da più partecipanti."]}
+        errors={{ participants: ["L'iniziale «A» è usata da più partecipanti."] }}
       />,
     );
 
     const group = screen.getByRole('group', { name: 'Partecipanti' });
     expect(group).toHaveAccessibleDescription(/iniziale «a» è usata/i);
+  });
+
+  /**
+   * Un nome vuoto riguarda UNA riga precisa (task 16): l'errore sta accanto al
+   * SUO input, non nell'elenco generico dell'insieme.
+   */
+  it('descrive un nome vuoto sul suo input', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'anna', name: '', initial: 'A', me: true }]}
+        onChange={() => {}}
+        errors={{ 'participants[anna].name': ['Il partecipante con id «anna» non può avere un nome vuoto.'] }}
+      />,
+    );
+
+    const field = screen.getByLabelText(/nome del partecipante/i);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAccessibleDescription(/nome vuoto/i);
+  });
+
+  /**
+   * Il nome accessibile del bottone "Togli" deve dire QUALE riga toglie, non solo
+   * il suo contenuto testuale: uno spazio scritto DENTRO lo <span sr-only> (invece
+   * che nel nodo di testo prima di lui) si perde nel calcolo del nome accessibile
+   * anche se resta visibile in {@code textContent} — "TogliAnna", non "Togli Anna".
+   * getByRole con `name` e' l'unica delle due che lo scoprirebbe: un'asserzione su
+   * {@code textContent} sarebbe passata anche col bug.
+   */
+  it('il bottone "Togli" ha per nome accessibile "Togli" seguito dal nome della riga', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
+        onChange={() => {}}
+        errors={{}}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Togli Anna' })).toBeInTheDocument();
   });
 
   /**

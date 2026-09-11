@@ -40,7 +40,7 @@ document.addEventListener('keydown', (e) => {
     // dipendeva da un evento submit sintetico che raggiungesse il listener di
     // htmx su un form nascosto, un secondo possibile punto di rottura non
     // riproducibile senza browser. htmx.ajax elimina il dubbio.
-    htmx.ajax('POST', '/undo', { target: '#main', swap: 'outerHTML' });
+    htmx.ajax('POST', '/legacy/undo', { target: '#main', swap: 'outerHTML' });
     return;
   }
 
@@ -55,7 +55,7 @@ document.addEventListener('keydown', (e) => {
     if (targets && targets.childElementCount > 0) {
       targets.innerHTML = '';
     } else {
-      htmx.ajax('GET', '/fragments/targets', { target: '#targets', swap: 'outerHTML' });
+      htmx.ajax('GET', '/legacy/fragments/targets', { target: '#targets', swap: 'outerHTML' });
     }
   }
 });

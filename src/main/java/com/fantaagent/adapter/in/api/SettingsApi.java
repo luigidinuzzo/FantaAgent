@@ -46,8 +46,9 @@ public class SettingsApi {
     /**
      * Lo stesso NUMERO di {@code SettingsController#MAX_NAME}, non la stessa costante:
      * ognuna e' dichiarata per conto suo, e i due messaggi d'errore sono duplicati a
-     * mano nei due file. Muore con {@code SettingsController} nella tappa 6, quando la
-     * schermata Thymeleaf lascia il posto a questa e resta una sola dichiarazione.
+     * mano nei due file. {@code SettingsController} non e' sparito con la tappa 6
+     * come previsto (task 16): resta sotto {@code /legacy}, e con lui questa
+     * duplicazione.
      */
     static final int MAX_NAME = 60;
 
@@ -88,19 +89,18 @@ public class SettingsApi {
         leagues.check(leagueId);
         boolean preparing = !runtime.hasAuction();
 
+        // Chiavi di campo, non di sezione (task 16): ognuna presente solo se ha
+        // davvero un errore, perche' un id di partecipante o un indice di riga non si
+        // possono elencare tutti in anticipo come le quattro sezioni di prima.
         Map<String, List<String>> errors = new LinkedHashMap<>();
-        errors.put("auction", new ArrayList<>());
-        errors.put("participants", new ArrayList<>());
-        errors.put("scoring", new ArrayList<>());
-        errors.put("bidder", new ArrayList<>());
 
         String name = body.auctionName() == null ? "" : body.auctionName().trim();
         if (preparing) {
             if (name.isEmpty()) {
-                errors.get("auction").add("Dai un nome all'asta: serve a riconoscerla "
+                addError(errors, "auctionName", "Dai un nome all'asta: serve a riconoscerla "
                         + "nell'elenco quando ne avrai piu' di una.");
             } else if (name.length() > MAX_NAME) {
-                errors.get("auction").add("Il nome dell'asta non puo' superare "
+                addError(errors, "auctionName", "Il nome dell'asta non puo' superare "
                         + MAX_NAME + " caratteri.");
             }
         }
@@ -115,11 +115,13 @@ public class SettingsApi {
             // male) e' un errore del CHIAMANTE: deve cadere nel 422 tipizzato qui sotto,
             // non nella NullPointerException che settingsOf() solleverebbe leggendo un
             // record null, che il ramo generico avrebbe riportato come "internal-error".
+            // La chiave resta "scoring", grezza: non e' uno dei campi che
+            // ScoringSettingsValidator conosce, e' l'intera sezione che manca.
             if (body.scoring() == null) {
-                errors.get("scoring").add("Le impostazioni del punteggio sono obbligatorie.");
+                addError(errors, "scoring", "Le impostazioni del punteggio sono obbligatorie.");
             } else {
                 scoring = settingsOf(body.scoring());
-                errors.get("scoring").addAll(ScoringSettingsValidator.validate(scoring));
+                mergeErrors(errors, ScoringSettingsValidator.validateByField(scoring));
             }
         }
 
@@ -127,30 +129,31 @@ public class SettingsApi {
         for (SettingsDtos.ParticipantSettings p : orEmpty(body.participants())) {
             // Il costruttore di Participant rifiuta un id vuoto: costruirlo comunque
             // trasformerebbe un errore di compilazione del modulo in un 422 generico
-            // senza dire quale riga.
+            // senza dire quale riga. La chiave resta "participants": senza un id non
+            // c'e' una riga precisa a cui puntare.
             if (p.id() == null || p.id().isBlank()) {
-                errors.get("participants")
-                        .add("Ogni partecipante deve avere un identificativo.");
+                addError(errors, "participants", "Ogni partecipante deve avere un identificativo.");
                 continue;
             }
             members.add(new Participant(p.id(), p.name(), initialOf(p.initial()), p.me()));
         }
-        errors.get("participants").addAll(LeagueMembersSettingsValidator.validate(members));
+        mergeErrors(errors, LeagueMembersSettingsValidator.validateByField(members));
 
         // Stessa storia del "scoring" qui sopra: una chiave "bidder" assente e' un
         // corpo malformato, non un modulo compilato male, e deve cadere nello stesso
         // 422 tipizzato invece che nella NullPointerException su
         // body.bidder().bidTimerSeconds() che il ramo generico avrebbe riportato come
-        // "internal-error".
+        // "internal-error". La chiave resta "bidder", grezza: manca l'intero oggetto,
+        // non solo il campo "bidTimerSeconds" che AuctionSettingsValidator conosce.
         AuctionSettings bidder = null;
         if (body.bidder() == null) {
-            errors.get("bidder").add("Le preferenze del battitore sono obbligatorie.");
+            addError(errors, "bidder", "Le preferenze del battitore sono obbligatorie.");
         } else {
             bidder = new AuctionSettings(body.bidder().bidTimerSeconds(), body.bidder().beepEnabled());
-            errors.get("bidder").addAll(AuctionSettingsValidator.validate(bidder));
+            mergeErrors(errors, AuctionSettingsValidator.validateByField(bidder));
         }
 
-        if (errors.values().stream().anyMatch(list -> !list.isEmpty())) {
+        if (!errors.isEmpty()) {
             throw new InvalidSettingsException(errors);
         }
 
@@ -184,6 +187,15 @@ public class SettingsApi {
 
     private static <T> List<T> orEmpty(List<T> list) {
         return list == null ? List.of() : list;
+    }
+
+    private static void addError(Map<String, List<String>> errors, String key, String message) {
+        errors.computeIfAbsent(key, k -> new ArrayList<>()).add(message);
+    }
+
+    /** Unisce la mappa per-campo di un validatore in quella di risposta, chiave per chiave. */
+    private static void mergeErrors(Map<String, List<String>> errors, Map<String, List<String>> more) {
+        more.forEach((key, messages) -> errors.computeIfAbsent(key, k -> new ArrayList<>()).addAll(messages));
     }
 
     /** Uno spazio quando manca: e' il valore su cui il validatore dice "non ha iniziale". */

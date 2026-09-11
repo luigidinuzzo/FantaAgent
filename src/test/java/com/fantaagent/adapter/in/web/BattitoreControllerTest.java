@@ -105,16 +105,16 @@ class BattitoreControllerTest {
      */
     @Test
     void laPaginaOffreIlControlloDelTimer() throws Exception {
-        mockMvc.perform(get("/battitore"))
+        mockMvc.perform(get("/legacy/battitore"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("timerControl")))
-                .andExpect(content().string(containsString("/battitore/timer")));
+                .andExpect(content().string(containsString("/legacy/battitore/timer")));
     }
 
     /** Il nuovo valore vale subito, non al prossimo riavvio, ed e' scritto su disco. */
     @Test
     void cambiareIlTimerHaEffettoSubitoEdEsalvato() throws Exception {
-        mockMvc.perform(post("/battitore/timer").param("delta", "3"))
+        mockMvc.perform(post("/legacy/battitore/timer").param("delta", "3"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("8s")));
 
@@ -127,7 +127,7 @@ class BattitoreControllerTest {
     void cambiareIlTimerNonToccaLAvvisoAcustico() throws Exception {
         auctionSettings.set(new com.fantaagent.config.AuctionSettings(5, false));
 
-        mockMvc.perform(post("/battitore/timer").param("delta", "1"))
+        mockMvc.perform(post("/legacy/battitore/timer").param("delta", "1"))
                 .andExpect(status().isOk());
 
         assertThat(auctionSettings.get().beepEnabled()).isFalse();
@@ -139,12 +139,12 @@ class BattitoreControllerTest {
      */
     @Test
     void ilTimerSiFermaAiLimiti() throws Exception {
-        mockMvc.perform(post("/battitore/timer").param("delta", "-999"))
+        mockMvc.perform(post("/legacy/battitore/timer").param("delta", "-999"))
                 .andExpect(status().isOk());
         assertThat(auctionSettings.get().bidTimerSeconds())
                 .isEqualTo(com.fantaagent.config.AuctionSettingsValidator.MIN_SECONDS);
 
-        mockMvc.perform(post("/battitore/timer").param("delta", "999"))
+        mockMvc.perform(post("/legacy/battitore/timer").param("delta", "999"))
                 .andExpect(status().isOk());
         assertThat(auctionSettings.get().bidTimerSeconds())
                 .isEqualTo(com.fantaagent.config.AuctionSettingsValidator.MAX_SECONDS);
@@ -157,7 +157,7 @@ class BattitoreControllerTest {
      */
     @Test
     void ilPopupProiettatoNonPortaAlcunaValutazione() throws Exception {
-        mockMvc.perform(get("/battitore/popup").param("playerId", "d1"))
+        mockMvc.perform(get("/legacy/battitore/popup").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Dimarco")))
                 .andExpect(content().string(not(containsString("data-max-bid"))))
@@ -170,7 +170,7 @@ class BattitoreControllerTest {
     /** Cio' che serve per battere, invece, deve esserci tutto. */
     @Test
     void ilPopupProiettatoPortaTimerRilanciEaggiudicazione() throws Exception {
-        mockMvc.perform(get("/battitore/popup").param("playerId", "d1"))
+        mockMvc.perform(get("/legacy/battitore/popup").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-seconds")))
                 .andExpect(content().string(containsString("bidderBid")))
@@ -185,7 +185,7 @@ class BattitoreControllerTest {
      */
     @Test
     void laPaginaNonMostraColonneStrategiche() throws Exception {
-        mockMvc.perform(get("/battitore"))
+        mockMvc.perform(get("/legacy/battitore"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("BATTITORE")))
                 .andExpect(content().string(not(containsString("Max bid"))))
@@ -205,7 +205,7 @@ class BattitoreControllerTest {
      */
     @Test
     void laRicercaMostraSoloChiEilGiocatore() throws Exception {
-        mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
+        mockMvc.perform(get("/legacy/battitore/cerca").param("q", "dima"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Dimarco")))
                 .andExpect(content().string(containsString("Inter")))
@@ -217,7 +217,7 @@ class BattitoreControllerTest {
     /** Due azioni, e devono essere due bottoni: prima "batti" era una scritta. */
     @Test
     void ogniRisultatoOffreDueBottoni() throws Exception {
-        String html = mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
+        String html = mockMvc.perform(get("/legacy/battitore/cerca").param("q", "dima"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -244,7 +244,7 @@ class BattitoreControllerTest {
     /** L'aggiudicazione passa dallo stesso recordPurchase di ogni altra via. */
     @Test
     void laggiudicazioneRegistraLacquistoDalServizioCondiviso() throws Exception {
-        mockMvc.perform(post("/battitore/assegna")
+        mockMvc.perform(post("/legacy/battitore/assegna")
                         .param("playerId", "d1")
                         .param("participantId", "marco")
                         .param("price", "23"))
@@ -255,7 +255,7 @@ class BattitoreControllerTest {
 
     @Test
     void laRevocaPassaDalServizioCondiviso() throws Exception {
-        mockMvc.perform(post("/battitore/revoca").param("targetSeq", "3"))
+        mockMvc.perform(post("/legacy/battitore/revoca").param("targetSeq", "3"))
                 .andExpect(status().isOk());
 
         verify(auctionService).revokePurchase(3L);
@@ -267,7 +267,7 @@ class BattitoreControllerTest {
      */
     @Test
     void nessunAnnuncioSeLaFaseNonEcompleta() throws Exception {
-        mockMvc.perform(get("/battitore"))
+        mockMvc.perform(get("/legacy/battitore"))
                 .andExpect(status().isOk())
                 // Sulla classe del banner e non sulla parola "completa": quella compare
                 // anche nei commenti del template, che finiscono nell'HTML servito.
@@ -283,7 +283,7 @@ class BattitoreControllerTest {
     void aFaseCompletaIlTabelloneAnnunciaEoffreLavanzamento() throws Exception {
         when(auctionService.state()).thenReturn(statoConFaseCompleta());
 
-        mockMvc.perform(post("/battitore/revoca").param("targetSeq", "99"))
+        mockMvc.perform(post("/legacy/battitore/revoca").param("targetSeq", "99"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("battitore-phase-done")))
                 .andExpect(content().string(containsString("vai alla fase")));
@@ -294,7 +294,7 @@ class BattitoreControllerTest {
     void unAcquistoNonAvanzaLaFaseDaSolo() throws Exception {
         when(auctionService.state()).thenReturn(statoConFaseCompleta());
 
-        mockMvc.perform(post("/battitore/assegna")
+        mockMvc.perform(post("/legacy/battitore/assegna")
                         .param("playerId", "d1").param("participantId", "marco").param("price", "5"))
                 .andExpect(status().isOk());
 
@@ -304,7 +304,7 @@ class BattitoreControllerTest {
     /** Il bottone avanza, e l'indicatore FASE in testa alla pagina viaggia con lui. */
     @Test
     void ilBottoneAvanzaLaFaseEaggiornaLindicatore() throws Exception {
-        mockMvc.perform(post("/battitore/fase"))
+        mockMvc.perform(post("/legacy/battitore/fase"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("phaseBadge")))
                 .andExpect(content().string(containsString("hx-swap-oob")));
@@ -319,7 +319,7 @@ class BattitoreControllerTest {
      */
     @Test
     void laPaginaInteraNonDuplicaIlTabellone() throws Exception {
-        String html = mockMvc.perform(get("/battitore"))
+        String html = mockMvc.perform(get("/legacy/battitore"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -347,7 +347,7 @@ class BattitoreControllerTest {
     void lExportScaricaUnCsvConIlNomeDellAsta() throws Exception {
         when(auctionRuntime.currentAuctionId()).thenReturn("2026-09-01");
 
-        mockMvc.perform(get("/battitore/esporta"))
+        mockMvc.perform(get("/legacy/battitore/esporta"))
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
                         .header().string("Content-Disposition",
@@ -360,17 +360,17 @@ class BattitoreControllerTest {
     void senzaAstaLExportNonProduceUnFileVuoto() throws Exception {
         when(auctionRuntime.hasAuction()).thenReturn(false);
 
-        mockMvc.perform(get("/battitore/esporta"))
+        mockMvc.perform(get("/legacy/battitore/esporta"))
                 .andExpect(status().isNotFound());
     }
 
     /** Il bottone deve esserci: senza, l'endpoint esiste ma non lo raggiunge nessuno. */
     @Test
     void laPaginaOffreIlBottoneEsporta() throws Exception {
-        mockMvc.perform(get("/battitore"))
+        mockMvc.perform(get("/legacy/battitore"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("ESPORTA")))
-                .andExpect(content().string(containsString("/battitore/esporta")));
+                .andExpect(content().string(containsString("/legacy/battitore/esporta")));
     }
 
     /**
@@ -380,7 +380,7 @@ class BattitoreControllerTest {
      */
     @Test
     void ilPopupDiAssegnazioneDirettaNonPortaAffattoIlTimer() throws Exception {
-        String html = mockMvc.perform(get("/battitore/popup")
+        String html = mockMvc.perform(get("/legacy/battitore/popup")
                         .param("playerId", "d1").param("subito", "true"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
@@ -404,7 +404,7 @@ class BattitoreControllerTest {
     /** Senza il parametro arriva il battitore vero, col countdown e i rilanci. */
     @Test
     void senzaIlParametroIlPopupParteColCountdown() throws Exception {
-        String html = mockMvc.perform(get("/battitore/popup").param("playerId", "d1"))
+        String html = mockMvc.perform(get("/legacy/battitore/popup").param("playerId", "d1"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
@@ -416,7 +416,7 @@ class BattitoreControllerTest {
     /** Ogni risultato offre entrambe le vie: batti il timer, oppure assegna e basta. */
     @Test
     void ogniRisultatoOffreSiaLAstaSiaLAssegnazioneDiretta() throws Exception {
-        mockMvc.perform(get("/battitore/cerca").param("q", "dima"))
+        mockMvc.perform(get("/legacy/battitore/cerca").param("q", "dima"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("batti")))
                 .andExpect(content().string(containsString("assegna")))
@@ -441,7 +441,7 @@ class BattitoreControllerTest {
     void unGiocatoreInesistenteNonApreAlcunPopup() throws Exception {
         when(playerCatalog.byId("ignoto")).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/battitore/popup").param("playerId", "ignoto"))
+        mockMvc.perform(get("/legacy/battitore/popup").param("playerId", "ignoto"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("bidderDialog"))));
     }
