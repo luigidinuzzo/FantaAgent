@@ -27,11 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>Cosa NON vede questo guardiano.</b> {@link #LINKS} richiede {@code @{}
  * immediatamente dopo la virgoletta di apertura: un'espressione ternaria come
- * {@code th:href="${setup} ? @{/legacy} : @{/asta}"} nasconde il secondo ramo dietro
- * uno spazio e un {@code :}, e resta invisibile per sempre, a questo test come a
- * qualunque futura estensione dello stesso pattern. L'unica occorrenza reale
- * (in {@code settings.html}) e' stata trovata e corretta a mano; non ce n'e' una
- * verifica automatica.
+ * {@code th:href="${setup} ? @{/legacy} : @{/asta}"} inizia invece con
+ * {@code ${setup}}, quindi l'intero attributo — entrambi i rami, non solo il secondo —
+ * resta invisibile. L'unica occorrenza reale (in {@code settings.html}) e' stata
+ * trovata e corretta a mano; non c'e' verifica automatica che ne impedisca una nuova.
  */
 class LegacyLinkPrefixTest {
 
