@@ -31,6 +31,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code ${setup}}, quindi l'intero attributo — entrambi i rami, non solo il secondo —
  * resta invisibile. L'unica occorrenza reale (in {@code settings.html}) e' stata
  * trovata e corretta a mano; non c'e' verifica automatica che ne impedisca una nuova.
+ *
+ * <p>Due lacune in piu', nessuna delle due un caso reale oggi (la revisione ha grepato
+ * il repository): {@link #LINKS} intercetta solo gli attributi Thymeleaf
+ * {@code th:href}/{@code th:action}/{@code th:src} — un {@code href="/asta"} scritto
+ * come attributo HTML letterale, senza {@code th:}, non e' visto. E fra i verbi htmx,
+ * l'alternanza copre solo quelli davvero in uso in questo progetto
+ * ({@code hx-get}/{@code hx-post}/{@code hx-delete}/{@code hx-put}/{@code hx-patch}/
+ * {@code hx-push-url}): un attributo htmx futuro fuori da questo elenco resterebbe
+ * comunque invisibile, cosi' come resterebbe invisibile qualunque URL scritta in un
+ * posto che non sia uno di questi attributi (es. dentro {@code hx-vals} o uno script
+ * inline nel template).
  */
 class LegacyLinkPrefixTest {
 
@@ -39,12 +50,14 @@ class LegacyLinkPrefixTest {
             "/app.css", "/app.js", "/bidder.js", "/recap.js", "/htmx.min.js");
 
     /**
-     * Cattura la URL di un {@code hx-get}/{@code hx-post} o di un {@code @{...}} di
+     * Cattura la URL di un {@code hx-get}/{@code hx-post}/{@code hx-delete}/
+     * {@code hx-put}/{@code hx-patch}/{@code hx-push-url} o di un {@code @{...}} di
      * Thymeleaf, fermandosi prima della parentesi dei parametri. Vedi il Javadoc di
-     * classe per il caso che questo pattern non copre.
+     * classe per i casi che questo pattern non copre.
      */
     private static final Pattern LINKS = Pattern.compile(
-            "(?:hx-(?:get|post)=\"|th:(?:href|action|src)=\"@\\{|hx-(?:get|post)=\"@\\{)(/[^\"}(\\s]*)");
+            "(?:hx-(?:get|post|delete|put|patch|push-url)=\"|th:(?:href|action|src)=\"@\\{"
+            + "|hx-(?:get|post|delete|put|patch|push-url)=\"@\\{)(/[^\"}(\\s]*)");
 
     /**
      * Cattura il target di un redirect assoluto nel Java del package: sia
