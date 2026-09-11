@@ -76,7 +76,7 @@ export function ProjectionRoute() {
       // testo) si estende alla navigazione che AppShell offre alle altre
       // schermate: e' una seconda schermata su un proiettore, senza nessun
       // controllo, nemmeno un link.
-      nav={false}
+      chrome="none"
       slotStatus={
         <ConnectionStatus
           updatedAt={board.dataUpdatedAt || undefined}

@@ -162,7 +162,7 @@ export function SettingsRoute() {
 
   if (settings.isError) {
     return (
-      <AppShell>
+      <AppShell chrome="side">
         <h1 className="sr-only">Impostazioni</h1>
         <p role="alert" className="text-sm font-bold text-destructive">
           {settings.error instanceof ProblemError
@@ -175,7 +175,7 @@ export function SettingsRoute() {
 
   if (!form || !settings.data) {
     return (
-      <AppShell>
+      <AppShell chrome="side">
         <h1 className="sr-only">Impostazioni</h1>
         <p className="text-sm text-muted-foreground">Carico le impostazioni…</p>
       </AppShell>
@@ -194,7 +194,7 @@ export function SettingsRoute() {
   const bidderGroupErrors = errorsFor(errors, 'bidder');
 
   return (
-    <AppShell>
+    <AppShell chrome="side">
       <h1 className="w-exp mb-4 text-xl font-extrabold">Impostazioni</h1>
 
       <form

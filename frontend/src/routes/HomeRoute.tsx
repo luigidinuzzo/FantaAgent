@@ -61,7 +61,7 @@ export function HomeRoute() {
   }
 
   return (
-    <AppShell>
+    <AppShell chrome="side">
       <h1 className="w-exp text-xl font-extrabold">Le tue aste</h1>
 
       {auctions.isLoading ? (

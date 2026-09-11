@@ -55,7 +55,7 @@ export function RecapRoute() {
   }
 
   return (
-    <AppShell>
+    <AppShell chrome="side">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h1 className="w-exp text-xl font-extrabold">Riepilogo</h1>
 

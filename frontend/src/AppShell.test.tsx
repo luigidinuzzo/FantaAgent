@@ -10,59 +10,90 @@ function withRouter(node: React.ReactNode) {
 
 describe('AppShell', () => {
   it('mostra il contenuto dentro un landmark main', () => {
-    render(withRouter(<AppShell><p>contenuto</p></AppShell>));
+    render(withRouter(<AppShell chrome="side"><p>contenuto</p></AppShell>));
     expect(screen.getByRole('main')).toHaveTextContent('contenuto');
   });
 
   it('espone la barra superiore come banner', () => {
-    render(withRouter(<AppShell><p>x</p></AppShell>));
+    render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
     expect(screen.getByRole('banner')).toHaveTextContent('FantaAgent');
   });
 
   it('ospita lo slot di stato nella barra', () => {
-    render(withRouter(<AppShell slotStatus={<span>in diretta</span>}><p>x</p></AppShell>));
+    render(withRouter(
+      <AppShell chrome="side" slotStatus={<span>in diretta</span>}><p>x</p></AppShell>,
+    ));
     expect(screen.getByRole('banner')).toHaveTextContent('in diretta');
   });
 
   /**
-   * Il difetto strutturale della revisione finale: due revisioni consecutive hanno
-   * trovato "una rotta aggiunta e nessuno che la collega" — /proiezione alla tappa
-   * 4, /riepilogo alla tappa 5. La barra e' l'unico elemento che ogni schermata
-   * condivide: e' qui che la navigazione va tenuta, non in un link isolato per
-   * schermata.
+   * Il difetto strutturale delle tappe precedenti: due revisioni consecutive hanno
+   * trovato "una rotta aggiunta e nessuno che la collega". La barra e' l'unico
+   * elemento che ogni schermata condivide, quindi e' qui che la navigazione vive —
+   * qualunque forma prenda, laterale o superiore.
    */
-  it('collega ogni rotta del router, cosi che una nuova non resti irraggiungibile', () => {
-    render(withRouter(<AppShell><p>x</p></AppShell>));
+  it.each(['side', 'top'] as const)(
+    'con chrome=%s collega ogni rotta del router',
+    (chrome) => {
+      render(withRouter(<AppShell chrome={chrome}><p>x</p></AppShell>));
 
-    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
-    const reachable = routeDefinitions
-      .map((r) => r.path)
-      // La proiezione e' l'eccezione voluta: e' una seconda schermata pensata per
-      // un proiettore, senza nessun controllo — va aperta solo dal collegamento
-      // "Apri la proiezione" in AuctionRoute (target=_blank), non dalla barra
-      // comune, che sulla proiezione stessa deve restare del tutto assente.
-      .filter((path) => path !== '/proiezione');
+      const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
+      const reachable = routeDefinitions
+        .map((r) => r.path)
+        // La proiezione e' l'eccezione voluta: seconda schermata per un proiettore,
+        // zero controlli, si apre solo dal suo collegamento in /asta.
+        .filter((path) => path !== '/proiezione');
 
-    for (const path of reachable) {
-      expect(hrefs).toContain(path);
-    }
+      for (const path of reachable) {
+        expect(hrefs).toContain(path);
+      }
+    },
+  );
+
+  it('la barra laterale e quella superiore offrono le STESSE destinazioni', () => {
+    const { unmount } = render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
+    const side = screen.getAllByRole('link').map((a) => a.getAttribute('href')).sort();
+    unmount();
+
+    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    const top = screen.getAllByRole('link').map((a) => a.getAttribute('href')).sort();
+
+    // Due elenchi di sezioni sarebbero due cose da tenere d'accordo: e' un solo
+    // elenco reso in due forme, e questo test lo impone.
+    expect(top).toEqual(side);
   });
 
   it('il nome porta alla home', () => {
-    render(withRouter(<AppShell><p>x</p></AppShell>));
+    render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
     expect(screen.getByRole('link', { name: 'FantaAgent' })).toHaveAttribute('href', '/');
   });
 
-  /**
-   * La proiezione e' una seconda schermata pensata per essere lanciata su un
-   * proiettore: il suo vincolo permanente e' zero pulsanti e zero caselle di
-   * testo, e questo si estende alla navigazione — un link e' role="link", non
-   * role="button", ma non deve comunque essercene nessuno.
-   */
-  it('senza la navigazione (proiezione) non mostra nessun link, nemmeno il nome', () => {
-    render(withRouter(<AppShell nav={false}><p>x</p></AppShell>));
+  it('con chrome=none (proiezione) non mostra nessun link, nemmeno il nome', () => {
+    render(withRouter(<AppShell chrome="none"><p>x</p></AppShell>));
 
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByRole('banner')).toHaveTextContent('FantaAgent');
+  });
+
+  /**
+   * Non nascosti con CSS: non resi affatto. Un pulsante nascosto alla vista resta
+   * raggiungibile da tastiera e dai lettori di schermo, su una schermata che non lo
+   * prevede.
+   */
+  it('i pulsanti azione appaiono solo sulla barra superiore', () => {
+    const { unmount } = render(withRouter(
+      <AppShell chrome="top" slotActions={<button type="button">Annulla</button>}>
+        <p>x</p>
+      </AppShell>,
+    ));
+    expect(screen.getByRole('button', { name: 'Annulla' })).toBeInTheDocument();
+    unmount();
+
+    render(withRouter(
+      <AppShell chrome="side" slotActions={<button type="button">Annulla</button>}>
+        <p>x</p>
+      </AppShell>,
+    ));
+    expect(screen.queryByRole('button', { name: 'Annulla' })).not.toBeInTheDocument();
   });
 });

@@ -169,6 +169,7 @@ export function AuctionRoute() {
 
   return (
     <AppShell
+      chrome="top"
       slotStatus={
         <>
           {/* Product gap (revisione finale): non esisteva nessun modo di
