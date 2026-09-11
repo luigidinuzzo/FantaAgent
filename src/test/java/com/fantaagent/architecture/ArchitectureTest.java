@@ -1,11 +1,20 @@
 package com.fantaagent.architecture;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.Arrays;
+
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -100,5 +109,36 @@ class ArchitectureTest {
                 .because("il tabellone e' proiettato: non puo' contenere valutazioni")
                 .allowEmptyShould(true)
                 .check(classes);
+    }
+
+    /**
+     * Il Task 14 ha aggiunto {@code @RequestMapping("/legacy")} a mano ai cinque
+     * controller delle pagine vecchie. Questo test e' la versione strutturale di
+     * quel lavoro a mano: un sesto controller in questo package, dimenticato il
+     * prefisso, mapperebbe le sue rotte direttamente sugli indirizzi della SPA — e
+     * nessun test se ne accorgerebbe, perche' finora nessuno lo verificava.
+     */
+    @Test
+    void ogniControllerDellePagineVecchiePortaIlPrefissoLegacy() {
+        classes().that().resideInAPackage("com.fantaagent.adapter.in.web")
+                .and().areAnnotatedWith(Controller.class)
+                .should(portareIlPrefissoLegacy())
+                .check(classes);
+    }
+
+    private static ArchCondition<JavaClass> portareIlPrefissoLegacy() {
+        return new ArchCondition<>("essere annotate con @RequestMapping(\"/legacy\")") {
+            @Override
+            public void check(JavaClass item, ConditionEvents events) {
+                boolean ok = item.isAnnotatedWith(RequestMapping.class)
+                        && Arrays.equals(
+                                item.getAnnotationOfType(RequestMapping.class).value(),
+                                new String[]{"/legacy"});
+                String message = ok
+                        ? item.getName() + " porta @RequestMapping(\"/legacy\")"
+                        : item.getName() + " NON porta @RequestMapping(\"/legacy\") a livello di classe";
+                events.add(new SimpleConditionEvent(item, ok, message));
+            }
+        };
     }
 }
