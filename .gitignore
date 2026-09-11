@@ -49,6 +49,7 @@ data/reference/normalized.json
 llm-calls.jsonl
 logs/
 *.log
+img/
 
 # ---- Copie di sicurezza ---------------------------------------------------
 # Un archivio del repository contiene la cronologia PRIMA di qualunque pulizia:
