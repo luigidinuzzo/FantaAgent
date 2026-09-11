@@ -171,6 +171,19 @@ describe('RecapRoute', () => {
     await waitFor(() => expect(bastoniButton).toBeEnabled());
   });
 
+  /**
+   * L'esportazione e' un <a href download>, non una fetch: il browser deve
+   * gestire il salvataggio da solo. L'href porta l'auctionId della BOARD ('a1'),
+   * non quello del contesto della finestra ('corrente'), per lo stesso motivo
+   * della revoca — vedi il test sopra sull'auctionId della board.
+   */
+  it("il pulsante di esportazione punta all'export.csv dell'asta della board", async () => {
+    renderRecap();
+    const link = await screen.findByRole('link', { name: /scarica il csv delle rose/i });
+    expect(link).toHaveAttribute('href', '/api/leagues/default/auctions/a1/export.csv');
+    expect(link).toHaveAttribute('download');
+  });
+
   it('una rosa vuota lo dice, invece di sembrare una colonna rotta', async () => {
     renderRecap();
     expect(await screen.findByText(/bruno non ha ancora comprato nessuno/i)).toBeInTheDocument();
