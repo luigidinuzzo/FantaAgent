@@ -1,6 +1,5 @@
-package com.fantaagent.adapter.in.web;
+package com.fantaagent.application.service;
 
-import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.domain.auction.Holding;
 import com.fantaagent.domain.auction.Squad;
 import com.fantaagent.domain.league.Participant;
@@ -30,7 +29,7 @@ import java.util.List;
  * difensori, 8 centrocampisti e 6 attaccanti e' un file che si puo' controllare prima
  * di caricarlo, e questo caricamento non si annulla.
  */
-final class RosterCsvExporter {
+public final class RosterCsvExporter {
 
     /** Separatore di blocco, letterale come nel template. */
     private static final String BLOCK_SEPARATOR = "$,$,$";
@@ -40,7 +39,7 @@ final class RosterCsvExporter {
     private RosterCsvExporter() {
     }
 
-    static String toCsv(AuctionService auction) {
+    public static String toCsv(AuctionService auction) {
         StringBuilder sb = new StringBuilder();
         for (Participant participant : auction.participants()) {
             Squad squad = auction.state().squadOf(participant.id());

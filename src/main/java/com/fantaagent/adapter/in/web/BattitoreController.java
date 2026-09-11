@@ -5,6 +5,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.application.service.RosterCsvExporter;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.config.AuctionSettingsStore;

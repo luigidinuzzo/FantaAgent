@@ -1,6 +1,5 @@
-package com.fantaagent.adapter.in.web;
+package com.fantaagent.application.service;
 
-import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.auction.AuctionProjector;
 import com.fantaagent.domain.auction.AuctionState;
