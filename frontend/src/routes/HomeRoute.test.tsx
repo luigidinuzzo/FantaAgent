@@ -75,6 +75,9 @@ describe('HomeRoute', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
 
+    // Con CARDS[0] selezionata, la pagina ha ANCHE il "Riprendi" della card destra
+    // — ma il suo nome accessibile e' "Riprendi l'asta aperta, ...", una frase
+    // diversa: questa query trova solo quello della riga-pillola.
     await userEvent.click(await screen.findByRole('button', { name: /riprendi lega no name/i }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -252,6 +255,8 @@ describe('HomeRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       renderHome();
 
+      // Come sopra: questa query trova solo il "Riprendi" della riga-pillola, non
+      // quello della card destra (nome accessibile diverso apposta).
       await user.click(await screen.findByRole('button', { name: /riprendi lega no name/i }));
       await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/selezione fallita/i));
 
@@ -338,5 +343,29 @@ describe('HomeRoute', () => {
 
     expect(await screen.findByText(/2 acquisti/)).toBeInTheDocument();
     expect(screen.getByText(/fase/i)).toBeInTheDocument();
+  });
+
+  /**
+   * Difetto di accessibilita' gia' corretto piu' volte in questo progetto: con
+   * un'asta aperta la pagina ha DUE bottoni "Riprendi" (la riga-pillola e la card
+   * destra). Il testo visibile "Riprendi" puo' restare uguale nei due — chi guarda
+   * ha il contesto della card attorno — ma il nome ACCESSIBILE deve nominare
+   * l'asta in entrambi, altrimenti chi naviga per elenco di ruoli sente due voci
+   * identiche e una non dice a quale asta si riferisce. Senza questo test la
+   * regressione puo' rientrare (e' successo) senza che nulla diventi rosso.
+   */
+  it("entrambi i bottoni «Riprendi» nominano la loro asta, non solo la riga", async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    renderHome();
+
+    // La riga-pillola: aria-label "Riprendi <nome>", come sempre.
+    expect(
+      await screen.findByRole('button', { name: `Riprendi ${OPEN_AUCTION.label}` }),
+    ).toBeInTheDocument();
+    // La card destra: una frase diversa (per non collidere con quella della riga
+    // in una query per nome), ma che nomina comunque l'asta.
+    expect(
+      screen.getByRole('button', { name: `Riprendi l'asta aperta, ${OPEN_AUCTION.label}` }),
+    ).toBeInTheDocument();
   });
 });

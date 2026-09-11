@@ -230,19 +230,35 @@ export function HomeRoute() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Acquisti finora: <span className="tnum">{openAuction.purchases}</span>
               </p>
+              {/*
+                Due bottoni "Riprendi" convivono sullo schermo quando un'asta e'
+                aperta (questo e quello della riga-pillola). Il testo visibile puo'
+                restare "Riprendi" in entrambi perche' il contesto attorno lo
+                disambigua a chi guarda — ma chi ascolta per elenco di ruoli sente
+                solo il nome accessibile, senza quel contesto. Un aria-label che
+                ripetesse esattamente "Riprendi {label}" come la riga darebbe due
+                voci identiche (e due bottoni indistinguibili anche per una query
+                per nome nei test): la frase qui e' diversa apposta, e nomina
+                comunque l'asta.
+              */}
               <button
                 type="button"
                 disabled={select.isPending}
                 onClick={() => resume(openAuction.id)}
+                aria-label={`Riprendi l'asta aperta, ${openAuction.label}`}
                 className="mt-4 min-h-11 w-full rounded-full bg-positive px-4 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Riprendi
               </button>
             </div>
           ) : list.length === 0 ? (
-            // Il caso "nessuna asta in assoluto" e' gia' detto una volta, a sinistra:
-            // ripeterlo qui identico produrrebbe due nodi con lo stesso testo — di
-            // nuovo la stessa ambiguita' per getByText.
+            // Deviazione dichiarata dal brief: qui andrebbe un secondo EmptyState
+            // ("altrimenti l'EmptyState esistente"), ma quando la lista e' del
+            // tutto vuota il ramo sopra (list.length === 0, colonna sinistra) mostra
+            // gia' lo stesso EmptyState con lo stesso testo — ripeterlo qui
+            // produrrebbe due nodi identici, ambigui per getByText nei test.
+            // Null e' la scelta deliberata per questo solo caso; con aste presenti
+            // ma nessuna aperta, l'EmptyState sotto resta invece quello del brief.
             null
           ) : (
             <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
