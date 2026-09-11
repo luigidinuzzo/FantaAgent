@@ -129,7 +129,7 @@ public class BattitoreController {
     /**
      * Registra l'aggiudicazione dalla pagina proiettata.
      *
-     * <p>Endpoint distinto da /assign solo perche' deve rendere una pagina diversa:
+     * <p>Endpoint distinto da /legacy/assign solo perche' deve rendere una pagina diversa:
      * l'acquisto passa dallo stesso {@link AuctionService#recordPurchase}, con la stessa
      * validazione e gli stessi messaggi di rifiuto. La regola che conta e' che esista
      * una sola via per REGISTRARE un acquisto, non una sola per disegnarlo.

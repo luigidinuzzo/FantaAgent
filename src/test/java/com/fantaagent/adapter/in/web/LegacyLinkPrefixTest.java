@@ -24,6 +24,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * fallback, non darebbe nemmeno piu' 404 — verrebbe inghiottito, servendo la pagina
  * React al posto di quella vecchia. Un bottone che cambia applicazione invece di
  * rompersi e' il difetto peggiore che questa tappa possa produrre.
+ *
+ * <p><b>Cosa NON vede questo guardiano.</b> {@link #LINKS} richiede {@code @{}
+ * immediatamente dopo la virgoletta di apertura: un'espressione ternaria come
+ * {@code th:href="${setup} ? @{/legacy} : @{/asta}"} nasconde il secondo ramo dietro
+ * uno spazio e un {@code :}, e resta invisibile per sempre, a questo test come a
+ * qualunque futura estensione dello stesso pattern. L'unica occorrenza reale
+ * (in {@code settings.html}) e' stata trovata e corretta a mano; non ce n'e' una
+ * verifica automatica.
  */
 class LegacyLinkPrefixTest {
 
@@ -33,10 +41,27 @@ class LegacyLinkPrefixTest {
 
     /**
      * Cattura la URL di un {@code hx-get}/{@code hx-post} o di un {@code @{...}} di
-     * Thymeleaf, fermandosi prima della parentesi dei parametri.
+     * Thymeleaf, fermandosi prima della parentesi dei parametri. Vedi il Javadoc di
+     * classe per il caso che questo pattern non copre.
      */
     private static final Pattern LINKS = Pattern.compile(
             "(?:hx-(?:get|post)=\"|th:(?:href|action|src)=\"@\\{|hx-(?:get|post)=\"@\\{)(/[^\"}(\\s]*)");
+
+    /**
+     * Cattura il target di un redirect assoluto nel Java del package: sia
+     * {@code return "redirect:/..."} sia {@code new ModelAndView("redirect:/...")}.
+     */
+    private static final Pattern JAVA_REDIRECT = Pattern.compile("redirect:(/[^\"\\s]*)");
+
+    /**
+     * Cattura il valore letterale passato come secondo argomento a
+     * {@code setHeader(...)} quando e' un percorso applicativo, ad esempio
+     * {@code response.setHeader("HX-Redirect", "/...")}. Una costante come
+     * {@code STATE_CHANGED_EVENT} non e' una stringa letterale e non viene catturata:
+     * e' voluto, non e' un indirizzo.
+     */
+    private static final Pattern JAVA_HEADER_PATH = Pattern.compile(
+            "setHeader\\([^,]+,\\s*\"(/[^\"]*)\"\\)");
 
     @Test
     void ogniCollegamentoDellePagineVecchieStaSottoLegacy() throws IOException {
@@ -66,5 +91,54 @@ class LegacyLinkPrefixTest {
         String home = Files.readString(
                 Path.of("src/main/resources/templates/home.html"), StandardCharsets.UTF_8);
         assertThat(LINKS.matcher(home).results()).isNotEmpty();
+    }
+
+    /**
+     * Stesso controllo del test sui template, ma sul Java del package: un
+     * {@code redirect:/...} o un header con un percorso letterale, dimenticati alla
+     * radice, non passano mai per il markup e restano invisibili al guardiano sopra.
+     */
+    @Test
+    void ilCodiceJavaDellePagineVecchieNonRimandaAllaRadice() throws IOException {
+        List<String> fuoriPosto = new ArrayList<>();
+        try (Stream<Path> files = Files.walk(Path.of("src/main/java/com/fantaagent/adapter/in/web"))) {
+            for (Path file : files.filter(p -> p.toString().endsWith(".java")).toList()) {
+                String text = Files.readString(file, StandardCharsets.UTF_8);
+                collectFuoriPosto(file, text, JAVA_REDIRECT, fuoriPosto);
+                collectFuoriPosto(file, text, JAVA_HEADER_PATH, fuoriPosto);
+            }
+        }
+
+        assertThat(fuoriPosto)
+                .describedAs("indirizzi Java non prefissati: stessa scomparsa nel fallback "
+                        + "della SPA del test sui template, ma un redirect o un header nel "
+                        + "codice non passa mai per il markup")
+                .isEmpty();
+    }
+
+    private static void collectFuoriPosto(Path file, String text, Pattern pattern,
+                                          List<String> fuoriPosto) {
+        Matcher m = pattern.matcher(text);
+        while (m.find()) {
+            String url = m.group(1);
+            if (STATIC.contains(url) || url.startsWith("/legacy")) {
+                continue;
+            }
+            fuoriPosto.add(file.getFileName() + " -> " + url);
+        }
+    }
+
+    /** Se i due pattern sul Java non trovano niente, il test sopra passerebbe a vuoto. */
+    @Test
+    void iPatternJavaTrovanoDavveroIRedirect() throws IOException {
+        String home = Files.readString(
+                Path.of("src/main/java/com/fantaagent/adapter/in/web/HomeController.java"),
+                StandardCharsets.UTF_8);
+        assertThat(JAVA_REDIRECT.matcher(home).results()).isNotEmpty();
+
+        String advice = Files.readString(
+                Path.of("src/main/java/com/fantaagent/adapter/in/web/NoAuctionAdvice.java"),
+                StandardCharsets.UTF_8);
+        assertThat(JAVA_HEADER_PATH.matcher(advice).results()).isNotEmpty();
     }
 }
