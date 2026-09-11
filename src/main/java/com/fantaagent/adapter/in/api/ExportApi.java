@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.application.service.RosterCsvExporter;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,8 +47,17 @@ public class ExportApi {
         String fileName = "rose-" + auction.auctionId() + ".csv";
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                // Il costruttore di Spring, non la concatenazione a mano: gli id di oggi
+                // sono date, ma AuctionGuard promette che un sotto-progetto futuro rendera'
+                // le aste indirizzabili per nome scelto da chi le crea. Una virgoletta in
+                // quel nome romperebbe una stringa quotata scritta a mano; un nome accentato
+                // finirebbe scritto senza dichiarare una codifica. Questo costruttore applica
+                // RFC 6266/5987 (escaping e parametro esteso filename*) a prescindere da cosa
+                // contenga il nome.
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fileName + "\"")
+                        ContentDisposition.attachment()
+                                .filename(fileName, StandardCharsets.UTF_8)
+                                .build().toString())
                 .body(csv);
     }
 }
