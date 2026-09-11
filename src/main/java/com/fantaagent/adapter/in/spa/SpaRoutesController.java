@@ -15,8 +15,9 @@ import java.util.List;
  * che e' esattamente il difetto che questa migrazione ha passato due tappe a togliere
  * dalle schermate.
  *
- * <p>Cio' che non e' qui dentro da' 404, che e' la verita'. E l'elenco non puo'
- * divergere da quello di {@code router.tsx}, perche' un test li confronta.
+ * <p>Cio' che non e' qui dentro da' 404, che e' la verita'. E un test confronta
+ * questo elenco con quello di {@code router.tsx}, cosi' che i due non possano
+ * divergere in silenzio — il test rende la divergenza rossa, non impossibile.
  */
 @Controller
 public class SpaRoutesController {
@@ -31,8 +32,11 @@ public class SpaRoutesController {
      * Le stesse di {@code frontend/src/router.tsx}, verificate da un test.
      *
      * <p>Costruita dalle costanti sopra invece di ripetere le stringhe: sono le stesse
-     * che l'annotazione {@code @GetMapping} usa qui sotto, cosi' una modifica alle
-     * rotte si fa in un punto solo e non puo' far divergere le due copie.
+     * che l'annotazione {@code @GetMapping} usa qui sotto, cosi' una modifica al VALORE
+     * di una rotta si fa in un punto solo. Le costanti condivise impediscono solo
+     * questo: che il valore di una rotta diverga fra le due copie. Non impediscono che
+     * qualcuno ne aggiunga una a un elenco scordandosi dell'altro — per quello serve il
+     * test di reflection su {@link #spa()}, non le costanti.
      */
     static final List<String> ROUTES = List.of(ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO);
 

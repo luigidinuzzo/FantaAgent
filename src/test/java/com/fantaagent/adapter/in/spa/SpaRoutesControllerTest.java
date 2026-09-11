@@ -115,6 +115,6 @@ class SpaRoutesControllerTest {
     void laMappaturaHttpUsaEsattamenteLeStesseRotteDiRoutes() throws NoSuchMethodException {
         GetMapping mapping = SpaRoutesController.class.getMethod("spa").getAnnotation(GetMapping.class);
 
-        assertThat(mapping.value()).containsExactlyElementsOf(SpaRoutesController.ROUTES);
+        assertThat(mapping.value()).containsExactlyInAnyOrderElementsOf(SpaRoutesController.ROUTES);
     }
 }
