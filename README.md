@@ -89,6 +89,11 @@ anche in sviluppo — qui dentro non c'è stato di dominio e non ci sono mock.
 
 Il `Ctrl-C` sul terminale del backend lo ferma; `run.sh` non lascia processi dietro.
 
+Se prima è già stato eseguito `mvn -Pprod package` e non è seguito un `mvn clean`,
+`target/classes/static` conserva ancora quella build: la radice di `run.sh` a
+`:8080` servirebbe quella SPA (ormai vecchia) invece di restare vuota come questa
+sezione dice. Un `mvn clean` prima di `./run.sh` evita l'ambiguità.
+
 ## Configurazione
 
 I file di configurazione vivono in `res/`.
@@ -117,6 +122,12 @@ Thymeleaf e HTMX con cui è nato il progetto — stessa API, stesso registro, te
 come punto di paragone mentre la migrazione le sostituisce una alla volta. Non
 sono un secondo modo di fare l'asta pensato per l'uso quotidiano: sono lì per
 poter confrontare una schermata nuova con quella che rimpiazza.
+
+Con un'eccezione, ad oggi: la SPA non ha ancora la ricerca libera di un giocatore
+per nome, né il pannello TARGET/obiettivi. Chi ne ha bisogno durante un'asta li
+trova ancora solo su `/legacy` — non sono un difetto minore da ignorare la sera
+dell'asta, ma lavoro non ancora fatto, ed è onesto dirlo qui invece che lasciarlo
+scoprire a chi sceglie quale interfaccia usare.
 
 Il frontend React ha un passo di build: Node e npm, sotto `frontend/`. È il prezzo
 pagato per avere una schermata d'asta che reagisce senza ricaricare, e per potere
