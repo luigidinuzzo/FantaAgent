@@ -46,6 +46,9 @@ const REASON_TEXT: Record<ThresholdsTableDisabledReason, string> = {
  * potrebbe disaccordarsi (disabilitata ma senza motivo, o viceversa) — e' l'UNICA
  * fonte di verita' per entrambi: {@code disabled = disabledReason !== null}.
  */
+/** Uguale alla caption della tabella: un solo posto dove il nome del gruppo e' scritto. */
+const GROUP_LABEL = 'Modificatore di difesa: da questa media in su, questo bonus';
+
 export function ThresholdsTable({
   value,
   onChange,
@@ -75,7 +78,22 @@ export function ThresholdsTable({
     // controllo a cui accostarsi, e senza questo aria-describedby il testo
     // sarebbe leggibile solo a schermo — nessun controllo lo referenzierebbe,
     // quindi chi ascolta tabulando i controlli non lo incontrerebbe mai.
-    <div role="group" aria-describedby={tableErrors.length > 0 ? tableErrorsId : undefined}>
+    //
+    // A differenza del <fieldset>/<legend> che questo idioma copia, un
+    // role="group" non ha un nome accessibile finche' non gliene si da' uno:
+    // uno screen reader comunemente non annuncia nemmeno il confine di un
+    // gruppo senza nome, e allora l'aria-describedby qui sopra potrebbe non
+    // raggiungere mai nessuno che ascolta — non basta che il testo sia
+    // collegato, il gruppo che lo porta deve prima essere trovabile.
+    // aria-label ripete la caption invece di puntarci con aria-labelledby: la
+    // caption resta il nome accessibile della TABELLA, un ruolo diverso da
+    // quello del gruppo che la contiene, e i due non devono condividere
+    // l'id di un singolo elemento.
+    <div
+      role="group"
+      aria-label={GROUP_LABEL}
+      aria-describedby={tableErrors.length > 0 ? tableErrorsId : undefined}
+    >
       {disabledReason !== null ? (
         <p id={lockId} className="mb-2 text-sm text-muted-foreground">
           {REASON_TEXT[disabledReason]}
@@ -84,7 +102,7 @@ export function ThresholdsTable({
 
       <table className="w-full text-sm">
         <caption className="mb-2 text-left text-sm font-bold">
-          Modificatore di difesa: da questa media in su, questo bonus
+          {GROUP_LABEL}
         </caption>
         <thead>
           <tr className="text-left text-muted-foreground">

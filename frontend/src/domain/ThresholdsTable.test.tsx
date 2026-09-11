@@ -171,4 +171,18 @@ describe('ThresholdsTable', () => {
     const group = screen.getByRole('group');
     expect(group).toHaveAccessibleDescription(/la tabella è vuota/i);
   });
+
+  /**
+   * A differenza del <fieldset>/<legend> che questo idioma copia, un role="group"
+   * senza aria-label non ha un nome accessibile: uno screen reader comunemente non
+   * annuncia nemmeno il confine del gruppo, e allora l'aria-describedby del test
+   * sopra potrebbe non raggiungere mai nessuno che ascolta — non basta che il testo
+   * sia collegato, il gruppo che lo porta deve prima essere trovabile.
+   */
+  it('il gruppo ha un nome accessibile, uguale alla caption della tabella', () => {
+    render(<Harness initial={STEPS} />);
+
+    const group = screen.getByRole('group');
+    expect(group).toHaveAccessibleName('Modificatore di difesa: da questa media in su, questo bonus');
+  });
 });
