@@ -9,5 +9,6 @@ if [ -f .env ]; then
   set +a
 fi
 
-( sleep 6 && command -v open >/dev/null && open http://localhost:8080 ) &
+echo "Backend su :8080 — API e /legacy. Frontend React: dev server su :5173" \
+     "(cd frontend && npm run dev), oppure il jar impacchettato con mvn -Pprod package."
 exec mvn -q -DskipTests spring-boot:run
