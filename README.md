@@ -48,19 +48,29 @@ stare.
 ### Fare un'asta
 
 ```bash
-./run.sh
+mvn -q -Pprod package
+java -jar target/*.jar
 ```
 
-Poi apri <http://localhost:8080>. Da lì si passa dalla home, si sceglie o si crea
-un'asta, e si batte. Sono le schermate Thymeleaf: oggi sono queste a fare l'asta.
+Poi apri <http://localhost:8080>. È il frontend React, ed è alla radice: da lì si
+passa dalla home, si sceglie o si crea un'asta, e si batte.
 
-Alla prima esecuzione servono i file di configurazione descritti sotto — senza il
-listone in `res/` l'applicazione non parte.
+Il profilo `prod` scarica Node ed esegue la build del frontend dentro il pacchetto:
+non serve installarlo a mano, e il risultato è un jar solo, che parte e basta.
+Alla prima esecuzione servono anche i file di configurazione descritti sotto —
+senza il listone in `res/` l'applicazione non parte.
+
+**Le schermate Thymeleaf di prima ci sono ancora**, su `/legacy` — vedi la sezione
+Com'è fatto più sotto — ma non sono più la via consigliata: restano come punto di
+paragone mentre la migrazione le sostituisce.
 
 ### Lavorare sul frontend React
 
 Due processi, in due terminali. Il backend per primo: il dev server di Vite gli
 inoltra `/api`, quindi senza backend il frontend si apre e non trova niente.
+Qui il backend parte senza il passo di build — `run.sh` non impacchetta il
+frontend, quindi la sua radice a `:8080` non serve nulla finché non è passata da
+`mvn -Pprod package`; è la porta `:5173` del dev server quella da aprire.
 
 ```bash
 # terminale 1 — backend
@@ -73,14 +83,9 @@ npm run dev
 ```
 
 Il frontend sta su <http://localhost:5173>. Non è un secondo modo di fare l'asta:
-è la schermata d'asta React, in costruzione, che parla al backend via API. Il
-backend resta l'unica verità anche in sviluppo — qui dentro non c'è stato di
-dominio e non ci sono mock.
-
-**Serve un'asta già aperta.** Il frontend non ha (ancora) la home per crearne una:
-aprila da <http://localhost:8080>, poi ricarica la pagina su `:5173`. Senza,
-ogni richiesta risponde `409` con «Nessuna asta è aperta» — che è il comportamento
-giusto, non un errore di configurazione.
+è la stessa interfaccia che finisce nel jar, servita qui dal dev server perché
+reagisce senza ricaricare mentre ci si lavora. Il backend resta l'unica verità
+anche in sviluppo — qui dentro non c'è stato di dominio e non ci sono mock.
 
 Il `Ctrl-C` sul terminale del backend lo ferma; `run.sh` non lascia processi dietro.
 
@@ -106,12 +111,14 @@ nomi né i numeri di quelle già concluse.
 
 ## Com'è fatto
 
-Java 25 e Spring Boot. Le schermate con cui si fa l'asta oggi sono Thymeleaf e HTMX,
-rese dal server; accanto a loro, e senza toccarle, è nata un'API JSON sotto
-`/api/leagues/{lega}/auctions/{asta}/…` e un frontend React servito da Vite, che le
-sostituirà una alla volta.
+Java 25 e Spring Boot. L'interfaccia con cui si fa l'asta è un frontend React,
+servito dalla radice; accanto a lei, sotto `/legacy`, sono rimaste le schermate
+Thymeleaf e HTMX con cui è nato il progetto — stessa API, stesso registro, tenute
+come punto di paragone mentre la migrazione le sostituisce una alla volta. Non
+sono un secondo modo di fare l'asta pensato per l'uso quotidiano: sono lì per
+poter confrontare una schermata nuova con quella che rimpiazza.
 
-Quel frontend ha un passo di build: Node e npm, sotto `frontend/`. È il prezzo
+Il frontend React ha un passo di build: Node e npm, sotto `frontend/`. È il prezzo
 pagato per avere una schermata d'asta che reagisce senza ricaricare, e per potere
 finalmente testare comportamento e contrasti — la cosa che la suite Java, per sua
 natura, non fa. Il jar però resta uno: il profilo Maven `prod` esegue `npm ci` e
@@ -119,14 +126,12 @@ natura, non fa. Il jar però resta uno: il profilo Maven `prod` esegue `npm ci` 
 continua a produrre una cosa sola che parte e basta, il che la sera dell'asta conta
 più dell'eleganza.
 
-**Il frontend impacchettato non è ancora raggiungibile.** `HomeController` mappa `/`
-e `AuctionController` mappa `/asta`, e una request mapping vince sempre sulla pagina
-di benvenuto: `index.html` finisce nel jar e nessuna URL lo apre. È voluto, non
-dimenticato. Servirlo adesso vorrebbe dire decidere come convive con le sei rotte
-Thymeleaf, e un prefisso provvisorio tipo `/app/**` creerebbe una URL destinata a
-morire. La tappa 6 toglie quelle rotte e mette il frontend alla radice. Fino ad
-allora vale quanto scritto sopra in [Avvio](#avvio): l'asta si fa dalle schermate
-Thymeleaf su `:8080`, il frontend si sviluppa col dev server su `:5173`.
+Un instradamento lato client copre le rotte della SPA (`/`, `/asta`, `/proiezione`,
+`/impostazioni`, `/riepilogo`): una ricarica su un percorso profondo restituisce
+`index.html`, non un 404, perché l'indirizzo nella barra deve restare quello
+richiesto. Un percorso che non è né una rotta della SPA, né `/api`, né `/legacy`
+resta un 404 vero — niente fallback che inghiotte tutto e trasforma un indirizzo
+sbagliato in una pagina bianca senza errore.
 
 Architettura esagonale leggera in un solo modulo Maven, con i confini fra dominio,
 applicazione e adattatori verificati da ArchUnit invece che raccomandati a parole.
