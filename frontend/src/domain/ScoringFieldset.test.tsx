@@ -25,7 +25,7 @@ function Harness({ onCommit }: { onCommit: (v: ScoringSection) => void }) {
         setValue(next);
         onCommit(next);
       }}
-      errors={[]}
+      errors={{}}
       disabled={false}
     />
   );
@@ -73,21 +73,44 @@ describe('ScoringFieldset', () => {
   });
 
   /**
-   * Una <legend> fornisce il NOME accessibile del fieldset; descriverla con
-   * aria-describedby non e' una relazione garantita dagli screen reader. E' il
-   * <fieldset> — un group — che supporta davvero una descrizione.
+   * Le soglie non hanno un campo qui (vedi il commento sulla classe): i loro
+   * errori — chiave {@code "thresholds[1]"}, la seconda riga — restano descritti
+   * dal fieldset, non da un controllo che non esiste. Una <legend> fornisce il
+   * NOME accessibile del fieldset; descriverla con aria-describedby non e' una
+   * relazione garantita dagli screen reader. E' il <fieldset> — un group — che
+   * supporta davvero una descrizione.
    */
-  it('descrive gli errori sul fieldset, non sulla legend', () => {
+  it('descrive gli errori delle soglie sul fieldset, non sulla legend', () => {
     render(
       <ScoringFieldset
         value={SCORING}
         onChange={() => {}}
-        errors={['Riga 2: la media non può essere negativa.']}
+        errors={{ 'thresholds[1]': ['Riga 2: la media non può essere negativa.'] }}
         disabled={false}
       />,
     );
 
     const group = screen.getByRole('group', { name: 'Punteggio' });
     expect(group).toHaveAccessibleDescription(/riga 2/i);
+  });
+
+  /**
+   * Un campo con un input proprio (task 16) riceve l'errore accanto al SUO
+   * controllo, non in un elenco generico in coda al fieldset — stesso idioma del
+   * nome dell'asta in SettingsRoute.
+   */
+  it('descrive un campo numerico sul suo controllo', () => {
+    render(
+      <ScoringFieldset
+        value={SCORING}
+        onChange={() => {}}
+        errors={{ assist: ['Il valore per «assist» non è un numero valido.'] }}
+        disabled={false}
+      />,
+    );
+
+    const field = screen.getByLabelText(/^assist$/i);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field).toHaveAccessibleDescription(/assist.*non è un numero/i);
   });
 });

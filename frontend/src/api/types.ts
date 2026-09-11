@@ -189,5 +189,10 @@ export interface SaveSettingsResult {
   auctionId: string | null;
 }
 
-/** Le quattro chiavi ci sono sempre, anche vuote. */
-export type SettingsErrors = Record<'auction' | 'participants' | 'scoring' | 'bidder', string[]>;
+/**
+ * Le chiavi sono di campo, non di sezione (task 16: {@code bidTimerSeconds},
+ * {@code defendersCounted}, {@code participants[<id>].name}…), e una chiave compare
+ * solo se ha davvero un errore — un id di partecipante o un indice di riga non si
+ * possono elencare tutti in anticipo come le quattro sezioni fisse di prima.
+ */
+export type SettingsErrors = Record<string, string[]>;
