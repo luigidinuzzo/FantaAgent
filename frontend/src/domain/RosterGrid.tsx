@@ -2,21 +2,14 @@ import { Fragment, useState } from 'react';
 import { auctionExportUrl, ProblemError } from '../api/client';
 import { useAuctionState, useBoard, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
-
-const ROLES: Role[] = ['P', 'D', 'C', 'A'];
-
-const ROLE_NAMES: Record<Role, string> = {
-  P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti',
-};
+import { BG_ROLE_CLASS, ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
 
 // Lo stesso fondo pieno di RoleBadge {filled}, ma qui serve come classe a se'
 // stante: la fascia della griglia e' un bottone a tutta larghezza, non la
 // pillola stretta che RoleBadge disegna altrove (ConfigChips, PhaseSwitcher).
 // La coppia di colori e' quella verificata in contrast.test.ts: on-accent
 // sopra ciascuno dei quattro role-*, 4.5:1.
-const ROLE_BAND_CLASS: Record<Role, string> = {
-  P: 'bg-role-p', D: 'bg-role-d', C: 'bg-role-c', A: 'bg-role-a',
-};
+const ROLE_BAND_CLASS = BG_ROLE_CLASS;
 
 /**
  * Le rose comprate, con la revoca riga per riga — dove prima viveva
@@ -109,21 +102,30 @@ export function RosterGrid() {
       {board.isLoading ? (
         <p className="text-sm text-muted-foreground">Carico le rose…</p>
       ) : board.isError ? null : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {(board.data?.columns ?? []).map((column) => (
-            <RosterColumn
-              key={column.participantId}
-              column={column}
-              capacity={
-                state.data?.participants.find((p) => p.id === column.participantId)
-                  ?.slotsByRole
-              }
-              onVoid={handleVoid}
-              pendingSeq={pendingSeq}
-              collapsed={collapsed}
-              onToggleSection={toggleSection}
-            />
-          ))}
+        // Una colonna per partecipante, affiancate su una riga sola e non a
+        // capo (spec 6.4, mockup asta2.png): e' quello che permette di
+        // scorrere una fascia di ruolo e leggere a colpo d'occhio chi ha
+        // gia' riempito i portieri. overflow-x-auto e min-w-[16rem] per
+        // colonna, non un grid a righe multiple — stesso schema di
+        // SquadCards.tsx (la fila di card squadra sopra), cosi' le due file
+        // scorrono allineate sotto lo stesso participantId.
+        <div className="overflow-x-auto">
+          <div className="flex gap-4 pb-1">
+            {(board.data?.columns ?? []).map((column) => (
+              <RosterColumn
+                key={column.participantId}
+                column={column}
+                capacity={
+                  state.data?.participants.find((p) => p.id === column.participantId)
+                    ?.slotsByRole
+                }
+                onVoid={handleVoid}
+                pendingSeq={pendingSeq}
+                collapsed={collapsed}
+                onToggleSection={toggleSection}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -234,7 +236,13 @@ function RosterColumn({
   onToggleSection: (key: string) => void;
 }) {
   return (
-    <section aria-labelledby={`roster-${column.participantId}`} className="border border-line p-4">
+    // w-56 shrink-0: la stessa larghezza fissa delle card di SquadCards.tsx
+    // (riga 65), cosi' le due file scorrono in orizzontale allineate colonna
+    // per colonna sotto lo stesso participantId, non solo entrambe scorrevoli.
+    <section
+      aria-labelledby={`roster-${column.participantId}`}
+      className="w-56 shrink-0 border border-line p-4"
+    >
       <h3 id={`roster-${column.participantId}`} className="flex items-baseline justify-between">
         <span className="font-bold">{column.participantName}</span>
         <span className="tnum w-exp font-bold">
@@ -299,7 +307,7 @@ function RosterColumn({
                       </span>
                       <ChevronIcon open={open} />
                       <span className="sr-only">
-                        {ROLE_NAMES[role]}, {occupied} su {total}
+                        {ROLE_NAME_PLURAL_CAPITALIZED[role]}, {occupied} su {total}
                       </span>
                     </button>
                   </th>
