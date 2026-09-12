@@ -22,27 +22,13 @@ describe('PhaseSwitcher', () => {
   });
 
   // Fix round 2 (revisione finale): un cambio fase rifiutato rieffettivava
-  // il bottone e basta, senza dire a nessuno perche'. Stessa disciplina
-  // dell'errore di aggiudicazione in BidPanel/BidderDialog: role="alert"
-  // puntuale, non una seconda live region ambientale.
-  it('mostra un cambio fase rifiutato, anche a chi ascolta', () => {
+  // il bottone e basta, senza dire a nessuno perche'. Rimane vero (vedi
+  // AuctionRoute.test.tsx), ma il componente stesso non porta piu' un
+  // role="alert" proprio (revisione finale, finding B): mai un alert qui,
+  // per costruzione — non serve piu' un prop `error` da verificare.
+  it('non rende mai un alert proprio: l\'errore di un cambio fase e\' composto dalla rotta', () => {
     render(
-      <PhaseSwitcher
-        phases={['P', 'D', 'C', 'A']}
-        current="D"
-        onChange={() => {}}
-        pending={false}
-        error="Non puoi cambiare fase: ci sono lotti ancora aperti"
-      />,
-    );
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Non puoi cambiare fase: ci sono lotti ancora aperti',
-    );
-  });
-
-  it('senza errore non mostra nessun alert', () => {
-    render(
-      <PhaseSwitcher phases={['P', 'D', 'C', 'A']} current="D" onChange={() => {}} pending={false} error={null} />,
+      <PhaseSwitcher phases={['P', 'D', 'C', 'A']} current="D" onChange={() => {}} pending={false} />,
     );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });

@@ -18,18 +18,13 @@ describe('UndoLastButton', () => {
     expect(onUndo).toHaveBeenCalledTimes(1);
   });
 
-  // Fix round 2 (revisione finale): stessa disciplina di PhaseSwitcher e
-  // BidPanel — un annullamento rifiutato deve dirlo, non solo riattivare
-  // il bottone in silenzio.
-  it('mostra un annullamento rifiutato, anche a chi ascolta', () => {
-    render(
-      <UndoLastButton canUndo onUndo={() => {}} pending={false} error="Niente da annullare" />,
-    );
-    expect(screen.getByRole('alert')).toHaveTextContent('Niente da annullare');
-  });
-
-  it('senza errore non mostra nessun alert', () => {
-    render(<UndoLastButton canUndo onUndo={() => {}} pending={false} error={null} />);
+  // Fix round 2 (revisione finale): un annullamento rifiutato deve dirlo,
+  // non solo riattivare il bottone in silenzio. Rimane vero (vedi
+  // AuctionRoute.test.tsx), ma il componente stesso non porta piu' un
+  // role="alert" proprio (revisione finale, finding B): mai un alert qui,
+  // per costruzione — non serve piu' un prop `error` da verificare.
+  it('non rende mai un alert proprio: l\'errore di un annullamento e\' composto dalla rotta', () => {
+    render(<UndoLastButton canUndo onUndo={() => {}} pending={false} />);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

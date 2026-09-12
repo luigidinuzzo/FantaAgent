@@ -1049,6 +1049,74 @@ describe('AuctionRoute', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Niente da annullare'));
   });
 
+  // Revisione finale, finding B: un cambio fase rifiutato lasciava il suo
+  // role="alert" in scena per sempre (nessun .reset() lo azzerava), e un
+  // annullamento rifiutato in seguito ne accendeva un secondo — due errori
+  // vivi insieme per il resto della serata. Il fix e' l'azzeramento
+  // incrociato in AuctionRoute (changePhaseTo/undo si resettano a vicenda):
+  // qui si verifica che non restino DUE alert vivi insieme, e che il piu'
+  // recente vinca.
+  it('un cambio fase rifiutato e poi un annullamento rifiutato lasciano vivo un solo alert, quello piu\' recente', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const STATE_UNDOABLE = { ...STATE, canUndo: true };
+    const PHASE_PROBLEM = {
+      type: 'https://fantaagent.local/problems/fase-non-modificabile',
+      detail: 'Non puoi cambiare fase: ci sono lotti ancora aperti',
+    };
+    const UNDO_PROBLEM = {
+      type: 'https://fantaagent.local/problems/niente-da-annullare',
+      detail: 'Niente da annullare',
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE_UNDOABLE));
+      if (href.endsWith('/phase')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(PHASE_PROBLEM), {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      if (href.includes('/purchases/void-last')) {
+        return Promise.resolve(
+          new Response(JSON.stringify(UNDO_PROBLEM), {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const phaseButton = await screen.findByRole('button', { name: /^difensori$/i });
+    await userEvent.click(phaseButton);
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Non puoi cambiare fase: ci sono lotti ancora aperti',
+      ),
+    );
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    const undoButton = await screen.findByRole('button', { name: /annulla/i });
+    await waitFor(() => expect(undoButton).not.toBeDisabled());
+    await userEvent.click(undoButton);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Niente da annullare'));
+    // Il piu' recente ha preso il posto del precedente: un solo alert vivo,
+    // non due, e non e' quello del cambio fase.
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.queryByText('Non puoi cambiare fase: ci sono lotti ancora aperti')).not.toBeInTheDocument();
+  });
+
   it('un annullamento riuscito lo annuncia a chi ascolta', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const STATE_UNDOABLE = { ...STATE, canUndo: true };

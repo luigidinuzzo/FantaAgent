@@ -30,18 +30,18 @@ function UndoIcon() {
  * <p>Quando non c'e' niente da annullare il bottone e' disabilitato E lo dice: un
  * bottone spento che tace lascia chi ascolta senza sapere perche' ha smesso di
  * funzionare.
+ *
+ * <p>Un annullamento rifiutato dal server non ha piu' un {@code role="alert"} qui:
+ * lo rende {@code AuctionRoute}, nello stesso canale condiviso con il cambio fase
+ * (stessa barra, stessa schermata), con la precedenza al gesto piu' recente — si
+ * veda il commento su {@code PhaseSwitcher} per il perche'.
  */
 export function UndoLastButton({
-  canUndo, onUndo, pending, error,
+  canUndo, onUndo, pending,
 }: {
   canUndo: boolean;
   onUndo: () => void;
   pending: boolean;
-  /**
-   * Un annullamento rifiutato dal server. Senza mostrarlo, il bottone si
-   * riattiva e nulla dice che il tentativo non e' andato a buon fine.
-   */
-  error?: string | null;
 }) {
   const hintId = useId();
   // Stessa disciplina di BidPanel/BidderDialog: un bottone disabilitato e'
@@ -68,13 +68,6 @@ export function UndoLastButton({
         </span>
       </button>
       {disabledReason ? <span id={hintId} className="sr-only">{disabledReason}</span> : null}
-      {error ? (
-        // role="alert", non un secondo role="status": l'unica live region
-        // ambientale della pagina resta AuctionAnnouncer.
-        <p role="alert" className="w-full text-sm font-bold text-destructive">
-          {error}
-        </p>
-      ) : null}
     </>
   );
 }

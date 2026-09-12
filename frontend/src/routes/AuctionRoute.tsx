@@ -165,6 +165,18 @@ export function AuctionRoute() {
   const undoError =
     undoLast.error instanceof ProblemError ? undoLast.error.detail : null;
 
+  // Un solo alert, mai due insieme: stessa disciplina di HomeRoute
+  // (mutationErrorMessage ?? loadErrorMessage). Le tre mutazioni che questa
+  // rotta possiede — assign, changePhase, undoLast — condividono la stessa
+  // schermata, quindi al massimo una delle tre puo' avere un errore vivo in
+  // un dato momento: ogni gesto (assignPlayer/changePhaseTo/undo) azzera le
+  // ALTRE due mutazioni prima di partire, cosi' la precedenza va sempre al
+  // gesto piu' recente e non a un ordine fisso fra le tre. assignError resta
+  // renderizzato da BidPanel/BidderDialog (il suo posto attuale, dentro la
+  // card di decisione); barAlertMessage e' il canale per le due mutazioni
+  // della barra, che non rendono piu' un role="alert" proprio.
+  const barAlertMessage = changePhaseError ?? undoError;
+
   // L'annuncio si compone DOPO la conferma del server, dallo stato appena
   // riletto: e' la stessa disciplina del bottone, detta a parole. Comporlo dai
   // valori inviati direbbe cosa si e' chiesto, non cosa e' successo.
@@ -221,6 +233,11 @@ export function AuctionRoute() {
   // effetto agganciato a isPending.
   function assignPlayer({ participantId, price }: { participantId: string; price: number }) {
     setAnnouncement(null);
+    // Azzera gli errori delle altre due mutazioni: senza, un cambio fase o un
+    // annullamento rifiutato prima resterebbe visibile insieme a un nuovo
+    // errore di aggiudicazione (o al suo successo), violando "un solo alert".
+    changePhase.reset();
+    undoLast.reset();
     assign.mutate({
       playerId: valuation.data!.playerId,
       playerName: valuation.data!.name,
@@ -235,12 +252,19 @@ export function AuctionRoute() {
   // stessa attesa "dallo stato appena riletto" che serve invece ad
   // assignPlayer.
   function changePhaseTo(role: Role) {
+    // Stesso azzeramento incrociato di assignPlayer, verso le altre due
+    // mutazioni: un errore di aggiudicazione o di annullamento rimasto
+    // appeso non deve restare in scena insieme all'esito di questo gesto.
+    assign.reset();
+    undoLast.reset();
     changePhase.mutate(role, {
       onSuccess: () => setAnnouncement(phaseChangedMessage(role)),
     });
   }
 
   function undo() {
+    assign.reset();
+    changePhase.reset();
     undoLast.mutate(undefined, {
       onSuccess: () => setAnnouncement(undoMessage()),
     });
@@ -257,7 +281,6 @@ export function AuctionRoute() {
             current={state.data?.currentPhase ?? 'P'}
             onChange={changePhaseTo}
             pending={changePhase.isPending}
-            error={changePhaseError}
           />
           {/* Product gap (revisione finale): non esisteva nessun modo di
               raggiungere /proiezione dall'applicazione — bisognava digitare
@@ -271,7 +294,6 @@ export function AuctionRoute() {
             canUndo={state.data?.canUndo ?? false}
             onUndo={undo}
             pending={undoLast.isPending}
-            error={undoError}
           />
           <Link to="/impostazioni" className={ICON_LINK}>
             <SettingsIcon />
@@ -292,6 +314,15 @@ export function AuctionRoute() {
           chi guarda il portatile non ha bisogno di leggere la parola "Asta". */}
       <h1 className="sr-only">Asta</h1>
       <AuctionAnnouncer message={announcement} />
+      {barAlertMessage ? (
+        // Canale unico per changePhase e undoLast (vedi barAlertMessage
+        // sopra): al massimo un role="alert" da queste due fonti, non uno
+        // per bottone. role="alert", non un secondo role="status": l'unica
+        // live region ambientale della pagina resta AuctionAnnouncer.
+        <p role="alert" className="mt-2 text-sm font-bold text-destructive">
+          {barAlertMessage}
+        </p>
+      ) : null}
       {/* La stessa selezione della tabella di fase, non un secondo percorso:
           un giocatore scelto qui passa per setSelectedId esattamente come una
           riga cliccata, quindi valutazione, battitore e aggiudicazione si
@@ -456,7 +487,14 @@ export function AuctionRoute() {
         >
           {/* Montata solo quando la scheda e' quella attiva: legge /board (e
               le capacita' per ruolo da /state) da se', e non c'e' motivo di
-              farlo mentre e' "Fase corrente" a essere in vista. */}
+              farlo mentre e' "Fase corrente" a essere in vista.
+              Caso residuo dichiarato: RosterGrid porta un suo role="alert"
+              (voidPurchase/board), separato da barAlertMessage sopra. Non e'
+              una violazione dell'invariante "un solo alert alla volta": vive
+              dentro il pannello della sua scheda, visibile solo quando questa
+              e' quella attiva, quindi al massimo compaiono insieme un alert
+              della barra (sempre visibile) e uno delle rose (visibile solo
+              qui) — non due dalla stessa fonte, non due dallo stesso posto. */}
           {activeTab === 'rose' ? <RosterGrid /> : null}
         </div>
       </div>
