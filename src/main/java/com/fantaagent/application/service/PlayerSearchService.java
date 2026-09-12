@@ -4,6 +4,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.PlayerProjection;
+import com.fantaagent.domain.player.Role;
 import com.fantaagent.domain.search.PlayerSearch;
 import com.fantaagent.domain.strategy.PriceModel;
 import com.fantaagent.domain.strategy.PriceRecommendation;
@@ -142,6 +143,33 @@ public class PlayerSearchService {
         Set<String> sold = state.soldPlayerIds();
         return search.search(query, state.currentPhase(), SEARCH_LIMIT * 2).stream()
                 .filter(p -> !sold.contains(p.id()))
+                .limit(SEARCH_LIMIT)
+                .toList();
+    }
+
+    /**
+     * Come {@link #search(String)}, ma limitata a un ruolo. Un metodo nuovo e non un
+     * parametro aggiunto a quello esistente: {@code search(String)} lo chiamano i
+     * controller Thymeleaf in {@code adapter/in/web}, che questo piano lascia intatti
+     * apposta perche' facciano da confronto. Cambiarne la firma li costringerebbe a
+     * cambiare, e i loro 87 test sono la rete di sicurezza dell'intera migrazione.
+     *
+     * <p>{@code roleFilter} null significa "tutti", ed e' l'unico caso in cui questo
+     * metodo e' equivalente a {@link #search(String)}.
+     *
+     * <p>La finestra di candidati si allarga quando un ruolo e' richiesto: con il
+     * filtro attivo circa tre quarti dei candidati vengono scartati prima di contare,
+     * e chiedere al dominio la stessa finestra di sempre restituirebbe un elenco
+     * quasi vuoto ogni volta che i primi risultati sono del ruolo sbagliato. E' il
+     * motivo per cui il filtro sta QUI e non a valle di {@link #search(String)}.
+     */
+    public List<Player> search(String query, Role roleFilter) {
+        AuctionState state = auction.state();
+        Set<String> sold = state.soldPlayerIds();
+        int window = roleFilter == null ? SEARCH_LIMIT * 2 : SEARCH_LIMIT * 8;
+        return search.search(query, state.currentPhase(), window).stream()
+                .filter(p -> !sold.contains(p.id()))
+                .filter(p -> roleFilter == null || p.role() == roleFilter)
                 .limit(SEARCH_LIMIT)
                 .toList();
     }

@@ -5,6 +5,7 @@ import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
 import com.fantaagent.domain.player.Player;
+import com.fantaagent.domain.player.Role;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,10 +36,11 @@ public class PlayerApi {
     @GetMapping
     public List<PlayerDtos.PlayerSummary> search(@PathVariable String leagueId,
                                                  @PathVariable String auctionId,
-                                                 @RequestParam(defaultValue = "") String q) {
+                                                 @RequestParam(defaultValue = "") String q,
+                                                 @RequestParam(required = false) Role role) {
         leagues.check(leagueId);
         auctions.check(auctionId);
-        return search.search(q).stream().map(PlayerDtos.PlayerSummary::from).toList();
+        return search.search(q, role).stream().map(PlayerDtos.PlayerSummary::from).toList();
     }
 
     @GetMapping("/phase")

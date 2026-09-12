@@ -251,6 +251,49 @@ class PlayerSearchServiceTest {
     }
 
     /**
+     * Come {@link #serviceFor}, ma costruisce anche il catalogo e l'asta a partire
+     * dai soli giocatori: i test della ricerca per ruolo non hanno bisogno di uno
+     * stato d'asta particolare, solo del fixture di lega gia' definito sopra.
+     */
+    private PlayerSearchService serviceWith(List<Player> players) {
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        return serviceFor(catalog, auction);
+    }
+
+    /**
+     * Il filtro va applicato PRIMA del taglio: nove difensori che si chiamano tutti
+     * "Rossi" saturerebbero qualunque finestra di candidati, e un filtro applicato
+     * ai risultati gia' tagliati restituirebbe zero attaccanti pur essendocene uno.
+     */
+    @Test
+    void ilFiltroDiRuoloNonSiApplicaAiRisultatiGiaTagliati() {
+        List<Player> players = new ArrayList<>();
+        for (int i = 0; i < 9; i++) {
+            players.add(new Player("d" + i, "Rossi " + i, "Inter", Role.D, 10));
+        }
+        players.add(new Player("a1", "Rossini", "Roma", Role.A, 10));
+
+        PlayerSearchService service = serviceWith(players);
+
+        assertThat(service.search("rossi", Role.A))
+                .extracting(Player::id)
+                .containsExactly("a1");
+    }
+
+    @Test
+    void senzaFiltroLaRicercaSiComportaEsattamenteComePrima() {
+        List<Player> players = List.of(
+                new Player("d1", "Bastoni", "Inter", Role.D, 20),
+                new Player("a1", "Lautaro", "Inter", Role.A, 30));
+
+        PlayerSearchService service = serviceWith(players);
+
+        assertThat(service.search("bast", null)).isEqualTo(service.search("bast"));
+    }
+
+    /**
      * S8: {@code phasePlayers} costruiva un {@link com.fantaagent.domain.strategy.PriceModel}
      * una sola volta per batch, ma valutava ogni riga passando lo stato SOLO fino a
      * {@code PlayerAnalysisService#analyze}, che poi richiamava

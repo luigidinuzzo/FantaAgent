@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PlayerApiTest {
 
     private static final Player BASTONI = new Player("d1", "Bastoni", "Inter", Role.D, 20);
+    private static final Player LAUTARO = new Player("a1", "Lautaro", "Inter", Role.A, 30);
 
     private static final PriceRecommendation RECOMMENDATION = new PriceRecommendation(
             "d1", 38, 47, 90, 9,
@@ -61,7 +62,7 @@ class PlayerApiTest {
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
         when(catalog.byId("d1")).thenReturn(Optional.of(BASTONI));
-        when(search.search("bast")).thenReturn(List.of(BASTONI));
+        when(search.search("bast", null)).thenReturn(List.of(BASTONI));
         when(analysis.analyze("d1")).thenReturn(RECOMMENDATION);
     }
 
@@ -74,6 +75,33 @@ class PlayerApiTest {
                 .andExpect(jsonPath("$[0].team").value("Inter"))
                 .andExpect(jsonPath("$[0].role").value("D"))
                 .andExpect(jsonPath("$[0].listPrice").value(20));
+    }
+
+    @Test
+    void ilFiltroDiRuoloArrivaAlServizio() throws Exception {
+        when(search.search("rossi", Role.A)).thenReturn(List.of(LAUTARO));
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players?q=rossi&role=A"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("a1"));
+
+        verify(search).search("rossi", Role.A);
+    }
+
+    /**
+     * Il modo di fallire del parametro che questo task introduce. Un ruolo inventato
+     * non e' un caso di confine teorico: e' quello che arriva quando un frontend
+     * costruisce l'URL da un valore che non ha validato. Deve uscire in problem+json
+     * come ogni altro errore di questa API — verificato davvero, non dedotto dal
+     * fatto che ApiExceptionHandler estende ResponseEntityExceptionHandler.
+     */
+    @Test
+    void unRuoloInventatoEsceInProblemJson() throws Exception {
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players?q=ros&role=X"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/invalid-path-variable"));
     }
 
     @Test
