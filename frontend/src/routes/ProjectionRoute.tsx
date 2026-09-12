@@ -1,28 +1,24 @@
 import { useEffect, useState } from 'react';
 import { AppShell } from '../AppShell';
 import { useBoard, usePublicBidder } from '../api/hooks';
-import type { Role } from '../api/types';
 import type { BidBroadcast } from '../domain/bidChannel';
 import { subscribeBid } from '../domain/bidChannel';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { EmptyState } from '../domain/EmptyState';
 import { PitchLines } from '../domain/PitchLines';
 import { PublicBidderDialog } from '../domain/PublicBidderDialog';
+import { BG_ROLE_CLASS, ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from '../domain/roles';
 
-const ROLE_ORDER: Role[] = ['P', 'D', 'C', 'A'];
+const ROLE_ORDER = ROLES;
 
 // Lo stesso fondo pieno che RosterGrid usa per la fascia di ruolo (bg-role-*
 // con testo on-accent, verificato a 4.5:1 in contrast.test.ts) — l'idioma
 // visivo si ripete qui senza importare RosterGrid: quel componente porta
 // bottoni di revoca e un link di esportazione, cioe' esattamente i controlli
 // che la proiezione non puo' avere.
-const ROLE_BAND_CLASS: Record<Role, string> = {
-  P: 'bg-role-p', D: 'bg-role-d', C: 'bg-role-c', A: 'bg-role-a',
-};
+const ROLE_BAND_CLASS = BG_ROLE_CLASS;
 
-const ROLE_NAME: Record<Role, string> = {
-  P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti',
-};
+const ROLE_NAME = ROLE_NAME_PLURAL_CAPITALIZED;
 
 /**
  * La schermata proiettata: mostra e basta.

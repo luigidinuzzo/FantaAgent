@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react';
 import type { ValuationResponse } from '../api/types';
-
-const ROLE_LABEL: Record<string, string> = {
-  P: 'portiere',
-  D: 'difensore',
-  C: 'centrocampista',
-  A: 'attaccante',
-};
+import { ROLE_NAME_SINGULAR } from './roles';
 
 /**
  * Il segno meno tipografico, non il trattino: e' un numero, non una parola
@@ -62,7 +56,7 @@ export function PlayerDecisionCard({
           {valuation.name}
         </h2>
         <p className="text-sm text-muted-foreground">
-          {ROLE_LABEL[valuation.role]}, {valuation.team}
+          {ROLE_NAME_SINGULAR[valuation.role]}, {valuation.team}
         </p>
       </header>
 

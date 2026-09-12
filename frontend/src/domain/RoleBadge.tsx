@@ -1,24 +1,11 @@
 import type { Role } from '../api/types';
+import { BG_ROLE_CLASS, ROLE_NAME_SINGULAR } from './roles';
 
 const LETTER_CLASS: Record<Role, string> = {
   P: 'text-role-p border-role-p',
   D: 'text-role-d border-role-d',
   C: 'text-role-c border-role-c',
   A: 'text-role-a border-role-a',
-};
-
-const FILLED_CLASS: Record<Role, string> = {
-  P: 'bg-role-p text-on-accent',
-  D: 'bg-role-d text-on-accent',
-  C: 'bg-role-c text-on-accent',
-  A: 'bg-role-a text-on-accent',
-};
-
-const NAME: Record<Role, string> = {
-  P: 'portiere',
-  D: 'difensore',
-  C: 'centrocampista',
-  A: 'attaccante',
 };
 
 /**
@@ -70,12 +57,12 @@ export function RoleBadge({
       className={[
         'inline-flex items-center justify-center rounded-full font-extrabold',
         SIZE_TEXT_CLASS[size],
-        filled ? FILLED_CLASS[role] : `border ${LETTER_CLASS[role]}`,
+        filled ? `${BG_ROLE_CLASS[role]} text-on-accent` : `border ${LETTER_CLASS[role]}`,
         filled ? 'px-2 py-0.5' : SIZE_BOX_CLASS[size],
       ].join(' ')}
     >
       {role}
-      <span className="sr-only">{NAME[role]}</span>
+      <span className="sr-only">{ROLE_NAME_SINGULAR[role]}</span>
     </span>
   );
 }

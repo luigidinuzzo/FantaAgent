@@ -1,20 +1,20 @@
 import type { ParticipantView, Role } from '../api/types';
 import { RoleBadge } from './RoleBadge';
+import { BG_ROLE_CLASS, ROLE_NAME_PLURAL, ROLE_NAME_SINGULAR, ROLES } from './roles';
 
-const ORDER: Role[] = ['P', 'D', 'C', 'A'];
+const ORDER = ROLES;
 
-const SEGMENT: Record<Role, string> = {
-  P: 'bg-role-p',
-  D: 'bg-role-d',
-  C: 'bg-role-c',
-  A: 'bg-role-a',
-};
+const SEGMENT = BG_ROLE_CLASS;
 
+// Tupla singolare/plurale, non una quinta copia delle stesse parole: qui
+// serve scegliere fra le due forme in base al conteggio ("1 portiere" contro
+// "3 portieri"), quindi la coppia si compone dalle due mappe canoniche
+// invece di ripetere le stringhe.
 const NOUN: Record<Role, [string, string]> = {
-  P: ['portiere', 'portieri'],
-  D: ['difensore', 'difensori'],
-  C: ['centrocampista', 'centrocampisti'],
-  A: ['attaccante', 'attaccanti'],
+  P: [ROLE_NAME_SINGULAR.P, ROLE_NAME_PLURAL.P],
+  D: [ROLE_NAME_SINGULAR.D, ROLE_NAME_PLURAL.D],
+  C: [ROLE_NAME_SINGULAR.C, ROLE_NAME_PLURAL.C],
+  A: [ROLE_NAME_SINGULAR.A, ROLE_NAME_PLURAL.A],
 };
 
 /**

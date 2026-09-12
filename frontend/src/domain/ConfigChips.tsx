@@ -1,8 +1,7 @@
 import { useId } from 'react';
 import type { LeagueRulesView } from '../api/types';
 import { RoleBadge } from './RoleBadge';
-
-const ROLES = ['P', 'D', 'C', 'A'] as const;
+import { ROLES } from './roles';
 
 /**
  * I quattro numeri di {@code LeagueRules} — crediti, squadre, limiti per ruolo —

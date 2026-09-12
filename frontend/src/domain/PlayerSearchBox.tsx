@@ -3,8 +3,7 @@ import type { Role } from '../api/types';
 import { usePlayerSearch } from '../api/usePlayerSearch';
 import { EmptyState } from './EmptyState';
 import { RoleBadge } from './RoleBadge';
-
-const ROLES: Role[] = ['P', 'D', 'C', 'A'];
+import { ROLES } from './roles';
 
 /**
  * La ricerca per nome del mockup: un campo di testo, quattro pillole di ruolo

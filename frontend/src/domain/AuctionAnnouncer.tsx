@@ -1,5 +1,5 @@
 import type { Role } from '../api/types';
-import { ROLE_LABEL } from './PhaseSwitcher';
+import { ROLE_NAME_PLURAL } from './roles';
 
 export interface PurchaseAnnouncement {
   playerName: string;
@@ -48,7 +48,7 @@ export function purchaseMessage(a: PurchaseAnnouncement): string {
  * bottone si limiterebbe a riattivarsi.
  */
 export function phaseChangedMessage(role: Role): string {
-  return `Fase cambiata: ora si contendono i ${ROLE_LABEL[role]}.`;
+  return `Fase cambiata: ora si contendono i ${ROLE_NAME_PLURAL[role]}.`;
 }
 
 export function undoMessage(): string {

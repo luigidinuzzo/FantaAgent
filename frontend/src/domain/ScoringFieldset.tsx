@@ -3,6 +3,7 @@ import type { ScoringSection } from '../api/types';
 import { FieldErrors } from './FieldErrors';
 import { NumberField } from './NumberField';
 import { RoleBadge } from './RoleBadge';
+import { ROLES } from './roles';
 import { ThresholdsTable, type ThresholdsTableDisabledReason } from './ThresholdsTable';
 
 /**
@@ -155,7 +156,7 @@ export function ScoringFieldset({
           </div>
         ))}
 
-        {(['P', 'D', 'C', 'A'] as const).map((role) => {
+        {ROLES.map((role) => {
           const key = `goalBonus[${role}]`;
           return (
             <div key={role}>
