@@ -2,12 +2,20 @@ import { Fragment, useState } from 'react';
 import { auctionExportUrl, ProblemError } from '../api/client';
 import { useAuctionState, useBoard, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
-import { RoleBadge } from './RoleBadge';
 
 const ROLES: Role[] = ['P', 'D', 'C', 'A'];
 
 const ROLE_NAMES: Record<Role, string> = {
   P: 'Portieri', D: 'Difensori', C: 'Centrocampisti', A: 'Attaccanti',
+};
+
+// Lo stesso fondo pieno di RoleBadge {filled}, ma qui serve come classe a se'
+// stante: la fascia della griglia e' un bottone a tutta larghezza, non la
+// pillola stretta che RoleBadge disegna altrove (ConfigChips, PhaseSwitcher).
+// La coppia di colori e' quella verificata in contrast.test.ts: on-accent
+// sopra ciascuno dei quattro role-*, 4.5:1.
+const ROLE_BAND_CLASS: Record<Role, string> = {
+  P: 'bg-role-p', D: 'bg-role-d', C: 'bg-role-c', A: 'bg-role-a',
 };
 
 /**
@@ -269,26 +277,31 @@ function RosterColumn({
             <Fragment key={role}>
               <tbody>
                 <tr>
-                  <th scope="colgroup" colSpan={3} className="pt-3 pb-1 text-left font-normal">
-                    <div className="flex items-center gap-2">
-                      <RoleBadge role={role} filled />
-                      <span className="tnum text-xs text-muted-foreground">{percent}%</span>
-                      <button
-                        type="button"
-                        aria-expanded={open}
-                        aria-controls={panelId}
-                        onClick={() => onToggleSection(key)}
-                        className="flex min-h-11 flex-1 items-center justify-between gap-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                      >
-                        <span>
-                          {ROLE_NAMES[role]}
-                          <span className="sr-only">
-                            , {occupied} su {total}
-                          </span>
-                        </span>
-                        <ChevronIcon open={open} />
-                      </button>
-                    </div>
+                  {/* p-0: il colore deve arrivare fino al bordo della cella,
+                      non fermarsi dentro un riquadro neutro — pt-3 resta
+                      fuori dal bottone solo per staccare una sezione dalla
+                      precedente. */}
+                  <th scope="colgroup" colSpan={3} className="p-0 pt-3 text-left font-normal">
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      aria-controls={panelId}
+                      onClick={() => onToggleSection(key)}
+                      className={[
+                        'flex min-h-11 w-full items-center justify-between gap-2 px-3 font-bold text-on-accent',
+                        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+                        ROLE_BAND_CLASS[role],
+                      ].join(' ')}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true">{role}</span>
+                        <span className="tnum">{percent}%</span>
+                      </span>
+                      <ChevronIcon open={open} />
+                      <span className="sr-only">
+                        {ROLE_NAMES[role]}, {occupied} su {total}
+                      </span>
+                    </button>
                   </th>
                 </tr>
               </tbody>

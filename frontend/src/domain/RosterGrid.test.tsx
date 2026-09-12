@@ -267,4 +267,70 @@ describe('RosterGrid', () => {
     expect(screen.getByText('Rosa di Anna')).toHaveClass('sr-only');
     expect(screen.getAllByRole('columnheader', { name: 'Giocatore' }).length).toBeGreaterThan(0);
   });
+
+  /**
+   * La capienza per ruolo arriva da /state, un oggetto distinto dalla board:
+   * niente garantisce che porti la chiave che /board nomina. Stesso caso di
+   * `compositionText` in SquadCards.tsx — il tipo promette un Record<Role,
+   * number> completo, ma quel che arriva sul filo e' JSON, e una chiave
+   * assente non deve diventare "undefined" a schermo né nel nome accessibile
+   * della fascia.
+   */
+  it('non scrive "undefined" se /state non porta la capienza di un ruolo', async () => {
+    // Clone via JSON, non uno spread tipato: e' esattamente cio' che succede
+    // sul filo — la chiave 'P' semplicemente non c'e' nel corpo della
+    // risposta, non e' un valore `undefined` scritto a mano che TypeScript
+    // impedirebbe di assegnare.
+    const brokenState = JSON.parse(JSON.stringify(STATE));
+    delete brokenState.participants[0].slotsByRole.P;
+
+    setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(brokenState));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <QueryProvider>
+        <RosterGrid />
+      </QueryProvider>,
+    );
+
+    // Anna ha gia' Sommer (1 portiere comprato): con la capienza mancante il
+    // denominatore e' 0, non "undefined" — "1 su 0", non "1 su undefined".
+    // Il nome resta specifico ad Anna: la sezione Portieri di Bruno (0 su 3,
+    // capienza intatta) non deve essere confusa con questa.
+    const section = await screen.findByRole('button', { name: /portieri.*1 su 0/i });
+    expect(section.textContent).not.toMatch(/undefined/i);
+    expect(document.body.textContent).not.toMatch(/undefined/i);
+  });
+
+  /**
+   * Stesso principio, l'altro modo in cui la seconda fonte puo' mancare: il
+   * partecipante che LA BOARD nomina non e' affatto in /state (un tab
+   * stantio, o le due risposte semplicemente disallineate).
+   */
+  it('non scrive "undefined" se /state non porta affatto il partecipante che la board nomina', async () => {
+    const brokenState = { ...STATE, participants: STATE.participants.filter((p) => p.id !== 'anna') };
+
+    setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(brokenState));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <QueryProvider>
+        <RosterGrid />
+      </QueryProvider>,
+    );
+
+    const section = await screen.findByRole('button', { name: /portieri.*1 su 0/i });
+    expect(section.textContent).not.toMatch(/undefined/i);
+    expect(document.body.textContent).not.toMatch(/undefined/i);
+  });
 });
