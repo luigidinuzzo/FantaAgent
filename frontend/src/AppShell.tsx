@@ -55,7 +55,12 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh bg-background text-foreground font-sans">
-      <PitchLines variant="app" />
+      {/* La proiezione (chrome="none") monta la propria PitchLines con
+          variant="projection": se anche AppShell montasse la sua qui, le due
+          si sommerebbero sullo stesso schermo e l'opacita' percepita non
+          sarebbe piu' quella che PROJECTION_OPACITY dichiara. Ogni schermata
+          ne ha esattamente una. */}
+      {chrome !== 'none' && <PitchLines variant="app" />}
 
       {chrome === 'side' && (
         <div className="flex">

@@ -81,6 +81,18 @@ describe('AppShell', () => {
   });
 
   /**
+   * ProjectionRoute monta la propria PitchLines (variant="projection") accanto
+   * ad AppShell: se AppShell montasse anche la sua qui, le due opacita' si
+   * sommerebbero e PROJECTION_OPACITY non direbbe piu' il vero sullo schermo.
+   * Ogni schermata deve averne esattamente una.
+   */
+  it('con chrome=none non rende le linee del campo: la proiezione monta la propria', () => {
+    const { container } = render(withRouter(<AppShell chrome="none"><p>x</p></AppShell>));
+
+    expect(container.querySelector('svg[aria-hidden="true"]')).not.toBeInTheDocument();
+  });
+
+  /**
    * Non nascosti con CSS: non resi affatto. Un pulsante nascosto alla vista resta
    * raggiungibile da tastiera e dai lettori di schermo, su una schermata che non lo
    * prevede.

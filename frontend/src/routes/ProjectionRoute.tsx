@@ -87,12 +87,12 @@ export function ProjectionRoute() {
 
   return (
     <>
-      {/* AppShell monta gia' PitchLines variant="app" (z-0, dietro il resto),
-          quindi qui non lo si sostituisce: se ne aggiunge un secondo, piu'
-          visibile (PROJECTION_OPACITY), come sua sorella allo stesso livello.
-          E' fisso e senza z-index positivo, quindi resta comunque dietro
-          l'header e il main di AppShell (z-10): due schermi diversi, non due
-          controlli da conciliare. */}
+      {/* AppShell non monta PitchLines quando chrome="none" (e' proprio il
+          caso qui sotto): questa e' l'unica istanza sullo schermo, con la
+          variante piu' visibile (PROJECTION_OPACITY) che la proiezione si
+          merita. E' fissa e senza z-index positivo, quindi resta comunque
+          dietro l'header e il main di AppShell (z-10): due schermi diversi,
+          non due controlli da conciliare. */}
       <PitchLines variant="projection" />
       <AppShell
         // Il vincolo permanente della proiezione (zero pulsanti, zero caselle di

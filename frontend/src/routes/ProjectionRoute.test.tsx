@@ -17,7 +17,16 @@ const BOARD = {
       me: true,
       budgetRemaining: 300,
       slotsRemaining: 25,
-      byRole: { P: [], D: [], C: [], A: [] },
+      // Popolato in almeno due ruoli, non solo la colonna: le righe giocatore
+      // sono il posto dove un controllo copiato da RosterGrid (bottoni di
+      // revoca su ogni riga) finirebbe piu' facilmente, e "tabelloni pieni"
+      // deve valere anche li', non solo per l'header della colonna.
+      byRole: {
+        P: [{ seq: 1, playerName: 'Meret', price: 12 }],
+        D: [{ seq: 2, playerName: 'Bastoni', price: 20 }],
+        C: [],
+        A: [],
+      },
     },
   ],
 };

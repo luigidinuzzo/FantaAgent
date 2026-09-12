@@ -29,15 +29,14 @@ export function PublicBidderDialog({
   return (
     <section aria-labelledby="public-bidder-name" className="rounded-xl border border-line-strong p-10">
       <header className="flex flex-wrap items-center gap-6">
-        {/* scale-150: RoleBadge resta la pillola compatta usata ovunque nel
-            resto dell'app (contrasto verificato a quella taglia in
-            contrast.test.ts); qui la si ingrandisce per farsi vedere da
-            lontano senza toccare il componente condiviso. */}
-        {player ? (
-          <span className="inline-block origin-left scale-150">
-            <RoleBadge role={player.role} filled />
-          </span>
-        ) : null}
+        {/* size="lg": non uno scale() CSS da fuori — quello trasforma il
+            disegno ma non la scatola di layout riservata dal flex, quindi la
+            non-sovrapposizione col nome sarebbe una coincidenza delle misure
+            attuali, non una garanzia (e il testo scalato si sfoca su alcuni
+            motori). RoleBadge riserva davvero lo spazio piu' grande che
+            occupa; il contrasto resta lo stesso, verificato in
+            contrast.test.ts a prescindere dalla taglia del testo. */}
+        {player ? <RoleBadge role={player.role} filled size="lg" /> : null}
         <h2 id="public-bidder-name" className="w-exp text-6xl font-extrabold">
           {player?.name ?? '…'}
         </h2>

@@ -22,4 +22,23 @@ describe('RoleBadge', () => {
     const { container } = render(<RoleBadge role={role} />);
     expect(container.firstElementChild?.className).toContain(token);
   });
+
+  /**
+   * size sostituisce lo scale-150 esterno che PublicBidderDialog usava prima:
+   * qui la taglia grande ridimensiona davvero la scatola (una classe di
+   * testo diversa), non solo il disegno con un trasforma CSS.
+   */
+  it('senza size resta alla taglia di sempre (md, predefinita)', () => {
+    const { container } = render(<RoleBadge role="D" />);
+    expect(container.firstElementChild?.className).toContain('text-xs');
+  });
+
+  it('con size="lg" ingrandisce il testo, senza cambiare lettera, nome o colore', () => {
+    const { container } = render(<RoleBadge role="D" filled size="lg" />);
+    const badge = container.firstElementChild;
+    expect(badge?.className).toContain('text-2xl');
+    expect(badge?.className).toContain('bg-role-d');
+    expect(screen.getByText('D')).toBeInTheDocument();
+    expect(screen.getByText('difensore')).toHaveClass('sr-only');
+  });
 });
