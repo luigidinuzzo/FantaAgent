@@ -28,9 +28,10 @@ lascia lo stato esattamente dov'era.
 spaziatrice, e l'aggiudicazione al partecipante scelto.
 
 **Si proietta.** Una pagina apposta per lo schermo condiviso, con i tabelloni di
-tutti e la ricerca — e **nessuna valutazione**: il vincolo è strutturale, i modelli
-che alimentano quella pagina non hanno un campo dove un prezzo consigliato possa
-stare.
+tutti e il giocatore all'asta — in **sola lettura**, e con **nessuna valutazione**.
+Entrambi i vincoli sono strutturali: non ha controlli perché una schermata che
+nessuno tocca non può far trapelare niente per sbaglio, e i modelli che la
+alimentano non hanno un campo dove un prezzo consigliato possa stare.
 
 **Esporta le rose** nel formato di importazione di Fantacalcio.it.
 
