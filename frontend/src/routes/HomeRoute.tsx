@@ -169,6 +169,16 @@ export function HomeRoute() {
                       ) : null}
                     </p>
                     <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                      {/* RoleBadge dice gia' la fase, in tutti e due i modi che
+                          contano: la lettera colorata per chi vede, il nome
+                          per esteso in sr-only per chi ascolta (vedi il suo
+                          commento, "'D' letto da un sintetizzatore e' una
+                          lettera, non un ruolo"). Un secondo "· fase D" qui
+                          non aggiungeva niente per chi vede — la fase era gia'
+                          in vista — e per chi ascolta ripeteva la fase una
+                          seconda volta, stavolta come lettera nuda e basta:
+                          esattamente il difetto che RoleBadge esiste per
+                          evitare (revisione finale, finding F). */}
                       <RoleBadge role={a.phase} />
                       {/* .tnum: la data si confronta riga per riga in colonna, come i
                           numeri qui accanto — senza cifre tabulari non si allinea. */}
@@ -186,8 +196,6 @@ export function HomeRoute() {
                         contenuto la stringa intera "3 acquisti" da trovare.
                       */}
                       <span className="tnum">{a.purchases} acquisti</span>
-                      {' · fase '}
-                      {a.phase}
                     </p>
                   </div>
                   <button
@@ -224,8 +232,11 @@ export function HomeRoute() {
                 Stai continuando {openAuction.label}
               </p>
               <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                {/* Stessa ragione della riga-pillola sopra: RoleBadge dice
+                    gia' la fase in entrambi i modi (lettera colorata, nome
+                    per esteso in sr-only). "fase D" qui ripeteva la lettera
+                    nuda una seconda volta (revisione finale, finding F). */}
                 <RoleBadge role={openAuction.phase} />
-                <span>fase {openAuction.phase}</span>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Acquisti finora: <span className="tnum">{openAuction.purchases}</span>

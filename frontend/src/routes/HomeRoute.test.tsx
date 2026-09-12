@@ -338,12 +338,17 @@ describe('HomeRoute', () => {
     expect(await screen.findByText('In corso')).toBeInTheDocument();
   });
 
+  // La fase si legge da RoleBadge (lettera colorata + nome per esteso in
+  // sr-only), non da un secondo testo "fase X" a fianco: quel secondo testo
+  // era una lettera nuda ripetuta, il difetto che RoleBadge esiste per
+  // evitare (revisione finale, finding F) — vedi il commento su HomeRoute.
   it('ogni riga dice fase e acquisti, non solo il nome', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
 
     expect(await screen.findByText(/2 acquisti/)).toBeInTheDocument();
-    expect(screen.getByText(/fase/i)).toBeInTheDocument();
+    // CLOSED_AUCTION e' in fase 'A': il nome per esteso di RoleBadge.
+    expect(screen.getByText(/attaccante/i)).toBeInTheDocument();
   });
 
   /**
