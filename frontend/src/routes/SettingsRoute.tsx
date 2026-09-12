@@ -1,9 +1,10 @@
 import { useEffect, useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import { useSaveSettings, useSettings } from '../api/hooks';
 import type { SaveSettingsRequest, SettingsErrors } from '../api/types';
+import { ConfigChips } from '../domain/ConfigChips';
 import { FieldErrors } from '../domain/FieldErrors';
 import { NumberField } from '../domain/NumberField';
 import { ParticipantsFieldset } from '../domain/ParticipantsFieldset';
@@ -72,6 +73,30 @@ function isStringArray(value: unknown): value is string[] {
 
 function errorsFor(errors: SettingsErrors, key: string): string[] {
   return errors[key] ?? [];
+}
+
+/**
+ * Le uniche chiavi che NON appartengono al punteggio: il nome dell'asta, il
+ * battitore (timer, oggetto intero mancante), e i partecipanti (l'insieme o una
+ * riga precisa). Ogni altra chiave — comprese quelle non ancora note, come
+ * {@code thresholds[N]} o {@code goalBonus[R]} — appartiene alla sezione punteggio.
+ */
+const NON_SCORING_KEYS = new Set(['auctionName', 'bidTimerSeconds', 'bidder']);
+
+function isParticipantsKey(key: string): boolean {
+  return key === 'participants' || key.startsWith('participants[');
+}
+
+/**
+ * La disclosure del punteggio si apre da sola quando un errore ci vive dentro: un
+ * <details> chiuso con un campo invalido nasconderebbe il perche' un salvataggio
+ * viene rifiutato, costringendo chi lo usa a indovinare quale sezione chiusa lo
+ * contiene.
+ */
+function hasScoringErrors(errors: SettingsErrors): boolean {
+  return Object.keys(errors).some(
+    (key) => errors[key].length > 0 && !NON_SCORING_KEYS.has(key) && !isParticipantsKey(key),
+  );
 }
 
 /**
@@ -192,157 +217,190 @@ export function SettingsRoute() {
   // "bidder" e' grezza: l'intero oggetto manca dal corpo (un client rotto), non un
   // campo preciso che AuctionSettingsValidator conosce — resta a livello di gruppo.
   const bidderGroupErrors = errorsFor(errors, 'bidder');
+  // Non si crea niente mentre si sta solo modificando: il titolo lo dice, non solo
+  // il testo del bottone in fondo.
+  const title = auctionOpen ? 'Impostazioni' : 'Crea asta';
+  const scoringOpen = hasScoringErrors(errors);
 
   return (
     <AppShell chrome="side">
-      <h1 className="w-exp mb-4 text-xl font-extrabold">Impostazioni</h1>
+      <div className="mx-auto max-w-4xl">
+        <div className="relative mb-6 flex items-center justify-center">
+          {/* Nome accessibile esplicito: una freccia da sola sarebbe un'icona
+              muta, senza niente che uno screen reader possa leggere. */}
+          <Link
+            to="/"
+            aria-label="Torna alla home"
+            className="absolute left-0 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <h1 className="text-xl font-extrabold">{title}</h1>
+        </div>
 
-      <form
-        className="space-y-5"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setErrors(NO_ERRORS);
-          setSaveError(null);
-          setSavedMessage(null);
-          save.mutate(form, {
-            onSuccess: (result) => {
-              // Un'asta e' nata: si va a batterla. Restare qui vorrebbe dire
-              // guardare le impostazioni di una serata gia' cominciata.
-              if (result?.auctionId) {
-                navigate('/asta');
-                return;
-              }
-              setSavedMessage('Impostazioni salvate.');
-            },
-            onError: (error) => {
-              if (error instanceof ProblemError && error.slug === 'invalid-settings') {
-                const parsed = settingsErrorsOf(error.body);
-                // Solo qui ci si ferma: un corpo che non ha la forma attesa (un proxy
-                // che lo riscrive, un controller che smette di mandare `errors`) non
-                // deve fermarsi comunque a valle in silenzio — deve cadere nel ramo
-                // generico sotto, che almeno dice il `detail` del problem.
-                if (parsed) {
-                  setErrors(parsed);
+        <form
+          className="space-y-6"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setErrors(NO_ERRORS);
+            setSaveError(null);
+            setSavedMessage(null);
+            save.mutate(form, {
+              onSuccess: (result) => {
+                // Un'asta e' nata: si va a batterla. Restare qui vorrebbe dire
+                // guardare le impostazioni di una serata gia' cominciata.
+                if (result?.auctionId) {
+                  navigate('/asta');
                   return;
                 }
-              }
-              setSaveError(
-                error instanceof ProblemError
-                  ? error.detail
-                  : 'Errore di rete: il salvataggio non e\' riuscito. Riprova.',
-              );
-            },
-          });
-        }}
-      >
-        {!auctionOpen ? (
-          // FieldErrors sta FUORI dal <label>: un <label> che avvolge il suo
-          // <input> presta all'input il proprio intero contenuto testuale come
-          // nome accessibile, ed e' quello che uno screen reader legge digitando
-          // il campo — includerci l'elenco degli errori lo renderebbe "Nome
-          // dell'asta" + il messaggio, non piu' semplicemente "Nome dell'asta".
-          <div>
-            <label className="block text-sm">
-              Nome dell'asta
-              <input
-                value={form.auctionName}
-                aria-invalid={auctionNameErrors.length > 0}
-                aria-describedby={auctionNameErrors.length > 0 ? auctionNameErrorId : undefined}
-                onChange={(e) => setForm({ ...form, auctionName: e.target.value })}
-                className="mt-1 block min-h-11 w-full max-w-md border border-line bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              />
-            </label>
-            {/* Tutti i messaggi, non solo il primo: i validatori tornano l'elenco
-                completo apposta, ed e' il motivo per cui questo task esiste. */}
-            <FieldErrors id={auctionNameErrorId} errors={auctionNameErrors} />
-          </div>
-        ) : null}
-
-        <ParticipantsFieldset
-          value={form.participants}
-          onChange={(participants) => setForm({ ...form, participants })}
-          errors={errors}
-        />
-
-        <ScoringFieldset
-          value={form.scoring}
-          onChange={(scoring) => setForm({ ...form, scoring })}
-          errors={errors}
-          disabled={auctionOpen}
-        />
-
-        <fieldset
-          className="border border-line p-4"
-          aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
-        >
-          {/* La <legend> fornisce il NOME accessibile del fieldset: e' il
-              <fieldset> stesso — un group — che supporta una descrizione, non la
-              legend (stessa disciplina di ScoringFieldset e ParticipantsFieldset). */}
-          <legend className="px-2 font-bold">Battitore</legend>
-          <div className="flex flex-wrap gap-4">
-            {/* FieldErrors sta FUORI dal <label>, stessa ragione del nome
-                dell'asta qui sopra: dentro, diventerebbe parte del nome
-                accessibile del campo invece che una sua descrizione. */}
-            <div>
-              <label className="text-sm">
-                Secondi di countdown
-                <NumberField
-                  value={form.bidder.bidTimerSeconds}
-                  aria-invalid={bidTimerErrors.length > 0}
-                  aria-describedby={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
-                  onChange={(bidTimerSeconds) =>
-                    setForm({
-                      ...form,
-                      bidder: { ...form.bidder, bidTimerSeconds },
-                    })
+                setSavedMessage('Impostazioni salvate.');
+              },
+              onError: (error) => {
+                if (error instanceof ProblemError && error.slug === 'invalid-settings') {
+                  const parsed = settingsErrorsOf(error.body);
+                  // Solo qui ci si ferma: un corpo che non ha la forma attesa (un proxy
+                  // che lo riscrive, un controller che smette di mandare `errors`) non
+                  // deve fermarsi comunque a valle in silenzio — deve cadere nel ramo
+                  // generico sotto, che almeno dice il `detail` del problem.
+                  if (parsed) {
+                    setErrors(parsed);
+                    return;
                   }
-                  className="tnum mt-1 block min-h-11 w-32 border border-line bg-transparent px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                }
+                setSaveError(
+                  error instanceof ProblemError
+                    ? error.detail
+                    : 'Errore di rete: il salvataggio non e\' riuscito. Riprova.',
+                );
+              },
+            });
+          }}
+        >
+          {!auctionOpen ? (
+            // FieldErrors sta FUORI dal <label>: un <label> che avvolge il suo
+            // <input> presta all'input il proprio intero contenuto testuale come
+            // nome accessibile, ed e' quello che uno screen reader legge digitando
+            // il campo — includerci l'elenco degli errori lo renderebbe "Nome
+            // dell'asta" + il messaggio, non piu' semplicemente "Nome dell'asta".
+            <div className="mx-auto max-w-2xl">
+              <label className="block text-center text-sm">
+                Nome dell'asta
+                <input
+                  value={form.auctionName}
+                  aria-invalid={auctionNameErrors.length > 0}
+                  aria-describedby={auctionNameErrors.length > 0 ? auctionNameErrorId : undefined}
+                  onChange={(e) => setForm({ ...form, auctionName: e.target.value })}
+                  className="mt-2 block min-h-11 w-full rounded-2xl border border-line-strong bg-transparent px-4 py-3 text-center text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </label>
-              <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
+              {/* Tutti i messaggi, non solo il primo: i validatori tornano l'elenco
+                  completo apposta, ed e' il motivo per cui questo task esiste. */}
+              <FieldErrors id={auctionNameErrorId} errors={auctionNameErrors} />
             </div>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.bidder.beepEnabled}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    bidder: { ...form.bidder, beepEnabled: e.target.checked },
-                  })
-                }
-                className="h-11 w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              />
-              Avviso acustico allo scadere
-            </label>
-          </div>
-          <FieldErrors id={bidderGroupErrorId} errors={bidderGroupErrors} />
-        </fieldset>
-
-        <div className="flex flex-wrap items-center gap-4">
-          <button
-            type="submit"
-            disabled={save.isPending}
-            className="min-h-11 bg-accent px-5 font-bold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
-          >
-            {save.isPending ? 'Salvo…' : auctionOpen ? 'Salva' : "Salva e comincia l'asta"}
-          </button>
-
-          {/* Un solo annuncio, col conto e il dove: piu' alert di campo che si
-              popolano insieme se ne mangerebbero tutti tranne uno. Il dettaglio sta
-              accanto a ciascun campo, raggiungibile navigando. Stesso nodo anche per
-              la conferma di un salvataggio riuscito: colore positivo invece di
-              destructive, non un secondo role="status". */}
-          {alertMessage ? (
-            <p
-              role="alert"
-              className={`text-sm font-bold ${summary ? 'text-destructive' : 'text-positive'}`}
-            >
-              {alertMessage}
-            </p>
           ) : null}
-        </div>
-      </form>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Legend nascosta: il fieldset resta un group nominato "Battitore"
+                per chi ascolta, ma visivamente e' solo la griglia delle sue due
+                pillole — la cornice del fieldset non serve al disegno, che la
+                mette gia' sulle singole pillole. */}
+            <fieldset
+              className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2 md:col-span-2"
+              aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
+            >
+              <legend className="sr-only">Battitore</legend>
+
+              <div>
+                <label className="block text-sm">
+                  Secondi di countdown
+                  <NumberField
+                    value={form.bidder.bidTimerSeconds}
+                    aria-invalid={bidTimerErrors.length > 0}
+                    aria-describedby={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
+                    onChange={(bidTimerSeconds) =>
+                      setForm({
+                        ...form,
+                        bidder: { ...form.bidder, bidTimerSeconds },
+                      })
+                    }
+                    className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-4 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  />
+                </label>
+                <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
+              </div>
+
+              <div className="flex items-center">
+                <label className="flex min-h-11 w-full items-center gap-2 rounded-full border border-line-strong px-4 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.bidder.beepEnabled}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        bidder: { ...form.bidder, beepEnabled: e.target.checked },
+                      })
+                    }
+                    className="h-11 w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  />
+                  Avviso acustico allo scadere
+                </label>
+              </div>
+
+              <div className="sm:col-span-2">
+                <FieldErrors id={bidderGroupErrorId} errors={bidderGroupErrors} />
+              </div>
+            </fieldset>
+
+            <ConfigChips rules={settings.data.rules} />
+          </div>
+
+          <ParticipantsFieldset
+            value={form.participants}
+            onChange={(participants) => setForm({ ...form, participants })}
+            errors={errors}
+          />
+
+          <details open={scoringOpen}>
+            <summary className="flex min-h-11 cursor-pointer items-center font-bold">
+              Punteggio
+            </summary>
+            <div className="mt-3">
+              <ScoringFieldset
+                value={form.scoring}
+                onChange={(scoring) => setForm({ ...form, scoring })}
+                errors={errors}
+                disabled={auctionOpen}
+              />
+            </div>
+          </details>
+
+          <div className="flex flex-col items-center gap-3 pt-2">
+            <button
+              type="submit"
+              disabled={save.isPending}
+              className="min-h-11 rounded-full bg-positive px-8 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+            >
+              {save.isPending ? 'Salvo…' : auctionOpen ? 'Salva' : "Salva e comincia l'asta"}
+            </button>
+
+            {/* Un solo annuncio, col conto e il dove: piu' alert di campo che si
+                popolano insieme se ne mangerebbero tutti tranne uno. Il dettaglio sta
+                accanto a ciascun campo, raggiungibile navigando. Stesso nodo anche per
+                la conferma di un salvataggio riuscito: colore positivo invece di
+                destructive, non un secondo role="status". */}
+            {alertMessage ? (
+              <p
+                role="alert"
+                className={`text-sm font-bold ${summary ? 'text-destructive' : 'text-positive'}`}
+              >
+                {alertMessage}
+              </p>
+            ) : null}
+          </div>
+        </form>
+      </div>
     </AppShell>
   );
 }

@@ -55,7 +55,7 @@ export function ParticipantsFieldset({
 
   return (
     <fieldset
-      className="border border-line p-4"
+      className="rounded-2xl border border-line-strong p-4"
       aria-describedby={groupErrors.length > 0 ? groupErrorsId : undefined}
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
@@ -90,7 +90,7 @@ export function ParticipantsFieldset({
                     aria-invalid={nameErrors.length > 0}
                     aria-describedby={nameErrors.length > 0 ? nameErrorsId : undefined}
                     onChange={(e) => update(i, { name: e.target.value })}
-                    className="min-h-11 w-full border border-line bg-transparent px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={nameErrorsId} errors={nameErrors} />
                 </td>
@@ -103,7 +103,7 @@ export function ParticipantsFieldset({
                     aria-invalid={initialErrors.length > 0}
                     aria-describedby={initialErrors.length > 0 ? initialErrorsId : undefined}
                     onChange={(e) => update(i, { initial: e.target.value.toUpperCase() })}
-                    className="tnum min-h-11 min-w-11 w-14 border border-line bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum min-h-11 min-w-11 w-14 rounded-full border border-line-strong bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={initialErrorsId} errors={initialErrors} />
                 </td>
@@ -122,7 +122,7 @@ export function ParticipantsFieldset({
                   <button
                     type="button"
                     onClick={() => onChange(value.filter((_, j) => j !== i))}
-                    className="min-h-11 min-w-11 px-2 text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="min-h-11 min-w-11 rounded-full px-2 text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     Togli <span className="sr-only">{p.name}</span>
                   </button>
@@ -141,7 +141,7 @@ export function ParticipantsFieldset({
             { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
           ])
         }
-        className="mt-3 min-h-11 border border-line px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="mt-3 min-h-11 rounded-full border border-line-strong px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         Aggiungi partecipante
       </button>

@@ -11,6 +11,7 @@ import com.fantaagent.config.LeagueMembersSettingsValidator;
 import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.config.ScoringSettingsStore;
 import com.fantaagent.config.ScoringSettingsValidator;
+import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -58,18 +59,21 @@ public class SettingsApi {
     private final LeagueMembersSettingsStore membersStore;
     private final AuctionSettingsStore auctionStore;
     private final AuctionSettingsHolder auctionSettings;
+    private final LeagueRules rules;
 
     public SettingsApi(LeagueGuard leagues, AuctionRuntime runtime,
                        ScoringSettingsStore scoringStore,
                        LeagueMembersSettingsStore membersStore,
                        AuctionSettingsStore auctionStore,
-                       AuctionSettingsHolder auctionSettings) {
+                       AuctionSettingsHolder auctionSettings,
+                       LeagueRules rules) {
         this.leagues = leagues;
         this.runtime = runtime;
         this.scoringStore = scoringStore;
         this.membersStore = membersStore;
         this.auctionStore = auctionStore;
         this.auctionSettings = auctionSettings;
+        this.rules = rules;
     }
 
     @GetMapping
@@ -80,7 +84,8 @@ public class SettingsApi {
                 new SettingsDtos.BidderSettings(bidder.bidTimerSeconds(), bidder.beepEnabled()),
                 runtime.snapshot().participants().stream().map(SettingsApi::cardOf).toList(),
                 sectionOf(currentScoring()),
-                runtime.hasAuction());
+                runtime.hasAuction(),
+                SettingsDtos.LeagueRulesView.from(rules));
     }
 
     @PutMapping

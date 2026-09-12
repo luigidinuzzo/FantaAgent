@@ -63,6 +63,20 @@ class SettingsApiTest {
     }
 
     /**
+     * I numeri di LeagueRules servono alla schermata che CREA un'asta, cioe' quando
+     * /state risponde 409 perche' nessuna asta e' aperta: questo endpoint e' l'unico
+     * posto da cui il frontend puo' leggerli in quel momento.
+     */
+    @Test
+    void leImpostazioniPortanoINumeriDiConfigurazione() throws Exception {
+        mvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rules.budget").value(500))
+                .andExpect(jsonPath("$.rules.participants").value(8))
+                .andExpect(jsonPath("$.rules.slots.P").value(3));
+    }
+
+    /**
      * Le chiavi sono ora di campo, non di sezione: un corpo altrimenti valido con
      * solo il timer fuori intervallo produce solo la chiave di quel campo, non le
      * quattro chiavi fisse di sezione che il vecchio contratto teneva sempre presenti.

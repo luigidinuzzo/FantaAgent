@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.api.dto;
 
+import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.player.Role;
 
 import java.util.List;
@@ -36,14 +37,31 @@ public final class SettingsDtos {
     }
 
     /**
+     * I numeri che vengono da {@code application.yml} e non da questa schermata:
+     * l'interfaccia li mostra in sola lettura, con l'etichetta che dice da dove
+     * vengono. Non compaiono in {@link SaveRequest} apposta — un campo che il
+     * server non sa scrivere non deve poter essere inviato.
+     */
+    public record LeagueRulesView(int participants, int budget, Map<Role, Integer> slots) {
+
+        public static LeagueRulesView from(LeagueRules rules) {
+            return new LeagueRulesView(rules.participants(), rules.budget(), rules.slots());
+        }
+    }
+
+    /**
      * @param auctionOpen se un'asta e' aperta. Il client ne ha bisogno per sapere che i
      *                    parametri di punteggio sono bloccati: ad asta iniziata
      *                    cambiarli riscriverebbe i numeri di una rosa gia' pagata.
+     * @param rules       i quattro numeri di configurazione (crediti, squadre, limiti per
+     *                    ruolo): l'unico posto da cui il client puo' leggerli quando
+     *                    nessuna asta e' aperta, cioe' proprio mentre ne sta creando una.
      */
     public record SettingsResponse(BidderSettings bidder,
                                    List<ParticipantSettings> participants,
                                    ScoringSection scoring,
-                                   boolean auctionOpen) {
+                                   boolean auctionOpen,
+                                   LeagueRulesView rules) {
     }
 
     public record SaveRequest(String auctionName, BidderSettings bidder,

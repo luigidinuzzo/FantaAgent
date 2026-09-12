@@ -37,6 +37,7 @@ const SETTINGS_CLOSED = {
     yellowCard: -0.5, redCard: -1, goalConceded: -1, cleanSheet: 1, confirmed: true,
   },
   auctionOpen: false,
+  rules: { participants: 8, budget: 500, slots: { P: 3, D: 8, C: 8, A: 6 } },
 };
 
 function json(body: unknown, status = 200) {

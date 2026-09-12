@@ -2,6 +2,7 @@ import { useId } from 'react';
 import type { ScoringSection } from '../api/types';
 import { FieldErrors } from './FieldErrors';
 import { NumberField } from './NumberField';
+import { RoleBadge } from './RoleBadge';
 import { ThresholdsTable, type ThresholdsTableDisabledReason } from './ThresholdsTable';
 
 /**
@@ -82,7 +83,7 @@ export function ScoringFieldset({
 
   return (
     <fieldset
-      className="border border-line p-4"
+      className="rounded-2xl border border-line-strong p-4"
       aria-describedby={generalErrors.length > 0 ? groupErrorsId : undefined}
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
@@ -121,7 +122,7 @@ export function ScoringFieldset({
                     : undefined
               }
               onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
-              className="tnum mt-1 block min-h-11 w-full border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             />
           </label>
           <FieldErrors
@@ -147,7 +148,7 @@ export function ScoringFieldset({
                       : undefined
                 }
                 onChange={(next) => onChange({ ...value, [key]: next })}
-                className="tnum mt-1 block min-h-11 w-full border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </label>
             <FieldErrors id={`${baseId}-${key}`} errors={errorsFor(errors, key)} />
@@ -159,7 +160,9 @@ export function ScoringFieldset({
           return (
             <div key={role}>
               <label className="text-sm">
-                Gol segnato — {role}
+                <span className="flex items-center gap-1.5">
+                  Gol segnato <RoleBadge role={role} />
+                </span>
                 <NumberField
                   step="0.5"
                   value={value.goalBonus[role]}
@@ -178,7 +181,7 @@ export function ScoringFieldset({
                       goalBonus: { ...value.goalBonus, [role]: next },
                     })
                   }
-                  className="tnum mt-1 block min-h-11 w-full border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </label>
               <FieldErrors id={`${baseId}-${key}`} errors={errorsFor(errors, key)} />
