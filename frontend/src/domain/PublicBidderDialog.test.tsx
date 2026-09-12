@@ -29,4 +29,15 @@ describe('PublicBidderDialog', () => {
     expect(text).not.toMatch(/massimo/i);
     expect(text).not.toMatch(/margine/i);
   });
+
+  it('mostra anche il ruolo, con la lettera e il nome per esteso per chi ascolta', () => {
+    render(<PublicBidderDialog bid={BID} player={PLAYER} />);
+    expect(screen.getByText('D')).toBeInTheDocument();
+    expect(screen.getByText('difensore')).toBeInTheDocument();
+  });
+
+  it('senza il giocatore (non ancora arrivato dal tabellone) non mostra nessun ruolo', () => {
+    render(<PublicBidderDialog bid={BID} player={undefined} />);
+    expect(screen.queryByText('D')).not.toBeInTheDocument();
+  });
 });

@@ -123,11 +123,12 @@ come punto di paragone mentre la migrazione le sostituisce una alla volta. Non
 sono un secondo modo di fare l'asta pensato per l'uso quotidiano: sono lì per
 poter confrontare una schermata nuova con quella che rimpiazza.
 
-Con un'eccezione, ad oggi: la SPA non ha ancora la ricerca libera di un giocatore
-per nome, né il pannello TARGET/obiettivi. Chi ne ha bisogno durante un'asta li
-trova ancora solo su `/legacy` — non sono un difetto minore da ignorare la sera
-dell'asta, ma lavoro non ancora fatto, ed è onesto dirlo qui invece che lasciarlo
-scoprire a chi sceglie quale interfaccia usare.
+Con un'eccezione, ad oggi: la SPA non ha ancora il pannello TARGET/obiettivi. Chi ne
+ha bisogno durante un'asta lo trova ancora solo su `/legacy` — non è un difetto
+minore da ignorare la sera dell'asta, ma lavoro non ancora fatto, ed è onesto dirlo
+qui invece che lasciarlo scoprire a chi sceglie quale interfaccia usare. La ricerca
+libera di un giocatore per nome, invece, è già nella SPA: sta al centro della
+schermata d'asta (`/asta`), non serve più passare da `/legacy` per usarla.
 
 Il frontend React ha un passo di build: Node e npm, sotto `frontend/`. È il prezzo
 pagato per avere una schermata d'asta che reagisce senza ricaricare, e per potere
@@ -140,9 +141,13 @@ più dell'eleganza.
 Un instradamento lato client copre le rotte della SPA (`/`, `/asta`, `/proiezione`,
 `/impostazioni`, `/riepilogo`): una ricarica su un percorso profondo restituisce
 `index.html`, non un 404, perché l'indirizzo nella barra deve restare quello
-richiesto. Un percorso che non è né una rotta della SPA, né `/api`, né `/legacy`
-resta un 404 vero — niente fallback che inghiotte tutto e trasforma un indirizzo
-sbagliato in una pagina bianca senza errore.
+richiesto. `/riepilogo` non è più una schermata propria: l'indirizzo vecchio
+reindirizza a `/asta`, dove il riepilogo vive ora come la scheda «Rose squadre».
+Resta instradato apposta — non tolto dall'elenco — perché chi lo aveva salvato o
+linkato continui ad arrivare da qualche parte invece di trovare un 404. Un percorso
+che non è né una rotta della SPA, né `/api`, né `/legacy` resta un 404 vero — niente
+fallback che inghiotte tutto e trasforma un indirizzo sbagliato in una pagina bianca
+senza errore.
 
 Architettura esagonale leggera in un solo modulo Maven, con i confini fra dominio,
 applicazione e adattatori verificati da ArchUnit invece che raccomandati a parole.

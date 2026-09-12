@@ -125,6 +125,25 @@ describe('ProjectionRoute', () => {
     expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 
+  /**
+   * Il vincolo permanente, riaffermato nel momento in cui la schermata
+   * cambia forma: e' quando si ridisegna che un controllo ci finisce per
+   * comodita'. Le due prove sopra coprono gia' le stesse tre assenze divise
+   * su due test; questa le riunisce in una sola, anche con lotto e
+   * tabelloni pieni, cosi' il ridisegno non puo' introdurne una per errore
+   * solo in uno dei due stati.
+   */
+  it('non offre nessun controllo, nemmeno dopo il ridisegno', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+    publishBid({ kind: 'bidding', playerId: 'd1', price: 41, remainingMs: 3000 });
+    await screen.findByTestId('public-price');
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
+  });
+
   it('mostra il lotto quando la schermata privata lo trasmette, e non dice piu di non ricevere', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();
