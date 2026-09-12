@@ -152,7 +152,7 @@ public class PlayerSearchService {
      * parametro aggiunto a quello esistente: {@code search(String)} lo chiamano i
      * controller Thymeleaf in {@code adapter/in/web}, che questo piano lascia intatti
      * apposta perche' facciano da confronto. Cambiarne la firma li costringerebbe a
-     * cambiare, e i loro 87 test sono la rete di sicurezza dell'intera migrazione.
+     * cambiare, e i loro 88 test sono la rete di sicurezza dell'intera migrazione.
      *
      * <p>{@code roleFilter} null significa "tutti", ed e' l'unico caso in cui questo
      * metodo e' equivalente a {@link #search(String)}.
