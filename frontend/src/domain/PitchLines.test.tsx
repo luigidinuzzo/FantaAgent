@@ -25,4 +25,18 @@ describe('PitchLines', () => {
   it('sulla proiezione puo alzare il tono, perche nessun testo piccolo ci passa sopra', () => {
     expect(PROJECTION_OPACITY).toBeGreaterThan(APP_OPACITY);
   });
+
+  /**
+   * Guardia contro un colore letterale che sostituisca il token: senza questo
+   * test un `stroke="#ffffff"` passerebbe inosservato, perche' nessun altro test
+   * qui ispeziona il valore dello stroke (solo l'opacita' del contenitore).
+   */
+  it('traccia le linee con un token, non con un colore letterale', () => {
+    const { container } = render(<PitchLines variant="app" />);
+    const strokedElements = container.querySelectorAll('[stroke]');
+    expect(strokedElements.length).toBeGreaterThan(0);
+    strokedElements.forEach((el) => {
+      expect(el.getAttribute('stroke')).toMatch(/^var\(--/);
+    });
+  });
 });

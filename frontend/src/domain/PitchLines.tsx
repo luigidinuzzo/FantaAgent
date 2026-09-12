@@ -4,7 +4,8 @@
  * <p>Il test di contrasto del progetto misura COPPIE DI TOKEN — un testo sopra un
  * fondo — e non sa niente di una texture disegnata in mezzo ai due. Quel limite non
  * puo' quindi essere verificato li: vive qui, con il suo perche', ed e' fissato da
- * PitchLines.test.tsx. 4% su un fondo verde scurissimo resta dentro il rumore di
+ * PitchLines.test.tsx. Il tratto usa {@code --line} (rgba(255,255,255,0.15)):
+ * l'alfa effettiva sopra il fondo e' 0.15 x 0.04 = 0.006, ben dentro il rumore di
  * quantizzazione dello schermo; il testo che ci passa sopra non se ne accorge.
  */
 export const APP_OPACITY = 0.04;
@@ -33,8 +34,8 @@ export function PitchLines({ variant }: { variant: 'app' | 'projection' }) {
     // z-0, non -z-10: il componente viene montato dentro una radice che porta
     // bg-background e non crea un proprio contesto di impilamento, quindi un
     // indice negativo finirebbe dietro il fondo opaco di quella radice e le
-    // linee non si vedrebbero mai. Il prossimo task dara' z-10 a header e main,
-    // cosi' il contenuto resta sopra a questo sfondo.
+    // linee non si vedrebbero mai. AppShell da' z-10 a header e main (righe 69,
+    // 80, 95, 117), cosi' il contenuto resta sopra a questo sfondo.
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <svg
         aria-hidden="true"
@@ -43,11 +44,11 @@ export function PitchLines({ variant }: { variant: 'app' | 'projection' }) {
         className="h-full w-full"
         style={{ opacity }}
       >
-        <g fill="none" stroke="var(--line-strong)" strokeWidth="2">
+        <g fill="none" stroke="var(--line)" strokeWidth="2">
           <rect x="20" y="20" width="1160" height="760" />
           <line x1="600" y1="20" x2="600" y2="780" />
           <circle cx="600" cy="400" r="110" />
-          <circle cx="600" cy="400" r="4" fill="var(--line-strong)" />
+          <circle cx="600" cy="400" r="4" fill="var(--line)" />
           <rect x="20" y="220" width="180" height="360" />
           <rect x="1000" y="220" width="180" height="360" />
           <rect x="20" y="320" width="70" height="160" />
