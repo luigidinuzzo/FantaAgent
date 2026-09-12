@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import {
@@ -11,6 +12,7 @@ import {
   useValuation,
 } from '../api/hooks';
 import type { Role } from '../api/types';
+import { AnalysisPanel } from '../domain/AnalysisPanel';
 import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } from '../domain/AuctionAnnouncer';
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
@@ -20,9 +22,54 @@ import { LeagueBoard } from '../domain/LeagueBoard';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PhasePager } from '../domain/PhasePager';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
+import { PlayerSearchBox } from '../domain/PlayerSearchBox';
 import { PlayerTable } from '../domain/PlayerTable';
 import { UndoLastButton } from '../domain/UndoLastButton';
 import { useIdleHeartbeat } from './useIdleHeartbeat';
+
+/** Il monitor del secondo schermo: tratto vettoriale, mai un'emoji. */
+function ProjectionIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="4" width="18" height="12" rx="1.5" />
+      <path d="M8 20h8M12 16v4" />
+    </svg>
+  );
+}
+
+/** L'ingranaggio delle impostazioni: tratto vettoriale, mai un'emoji. */
+function SettingsIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v3M12 18v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M3 12h3M18 12h3M4.9 19.1l2.1-2.1M17 7l2.1-2.1" />
+    </svg>
+  );
+}
+
+// Bersaglio 44x44 garantito (min-h-11 min-w-11, non dedotto dall'auto-layout),
+// condiviso dai due link icona della barra superiore.
+const ICON_LINK =
+  'flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong'
+  + ' focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
 export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -170,26 +217,42 @@ export function AuctionRoute() {
   return (
     <AppShell
       chrome="top"
-      slotStatus={
+      title={state.data?.auctionName}
+      slotActions={
         <>
+          <PhaseSwitcher
+            phases={state.data?.phases ?? []}
+            current={state.data?.currentPhase ?? 'P'}
+            onChange={changePhaseTo}
+            pending={changePhase.isPending}
+            error={changePhaseError}
+          />
           {/* Product gap (revisione finale): non esisteva nessun modo di
               raggiungere /proiezione dall'applicazione — bisognava digitare
               l'indirizzo a mano. target="_blank": va aperta in una seconda
               finestra, sul secondo schermo, non al posto di questa. */}
-          <a
-            href="/proiezione"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-h-11 items-center text-sm font-bold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            Apri la proiezione sul secondo schermo
+          <a href="/proiezione" target="_blank" rel="noopener noreferrer" className={ICON_LINK}>
+            <ProjectionIcon />
+            <span className="sr-only">Apri la proiezione sul secondo schermo</span>
           </a>
-          <ConnectionStatus
-            updatedAt={state.dataUpdatedAt || undefined}
-            isError={state.isError}
-            now={now}
+          <UndoLastButton
+            canUndo={state.data?.canUndo ?? false}
+            onUndo={undo}
+            pending={undoLast.isPending}
+            error={undoError}
           />
+          <Link to="/impostazioni" className={ICON_LINK}>
+            <SettingsIcon />
+            <span className="sr-only">Vai alle impostazioni</span>
+          </Link>
         </>
+      }
+      slotStatus={
+        <ConnectionStatus
+          updatedAt={state.dataUpdatedAt || undefined}
+          isError={state.isError}
+          now={now}
+        />
       }
     >
       {/* Nascosto alla vista, non dall'albero di accessibilita': come su
@@ -197,116 +260,115 @@ export function AuctionRoute() {
           chi guarda il portatile non ha bisogno di leggere la parola "Asta". */}
       <h1 className="sr-only">Asta</h1>
       <AuctionAnnouncer message={announcement} />
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <PhaseSwitcher
-          phases={state.data?.phases ?? []}
-          current={state.data?.currentPhase ?? 'P'}
-          onChange={changePhaseTo}
-          pending={changePhase.isPending}
-          error={changePhaseError}
-        />
-        <UndoLastButton
-          canUndo={state.data?.canUndo ?? false}
-          onUndo={undo}
-          pending={undoLast.isPending}
-          error={undoError}
-        />
-      </div>
-      <div className="grid gap-5 lg:grid-cols-[1fr_16rem]">
-        <div>
-          {valuation.data ? (
-            <PlayerDecisionCard valuation={valuation.data} stale={stale}>
-              {/* key: un giocatore nuovo deve azzerare il campo prezzo. La
-                  reattivita' interna di BidPanel a suggestedPrice serve per
-                  la rivalutazione dello STESSO giocatore (un'offerta altrui
-                  che sposta il tetto) e deliberatamente non tocca un campo
-                  gia' toccato dall'utente — senza remount, cambiando
-                  giocatore il prezzo digitato per il precedente resterebbe
-                  nel campo. Le due cose sono complementari, non alternative. */}
-              {bidderOpen && bidderSettings.data ? (
-                <BidderDialog
+      {/* La stessa selezione della tabella di fase, non un secondo percorso:
+          un giocatore scelto qui passa per setSelectedId esattamente come una
+          riga cliccata, quindi valutazione, battitore e aggiudicazione si
+          comportano in tutto allo stesso modo. */}
+      <PlayerSearchBox onSelect={setSelectedId} />
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_22rem]">
+        {valuation.data ? (
+          <PlayerDecisionCard valuation={valuation.data} stale={stale}>
+            {/* key: un giocatore nuovo deve azzerare il campo prezzo. La
+                reattivita' interna di BidPanel a suggestedPrice serve per
+                la rivalutazione dello STESSO giocatore (un'offerta altrui
+                che sposta il tetto) e deliberatamente non tocca un campo
+                gia' toccato dall'utente — senza remount, cambiando
+                giocatore il prezzo digitato per il precedente resterebbe
+                nel campo. Le due cose sono complementari, non alternative. */}
+            {bidderOpen && bidderSettings.data ? (
+              <BidderDialog
+                key={valuation.data.playerId}
+                valuation={valuation.data}
+                participants={state.data?.participants ?? []}
+                timerSeconds={bidderSettings.data.timerSeconds}
+                beepEnabled={bidderSettings.data.beepEnabled}
+                error={assignError}
+                disabled={stale}
+                pending={assign.isPending}
+                onAssign={assignPlayer}
+                onClose={() => setBidderOpen(false)}
+              />
+            ) : (
+              <>
+                {/* Apre il battitore per il lotto conteso: BidPanel resta
+                    la via diretta per un giocatore che nessuno contende,
+                    questo e' l'altra via alla STESSA mutazione (assignPlayer),
+                    non una seconda. Disabilitato finche' le preferenze vere
+                    non sono arrivate: aprire subito significherebbe mostrare
+                    un timer finto, e questa migrazione non finge mai un dato
+                    che non ha ancora. */}
+                <button
+                  type="button"
+                  onClick={() => setBidderOpen(true)}
+                  disabled={!bidderSettings.data}
+                  aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
+                  className="mb-3 min-h-11 border border-line-strong px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                >
+                  Apri il battitore per {valuation.data.name}
+                </button>
+                {!bidderSettings.data ? (
+                  <span id={bidderHintId} className="sr-only">
+                    Le preferenze del battitore non sono disponibili.
+                  </span>
+                ) : null}
+                <BidPanel
                   key={valuation.data.playerId}
-                  valuation={valuation.data}
+                  suggestedPrice={valuation.data.maxBid}
                   participants={state.data?.participants ?? []}
-                  timerSeconds={bidderSettings.data.timerSeconds}
-                  beepEnabled={bidderSettings.data.beepEnabled}
-                  error={assignError}
                   disabled={stale}
                   pending={assign.isPending}
+                  error={assignError}
                   onAssign={assignPlayer}
-                  onClose={() => setBidderOpen(false)}
                 />
-              ) : (
-                <>
-                  {/* Apre il battitore per il lotto conteso: BidPanel resta
-                      la via diretta per un giocatore che nessuno contende,
-                      questo e' l'altra via alla STESSA mutazione (assignPlayer),
-                      non una seconda. Disabilitato finche' le preferenze vere
-                      non sono arrivate: aprire subito significherebbe mostrare
-                      un timer finto, e questa migrazione non finge mai un dato
-                      che non ha ancora. */}
-                  <button
-                    type="button"
-                    onClick={() => setBidderOpen(true)}
-                    disabled={!bidderSettings.data}
-                    aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
-                    className="mb-3 min-h-11 border border-line-strong px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
-                  >
-                    Apri il battitore per {valuation.data.name}
-                  </button>
-                  {!bidderSettings.data ? (
-                    <span id={bidderHintId} className="sr-only">
-                      Le preferenze del battitore non sono disponibili.
-                    </span>
-                  ) : null}
-                  <BidPanel
-                    key={valuation.data.playerId}
-                    suggestedPrice={valuation.data.maxBid}
-                    participants={state.data?.participants ?? []}
-                    disabled={stale}
-                    pending={assign.isPending}
-                    error={assignError}
-                    onAssign={assignPlayer}
-                  />
-                </>
-              )}
-            </PlayerDecisionCard>
-          ) : (
-            <EmptyState>
-              Scegli un giocatore dalla tabella per vedere quanto conviene spendere.
-            </EmptyState>
-          )}
+              </>
+            )}
+          </PlayerDecisionCard>
+        ) : (
+          <EmptyState>
+            Cerca un giocatore o scegline uno dalla tabella per vedere quanto conviene spendere.
+          </EmptyState>
+        )}
 
-          <div className="mt-5">
-            {/* Bloccata mentre il battitore e' aperto: un lotto alla volta.
-                Cambiare selezione con un rilancio in corso rimonterebbe
-                BidderDialog (keyed sul playerId) su un altro giocatore,
-                buttando via countdown, prezzo e beep senza preavviso.
-                Abbandonare un lotto resta un gesto deliberato — si chiude
-                il battitore, che e' il controllo che gia' esiste per farlo. */}
-            <PlayerTable
-              rows={phase.data?.rows ?? []}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              disabled={bidderOpen}
-            />
-            {/* Cambiare pagina non tocca selectedId: un giocatore scelto in una
-                pagina precedente resta scelto (valutazione e battitore intatti,
-                se aperto) anche se la sua riga scorre fuori vista sfogliando. */}
-            {phase.data ? (
-              <PhasePager
-                offset={phase.data.offset}
-                pageSize={phase.data.pageSize}
-                total={phase.data.total}
-                hasPrevious={phase.data.hasPrevious}
-                hasNext={phase.data.hasNext}
-                onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
-                onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
-              />
-            ) : null}
-          </div>
-        </div>
+        {/* AnalysisPanel mostra maxBid, hardCap e i driver: e' esattamente la
+            classe di componenti che la proiezione non puo' importare (vedi
+            no-restricted-imports in .oxlintrc.json). Compare solo insieme a
+            una valutazione: senza, non c'e' alcun prezzo da spiegare. */}
+        {valuation.data ? <AnalysisPanel valuation={valuation.data} /> : null}
+      </div>
 
+      <div className="mt-5">
+        {/* Bloccata mentre il battitore e' aperto: un lotto alla volta.
+            Cambiare selezione con un rilancio in corso rimonterebbe
+            BidderDialog (keyed sul playerId) su un altro giocatore,
+            buttando via countdown, prezzo e beep senza preavviso.
+            Abbandonare un lotto resta un gesto deliberato — si chiude
+            il battitore, che e' il controllo che gia' esiste per farlo. */}
+        <PlayerTable
+          rows={phase.data?.rows ?? []}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          disabled={bidderOpen}
+        />
+        {/* Cambiare pagina non tocca selectedId: un giocatore scelto in una
+            pagina precedente resta scelto (valutazione e battitore intatti,
+            se aperto) anche se la sua riga scorre fuori vista sfogliando. */}
+        {phase.data ? (
+          <PhasePager
+            offset={phase.data.offset}
+            pageSize={phase.data.pageSize}
+            total={phase.data.total}
+            hasPrevious={phase.data.hasPrevious}
+            hasNext={phase.data.hasNext}
+            onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
+            onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
+          />
+        ) : null}
+      </div>
+
+      {/* Sostituito dal Task 7 dalla fila di card squadra e dalla griglia
+          delle rose: qui resta dov'era, non e' cosa di questo task. */}
+      <div className="mt-5">
         <LeagueBoard participants={state.data?.participants ?? []} />
       </div>
     </AppShell>

@@ -8,8 +8,12 @@ const ROLE_LABEL: Record<string, string> = {
   A: 'attaccante',
 };
 
-/** Il segno meno tipografico, non il trattino: e' un numero, non una parola spezzata. */
-function signed(n: number): string {
+/**
+ * Il segno meno tipografico, non il trattino: e' un numero, non una parola
+ * spezzata. Esportato: {@link AnalysisPanel} lo riusa per il contributo dei
+ * driver, stessa disciplina del segno per lo stesso tipo di numero.
+ */
+export function signed(n: number): string {
   return n >= 0 ? `+${n}` : `−${Math.abs(n)}`;
 }
 
@@ -23,14 +27,6 @@ export function PlayerDecisionCard({
   children?: ReactNode;
 }) {
   const nameId = `player-name-${valuation.playerId}`;
-
-  // I driver con spiegazione vuota non sono un errore di battitura da
-  // mostrare: senza filtro, drivers: [] produce un punto isolato e una
-  // spiegazione vuota produce una virgola doppia. Entrambi validi per il tipo.
-  const driverText = valuation.drivers
-    .map((d) => d.explanation)
-    .filter((explanation) => explanation.trim().length > 0)
-    .join(', ');
 
   return (
     <section
@@ -107,10 +103,6 @@ export function PlayerDecisionCard({
           {valuation.worthPursuing ? 'Prendi' : 'Lascia'}
         </p>
       </div>
-
-      {driverText ? (
-        <p className="mt-3 max-w-[60ch] text-sm text-muted-foreground">{driverText}.</p>
-      ) : null}
 
       {!valuation.worthPursuing && valuation.walkAwayReason ? (
         <p className="mt-2 max-w-[60ch] text-sm text-destructive">

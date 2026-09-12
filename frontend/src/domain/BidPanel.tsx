@@ -92,7 +92,7 @@ export function BidPanel({
           }}
           aria-invalid={error !== null}
           aria-describedby={error ? errorId : undefined}
-          className="tnum mt-1 min-h-11 w-24 border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="tnum mt-1 min-h-11 w-24 rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         />
       </div>
 
@@ -104,7 +104,7 @@ export function BidPanel({
           id={buyerId}
           value={participantId}
           onChange={(e) => setParticipantId(e.target.value)}
-          className="mt-1 min-h-11 border border-line bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="mt-1 min-h-11 rounded-full border border-line bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           {participants.map((p) => (
             <option key={p.id} value={p.id}>
@@ -120,7 +120,7 @@ export function BidPanel({
         type="submit"
         disabled={disabled || pending}
         aria-describedby={disabledReason ? hintId : undefined}
-        className="min-h-11 bg-accent px-5 font-bold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+        className="min-h-11 rounded-full bg-accent px-5 font-bold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
       >
         {pending ? 'Aggiudico…' : 'Aggiudica'}
       </button>

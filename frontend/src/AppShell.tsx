@@ -78,39 +78,36 @@ export function AppShell({
         </div>
       )}
 
-      {chrome === 'top' && (
+      {/* "top" e "none" condividono lo stesso <header> e lo stesso <main> —
+          divergono solo nel contenuto della barra, non nella sua forma.
+          "side" resta per conto suo qui sopra: e' genuinamente diverso
+          (colonna a larghezza fissa, mt-auto, main dentro lo stesso
+          contenitore del flex), non la stessa forma con contenuti diversi. */}
+      {chrome !== 'side' && (
         <>
           <header
             role="banner"
             className="relative z-10 flex items-center gap-4 border-b border-line-strong px-4 py-3 text-sm"
           >
-            <Link
-              to="/"
-              className="flex min-h-11 items-center font-extrabold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              FantaAgent
-            </Link>
-            {title ? <span className="font-bold">{title}</span> : null}
-            <SectionLinks orientation="horizontal" />
+            {chrome === 'top' ? (
+              <Link
+                to="/"
+                className="flex min-h-11 items-center font-extrabold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                FantaAgent
+              </Link>
+            ) : (
+              // La proiezione resta senza chrome: "FantaAgent" e' testo
+              // semplice, non un link — la schermata non mostra nessuna
+              // navigazione, nemmeno il nome come porta verso la home.
+              <span className="font-extrabold tracking-tight">FantaAgent</span>
+            )}
+            {chrome === 'top' && title ? <span className="font-bold">{title}</span> : null}
+            {chrome === 'top' ? <SectionLinks orientation="horizontal" /> : null}
             <div className="ml-auto flex items-center gap-4">
               {actions}
               {slotStatus}
             </div>
-          </header>
-          <main role="main" className="relative z-10 p-4">
-            {children}
-          </main>
-        </>
-      )}
-
-      {chrome === 'none' && (
-        <>
-          <header
-            role="banner"
-            className="relative z-10 flex items-center gap-4 border-b border-line-strong px-4 py-3 text-sm"
-          >
-            <span className="font-extrabold tracking-tight">FantaAgent</span>
-            <div className="ml-auto flex items-center gap-4">{slotStatus}</div>
           </header>
           <main role="main" className="relative z-10 p-4">
             {children}

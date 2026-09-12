@@ -12,7 +12,7 @@
         "no-restricted-imports": ["error", {
           "patterns": [
             {
-              "group": ["**/PlayerDecisionCard*", "**/BidderDialog*"],
+              "group": ["**/PlayerDecisionCard*", "**/BidderDialog*", "**/AnalysisPanel*"],
               "message": "La proiezione non puo' importare componenti che mostrano valutazioni."
             },
             {

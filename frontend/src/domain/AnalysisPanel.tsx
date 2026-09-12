@@ -1,0 +1,88 @@
+import type { ValuationResponse } from '../api/types';
+import { signed } from './PlayerDecisionCard';
+
+const HEADING_ID = 'analysis-panel-heading';
+const STARS = 5;
+
+/** Una stella, tratto vettoriale: mai un'emoji. Decorativa — il fatto lo dice
+ * il testo di {@code role="img"} del contenitore, non questa singola stella. */
+function Star({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className={`h-4 w-4 ${filled ? 'fill-accent text-accent' : 'fill-none text-muted-foreground'}`}
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinejoin="round"
+    >
+      <path d="M10 2.2l2.47 5 5.53.8-4 3.9.94 5.5L10 14.7l-4.94 2.7.94-5.5-4-3.9 5.53-.8z" />
+    </svg>
+  );
+}
+
+/**
+ * Perche' questo prezzo: il tetto duro, la confidenza e i driver della
+ * valutazione. E' esattamente la classe di dati che la proiezione — sullo
+ * schermo che guardano tutti al tavolo — non puo' mostrare: {@code hardCap} e
+ * {@code confidenceStars} arrivano dall'API dalla prima tappa e nessuna
+ * schermata li ha mai mostrati finora. `no-restricted-imports` in
+ * `.oxlintrc.json` vieta a `ProjectionRoute` e `PublicBidderDialog` di
+ * importare questo file, come gia' vieta loro `PlayerDecisionCard` e
+ * `BidderDialog`.
+ *
+ * <p>Non e' una live region: l'unico {@code role="status"} della pagina resta
+ * {@code AuctionAnnouncer}, e una seconda competerebbe con quella.
+ */
+export function AnalysisPanel({ valuation }: { valuation: ValuationResponse }) {
+  // I driver con spiegazione vuota non sono un errore di battitura da
+  // mostrare: senza filtro, un driver con spiegazione vuota comparirebbe come
+  // una voce muta nell'elenco. Il filtro (e il testo che descrive) vengono da
+  // PlayerDecisionCard, che li ospitava prima che si spostassero qui.
+  const shownDrivers = valuation.drivers.filter((d) => d.explanation.trim().length > 0);
+
+  return (
+    <section aria-labelledby={HEADING_ID} className="border border-line p-5">
+      <h2 id={HEADING_ID} className="text-sm font-bold text-muted-foreground">
+        Perché questo prezzo
+      </h2>
+
+      <div className="mt-3 flex flex-wrap items-end gap-6">
+        <p>
+          <span data-testid="hard-cap" className="tnum w-exp block text-3xl font-extrabold">
+            {valuation.hardCap}
+          </span>
+          <span className="mt-1 block text-sm text-muted-foreground">tetto duro</span>
+        </p>
+
+        {/* Le stelle sono un'immagine: il nome accessibile del contenitore
+            dice la confidenza a parole, per chi non le vede. "3" letto da un
+            sintetizzatore non e' una confidenza, e' un numero nudo — la
+            frase qui e' cio' che rende l'informazione la stessa per tutti. */}
+        <div
+          role="img"
+          aria-label={`confidenza ${valuation.confidenceStars} su 5`}
+          className="flex items-center gap-0.5 pb-1"
+        >
+          {Array.from({ length: STARS }, (_, i) => (
+            <Star key={i} filled={i < valuation.confidenceStars} />
+          ))}
+        </div>
+      </div>
+
+      {shownDrivers.length > 0 ? (
+        <dl className="mt-4 space-y-3 text-sm">
+          {shownDrivers.map((driver) => (
+            <div key={driver.label}>
+              <div className="flex items-baseline gap-2">
+                <dt className="font-bold">{driver.label}</dt>
+                <dd className="tnum text-muted-foreground">{signed(driver.contribution)}</dd>
+              </div>
+              <dd className="mt-0.5 text-muted-foreground">{driver.explanation}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </section>
+  );
+}

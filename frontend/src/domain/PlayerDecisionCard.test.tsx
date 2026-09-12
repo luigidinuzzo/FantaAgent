@@ -47,12 +47,6 @@ describe('PlayerDecisionCard', () => {
     expect(screen.getByTestId('margin')).toHaveTextContent('−4');
   });
 
-  it('elenca i driver in parole, non in sigle', () => {
-    render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
-    expect(screen.getByText(/budget capiente/)).toBeInTheDocument();
-    expect(screen.getByText(/tre alternative sopra soglia/)).toBeInTheDocument();
-  });
-
   it('quando il dato e stantio si segnala come tale', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale />);
     expect(screen.getByTestId('decision-card')).toHaveAttribute('data-stale', 'true');
@@ -90,26 +84,5 @@ describe('PlayerDecisionCard', () => {
     expect(
       screen.queryByText('oltre 47 il completamento perde più di quanto guadagni'),
     ).not.toBeInTheDocument();
-  });
-
-  it('non mostra punteggiatura spuria quando i driver sono assenti o vuoti', () => {
-    const { rerender } = render(
-      <PlayerDecisionCard valuation={{ ...VALUATION, drivers: [] }} stale={false} />,
-    );
-    expect(screen.queryByText('.')).not.toBeInTheDocument();
-
-    rerender(
-      <PlayerDecisionCard
-        valuation={{
-          ...VALUATION,
-          drivers: [
-            { label: 'budget', contribution: 3, explanation: '' },
-            { label: 'alternative', contribution: -1, explanation: 'tre alternative sopra soglia' },
-          ],
-        }}
-        stale={false}
-      />,
-    );
-    expect(screen.getByText('tre alternative sopra soglia.')).toBeInTheDocument();
   });
 });

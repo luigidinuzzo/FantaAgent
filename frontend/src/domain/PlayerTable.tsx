@@ -41,7 +41,7 @@ export function PlayerTable({
       role="region"
       tabIndex={0}
       aria-labelledby={CAPTION_ID}
-      className="overflow-x-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      className="overflow-x-auto rounded-lg border border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
     >
       <table className="w-cond w-full border-collapse text-sm">
         <caption id={CAPTION_ID} className="sr-only">

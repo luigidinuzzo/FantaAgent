@@ -105,6 +105,14 @@ function fullFetchMock({
     if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 50)));
     if (href.includes('/players/p2/valuation')) return Promise.resolve(jsonResponse(valuation('p2', 80)));
     if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+    // La ricerca (usePlayerSearch) interroga /players?q=...: un solo
+    // risultato fisso basta a provare che scegliere da qui equivale a
+    // scegliere dalla tabella, indipendentemente da cosa si e' digitato.
+    if (href.includes('/players?')) {
+      return Promise.resolve(
+        jsonResponse([{ id: 'p2', name: 'Giocatore Due', team: 'BBB', role: 'P', listPrice: 2 }]),
+      );
+    }
     if (href.includes('/board/bidder/p1')) return Promise.resolve(jsonResponse(BIDDER_SETTINGS));
     if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
     if (href.includes('/purchases')) {
@@ -172,6 +180,45 @@ describe('AuctionRoute', () => {
     // p2 -> p1: p1 e' gia' in cache, nessun vuoto. Questa e' la prova.
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
     await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(50));
+  });
+
+  // Task 6: PlayerSearchBox riceve onSelect={setSelectedId}, la STESSA
+  // selezione della tabella di fase, non un secondo percorso. Un giocatore
+  // scelto dalla ricerca deve comportarsi in tutto come uno scelto dalla
+  // tabella: valutazione, battitore, aggiudicazione.
+  it('un giocatore scelto dalla ricerca si comporta come uno scelto dalla tabella', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    let purchaseBody: unknown = null;
+    vi.stubGlobal(
+      'fetch',
+      fullFetchMock({
+        purchase: { seq: 9, playerId: 'p2', participantId: 'anna', price: 80 },
+        onWriteCall: (body) => { purchaseBody = body; },
+      }),
+    );
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.type(await screen.findByLabelText('Cerca giocatore'), 'due');
+    const result = await screen.findByRole('button', { name: /Giocatore Due/ });
+    await userEvent.click(result);
+
+    // La scheda di decisione mostra QUEL giocatore, non un placeholder di un
+    // percorso di ricerca separato: e' la stessa valutazione che una riga di
+    // tabella avrebbe prodotto.
+    expect(await screen.findByRole('heading', { name: 'Giocatore Due' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(80));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+
+    // "Aggiudica" scrive l'identificativo del giocatore trovato dalla
+    // ricerca — non quello di un'altra riga o di nessuno.
+    await waitFor(() => expect(purchaseBody).not.toBeNull());
+    expect(purchaseBody).toMatchObject({ playerId: 'p2' });
   });
 
   // Bug 1 (revisione): useAssign().onSuccess chiama invalidateQueries() senza
