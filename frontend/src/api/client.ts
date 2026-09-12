@@ -132,7 +132,7 @@ export async function apiPostToAuction<T>(
 /**
  * L'indirizzo dell'esportazione CSV per un'asta precisa, per l'{@code <a href>} del
  * riepilogo — non una fetch: e' il browser a dover gestire il salvataggio, vedi
- * RecapRoute. Prende {@code auctionId} dal chiamante come {@link apiPostToAuction},
+ * RosterGrid. Prende {@code auctionId} dal chiamante come {@link apiPostToAuction},
  * per lo stesso motivo: deve restare quello della board che il riepilogo ha appena
  * letto, non quello (possibilmente cambiato altrove) del {@link context} della
  * finestra.

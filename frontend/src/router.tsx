@@ -1,8 +1,7 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AuctionRoute } from './routes/AuctionRoute';
 import { HomeRoute } from './routes/HomeRoute';
 import { ProjectionRoute } from './routes/ProjectionRoute';
-import { RecapRoute } from './routes/RecapRoute';
 import { SettingsRoute } from './routes/SettingsRoute';
 
 // La proiezione ha una URL propria perche' va aperta in una seconda finestra, sul
@@ -23,7 +22,16 @@ export const routeDefinitions = [
   { path: '/asta', element: <AuctionRoute /> },
   { path: '/proiezione', element: <ProjectionRoute /> },
   { path: '/impostazioni', element: <SettingsRoute /> },
-  { path: '/riepilogo', element: <RecapRoute /> },
+  // Non una destinazione: un indirizzo che ha funzionato, e che deve continuare a
+  // portare da qualche parte. Il riepilogo ora vive DENTRO /asta, nella scheda
+  // "Rose squadre".
+  //
+  // La `path` resta dichiarata qui apposta: SpaRoutesControllerTest legge questo file
+  // con l'espressione path:\s*'([^']+)' e pretende che l'elenco coincida con
+  // SpaRoutesController.ROUTES. Togliere la riga farebbe fallire quel test e — peggio —
+  // un ricaricamento profondo su /riepilogo darebbe 404 invece del reindirizzamento,
+  // perche' il server non inoltrerebbe piu' index.html.
+  { path: '/riepilogo', element: <Navigate to="/asta" replace /> },
 ];
 
 const router = createBrowserRouter(routeDefinitions);

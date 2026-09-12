@@ -42,7 +42,12 @@ describe('AppShell', () => {
         .map((r) => r.path)
         // La proiezione e' l'eccezione voluta: seconda schermata per un proiettore,
         // zero controlli, si apre solo dal suo collegamento in /asta.
-        .filter((path) => path !== '/proiezione');
+        .filter((path) => path !== '/proiezione')
+        // /riepilogo e' la seconda eccezione, e di natura diversa dalla prima: non e'
+        // piu' una destinazione ma un reindirizzamento verso /asta, tenuto vivo perche'
+        // e' nel README e nei segnalibri di chi l'ha usato. Collegare un
+        // reindirizzamento offrirebbe due voci di menu per la stessa schermata.
+        .filter((path) => path !== '/riepilogo');
 
       for (const path of reachable) {
         expect(hrefs).toContain(path);

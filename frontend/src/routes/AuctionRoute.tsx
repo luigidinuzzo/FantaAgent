@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
@@ -18,12 +19,13 @@ import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { EmptyState } from '../domain/EmptyState';
-import { LeagueBoard } from '../domain/LeagueBoard';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PhasePager } from '../domain/PhasePager';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerSearchBox } from '../domain/PlayerSearchBox';
 import { PlayerTable } from '../domain/PlayerTable';
+import { RosterGrid } from '../domain/RosterGrid';
+import { SquadCards } from '../domain/SquadCards';
 import { UndoLastButton } from '../domain/UndoLastButton';
 import { useIdleHeartbeat } from './useIdleHeartbeat';
 
@@ -71,12 +73,42 @@ const ICON_LINK =
   'flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong'
   + ' focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
+type TabKey = 'fase' | 'rose';
+
+// Due schede, non due sezioni sempre in vista: la fila di card squadra basta a
+// sapere chi ha quanto, e la griglia intera delle rose — otto colonne per
+// venticinque righe — spingerebbe la card del lotto fuori dallo schermo proprio
+// mentre si sta aggiudicando. "Fase corrente" resta la scheda predefinita: e' il
+// percorso di selezione del giocatore, il piu' usato durante l'asta.
+const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: 'fase', label: 'Fase corrente' },
+  { key: 'rose', label: 'Rose squadre' },
+];
+
 export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bidderOpen, setBidderOpen] = useState(false);
   const [pageOffset, setPageOffset] = useState(0);
+  const [activeTab, setActiveTab] = useState<TabKey>('fase');
   const bidderHintId = useId();
+  // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
+  // cambia scheda: senza, la selezione si sposterebbe ma il focus della
+  // tastiera resterebbe indietro sul bottone precedente, che e' esattamente il
+  // difetto di un gruppo che si dichiara scheda senza comportarsi da scheda.
+  const tabRefs = useRef<Record<TabKey, HTMLButtonElement | null>>({ fase: null, rose: null });
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, key: TabKey) {
+    const index = TABS.findIndex((t) => t.key === key);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % TABS.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + TABS.length) % TABS.length;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const next = TABS[nextIndex];
+    setActiveTab(next.key);
+    tabRefs.current[next.key]?.focus();
+  }
 
   // Un tick al secondo: serve solo a far invecchiare il "da quanto tempo".
   useEffect(() => {
@@ -337,39 +369,96 @@ export function AuctionRoute() {
         {valuation.data ? <AnalysisPanel valuation={valuation.data} /> : null}
       </div>
 
+      {/* La fila di card squadra: chi ha quanto, a colpo d'occhio, senza
+          bisogno di aprire la scheda "Rose squadre" sotto. */}
       <div className="mt-5">
-        {/* Bloccata mentre il battitore e' aperto: un lotto alla volta.
-            Cambiare selezione con un rilancio in corso rimonterebbe
-            BidderDialog (keyed sul playerId) su un altro giocatore,
-            buttando via countdown, prezzo e beep senza preavviso.
-            Abbandonare un lotto resta un gesto deliberato — si chiude
-            il battitore, che e' il controllo che gia' esiste per farlo. */}
-        <PlayerTable
-          rows={phase.data?.rows ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          disabled={bidderOpen}
-        />
-        {/* Cambiare pagina non tocca selectedId: un giocatore scelto in una
-            pagina precedente resta scelto (valutazione e battitore intatti,
-            se aperto) anche se la sua riga scorre fuori vista sfogliando. */}
-        {phase.data ? (
-          <PhasePager
-            offset={phase.data.offset}
-            pageSize={phase.data.pageSize}
-            total={phase.data.total}
-            hasPrevious={phase.data.hasPrevious}
-            hasNext={phase.data.hasNext}
-            onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
-            onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
-          />
-        ) : null}
+        <SquadCards participants={state.data?.participants ?? []} />
       </div>
 
-      {/* Sostituito dal Task 7 dalla fila di card squadra e dalla griglia
-          delle rose: qui resta dov'era, non e' cosa di questo task. */}
-      <div className="mt-5">
-        <LeagueBoard participants={state.data?.participants ?? []} />
+      <div className="mt-4">
+        {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
+            limita a somigliarci: ruolo, stato e frecce sinistra/destra per
+            spostare la selezione, come da WAI-ARIA Authoring Practices. */}
+        <div
+          role="tablist"
+          aria-label="Sezioni dell'asta"
+          className="flex gap-1 border-b border-line"
+        >
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              ref={(el) => { tabRefs.current[tab.key] = el; }}
+              type="button"
+              role="tab"
+              id={`tab-${tab.key}`}
+              aria-selected={activeTab === tab.key}
+              aria-controls={`tabpanel-${tab.key}`}
+              tabIndex={activeTab === tab.key ? 0 : -1}
+              onClick={() => setActiveTab(tab.key)}
+              onKeyDown={(e) => handleTabKeyDown(e, tab.key)}
+              className={`min-h-11 border-b-2 px-3 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                activeTab === tab.key
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-muted-foreground'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div
+          role="tabpanel"
+          id="tabpanel-fase"
+          aria-labelledby="tab-fase"
+          hidden={activeTab !== 'fase'}
+          className="mt-4"
+        >
+          {activeTab === 'fase' ? (
+            <>
+              {/* Bloccata mentre il battitore e' aperto: un lotto alla volta.
+                  Cambiare selezione con un rilancio in corso rimonterebbe
+                  BidderDialog (keyed sul playerId) su un altro giocatore,
+                  buttando via countdown, prezzo e beep senza preavviso.
+                  Abbandonare un lotto resta un gesto deliberato — si chiude
+                  il battitore, che e' il controllo che gia' esiste per farlo. */}
+              <PlayerTable
+                rows={phase.data?.rows ?? []}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                disabled={bidderOpen}
+              />
+              {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
+                  una pagina precedente resta scelto (valutazione e battitore
+                  intatti, se aperto) anche se la sua riga scorre fuori vista
+                  sfogliando. */}
+              {phase.data ? (
+                <PhasePager
+                  offset={phase.data.offset}
+                  pageSize={phase.data.pageSize}
+                  total={phase.data.total}
+                  hasPrevious={phase.data.hasPrevious}
+                  hasNext={phase.data.hasNext}
+                  onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
+                  onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </div>
+
+        <div
+          role="tabpanel"
+          id="tabpanel-rose"
+          aria-labelledby="tab-rose"
+          hidden={activeTab !== 'rose'}
+          className="mt-4"
+        >
+          {/* Montata solo quando la scheda e' quella attiva: legge /board (e
+              le capacita' per ruolo da /state) da se', e non c'e' motivo di
+              farlo mentre e' "Fase corrente" a essere in vista. */}
+          {activeTab === 'rose' ? <RosterGrid /> : null}
+        </div>
       </div>
     </AppShell>
   );

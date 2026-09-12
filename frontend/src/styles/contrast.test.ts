@@ -12,7 +12,7 @@ import { PALETTE, LINES, contrastRatio, hexToOklch } from '../../scripts/palette
 // La soglia segue la DIMENSIONE con cui il colore viene reso, non il ruolo del
 // token: 3:1 vale solo per il testo grande. accent, positive e destructive
 // erano fermi a 3 ma escono a text-sm (14-16px) in PlayerDecisionCard,
-// PlayerTable, ConnectionStatus e LeagueBoard, dove serve 4.5. Li superano
+// PlayerTable, ConnectionStatus e SquadCards, dove serve 4.5. Li superano
 // gia' tutti: la soglia bassa non proteggeva le dimensioni spedite, e avrebbe
 // lasciato passare la prima ritinteggiatura che le avesse peggiorate.
 const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [

@@ -7,13 +7,17 @@ import { Link } from 'react-router-dom';
  * secondo schermo. L'assenza e' verificata da AppShell.test.tsx, che la elenca con
  * il suo perche' invece di ignorarla in silenzio.
  *
+ * <p>Non c'e' nemmeno /riepilogo: e' un reindirizzamento verso /asta (Task 7), non
+ * piu' una destinazione — le rose vivono ora dentro /asta, nella scheda "Rose
+ * squadre". Un collegamento qui offrirebbe due voci di menu per la stessa
+ * schermata. L'assenza e' verificata anche lei da AppShell.test.tsx.
+ *
  * <p>Elenco unico, reso in due forme: un secondo elenco per la barra superiore
  * sarebbe una seconda cosa da tenere d'accordo con questa, ed e' esattamente il
  * tipo di coppia che diverge in silenzio.
  */
 export const SECTIONS: Array<{ to: string; label: string }> = [
   { to: '/asta', label: 'Asta' },
-  { to: '/riepilogo', label: 'Riepilogo' },
   { to: '/impostazioni', label: 'Impostazioni' },
 ];
 

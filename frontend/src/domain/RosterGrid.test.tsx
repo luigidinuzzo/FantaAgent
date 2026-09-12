@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
 import { setAuctionContext } from '../api/client';
 import { QueryProvider } from '../api/QueryProvider';
-import { RecapRoute } from './RecapRoute';
+import { RosterGrid } from './RosterGrid';
 
 const BOARD = {
   auctionId: 'a1',
@@ -27,6 +26,33 @@ const BOARD = {
   ],
 };
 
+// La capacita' per ruolo non e' nel corpo di /board (vedi il commento in
+// RosterGrid.tsx): viene da /state, la stessa mappa per ogni partecipante
+// perche' e' una regola di lega condivisa.
+const STATE = {
+  auctionId: 'a1',
+  auctionName: 'Prova',
+  currentPhase: 'D',
+  phases: ['P', 'D', 'C', 'A'],
+  soldInPhase: 2,
+  myParticipantId: 'anna',
+  canUndo: false,
+  participants: [
+    {
+      id: 'anna', name: 'Anna', initial: 'A', me: true,
+      budgetRemaining: 280, slotsRemaining: 23,
+      filledByRole: { P: 1, D: 1, C: 0, A: 0 },
+      slotsByRole: { P: 3, D: 8, C: 8, A: 6 },
+    },
+    {
+      id: 'bruno', name: 'Bruno', initial: 'B', me: false,
+      budgetRemaining: 300, slotsRemaining: 25,
+      filledByRole: { P: 0, D: 0, C: 0, A: 0 },
+      slotsByRole: { P: 3, D: 8, C: 8, A: 6 },
+    },
+  ],
+};
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -34,7 +60,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function renderRecap(onVoid?: (href: string) => Promise<Response>) {
+function renderRoster(onVoid?: (href: string) => Promise<Response>) {
   // Deliberatamente diverso da BOARD.auctionId ('a1'): e' esattamente lo scenario
   // del tab stantio — la finestra e' altrove, la board di QUESTA schermata resta
   // 'a1' — e prova che la revoca usa l'id della board letto dalla risposta, non
@@ -46,31 +72,30 @@ function renderRecap(onVoid?: (href: string) => Promise<Response>) {
       return (onVoid ?? (() => Promise.resolve(new Response(null, { status: 204 }))))(href);
     }
     if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
     return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
   });
   vi.stubGlobal('fetch', fetchMock);
   render(
     <QueryProvider>
-      <MemoryRouter>
-        <RecapRoute />
-      </MemoryRouter>
+      <RosterGrid />
     </QueryProvider>,
   );
   return fetchMock;
 }
 
-describe('RecapRoute', () => {
+describe('RosterGrid', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('incolonna le rose di tutti', async () => {
-    renderRecap();
+    renderRoster();
     expect(await screen.findByText('Bastoni')).toBeInTheDocument();
     expect(screen.getByText('Sommer')).toBeInTheDocument();
     expect(screen.getByText('Bruno')).toBeInTheDocument();
   });
 
   it('revoca un acquisto preciso, per numero di riga', async () => {
-    const fetchMock = renderRecap();
+    const fetchMock = renderRoster();
     await userEvent.click(await screen.findByRole('button', { name: /annulla l'acquisto di bastoni/i }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -87,8 +112,8 @@ describe('RecapRoute', () => {
    * nel frattempo un'altra finestra avesse selezionato un'altra asta. La revoca
    * deve usare l'auctionId che la board ha appena letto, non quello del contesto.
    */
-  it("indirizza la revoca con l'auctionId della board, non con quello del contesto", async () => {
-    const fetchMock = renderRecap();
+  it("manda il seq all'asta che LA BOARD ha letto, non a quella della finestra", async () => {
+    const fetchMock = renderRoster();
     await userEvent.click(await screen.findByRole('button', { name: /annulla l'acquisto di bastoni/i }));
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -99,11 +124,41 @@ describe('RecapRoute', () => {
   });
 
   /**
-   * I due rifiuti del task 12 dicono cose diverse, e la schermata deve dirle diverse:
+   * Prima del fix, `pending` era un booleano unico condiviso da OGNI riga: una
+   * revoca in volo su un giocatore disabilitava anche il bottone di tutti gli
+   * altri, in ogni colonna. Va disabilitato solo il bottone del `seq` in corso.
+   */
+  it('revoca solo la riga in volo, non tutte', async () => {
+    let resolveVoid!: (r: Response) => void;
+    const pending = new Promise<Response>((resolve) => { resolveVoid = resolve; });
+    renderRoster(() => pending);
+
+    const bastoniButton = await screen.findByRole('button', { name: /annulla l'acquisto di bastoni/i });
+    const sommerButton = screen.getByRole('button', { name: /annulla l'acquisto di sommer/i });
+    await userEvent.click(bastoniButton);
+
+    await waitFor(() => expect(bastoniButton).toBeDisabled());
+    expect(sommerButton).toBeEnabled();
+
+    resolveVoid(new Response(null, { status: 204 }));
+    await waitFor(() => expect(bastoniButton).toBeEnabled());
+  });
+
+  it("l'esportazione e un link da scaricare, non una fetch", async () => {
+    renderRoster();
+    const link = await screen.findByRole('link', { name: /csv/i });
+    expect(link).toHaveAttribute('download');
+    expect(link.getAttribute('href')).toContain('/export.csv');
+    // Stesso auctionId della board ('a1'), non quello del contesto ('corrente').
+    expect(link.getAttribute('href')).toBe('/api/leagues/default/auctions/a1/export.csv');
+  });
+
+  /**
+   * I due rifiuti dicono cose diverse, e la schermata deve dirle diverse:
    * "non esiste" invita a ricaricare, "gia' annullato" dice che e' gia' fatto.
    */
   it('distingue i due rifiuti della revoca', async () => {
-    renderRecap(() =>
+    renderRoster(() =>
       Promise.resolve(
         jsonResponse(
           {
@@ -122,15 +177,11 @@ describe('RecapRoute', () => {
   });
 
   /**
-   * Il terzo rifiuto possibile, distinto dagli altri due: non e' che l'acquisto non
-   * ci sia (purchase-not-found) o sia gia' stato revocato (already-revoked), e' che
-   * l'ASTA indirizzata dalla revoca non e' (piu') quella aperta — la guardia
-   * risponde 404 unknown-auction. E' il caso del tab stantio: un riepilogo aperto
-   * su un'asta mentre altrove si e' passati a un'altra. Ricaricare la pagina, non
-   * ripetere il tentativo, e' la sola cosa sensata da suggerire.
+   * Una sola frase di errore alla volta: l'errore della revoca ha la precedenza
+   * su quello di caricamento, perche' e' la risposta al gesto piu' recente.
    */
-  it("un'asta cambiata nel frattempo lo dice, distinto dall'acquisto assente", async () => {
-    renderRecap(() =>
+  it('una sola frase di errore alla volta', async () => {
+    renderRoster(() =>
       Promise.resolve(
         jsonResponse(
           {
@@ -150,50 +201,13 @@ describe('RecapRoute', () => {
     expect(alerts[0]).not.toHaveTextContent(/non c'è più/i);
   });
 
-  /**
-   * Prima del fix, `pending` era un booleano unico condiviso da OGNI riga: una
-   * revoca in volo su un giocatore disabilitava anche il bottone di tutti gli
-   * altri, in ogni colonna. Va disabilitato solo il bottone del `seq` in corso.
-   */
-  it('la revoca in volo disabilita solo il suo bottone, non tutti gli altri', async () => {
-    let resolveVoid!: (r: Response) => void;
-    const pending = new Promise<Response>((resolve) => { resolveVoid = resolve; });
-    renderRecap(() => pending);
-
-    const bastoniButton = await screen.findByRole('button', { name: /annulla l'acquisto di bastoni/i });
-    const sommerButton = screen.getByRole('button', { name: /annulla l'acquisto di sommer/i });
-    await userEvent.click(bastoniButton);
-
-    await waitFor(() => expect(bastoniButton).toBeDisabled());
-    expect(sommerButton).toBeEnabled();
-
-    resolveVoid(new Response(null, { status: 204 }));
-    await waitFor(() => expect(bastoniButton).toBeEnabled());
-  });
-
-  /**
-   * L'esportazione e' un <a href download>, non una fetch: il browser deve
-   * gestire il salvataggio da solo. L'href porta l'auctionId della BOARD ('a1'),
-   * non quello del contesto della finestra ('corrente'), per lo stesso motivo
-   * della revoca — vedi il test sopra sull'auctionId della board.
-   */
-  it("il pulsante di esportazione punta all'export.csv dell'asta della board", async () => {
-    renderRecap();
-    const link = await screen.findByRole('link', { name: /scarica il csv delle rose/i });
-    expect(link).toHaveAttribute('href', '/api/leagues/default/auctions/a1/export.csv');
-    expect(link).toHaveAttribute('download');
-  });
-
   it('una rosa vuota lo dice, invece di sembrare una colonna rotta', async () => {
-    renderRecap();
-    expect(await screen.findByText(/bruno non ha ancora comprato nessuno/i)).toBeInTheDocument();
+    renderRoster();
+    // Bruno non ha comprato nessuno: le sue sezioni di ruolo restano a 0/n,
+    // con le righe-slot vuote a dirlo — non una colonna che sembra rotta.
+    expect(await screen.findByRole('button', { name: /portieri.*0 su 3/i })).toBeInTheDocument();
   });
 
-  /**
-   * Generalizza la disciplina "un solo alert" delle impostazioni: qui i due alert
-   * possibili sono l'errore della revoca e l'errore di caricamento della board.
-   * Non devono mai poter comparire insieme.
-   */
   it('un errore di caricamento della board resta un unico alert', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     // Una NUOVA Response per ogni chiamata: React Query riprova una volta (retry: 1
@@ -210,13 +224,47 @@ describe('RecapRoute', () => {
     );
     render(
       <QueryProvider>
-        <MemoryRouter>
-          <RecapRoute />
-        </MemoryRouter>
+        <RosterGrid />
       </QueryProvider>,
     );
 
     const alerts = await screen.findAllByRole('alert', {}, { timeout: 3000 });
     expect(alerts).toHaveLength(1);
+  });
+
+  /**
+   * Le sezioni di ruolo si aprono chiuse dal loro bottone, e il nome accessibile
+   * dice ruolo e riempimento — non solo un chevron muto.
+   */
+  it('le sezioni di ruolo si possono chiudere, e dicono quanto sono piene', async () => {
+    renderRoster();
+    const section = await screen.findByRole('button', { name: /portieri.*1 su 3/i });
+    expect(section).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Sommer')).toBeInTheDocument();
+
+    await userEvent.click(section);
+
+    expect(section).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Sommer')).not.toBeInTheDocument();
+
+    await userEvent.click(section);
+    expect(section).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Sommer')).toBeInTheDocument();
+  });
+
+  it('le righe-slot vuote hanno un trattino e un testo sr-only "posto libero"', async () => {
+    renderRoster();
+    // Anna: portieri, 1 occupato su 3 -> 2 posti liberi.
+    await screen.findByText('Sommer');
+    const freeTexts = screen.getAllByText('posto libero');
+    expect(freeTexts.length).toBeGreaterThan(0);
+    expect(freeTexts[0]).toHaveClass('sr-only');
+  });
+
+  it('e una tabella vera per colonna, con intestazioni e didascalia per il partecipante', async () => {
+    renderRoster();
+    await screen.findByText('Sommer');
+    expect(screen.getByText('Rosa di Anna')).toHaveClass('sr-only');
+    expect(screen.getAllByRole('columnheader', { name: 'Giocatore' }).length).toBeGreaterThan(0);
   });
 });

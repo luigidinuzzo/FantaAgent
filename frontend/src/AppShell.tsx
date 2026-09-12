@@ -37,7 +37,7 @@ export function AppShell({
 }: {
   children: ReactNode;
   /**
-   * "side": barra laterale (home, impostazioni, riepilogo, asta). "top": barra
+   * "side": barra laterale (home, asta, impostazioni). "top": barra
    * compatta dell'asta, con le stesse destinazioni in orizzontale. "none": la
    * proiezione, senza nessuna navigazione.
    */

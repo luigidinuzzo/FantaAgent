@@ -1167,4 +1167,113 @@ describe('AuctionRoute', () => {
       await waitFor(() => expect(requestedOffsets[requestedOffsets.length - 1]).toBe('0'));
     });
   });
+
+  // Task 7: LeagueBoard e' sostituito da una fila di card squadra e da una
+  // striscia di due schede vere — role="tablist"/"tab"/"tabpanel", non un
+  // gruppo di bottoni che si limita a somigliarci.
+  describe('le schede "Fase corrente" e "Rose squadre"', () => {
+    const BOARD = {
+      auctionId: 'a1',
+      currentPhase: 'P',
+      columns: [
+        {
+          participantId: 'anna', participantName: 'Anna', me: true,
+          budgetRemaining: 300, slotsRemaining: 25,
+          byRole: { P: [], D: [], C: [], A: [] },
+        },
+      ],
+    };
+
+    function fetchMockWithBoard() {
+      return vi.fn((input: RequestInfo | URL) => {
+        const href = typeof input === 'string' ? input : input.toString();
+        if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
+        if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+        if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+        return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      });
+    }
+
+    it('mostra "Fase corrente" per default, con un solo tabpanel raggiungibile', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fetchMockWithBoard());
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      const faseTab = await screen.findByRole('tab', { name: 'Fase corrente' });
+      const roseTab = screen.getByRole('tab', { name: 'Rose squadre' });
+      expect(faseTab).toHaveAttribute('aria-selected', 'true');
+      expect(roseTab).toHaveAttribute('aria-selected', 'false');
+      // Il pannello nascosto non e' nell'albero di accessibilita': un solo
+      // tabpanel deve essere raggiungibile per ruolo alla volta.
+      expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
+      expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'tabpanel-fase');
+    });
+
+    it('cliccare "Rose squadre" apre la griglia delle rose (montata solo allora)', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fetchMockWithBoard());
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      await userEvent.click(await screen.findByRole('tab', { name: 'Rose squadre' }));
+
+      expect(screen.getByRole('tab', { name: 'Rose squadre' })).toHaveAttribute('aria-selected', 'true');
+      // Solo ora RosterGrid e' montata e ha potuto leggere /board: il link di
+      // esportazione compare, e il pannello di "Fase corrente" e' sparito
+      // dall'albero di accessibilita'.
+      expect(await screen.findByRole('link', { name: /csv/i })).toBeInTheDocument();
+      expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
+      expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'tabpanel-rose');
+    });
+
+    it('la freccia destra sposta selezione e focus alla scheda successiva', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fetchMockWithBoard());
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      const faseTab = await screen.findByRole('tab', { name: 'Fase corrente' });
+      faseTab.focus();
+      await userEvent.keyboard('{ArrowRight}');
+
+      const roseTab = screen.getByRole('tab', { name: 'Rose squadre' });
+      expect(roseTab).toHaveAttribute('aria-selected', 'true');
+      // Non solo la selezione: il FOCUS si sposta con lei. Una scheda che
+      // cambiasse pannello senza muovere il focus prometterebbe la freccia
+      // e non la manterrebbe.
+      expect(roseTab).toHaveFocus();
+    });
+
+    it('la freccia sinistra dalla prima scheda torna, ciclicamente, all\'ultima', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fetchMockWithBoard());
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      const faseTab = await screen.findByRole('tab', { name: 'Fase corrente' });
+      faseTab.focus();
+      await userEvent.keyboard('{ArrowLeft}');
+
+      const roseTab = screen.getByRole('tab', { name: 'Rose squadre' });
+      expect(roseTab).toHaveAttribute('aria-selected', 'true');
+      expect(roseTab).toHaveFocus();
+    });
+  });
 });
