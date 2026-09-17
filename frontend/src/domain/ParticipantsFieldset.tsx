@@ -41,10 +41,17 @@ export function ParticipantsFieldset({
   value,
   onChange,
   errors,
+  lockCount = false,
 }: {
   value: ParticipantSettings[];
   onChange: (next: ParticipantSettings[]) => void;
   errors: Record<string, string[]>;
+  /**
+   * Ad asta aperta: il numero di squadre e' il numero di partecipanti, e cambiarlo a
+   * meta' serata ricalcolerebbe budget e rose gia' pagate. Nomi e iniziali restano
+   * modificabili; aggiungere e togliere righe no.
+   */
+  lockCount?: boolean;
 }) {
   const baseId = useId();
   const groupErrorsId = `${baseId}-group`;
@@ -72,7 +79,9 @@ export function ParticipantsFieldset({
             <th scope="col" className="py-1 pr-3">Nome</th>
             <th scope="col" className="w-20 py-1 pr-3">Iniziale</th>
             <th scope="col" className="w-16 py-1 text-center">Sei tu</th>
-            <th scope="col" className="w-14 py-1"><span className="sr-only">Azioni</span></th>
+            {lockCount ? null : (
+              <th scope="col" className="w-14 py-1"><span className="sr-only">Azioni</span></th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -123,34 +132,38 @@ export function ParticipantsFieldset({
                     <span className="sr-only">Sei tu: {p.name}</span>
                   </label>
                 </td>
-                <td className="py-1 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onChange(value.filter((_, j) => j !== i))}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                  >
-                    <RemoveIcon />
-                    <span className="sr-only">Togli {p.name}</span>
-                  </button>
-                </td>
+                {lockCount ? null : (
+                  <td className="py-1 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onChange(value.filter((_, j) => j !== i))}
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    >
+                      <RemoveIcon />
+                      <span className="sr-only">Togli {p.name}</span>
+                    </button>
+                  </td>
+                )}
               </tr>
             );
           })}
         </tbody>
       </table>
 
-      <button
-        type="button"
-        onClick={() =>
-          onChange([
-            ...value,
-            { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
-          ])
-        }
-        className="mt-3 min-h-11 rounded-full border border-line-strong px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        Aggiungi partecipante
-      </button>
+      {lockCount ? null : (
+        <button
+          type="button"
+          onClick={() =>
+            onChange([
+              ...value,
+              { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
+            ])
+          }
+          className="mt-3 min-h-11 rounded-full border border-line-strong px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        >
+          Aggiungi partecipante
+        </button>
+      )}
 
       <FieldErrors id={groupErrorsId} errors={groupErrors} />
     </fieldset>

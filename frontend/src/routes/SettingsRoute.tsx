@@ -4,20 +4,18 @@ import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import { useSaveSettings, useSettings } from '../api/hooks';
 import type { SaveSettingsRequest, SettingsErrors } from '../api/types';
-import { ConfigChips } from '../domain/ConfigChips';
 import { FieldErrors } from '../domain/FieldErrors';
-import { NumberField } from '../domain/NumberField';
+import { LeagueRulesFieldset } from '../domain/LeagueRulesFieldset';
 import { ParticipantsFieldset } from '../domain/ParticipantsFieldset';
 import { ScoringFieldset } from '../domain/ScoringFieldset';
+import { ROLE_NAME_PLURAL } from '../domain/roles';
+import { StepperField } from '../domain/StepperField';
 
 const NO_ERRORS: SettingsErrors = {};
 
 /** Gli stessi limiti di AuctionSettingsValidator (MIN_SECONDS, MAX_SECONDS). */
 const MIN_TIMER_SECONDS = 1;
 const MAX_TIMER_SECONDS = 120;
-
-const STEP_BUTTON =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong text-xl font-bold hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
 /**
  * Etichette leggibili per le chiavi di campo (task 16). Le righe indicizzate — una
@@ -41,6 +39,8 @@ const FIELD_LABELS: Record<string, string> = {
   redCard: 'espulsione',
   goalConceded: 'gol subito',
   cleanSheet: 'porta inviolata',
+  budget: 'crediti per squadra',
+  rules: 'regole della lega',
 };
 
 /**
@@ -57,6 +57,8 @@ function fieldLabel(key: string): string {
   if (row) return `riga ${Number(row[1]) + 1} della tabella soglie`;
   const bonus = /^goalBonus\[(.+)]$/.exec(key);
   if (bonus) return `bonus gol ${bonus[1]}`;
+  const slot = /^slots\[(P|D|C|A)]$/.exec(key);
+  if (slot) return `slot ${ROLE_NAME_PLURAL[slot[1] as 'P' | 'D' | 'C' | 'A']}`;
   const participantField = /^participants\[[^\]]+]\.(name|initial)$/.exec(key);
   if (participantField) {
     return participantField[1] === 'name' ? 'nome di un partecipante' : "iniziale di un partecipante";
@@ -172,6 +174,7 @@ export function SettingsRoute() {
       bidder: settings.data.bidder,
       participants: settings.data.participants,
       scoring: settings.data.scoring,
+      rules: { budget: settings.data.rules.budget, slots: settings.data.rules.slots },
     });
   }, [settings.data, form]);
 
@@ -211,13 +214,6 @@ export function SettingsRoute() {
   // il testo del bottone in fondo.
   const title = auctionOpen ? 'Impostazioni' : 'Crea asta';
 
-  // Una copia gia' ristretta a non-null: la closure qui sotto non eredita il
-  // restringimento di `form` fatto dal controllo di caricamento sopra.
-  const loaded = form;
-  function setBidTimer(seconds: number) {
-    const clamped = Math.min(MAX_TIMER_SECONDS, Math.max(MIN_TIMER_SECONDS, seconds));
-    setForm({ ...loaded, bidder: { ...loaded.bidder, bidTimerSeconds: clamped } });
-  }
 
   return (
     <AppShell chrome="side">
@@ -315,42 +311,21 @@ export function SettingsRoute() {
                 <label htmlFor={bidTimerId} className="block text-sm">
                   Secondi di countdown
                 </label>
-                {/* − e + ai lati del campo: si regola il timer senza tastiera, a
-                    passi di un secondo, dentro i limiti che il server accetta
-                    (AuctionSettingsValidator). Il campo resta scrivibile. */}
-                <div className="mt-1 flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label="Un secondo in meno"
-                    disabled={form.bidder.bidTimerSeconds <= MIN_TIMER_SECONDS}
-                    onClick={() => setBidTimer(form.bidder.bidTimerSeconds - 1)}
-                    className={STEP_BUTTON}
-                  >
-                    <span aria-hidden="true">−</span>
-                  </button>
-                  <NumberField
-                    id={bidTimerId}
-                    value={form.bidder.bidTimerSeconds}
-                    aria-invalid={bidTimerErrors.length > 0}
-                    aria-describedby={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
-                    onChange={(bidTimerSeconds) =>
-                      setForm({
-                        ...form,
-                        bidder: { ...form.bidder, bidTimerSeconds },
-                      })
-                    }
-                    className="tnum block min-h-11 w-full min-w-0 flex-1 rounded-full border border-line-strong bg-transparent px-4 text-center font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                  />
-                  <button
-                    type="button"
-                    aria-label="Un secondo in più"
-                    disabled={form.bidder.bidTimerSeconds >= MAX_TIMER_SECONDS}
-                    onClick={() => setBidTimer(form.bidder.bidTimerSeconds + 1)}
-                    className={STEP_BUTTON}
-                  >
-                    <span aria-hidden="true">+</span>
-                  </button>
-                </div>
+                {/* − e + ai lati del campo: si regola il timer senza tastiera, dentro
+                    i limiti che il server accetta (AuctionSettingsValidator). */}
+                <StepperField
+                  id={bidTimerId}
+                  value={form.bidder.bidTimerSeconds}
+                  onChange={(bidTimerSeconds) =>
+                    setForm({ ...form, bidder: { ...form.bidder, bidTimerSeconds } })
+                  }
+                  min={MIN_TIMER_SECONDS}
+                  max={MAX_TIMER_SECONDS}
+                  decreaseLabel="Un secondo in meno"
+                  increaseLabel="Un secondo in più"
+                  invalid={bidTimerErrors.length > 0}
+                  describedBy={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
+                />
                 <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
               </div>
 
@@ -376,13 +351,20 @@ export function SettingsRoute() {
               </div>
             </fieldset>
 
-            <ConfigChips rules={settings.data.rules} />
+            <LeagueRulesFieldset
+              value={form.rules}
+              onChange={(rules) => setForm({ ...form, rules })}
+              participants={form.participants.length}
+              errors={errors}
+              disabled={auctionOpen}
+            />
           </div>
 
           <ParticipantsFieldset
             value={form.participants}
             onChange={(participants) => setForm({ ...form, participants })}
             errors={errors}
+            lockCount={auctionOpen}
           />
 
           {/* Sempre aperto, non una disclosure: il punteggio e' parte della

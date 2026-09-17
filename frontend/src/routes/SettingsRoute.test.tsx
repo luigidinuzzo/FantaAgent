@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -391,5 +391,75 @@ describe('SettingsRoute', () => {
     await userEvent.clear(timer);
     await userEvent.type(timer, '120');
     expect(screen.getByRole('button', { name: 'Un secondo in più' })).toBeDisabled();
+  });
+
+  it('il salvataggio invia le regole modificate', async () => {
+    let sentBody: { rules: { budget: number; slots: Record<string, number> } } | null = null;
+    const fetchMock = renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    fetchMock.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/settings') && init?.method === 'PUT') {
+        sentBody = JSON.parse(init.body as string);
+        return Promise.resolve(jsonResponse({ auctionId: null }));
+      }
+      if (href.endsWith('/settings')) return Promise.resolve(jsonResponse(SETTINGS));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Dieci crediti in più' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Uno slot in meno: difensori' }));
+    await userEvent.type(screen.getByLabelText(/nome dell'asta/i), 'Serata');
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }));
+
+    await waitFor(() => expect(sentBody).not.toBeNull());
+    expect(sentBody!.rules).toEqual({ budget: 510, slots: { P: 3, D: 7, C: 8, A: 6 } });
+  });
+
+  /** Le squadre non sono un campo: seguono la lista dei partecipanti mentre la si modifica. */
+  it('le squadre seguono i partecipanti aggiunti', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    const group = await screen.findByRole('group', { name: 'Regole della lega' });
+    const before = SETTINGS.participants.length;
+    expect(within(group).getByText(String(before))).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /aggiungi partecipante/i }));
+
+    expect(within(group).getByText(String(before + 1))).toBeInTheDocument();
+  });
+
+  it('ad asta aperta regole e numero di partecipanti sono bloccati', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', vi.fn(() =>
+      Promise.resolve(jsonResponse({ ...SETTINGS, auctionOpen: true }))));
+    render(
+      <QueryProvider>
+        <MemoryRouter>
+          <SettingsRoute />
+        </MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const budget = await screen.findByLabelText('Crediti per squadra');
+    expect(budget).toBeDisabled();
+    expect(budget).toHaveAccessibleDescription(/asta in corso: crediti, slot e numero di squadre/i);
+    expect(screen.queryByRole('button', { name: /aggiungi partecipante/i })).not.toBeInTheDocument();
+  });
+
+  it("un errore di slot compare nel riassunto con il nome del ruolo", async () => {
+    renderSettings(() =>
+      Promise.resolve(
+        jsonResponse(
+          {
+            type: 'https://fantaagent.local/problems/invalid-settings',
+            detail: 'Alcune impostazioni non sono valide.',
+            errors: { 'slots[P]': ['Gli slot dei portieri devono essere fra 1 e 30: indicati 0.'] },
+          },
+          422,
+        ),
+      ),
+    );
+    await userEvent.type(await screen.findByLabelText(/nome dell'asta/i), 'Serata');
+    await userEvent.click(screen.getByRole('button', { name: /salva/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/slot portieri/i);
   });
 });

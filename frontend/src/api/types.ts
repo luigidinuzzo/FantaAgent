@@ -170,10 +170,9 @@ export interface ScoringSection {
 }
 
 /**
- * I quattro numeri di {@code LeagueRules} — crediti, squadre, limiti per ruolo —
- * letti da {@code application.yml} e validati all'avvio. Specchio TypeScript di
- * {@code SettingsDtos.LeagueRulesView}: di sola lettura, per questo **non** compare
- * in {@link SaveSettingsRequest} — il server non li scrive mai.
+ * Specchio di {@code SettingsDtos.LeagueRulesView}: le regole dell'asta aperta, o del
+ * modello quando non ce n'e' una. {@code participants} e' calcolato dal server — il
+ * numero di squadre e' la lunghezza della lista dei partecipanti.
  */
 export interface LeagueRulesView {
   participants: number;
@@ -188,8 +187,16 @@ export interface SettingsResponse {
   /** Ad asta aperta i parametri di punteggio sono bloccati: cambiarli riscriverebbe
    *  i numeri con cui una rosa gia' pagata era stata valutata. */
   auctionOpen: boolean;
-  /** Di sola lettura: vedi {@link LeagueRulesView}. */
   rules: LeagueRulesView;
+}
+
+/**
+ * Specchio di {@code SettingsDtos.RulesSection}: crediti e slot scelti per l'asta che
+ * nasce. Le squadre no: sono i partecipanti.
+ */
+export interface RulesSection {
+  budget: number;
+  slots: Record<Role, number>;
 }
 
 export interface SaveSettingsRequest {
@@ -197,6 +204,7 @@ export interface SaveSettingsRequest {
   bidder: BidderSettings;
   participants: ParticipantSettings[];
   scoring: ScoringSection;
+  rules: RulesSection;
 }
 
 export interface SaveSettingsResult {

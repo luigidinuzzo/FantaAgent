@@ -103,4 +103,18 @@ describe('ParticipantsFieldset', () => {
 
     expect(await screen.findByLabelText(/nome del partecipante/i)).toBeInTheDocument();
   });
+  it('con lockCount non si aggiungono né si tolgono righe, ma i nomi restano modificabili', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
+        onChange={() => {}}
+        errors={{}}
+        lockCount
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /aggiungi partecipante/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Togli Anna' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Nome del partecipante')).not.toBeDisabled();
+  });
+
 });
