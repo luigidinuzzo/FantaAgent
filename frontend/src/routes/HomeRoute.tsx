@@ -9,20 +9,22 @@ import { EmptyState } from '../domain/EmptyState';
 import { ProfilePanel } from '../domain/ProfilePanel';
 import type { HomeSection } from '../domain/SideNav';
 import { RoleBadge } from '../domain/RoleBadge';
+import { ROLE_NAME_PLURAL } from '../domain/roles';
 
 const QUANDO = new Intl.DateTimeFormat('it-IT', {
   day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
 
 /**
- * Il testo dell'unico invito a creare un'asta quando non ce n'e' nessuna. Una sola
- * stringa, richiamata sia quando l'elenco e' del tutto vuoto sia (altrove, nella
- * colonna destra) quando esistono aste ma nessuna e' aperta — cosi' non ne nascono
- * due leggermente diverse da tenere d'accordo.
+ * L'invito quando non esiste nessuna asta. Solo in quel caso: con aste presenti ma
+ * nessuna aperta diceva «Nessuna asta ancora» accanto a un elenco pieno.
  */
-const NESSUNA_ASTA_TESTO =
-  'Nessuna asta ancora. Cominciane una: partecipanti e regole di punteggio ' +
-  'vengono copiati dentro, e non cambieranno più.';
+const NESSUNA_ASTA_TESTO = 'Nessuna asta ancora. Creane una con «Crea asta».';
+
+/** «1 acquisto», «3 acquisti»: il numero e la parola nello stesso nodo di testo. */
+function purchasesLabel(n: number): string {
+  return n === 1 ? '1 acquisto' : `${n} acquisti`;
+}
 
 /** Il martelletto della card-eroe: decorazione, non informazione — aria-hidden. */
 function GavelIcon() {
@@ -42,6 +44,22 @@ function GavelIcon() {
       <line x1="10" y1="30" x2="22" y2="42" />
       <line x1="4" y1="40" x2="30" y2="40" />
     </svg>
+  );
+}
+
+/**
+ * La fase in cui l'asta e' rimasta, detta per esteso: una «P» in un cerchio da sola
+ * non diceva che fosse una fase. La lettera colorata resta per chi guarda; chi
+ * ascolta sente solo «Fase portieri», non anche il singolare di RoleBadge.
+ */
+function PhaseLabel({ role }: { role: AuctionCard['phase'] }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span aria-hidden="true">
+        <RoleBadge role={role} />
+      </span>
+      {`Fase ${ROLE_NAME_PLURAL[role]}`}
+    </span>
   );
 }
 
@@ -143,7 +161,15 @@ export function HomeRoute() {
               duplicherebbe. */}
           <h1 ref={headingRef} tabIndex={-1} className="sr-only">Le tue aste</h1>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+          {/* Larghezza limitata e centrata, come il campo dietro: su uno schermo largo
+              il nome e i bottoni di una riga finivano a 1200px l'uno dall'altro. La
+              colonna destra esiste solo con un'asta aperta: senza, non ha niente di
+              vero da dire. */}
+          <div
+            className={`mx-auto grid gap-6 ${
+              openAuction ? 'max-w-6xl lg:grid-cols-[1fr_22rem]' : 'max-w-4xl'
+            }`}
+          >
             <div>
               {/* La card-eroe: un bersaglio solo, grande, in cima alla colonna. "Crea
                   asta" chiude PRIMA l'asta eventualmente aperta (vedi startNew) e solo
@@ -156,8 +182,7 @@ export function HomeRoute() {
                 <div className="min-w-0 flex-1">
                   <p className="w-exp text-lg font-extrabold">Comincia una nuova asta</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Partecipanti e regole di punteggio si copiano dentro, e non
-                    cambieranno più.
+                    Scegli partecipanti, regole e punteggio: ogni asta tiene i suoi.
                   </p>
                 </div>
                 <button
@@ -187,12 +212,13 @@ export function HomeRoute() {
                       key={a.id}
                       className="panel flex items-center gap-4 rounded-xl px-4 py-3"
                     >
-                      {/* Il pallino e' decorazione — il fatto sta nel testo "In corso"
-                          qui sotto, non nel colore. */}
+                      {/* Il pallino segna solo l'asta in corso, ed e' decorazione: il
+                          fatto sta nel testo "In corso". Grigio su tutte le righe non
+                          diceva niente. Lo spazio resta, cosi' i nomi si allineano. */}
                       <span
                         aria-hidden="true"
                         className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          a.selected ? 'bg-positive' : 'bg-muted-foreground'
+                          a.selected ? 'bg-positive' : ''
                         }`}
                       />
                       <div className="min-w-0 flex-1">
@@ -209,33 +235,20 @@ export function HomeRoute() {
                           ) : null}
                         </p>
                         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                          {/* RoleBadge dice gia' la fase, in tutti e due i modi che
-                              contano: la lettera colorata per chi vede, il nome
-                              per esteso in sr-only per chi ascolta (vedi il suo
-                              commento, "'D' letto da un sintetizzatore e' una
-                              lettera, non un ruolo"). Un secondo "· fase D" qui
-                              non aggiungeva niente per chi vede — la fase era gia'
-                              in vista — e per chi ascolta ripeteva la fase una
-                              seconda volta, stavolta come lettera nuda e basta:
-                              esattamente il difetto che RoleBadge esiste per
-                              evitare (revisione finale, finding F). */}
-                          <RoleBadge role={a.phase} />
+                          <PhaseLabel role={a.phase} />
                           {/* .tnum: la data si confronta riga per riga in colonna, come i
-                              numeri qui accanto — senza cifre tabulari non si allinea. */}
-                          <span className="tnum">
+                              numeri qui accanto — senza cifre tabulari non si allinea. Il
+                              «·» sta attaccato alla data: andando a capo su uno schermo
+                              stretto finiva da solo a inizio riga. */}
+                          <span className="tnum whitespace-nowrap">
                             {a.lastWritten ? QUANDO.format(new Date(a.lastWritten)) : 'mai scritta'}
+                            {' ·'}
                           </span>
-                          {' · '}
                           {/*
-                            Il numero e "acquisti" stanno nello stesso nodo apposta: non e' una
-                            necessita' di accessibilita' (l'accessible name unisce comunque il
-                            testo di tutti i discendenti) ma di test — getByText di Testing
-                            Library concatena solo i nodi-testo DIRETTI di un elemento, saltando
-                            quelli dentro un figlio-elemento. Con <span>{a.purchases}</span>
-                            seguito da testo "acquisti" fuori dallo span, nessun nodo avrebbe
-                            contenuto la stringa intera "3 acquisti" da trovare.
+                            Il numero e "acquisti" stanno nello stesso nodo apposta: getByText di
+                            Testing Library concatena solo i nodi-testo DIRETTI di un elemento.
                           */}
-                          <span className="tnum">{a.purchases} acquisti</span>
+                          <span className="tnum">{purchasesLabel(a.purchases)}</span>
                         </p>
                       </div>
                       <button
@@ -243,7 +256,13 @@ export function HomeRoute() {
                         disabled={select.isPending}
                         onClick={() => resume(a.id)}
                         aria-label={`Riprendi ${a.label}`}
-                        className="ml-auto min-h-11 shrink-0 rounded-full bg-accent px-4 font-bold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+                        // Pieno solo sull'asta in corso: cinque bottoni gialli uguali
+                        // competevano con «Crea asta», che e' l'azione principale.
+                        className={`ml-auto min-h-11 shrink-0 rounded-full px-4 font-bold disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                          a.selected
+                            ? 'bg-accent text-on-accent'
+                            : 'border border-line-strong text-foreground hover:bg-line'
+                        }`}
                       >
                         Riprendi
                       </button>
@@ -251,7 +270,8 @@ export function HomeRoute() {
                         type="button"
                         aria-label={`Elimina ${a.label}`}
                         onClick={() => { remove.reset(); setToDelete(a); }}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                        // ml-2: un po' di distanza da «Riprendi», che sta subito accanto.
+                        className="ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                       >
                         <TrashIcon />
                       </button>
@@ -262,16 +282,15 @@ export function HomeRoute() {
             </div>
 
             {/*
-              La colonna destra: l'asta aperta, in grande, oppure l'invito a
-              cominciarne una. Il nome, il conteggio acquisti e "In corso" NON sono
+              La colonna destra: l'asta aperta, in grande, solo se ce n'e' una. Il nome, il conteggio acquisti e "In corso" NON sono
               ripetuti qui parola per parola come nella riga-pillola sopra: sono la
               stessa asta, quindi lo stesso testo isolato in un nodo apparirebbe due
               volte nella pagina, e getByText (qui e nei test di questo file) si aspetta
               un solo nodo per corrispondenza esatta. Impastare nome e conteggio dentro
               una frase più lunga evita la duplicazione senza nascondere l'informazione.
             */}
-            <aside>
-              {openAuction ? (
+            {openAuction ? (
+              <aside>
                 <div className="panel rounded-2xl p-6">
                   <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                     Asta aperta
@@ -280,11 +299,7 @@ export function HomeRoute() {
                     Stai continuando {openAuction.label}
                   </p>
                   <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                    {/* Stessa ragione della riga-pillola sopra: RoleBadge dice
-                        gia' la fase in entrambi i modi (lettera colorata, nome
-                        per esteso in sr-only). "fase D" qui ripeteva la lettera
-                        nuda una seconda volta (revisione finale, finding F). */}
-                    <RoleBadge role={openAuction.phase} />
+                    <PhaseLabel role={openAuction.phase} />
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Acquisti finora: <span className="tnum">{openAuction.purchases}</span>
@@ -310,19 +325,8 @@ export function HomeRoute() {
                     Riprendi
                   </button>
                 </div>
-              ) : list.length === 0 ? (
-                // Deviazione dichiarata dal brief: qui andrebbe un secondo EmptyState
-                // ("altrimenti l'EmptyState esistente"), ma quando la lista e' del
-                // tutto vuota il ramo sopra (list.length === 0, colonna sinistra) mostra
-                // gia' lo stesso EmptyState con lo stesso testo — ripeterlo qui
-                // produrrebbe due nodi identici, ambigui per getByText nei test.
-                // Null e' la scelta deliberata per questo solo caso; con aste presenti
-                // ma nessuna aperta, l'EmptyState sotto resta invece quello del brief.
-                null
-              ) : (
-                <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
-              )}
-            </aside>
+              </aside>
+            ) : null}
           </div>
 
           {alertMessage ? (

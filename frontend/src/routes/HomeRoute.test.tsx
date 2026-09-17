@@ -451,4 +451,45 @@ describe('HomeRoute', () => {
     await screen.findByRole('button', { name: `Riprendi l'asta aperta, ${OPEN_AUCTION.label}` });
     expect(screen.getAllByRole('button', { name: /^Elimina / })).toHaveLength(1);
   });
+
+  /**
+   * Con aste presenti ma nessuna aperta la colonna destra diceva «Nessuna asta
+   * ancora» accanto a un elenco pieno. Ora non c'e' proprio.
+   */
+  it('senza asta aperta non dice di non avere aste, e non mostra la colonna destra', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    await screen.findByText(CLOSED_AUCTION.label);
+    expect(screen.queryByText(/nessuna asta/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/asta aperta/i)).not.toBeInTheDocument();
+    expect(document.querySelector('aside')).toBeNull();
+  });
+
+  it('un solo acquisto si dice al singolare', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([{ ...CLOSED_AUCTION, purchases: 1 }])));
+    renderHome();
+    expect(await screen.findByText('1 acquisto')).toBeInTheDocument();
+    expect(screen.queryByText(/1 acquisti/)).not.toBeInTheDocument();
+  });
+
+  /** Una «A» in un cerchio da sola non dice che e' la fase in cui l'asta e' rimasta. */
+  it('la fase si legge per esteso, una volta sola per chi ascolta', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    const phase = await screen.findByText('Fase attaccanti');
+    expect(phase).toBeVisible();
+    // La lettera colorata e' nascosta a chi ascolta: niente «A attaccante Fase attaccanti».
+    expect(phase.querySelector('[aria-hidden="true"]')).toHaveTextContent('A');
+  });
+
+  /** Il giallo pieno resta a «Crea asta» e all'asta in corso, non a ogni riga. */
+  it('«Riprendi» e pieno solo sull asta in corso', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, CLOSED_AUCTION])));
+    renderHome();
+    const open = await screen.findByRole('button', { name: `Riprendi ${OPEN_AUCTION.label}` });
+    const closed = screen.getByRole('button', { name: `Riprendi ${CLOSED_AUCTION.label}` });
+    expect(open.className).toContain('bg-accent');
+    expect(closed.className).not.toContain('bg-accent');
+  });
 });
+

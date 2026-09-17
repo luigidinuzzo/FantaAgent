@@ -96,7 +96,7 @@ describe('AppShell', () => {
   it.each(['side', 'top', 'none'] as const)('con chrome=%s disegna il campo una volta sola', (chrome) => {
     const { container } = render(withRouter(<AppShell chrome={chrome}><p>x</p></AppShell>));
 
-    expect(container.querySelectorAll('.pointer-events-none.fixed svg')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-testid="pitch"]')).toHaveLength(1);
   });
 
   /** Il campo centrato sui contenuti, non sulla finestra: comincia dove finisce la barra. */
