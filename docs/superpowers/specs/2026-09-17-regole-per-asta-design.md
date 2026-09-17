@@ -27,7 +27,7 @@ Data: 17 settembre 2026.
 | L'ordine delle fasi (P, D, C, A), globale | Il numero di squadre non si configura: è il numero di partecipanti |
 | La garanzia di atomicità dello snapshot del runtime | «Crea asta» modifica crediti e slot; il salvataggio non scrive più file globali |
 | Il catalogo dei giocatori, globale | Le preferenze del battitore diventano dell'asta |
-| Le pagine sotto `/legacy`, nel comportamento visibile | Si può cancellare un'asta, con conferma |
+| Le pagine sotto `/legacy`: abbandonate, non si aggiornano (§6.6) | Si può cancellare un'asta, con conferma |
 
 ---
 
@@ -89,7 +89,7 @@ coincidessero, vale la lista dei partecipanti.
 | Timer, avviso | `res/auction-settings.yml` se esiste, altrimenti i predefiniti del codice |
 
 L'utente può cambiare tutto. Salvare **scrive solo nella cartella della nuova
-asta**: nessun file globale viene più riscritto, né dalla SPA né da `/legacy`. La
+asta**: la SPA non riscrive più nessun file globale (per `/legacy` vedi §6.6). La
 prossima asta riparte dagli stessi valori, non da quelli dell'ultima creata.
 
 `league.participants` in `application.yml` perde di significato (il numero viene
@@ -188,8 +188,10 @@ usa già `ScoringSettings` da `config`, quindi questa dipendenza esiste ed è am
 
 ### 6.3 Preferenze del battitore
 
-`AuctionSettingsHolder` — oggi un singleton globale letto da `/legacy` e dall'API del
-battitore pubblico — legge dall'asta aperta, e dal modello quando non ce n'è una.
+Le preferenze del battitore diventano un campo di `RuntimeSnapshot`, come regole e
+partecipanti: dell'asta aperta, o del modello quando non ce n'è una. L'API del
+battitore pubblico e `SettingsApi` le leggono da lì; ad asta aperta si cambiano con
+`AuctionRuntime.setBidder`, che scrive nella cartella e ripubblica lo snapshot.
 L'archivio guadagna `bidder(id)` e `saveBidder(id, settings)`.
 
 ### 6.4 Archivio
@@ -200,12 +202,14 @@ L'archivio guadagna `bidder(id)` e `saveBidder(id, settings)`.
 Optional<LeagueRulesSettings> rules(String auctionId);
 Optional<AuctionSettings> bidder(String auctionId);
 void saveBidder(String auctionId, AuctionSettings settings);
+void saveRules(String auctionId, LeagueRulesSettings settings);
 void saveExport(String auctionId, String csv);
 void delete(String auctionId);            // §8
 ```
 
-Il salvataggio delle regole avviene solo dentro `createNew` e non ha un metodo
-pubblico a sé: non esiste un percorso che modifichi le regole di un'asta aperta.
+`saveRules(id, settings)` esiste sul porto, ma il runtime lo chiama solo dentro
+`createNew`: `AuctionRuntime` non espone nessun metodo che modifichi le regole di
+un'asta aperta.
 
 ### 6.5 API
 
@@ -222,9 +226,14 @@ pubblico a sé: non esiste un percorso che modifichi le regole di un'asta aperta
 
 ### 6.6 `/legacy`
 
-La pagina impostazioni Thymeleaf passa dallo stesso percorso di creazione (§6.2) e
-smette anch'essa di scrivere i file globali. Non guadagna i campi delle regole: resta
-com'era, e crea le aste con crediti e slot predefiniti.
+Le pagine Thymeleaf sono **abbandonate**: non si cancellano, ma non si aggiornano
+più. Nessun campo nuovo, nessun test nuovo, nessuna modifica ai loro controller.
+
+Perché continuino a compilare e i loro test restino verdi, il runtime conserva i
+metodi che usano — `createNew(String name)`, che crea l'asta dal modello (§3), e
+`rebuild()` — e il bean `AuctionSettingsHolder` resta, letto e scritto solo da loro.
+La conseguenza è accettata: salvare da `/legacy` riscrive ancora i file globali, cioè
+il modello da cui parte la prossima asta. La SPA non legge più `AuctionSettingsHolder`.
 
 ---
 
