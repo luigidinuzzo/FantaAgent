@@ -1,6 +1,8 @@
 package com.fantaagent.application.service;
 
 import com.fantaagent.application.port.out.AuctionEventStore;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
 
@@ -23,6 +25,7 @@ import java.util.Objects;
  */
 public record RuntimeSnapshot(String auctionId, AuctionEventStore store,
                               List<Participant> participants, LeagueRules rules,
+                              ScoringSettings scoring, AuctionSettings bidder,
                               ValuationChain chain) {
 
     public RuntimeSnapshot {
@@ -32,6 +35,8 @@ public record RuntimeSnapshot(String auctionId, AuctionEventStore store,
         }
         participants = List.copyOf(participants);
         Objects.requireNonNull(rules, "rules");
+        Objects.requireNonNull(scoring, "scoring");
+        Objects.requireNonNull(bidder, "bidder");
         Objects.requireNonNull(chain, "chain");
     }
 

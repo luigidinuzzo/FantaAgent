@@ -38,8 +38,16 @@ class AuctionRuntimeTest {
             new Participant("me", "Io", 'I', true),
             new Participant("marco", "Marco", 'M', false));
 
+    private static final List<Role> PHASES = List.of(Role.P, Role.D, Role.C, Role.A);
+
     private AuctionArchive archive;
+    private TestAuctionTemplate template;
     private AuctionRuntime runtime;
+
+    /** Il punteggio del modello, come si salva: condiviso con AuctionRuntimePerAuctionTest. */
+    static com.fantaagent.config.ScoringSettings scoringSettings() {
+        return com.fantaagent.config.ScoringSettings.from(scoring(), true);
+    }
 
     private static ScoringRules scoring() {
         return scoring(3.0);
@@ -61,8 +69,9 @@ class AuctionRuntimeTest {
         PlayerCatalog catalog = new InMemoryPlayerCatalog(
                 List.of(new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of());
         archive = new FileAuctionArchive(tmp);
-        runtime = new AuctionRuntime(RULES, catalog, List.of(1.0),
-                id -> scoring(), () -> PARTICIPANTS, archive, id -> { });
+        template = new TestAuctionTemplate(scoringSettings());
+        template.participants = PARTICIPANTS;
+        runtime = new AuctionRuntime(catalog, List.of(1.0), PHASES, template, archive);
     }
 
     @Test
@@ -137,17 +146,13 @@ class AuctionRuntimeTest {
                 new Participant("me", "Zoe", 'Z', true),
                 new Participant("p2", "Yuri", 'Y', false));
 
-        java.util.concurrent.atomic.AtomicReference<List<Participant>> globali =
-                new java.util.concurrent.atomic.AtomicReference<>(primi);
-        AuctionRuntime rt = new AuctionRuntime(RULES,
-                new InMemoryPlayerCatalog(List.of(
-                        new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of()),
-                List.of(1.0), id -> scoring(), globali::get, archive, id -> { });
+        template.participants = primi;
+        AuctionRuntime rt = runtime;
 
         String prima = rt.createNew("Prima");
         assertThat(rt.snapshot().participants()).isEqualTo(primi);
 
-        globali.set(secondi);
+        template.participants = secondi;
         String seconda = rt.createNew("Seconda");
         assertThat(rt.snapshot().participants()).isEqualTo(secondi);
 
@@ -170,27 +175,13 @@ class AuctionRuntimeTest {
      */
     @Test
     void configurareUnAstaNuovaNonCambiaINumeriDiQuellaPrecedente() {
-        java.util.concurrent.atomic.AtomicReference<Double> bonusGlobale =
-                new java.util.concurrent.atomic.AtomicReference<>(3.0);
-        java.util.function.Function<Double, com.fantaagent.config.ScoringSettings> impostazioni =
-                bonus -> com.fantaagent.config.ScoringSettings.from(scoring(bonus), false);
-
-        AuctionRuntime rt = new AuctionRuntime(RULES,
-                new InMemoryPlayerCatalog(List.of(
-                        new Player("d1", "Difensore", "Inter", Role.D, 20)), List.of()),
-                List.of(1.0),
-                // Le regole dell'asta, se le ha: e' il comportamento reale del bean.
-                id -> id == null
-                        ? scoring(bonusGlobale.get())
-                        : archive.scoring(id).map(com.fantaagent.config.ScoringSettings::toScoringRules)
-                                .orElseGet(() -> scoring(bonusGlobale.get())),
-                () -> PARTICIPANTS, archive,
-                id -> archive.saveScoring(id, impostazioni.apply(bonusGlobale.get())));
+        template.scoring = com.fantaagent.config.ScoringSettings.from(scoring(3.0), false);
+        AuctionRuntime rt = runtime;
 
         String prima = rt.createNew("Prima");
         assertThat(rt.snapshot().chain().scoring().goalBonus(Role.D)).isEqualTo(3.0);
 
-        bonusGlobale.set(9.0);
+        template.scoring = com.fantaagent.config.ScoringSettings.from(scoring(9.0), false);
         String seconda = rt.createNew("Seconda");
         assertThat(rt.snapshot().chain().scoring().goalBonus(Role.D)).isEqualTo(9.0);
 

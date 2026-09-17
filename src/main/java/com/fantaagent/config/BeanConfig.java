@@ -10,9 +10,13 @@ import java.util.List;
 @Configuration
 public class BeanConfig {
 
+    /**
+     * Le regole PREDEFINITE: le squadre sono i partecipanti del modello. Servono alla
+     * validazione d'avvio; quelle in uso stanno nello snapshot del runtime, per asta.
+     */
     @Bean
-    public LeagueRules leagueRules(LeagueProperties props) {
-        return new LeagueRules(props.participants(), props.budget(), props.slots(), props.phases());
+    public LeagueRules leagueRules(LeagueProperties props, List<Participant> participants) {
+        return new LeagueRules(participants.size(), props.budget(), props.slots(), props.phases());
     }
 
     /**
@@ -71,44 +75,30 @@ public class BeanConfig {
     }
 
     /**
-     * L'unico posto da cui i servizi prendono asta selezionata e catena di valutazione.
-     * Sostituisce sia il vecchio bean {@code auctionEventStore} (che fissava l'asta
-     * all'avvio da {@code fantaagent.auction-id}) sia i bean {@code projectionRegistry}
-     * e {@code valuationEngine}, che erano derivati una volta sola dalle regole di
-     * punteggio e per questo imponevano un riavvio ad ogni modifica.
+     * Il modello da cui parte ogni asta, e il ripiego per quelle che non hanno un file:
+     * application.yml e i file globali in data-dir, riletti a ogni chiamata.
+     */
+    @Bean
+    public ConfigAuctionTemplate auctionTemplate(LeagueProperties props,
+                                                 ScoringSettingsStore scoringStore,
+                                                 LeagueMembersSettingsStore membersStore,
+                                                 AuctionSettingsStore auctionStore) {
+        return new ConfigAuctionTemplate(props, scoringStore, membersStore, auctionStore);
+    }
+
+    /**
+     * L'unico posto da cui i servizi prendono asta selezionata, regole e catena di
+     * valutazione. Nessuna asta selezionata all'avvio, di proposito: e' la home a
+     * chiedere quale aprire.
      */
     @Bean
     public com.fantaagent.application.service.AuctionRuntime auctionRuntime(
-            com.fantaagent.domain.league.LeagueRules rules,
             com.fantaagent.application.port.out.PlayerCatalog catalog,
             LeagueProperties props,
-            ScoringSettingsStore scoringStore,
-            LeagueMembersSettingsStore membersStore,
+            ConfigAuctionTemplate template,
             com.fantaagent.application.port.out.AuctionArchive archive) {
-        // Nessuna asta selezionata all'avvio, di proposito: e' la home a chiedere quale
-        // aprire. La vecchia proprieta' fantaagent.auction-id non esiste piu' perche'
-        // sceglieva in silenzio, ed e' esattamente cio' che non deve succedere.
         return new com.fantaagent.application.service.AuctionRuntime(
-                rules, catalog, props.scoring().seasonWeights(),
-                // Le regole dell'asta indicata: le sue, se le ha. Il formato del file e
-                // la sigma delle medie di giornata restano qui, dove vive la
-                // configurazione; il runtime chiede soltanto "le regole di quale asta".
-                auctionId -> {
-                    if (auctionId != null) {
-                        var propria = archive.scoring(auctionId);
-                        if (propria.isPresent()) {
-                            return propria.get().toScoringRules(
-                                    props.scoring().matchdayRatingSigma());
-                        }
-                    }
-                    return SettingsConfig.loadScoringRules(scoringStore, props);
-                },
-                () -> loadParticipants(props, membersStore),
-                archive,
-                // Fissa nell'asta appena creata le regole in vigore adesso.
-                auctionId -> archive.saveScoring(auctionId,
-                        scoringStore.load().orElseGet(() -> ScoringSettings.from(
-                                SettingsConfig.loadScoringRules(scoringStore, props), true))));
+                catalog, props.scoring().seasonWeights(), props.phases(), template, archive);
     }
 
     @Bean

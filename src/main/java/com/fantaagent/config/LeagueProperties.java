@@ -8,7 +8,6 @@ import java.util.Map;
 
 @ConfigurationProperties(prefix = "league")
 public record LeagueProperties(
-        int participants,
         int budget,
         Map<Role, Integer> slots,
         List<Role> phases,

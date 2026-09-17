@@ -152,6 +152,8 @@ class SettingsControllerTest {
                                 new com.fantaagent.domain.league.ModifierTable.Threshold(0.0, 0.0))),
                         0.55);
         return new com.fantaagent.application.service.RuntimeSnapshot(null, null, PARTICIPANTS, RULES,
+                com.fantaagent.config.ScoringSettings.from(scoring, true),
+                com.fantaagent.config.AuctionSettings.DEFAULTS,
                 com.fantaagent.application.service.ValuationChain.build(
                         RULES, scoring, catalog, List.of(1.0)));
     }

@@ -68,15 +68,6 @@ class StartupValidatorTest {
     }
 
     @Test
-    void rejectsWhenSlotsDoNotMatchParticipantCount() {
-        List<Participant> nine = participants(9);
-        assertThatThrownBy(() -> validator(
-                rules(validSlots()), scoring(true), nine, false).validate())
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("participants");
-    }
-
-    @Test
     void rejectsDuplicateInitials() {
         List<Participant> clashing = List.of(
                 new Participant("a", "Anna", 'A', true),

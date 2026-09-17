@@ -17,7 +17,6 @@ fantaagent:
   data-dir: res
 
 league:
-  participants: 8
   budget: 500
   roster-size: 25
   slots:

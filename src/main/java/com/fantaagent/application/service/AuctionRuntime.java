@@ -2,11 +2,14 @@ package com.fantaagent.application.service;
 
 import com.fantaagent.application.port.out.AuctionArchive;
 import com.fantaagent.application.port.out.AuctionEventStore;
+import com.fantaagent.application.port.out.AuctionTemplate;
 import com.fantaagent.application.port.out.PlayerCatalog;
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.LeagueRulesSettings;
+import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
-import com.fantaagent.domain.league.ScoringRules;
 import com.fantaagent.domain.player.Role;
 
 import java.time.Instant;
@@ -19,7 +22,13 @@ import java.util.function.Supplier;
 
 /**
  * Unico detentore di ciò che può cambiare mentre l'applicazione è in esecuzione:
- * l'asta selezionata e l'intera catena che discende dalle regole di punteggio.
+ * l'asta selezionata, le sue regole, i suoi partecipanti, il suo punteggio, le
+ * preferenze del battitore e l'intera catena di valutazione che ne discende.
+ *
+ * <p><b>Ogni asta porta i suoi valori.</b> Si leggono dalla cartella dell'asta; quelli
+ * che mancano (aste create prima dei file nuovi) vengono dal {@link AuctionTemplate},
+ * il modello con cui quelle aste sono state giocate. Il modello non si riscrive mai da
+ * qui.
  *
  * <p><b>Perché esiste.</b> Prima, l'identificatore dell'asta era un {@code @Value}
  * letto all'avvio e le {@code ScoringRules} un singleton da cui proiezioni, livelli di
@@ -50,24 +59,11 @@ public class AuctionRuntime {
         }
     }
 
-    private final LeagueRules rules;
     private final PlayerCatalog catalog;
     private final List<Double> seasonWeights;
-    /**
-     * Regole in vigore per una data asta. Prende l'identificativo — null quando nessuna
-     * e' aperta — perche' ogni asta ha le proprie: erano globali, e configurarne una
-     * nuova cambiava i NUMERI mostrati per quelle vecchie.
-     */
-    private final java.util.function.Function<String, ScoringRules> scoringLoader;
-    private final Supplier<List<Participant>> participantsLoader;
+    private final List<Role> phases;
+    private final AuctionTemplate template;
     private final AuctionArchive archive;
-
-    /**
-     * Copia dentro l'asta indicata le regole di punteggio in vigore adesso. E' un
-     * collaboratore e non codice qui dentro perche' il FORMATO di quel file appartiene
-     * al livello di configurazione: il runtime sa che va fissato, non come si scrive.
-     */
-    private final java.util.function.Consumer<String> scoringSnapshot;
 
     /**
      * L'unico campo mutabile della classe, e volatile: è qui che vive la garanzia di
@@ -77,20 +73,41 @@ public class AuctionRuntime {
      */
     private volatile RuntimeSnapshot current;
 
-    public AuctionRuntime(LeagueRules rules, PlayerCatalog catalog, List<Double> seasonWeights,
-                          java.util.function.Function<String, ScoringRules> scoringLoader,
-                          Supplier<List<Participant>> participantsLoader,
-                          AuctionArchive archive,
-                          java.util.function.Consumer<String> scoringSnapshot) {
-        this.rules = rules;
+    public AuctionRuntime(PlayerCatalog catalog, List<Double> seasonWeights, List<Role> phases,
+                          AuctionTemplate template, AuctionArchive archive) {
         this.catalog = catalog;
         this.seasonWeights = List.copyOf(seasonWeights);
-        this.scoringLoader = scoringLoader;
-        this.participantsLoader = participantsLoader;
+        this.phases = List.copyOf(phases);
+        this.template = template;
         this.archive = archive;
-        this.scoringSnapshot = scoringSnapshot;
-        this.current = new RuntimeSnapshot(null, null, participantsLoader.get(), rules,
-                ValuationChain.build(rules, scoringLoader.apply(null), catalog, seasonWeights));
+        this.current = snapshotOf(null);
+    }
+
+    /**
+     * Lo snapshot di un'asta, o del modello con id null. Ogni parte viene dall'asta se
+     * ha il suo file, altrimenti dal modello: le aste create prima dei file nuovi
+     * ricadono sui valori con cui sono state giocate.
+     */
+    private RuntimeSnapshot snapshotOf(String auctionId) {
+        if (auctionId == null) {
+            return build(null, null, template.participants(), template.rules(),
+                    template.scoring(), template.bidder());
+        }
+        return build(auctionId, archive.open(auctionId),
+                archive.participants(auctionId).orElseGet(template::participants),
+                archive.rules(auctionId).orElseGet(template::rules),
+                archive.scoring(auctionId).orElseGet(template::scoring),
+                archive.bidder(auctionId).orElseGet(template::bidder));
+    }
+
+    /** Le squadre sono i partecipanti: le regole si costruiscono sempre insieme a loro. */
+    private RuntimeSnapshot build(String auctionId, AuctionEventStore store,
+                                  List<Participant> participants, LeagueRulesSettings rulesSettings,
+                                  ScoringSettings scoring, AuctionSettings bidder) {
+        LeagueRules rules = rulesSettings.toRules(participants.size(), phases);
+        ValuationChain chain = ValuationChain.build(rules, template.scoringRules(scoring),
+                catalog, seasonWeights);
+        return new RuntimeSnapshot(auctionId, store, participants, rules, scoring, bidder, chain);
     }
 
     /** Lo stato corrente, coerente in tutte le sue parti. Una sola lettura volatile. */
@@ -153,120 +170,122 @@ public class AuctionRuntime {
         return () -> current.chain();
     }
 
+    public LeagueRules rules() {
+        return current.rules();
+    }
+
+    public ScoringSettings scoringSettings() {
+        return current.scoring();
+    }
+
+    public AuctionSettings bidder() {
+        return current.bidder();
+    }
+
+    public List<Participant> participants() {
+        return current.participants();
+    }
+
     /** Seleziona un'asta esistente: apre il suo log, non lo tocca in nessun altro modo. */
     public synchronized void select(String auctionId) {
         if (!archive.exists(auctionId)) {
             throw new IllegalArgumentException("nessuna asta con identificativo " + auctionId);
         }
-        // La catena si ricostruisce, non si eredita: ogni asta ha le proprie regole di
-        // punteggio, e riusare quella di prima significherebbe rileggere una rosa gia'
-        // pagata con un modello che non e' quello con cui e' stata comprata.
-        current = new RuntimeSnapshot(auctionId, archive.open(auctionId),
-                participantsOf(auctionId), rules,
-                ValuationChain.build(rules, scoringLoader.apply(auctionId), catalog, seasonWeights));
+        // Tutto si ricostruisce, niente si eredita: riusare regole o catena dell'asta di
+        // prima rileggerebbe una rosa gia' pagata con un modello che non e' il suo.
+        current = snapshotOf(auctionId);
     }
 
     /**
-     * I partecipanti da usare per quell'asta: i suoi, se li ha.
+     * Crea l'asta sotto un identificatore datato ancora libero e la seleziona.
      *
-     * <p>Nomi e iniziali appartengono alla serata, non all'applicazione. Quando erano
-     * un'unica configurazione globale, configurare una seconda asta riscriveva i nomi
-     * mostrati per la prima: gli acquisti restavano corretti — il registro li lega agli
-     * id — ma le rose comparivano intestate alle persone sbagliate.
+     * <p>Va chiamata quando le impostazioni sono state CONFERMATE e validate: prima
+     * creava la cartella al primo click, e chi si fermava alla schermata di conferma
+     * lasciava dietro di se' un'asta vuota che restava per sempre nell'elenco.
      *
-     * <p>Le aste scritte prima di questa separazione non hanno un proprio elenco e
-     * ricadono su quello generale. E' il meglio possibile senza inventare dati: per
-     * fissare i nomi giusti basta aprire quell'asta e salvarli una volta.
-     */
-    private List<Participant> participantsOf(String auctionId) {
-        if (auctionId == null) {
-            return participantsLoader.get();
-        }
-        return archive.participants(auctionId).orElseGet(participantsLoader);
-    }
-
-    /**
-     * Crea un'asta sotto un identificatore datato ancora libero e la seleziona.
-     *
-     * <p>L'identificatore è la data odierna; se quella directory esiste già si aggiunge
-     * un progressivo, così un'asta esistente non viene mai aperta credendo di crearne
-     * una nuova. L'unica scrittura è l'evento {@code AuctionStarted} in un log che
-     * prima non c'era.
+     * <p>L'identificatore è la data odierna, con un progressivo se quella cartella
+     * esiste già: un'asta esistente non viene mai aperta credendo di crearne una nuova.
      *
      * @return l'identificatore creato
      */
-    /**
-     * Crea l'asta e la seleziona.
-     *
-     * <p>Va chiamata quando le impostazioni sono state CONFERMATE, non quando l'utente
-     * dichiara di voler cominciare: prima creava la cartella al primo click, e chi si
-     * fermava alla schermata di conferma lasciava dietro di se' un'asta vuota che
-     * restava per sempre nell'elenco della home.
-     *
-     * @param name nome scelto dall'utente; l'identificativo resta invece derivato dalla
-     *             data, perche' e' anche il nome della cartella su disco e deve restare
-     *             ordinabile e privo di caratteri che un filesystem rifiuta.
-     */
-    public synchronized String createNew(String name) {
+    public synchronized String createNew(AuctionSetup setup) {
         String id = freeId(LocalDate.now().toString());
+        // Il registro per ULTIMO: auctionIds() elenca solo le cartelle con events.jsonl,
+        // quindi un errore su uno dei file prima lascia una cartella che la home non
+        // mostra e che freeId non riusa.
+        archive.saveParticipants(id, setup.participants());
+        archive.saveScoring(id, setup.scoring());
+        archive.saveRules(id, setup.rules());
+        archive.saveBidder(id, setup.bidder());
         AuctionEventStore store = archive.open(id);
-        store.appendWithNextSeq(seq -> new AuctionEvent.AuctionStarted(seq, Instant.now(), name));
-        // I partecipanti configurati adesso diventano quelli DI QUESTA asta: da qui in
-        // avanti riconfigurarne un'altra non tocchera' piu' i nomi di questa.
-        List<Participant> participants = participantsLoader.get();
-        archive.saveParticipants(id, participants);
-        // E lo stesso per le regole di punteggio: da qui in avanti configurarne altre
-        // non tocchera' i numeri di questa.
-        scoringSnapshot.accept(id);
-        current = new RuntimeSnapshot(id, store, participants, rules,
-                ValuationChain.build(rules, scoringLoader.apply(id), catalog, seasonWeights));
+        store.appendWithNextSeq(seq -> new AuctionEvent.AuctionStarted(seq, Instant.now(), setup.name()));
+        current = build(id, store, setup.participants(), setup.rules(), setup.scoring(), setup.bidder());
         return id;
     }
 
-    /**
-     * Rilegge le impostazioni dell'utente e ricostruisce l'intera catena, poi la
-     * pubblica in blocco. L'asta selezionata non cambia: le impostazioni non sono una
-     * proprietà del log.
-     */
+    /** Solo per /legacy, che non conosce le regole: crea l'asta dal modello. */
+    public synchronized String createNew(String name) {
+        return createNew(new AuctionSetup(name, template.rules(), template.participants(),
+                template.scoring(), template.bidder()));
+    }
+
     /**
      * Chiude l'asta aperta senza toccarne il registro: da qui si prepara la prossima.
      *
      * <p>Serve perche' la schermata di preparazione distingue le due modalita' da una
-     * cosa sola — se un'asta e' aperta o no. Senza questo, dire "nuova asta" con una
-     * gia' aperta portava alle impostazioni di QUELLA, in sola lettura e senza campo
-     * per il nome, e salvando se ne rinominavano i partecipanti invece di crearne
-     * un'altra. Nessun dato andava perso, ma l'asta nuova non nasceva e quella vecchia
-     * cambiava nomi.
-     *
-     * <p>I partecipanti tornano quelli della configurazione generale, che e' il modello
-     * da cui parte la prossima asta.
+     * cosa sola — se un'asta e' aperta o no. Nessun dato va perso: il registro e' su
+     * disco. Lo snapshot torna quello del modello, da cui parte la prossima asta.
      */
     public synchronized void deselect() {
-        current = new RuntimeSnapshot(null, null, participantsLoader.get(), rules,
-                ValuationChain.build(rules, scoringLoader.apply(null), catalog, seasonWeights));
+        current = snapshotOf(null);
     }
 
     /**
      * Fissa i partecipanti dell'asta aperta e ripubblica lo snapshot.
      *
-     * <p>Scrive nell'asta, non nella configurazione generale: rinominare durante una
-     * serata non deve toccare i nomi di quelle gia' concluse.
+     * <p>Scrive nell'asta, mai nel modello: rinominare durante una serata non deve
+     * toccare i nomi di quelle gia' concluse. Una lista di lunghezza diversa cambia il
+     * numero di squadre e quindi regole e catena, che si ricostruiscono qui; la SPA ad
+     * asta aperta lo impedisce a monte.
      */
     public synchronized void setParticipants(List<Participant> participants) {
         RuntimeSnapshot base = current;
         if (base.auctionId() != null) {
             archive.saveParticipants(base.auctionId(), participants);
         }
-        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, base.rules(),
-                base.chain());
+        current = build(base.auctionId(), base.store(), participants,
+                LeagueRulesSettings.from(base.rules()), base.scoring(), base.bidder());
     }
 
-    public synchronized void rebuild() {
+    /** Le preferenze del battitore dell'asta aperta: non entrano in nessun calcolo. */
+    public synchronized void setBidder(AuctionSettings bidder) {
         RuntimeSnapshot base = current;
-        ScoringRules scoring = scoringLoader.apply(base.auctionId());
-        List<Participant> participants = participantsOf(base.auctionId());
-        ValuationChain chain = ValuationChain.build(rules, scoring, catalog, seasonWeights);
-        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, rules, chain);
+        if (base.auctionId() == null) {
+            throw new IllegalStateException(
+                    "nessuna asta aperta a cui dare le preferenze del battitore");
+        }
+        archive.saveBidder(base.auctionId(), bidder);
+        current = new RuntimeSnapshot(base.auctionId(), base.store(), base.participants(),
+                base.rules(), base.scoring(), bidder, base.chain());
+    }
+
+    /**
+     * Toglie un'asta dall'archivio. Se e' quella aperta prima la chiude: nessuno
+     * snapshot deve restare a puntare un registro spostato nel cestino.
+     */
+    public synchronized void delete(String auctionId) {
+        if (!archive.exists(auctionId)) {
+            throw new IllegalArgumentException("nessuna asta con identificativo " + auctionId);
+        }
+        if (auctionId.equals(current.auctionId())) {
+            current = snapshotOf(null);
+        }
+        archive.delete(auctionId);
+    }
+
+    /** Rilegge dall'archivio e dal modello l'asta corrente. Usato da /legacy. */
+    public synchronized void rebuild() {
+        current = snapshotOf(current.auctionId());
     }
 
     /** Le aste presenti sull'archivio, dalla più recente. */
@@ -279,7 +298,7 @@ public class AuctionRuntime {
                     nameOf(events),
                     archive.lastWritten(id).orElse(null),
                     countPurchases(events),
-                    lastPhase(events, rules.firstPhase()),
+                    lastPhase(events, phases.getFirst()),
                     id.equals(selected)));
         }
         summaries.sort((a, b) -> {

@@ -52,11 +52,6 @@ public class StartupValidator {
     }
 
     public void validate() {
-        if (participants.size() != rules.participants()) {
-            throw new IllegalStateException(
-                    "il numero di partecipanti configurati (" + participants.size()
-                    + ") non corrisponde a league.participants (" + rules.participants() + ")");
-        }
         Set<Character> initials = new HashSet<>();
         for (Participant p : participants) {
             if (!initials.add(p.initial())) {

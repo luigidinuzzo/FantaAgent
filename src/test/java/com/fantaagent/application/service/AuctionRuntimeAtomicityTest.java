@@ -128,10 +128,12 @@ class AuctionRuntimeAtomicityTest {
     void iLettoriConcorrentiNonVedonoMaiUnaCatenaMezzaVecchiaEMezzaNuova() throws Exception {
         PlayerCatalog catalog = catalog();
         AuctionArchive archive = new FileAuctionArchive(tmp);
-        AtomicReference<Double> bonus = new AtomicReference<>(3.0);
+        TestAuctionTemplate template = new TestAuctionTemplate(
+                com.fantaagent.config.ScoringSettings.from(scoring(3.0), true));
+        template.participants = PARTICIPANTS;
 
-        AuctionRuntime runtime = new AuctionRuntime(RULES, catalog, List.of(1.0),
-                id -> scoring(bonus.get()), () -> PARTICIPANTS, archive, id -> { });
+        AuctionRuntime runtime = new AuctionRuntime(catalog, List.of(1.0),
+                List.of(Role.P, Role.D, Role.C, Role.A), template, archive);
 
         // Ogni catena pubblicata, per identita': le uniche combinazioni legittime.
         Set<ValuationChain> pubblicate = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -172,7 +174,8 @@ class AuctionRuntimeAtomicityTest {
 
         pronti.await();
         for (int i = 0; i < 200; i++) {
-            bonus.set(i % 2 == 0 ? 9.0 : 3.0);
+            template.scoring = com.fantaagent.config.ScoringSettings.from(
+                    scoring(i % 2 == 0 ? 9.0 : 3.0), true);
             runtime.rebuild();
             pubblicate.add(runtime.snapshot().chain());
         }
