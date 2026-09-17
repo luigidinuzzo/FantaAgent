@@ -12,6 +12,13 @@ import { ScoringFieldset } from '../domain/ScoringFieldset';
 
 const NO_ERRORS: SettingsErrors = {};
 
+/** Gli stessi limiti di AuctionSettingsValidator (MIN_SECONDS, MAX_SECONDS). */
+const MIN_TIMER_SECONDS = 1;
+const MAX_TIMER_SECONDS = 120;
+
+const STEP_BUTTON =
+  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong text-xl font-bold hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
+
 /**
  * Etichette leggibili per le chiavi di campo (task 16). Le righe indicizzate — una
  * riga della tabella soglie, un partecipante — non hanno una voce fissa: la loro
@@ -137,6 +144,7 @@ export function SettingsRoute() {
   const navigate = useNavigate();
   const auctionNameErrorId = useId();
   const bidTimerErrorId = useId();
+  const bidTimerId = useId();
   const bidderGroupErrorId = useId();
 
   // Le impostazioni sono un modulo: dal momento in cui si comincia a scrivere, la
@@ -202,6 +210,14 @@ export function SettingsRoute() {
   // Non si crea niente mentre si sta solo modificando: il titolo lo dice, non solo
   // il testo del bottone in fondo.
   const title = auctionOpen ? 'Impostazioni' : 'Crea asta';
+
+  // Una copia gia' ristretta a non-null: la closure qui sotto non eredita il
+  // restringimento di `form` fatto dal controllo di caricamento sopra.
+  const loaded = form;
+  function setBidTimer(seconds: number) {
+    const clamped = Math.min(MAX_TIMER_SECONDS, Math.max(MIN_TIMER_SECONDS, seconds));
+    setForm({ ...loaded, bidder: { ...loaded.bidder, bidTimerSeconds: clamped } });
+  }
 
   return (
     <AppShell chrome="side">
@@ -296,9 +312,24 @@ export function SettingsRoute() {
               <legend className="sr-only">Battitore</legend>
 
               <div>
-                <label className="block text-sm">
+                <label htmlFor={bidTimerId} className="block text-sm">
                   Secondi di countdown
+                </label>
+                {/* − e + ai lati del campo: si regola il timer senza tastiera, a
+                    passi di un secondo, dentro i limiti che il server accetta
+                    (AuctionSettingsValidator). Il campo resta scrivibile. */}
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Un secondo in meno"
+                    disabled={form.bidder.bidTimerSeconds <= MIN_TIMER_SECONDS}
+                    onClick={() => setBidTimer(form.bidder.bidTimerSeconds - 1)}
+                    className={STEP_BUTTON}
+                  >
+                    <span aria-hidden="true">−</span>
+                  </button>
                   <NumberField
+                    id={bidTimerId}
                     value={form.bidder.bidTimerSeconds}
                     aria-invalid={bidTimerErrors.length > 0}
                     aria-describedby={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
@@ -308,9 +339,18 @@ export function SettingsRoute() {
                         bidder: { ...form.bidder, bidTimerSeconds },
                       })
                     }
-                    className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum block min-h-11 w-full min-w-0 flex-1 rounded-full border border-line-strong bg-transparent px-4 text-center font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
-                </label>
+                  <button
+                    type="button"
+                    aria-label="Un secondo in più"
+                    disabled={form.bidder.bidTimerSeconds >= MAX_TIMER_SECONDS}
+                    onClick={() => setBidTimer(form.bidder.bidTimerSeconds + 1)}
+                    className={STEP_BUTTON}
+                  >
+                    <span aria-hidden="true">+</span>
+                  </button>
+                </div>
                 <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
               </div>
 

@@ -95,35 +95,15 @@ describe('ThresholdsTable', () => {
     expect(captured.value?.[0].bonus).toBe(-0.5);
   });
 
-  it('a modificatore disattivo la tabella e disabilitata e dice perche', () => {
-    render(<Harness initial={STEPS} disabledReason="modifier-off" />);
-
-    const minField = screen.getByLabelText(/soglia da media, riga 1/i);
-    const bonusField = screen.getByLabelText(/bonus, riga 1/i);
-    expect(minField).toBeDisabled();
-    expect(bonusField).toBeDisabled();
-    expect(screen.getByRole('button', { name: /aggiungi soglia/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /togli riga 1/i })).toBeDisabled();
-
-    // Il perche' e' raggiungibile da chi ascolta, non solo da chi vede: e' la
-    // descrizione accessibile del campo, non solo un testo a schermo. Dice
-    // QUALE delle due cause si applica ("modificatore"), non una frase che
-    // vale per entrambe indistintamente.
-    expect(minField).toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
-  });
-
-  /**
-   * L'altra causa possibile ha un testo diverso e distinguibile: chi ascolta deve
-   * poter sapere che qui e' l'asta, non il modificatore, a bloccare la tabella —
-   * altrimenti "disattivata e dice perche'" direbbe sempre la stessa mezza verita'.
-   */
-  it("ad asta aperta la tabella e disabilitata con un motivo diverso da quello del modificatore spento", () => {
+  /** Chi ascolta deve sapere perche' la tabella e' bloccata, non solo che lo e'. */
+  it('ad asta aperta la tabella e disabilitata e dice perche', () => {
     render(<Harness initial={STEPS} disabledReason="auction-open" />);
 
     const minField = screen.getByLabelText(/soglia da media, riga 1/i);
     expect(minField).toBeDisabled();
     expect(minField).toHaveAccessibleDescription(/asta in corso/i);
-    expect(minField).not.toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
+    expect(screen.getByRole('button', { name: /aggiungi soglia/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /togli riga 1/i })).toBeDisabled();
   });
 
   /**

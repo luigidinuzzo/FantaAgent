@@ -102,51 +102,62 @@ describe('ScoringFieldset', () => {
   });
 
   /**
-   * La tabella non ha ragione di essere modificabile quando il motore la ignora
-   * del tutto (task 18): {@code disabled} qui e' false (asta chiusa), eppure la
-   * tabella deve risultare disattivata perche' {@code SCORING.defenceModifierEnabled}
-   * e' false — e con un motivo che dice PROPRIO questo, non uno generico che
-   * andrebbe bene anche per l'asta aperta.
+   * A modificatore spento i suoi parametri non hanno effetto sul calcolo: non
+   * vengono mostrati affatto, invece di restare li' disattivati.
    */
-  it('disabilita la tabella delle soglie quando il modificatore e spento, anche ad asta chiusa', () => {
+  it('a modificatore spento nasconde difensori conteggiati e soglie', () => {
     render(
       <ScoringFieldset value={SCORING} onChange={() => {}} errors={{}} disabled={false} />,
     );
 
-    const field = screen.getByLabelText(/soglia da media, riga 1/i);
-    expect(field).toBeDisabled();
-    expect(field).toHaveAccessibleDescription(/modificatore di difesa non è attivo/i);
+    expect(screen.queryByLabelText(/difensori conteggiati/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/soglia da media, riga 1/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /aggiungi soglia/i })).not.toBeInTheDocument();
   });
 
   /**
-   * Il checkbox e' l'UNICO modo di riaccendere il modificatore da questa
-   * schermata (task 18: prima esisteva solo sotto /legacy). Deve restare
-   * interagibile anche a modificatore spento — se lo bloccassimo insieme alla
-   * tabella che governa, non si potrebbe piu' riaccenderlo da qui — e deve
-   * raggiungere il salvataggio come ogni altro campo, con lo spread.
-   *
-   * <p>Il payload da solo non basta a provare che il checkbox "accende" la
-   * tabella: bisogna vedere i SUOI campi tornare modificabili dopo il click,
-   * non solo che {@code defenceModifierEnabled} e' true nell'oggetto salvato.
+   * Il checkbox mostra e nasconde i parametri, e li manda al salvataggio intatti:
+   * spegnere e riaccendere non deve azzerare soglie gia' scritte.
    */
-  it('accende il modificatore di difesa dal suo checkbox, e lo manda al salvataggio', async () => {
+  it('il checkbox del modificatore mostra e nasconde i suoi parametri, senza perderli', async () => {
     const captured: { value: ScoringSection | null } = { value: null };
     render(<Harness onCommit={(v) => { captured.value = v; }} />);
 
     const checkbox = screen.getByRole('checkbox', { name: /modificatore di difesa attivo/i });
-    const minField = screen.getByLabelText(/soglia da media, riga 1/i);
     expect(checkbox).not.toBeChecked();
-    expect(checkbox).not.toBeDisabled();
-    expect(minField).toBeDisabled();
 
     await userEvent.click(checkbox);
 
-    expect(checkbox).toBeChecked();
     expect(captured.value?.defenceModifierEnabled).toBe(true);
-    // La tabella era disabilitata SOLO perche' il modificatore era spento
-    // (asta chiusa in questo harness): accenderlo deve quindi renderla
-    // davvero modificabile, non solo cambiare un booleano nel payload.
+    const minField = screen.getByLabelText(/soglia da media, riga 1/i);
     expect(minField).not.toBeDisabled();
+    expect(screen.getByLabelText(/difensori conteggiati/i)).toHaveValue(3);
+    await userEvent.clear(minField);
+    await userEvent.type(minField, '6.5');
+
+    await userEvent.click(checkbox);
+    expect(screen.queryByLabelText(/soglia da media, riga 1/i)).not.toBeInTheDocument();
+    expect(captured.value?.thresholds[0].minAverage).toBe(6.5);
+
+    await userEvent.click(checkbox);
+    expect(screen.getByLabelText(/soglia da media, riga 1/i)).toHaveValue(6.5);
+  });
+
+  /**
+   * Il server valida «difensori conteggiati» anche a modificatore spento: un suo
+   * errore nascosto lascerebbe un salvataggio rifiutato senza campo da correggere.
+   */
+  it('a modificatore spento mostra comunque difensori conteggiati se ha un errore', () => {
+    render(
+      <ScoringFieldset
+        value={SCORING}
+        onChange={() => {}}
+        errors={{ defendersCounted: ['I difensori conteggiati devono essere fra 1 e 10: indicato 0.'] }}
+        disabled={false}
+      />,
+    );
+
+    expect(screen.getByLabelText(/difensori conteggiati/i)).toHaveAccessibleDescription(/fra 1 e 10/);
   });
 
   /**

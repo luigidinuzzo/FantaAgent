@@ -117,9 +117,9 @@ describe('SettingsRoute', () => {
       </QueryProvider>,
     );
 
-    const defenders = await screen.findByLabelText(/difensori conteggiati/i);
-    expect(defenders).toBeDisabled();
-    expect(defenders).toHaveAccessibleDescription(/asta in corso/i);
+    const assist = await screen.findByLabelText(/assist/i);
+    expect(assist).toBeDisabled();
+    expect(assist).toHaveAccessibleDescription(/asta in corso/i);
   });
 
   /**
@@ -366,8 +366,30 @@ describe('SettingsRoute', () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
 
     expect(await screen.findByRole('group', { name: /punteggio/i })).toBeVisible();
-    expect(screen.getByText('Difensori conteggiati')).toBeVisible();
+    expect(screen.getByText('Assist')).toBeVisible();
     expect(document.querySelector('details, summary')).toBeNull();
     expect(screen.queryByRole('button', { name: /punteggio/i })).not.toBeInTheDocument();
+  });
+
+  /** Il timer si regola anche senza tastiera, un secondo alla volta, dentro i limiti del server. */
+  it('i pulsanti − e + cambiano il countdown di un secondo, fermandosi ai limiti', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+
+    const timer = await screen.findByLabelText(/secondi/i);
+    expect(timer).toHaveValue(5);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Un secondo in più' }));
+    expect(timer).toHaveValue(6);
+    await userEvent.click(screen.getByRole('button', { name: 'Un secondo in meno' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Un secondo in meno' }));
+    expect(timer).toHaveValue(4);
+
+    await userEvent.clear(timer);
+    await userEvent.type(timer, '1');
+    expect(screen.getByRole('button', { name: 'Un secondo in meno' })).toBeDisabled();
+
+    await userEvent.clear(timer);
+    await userEvent.type(timer, '120');
+    expect(screen.getByRole('button', { name: 'Un secondo in più' })).toBeDisabled();
   });
 });

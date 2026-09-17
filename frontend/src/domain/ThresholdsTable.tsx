@@ -9,17 +9,15 @@ function errorsFor(errors: Record<string, string[]>, key: string): string[] {
 }
 
 /**
- * Perche' la tabella e' disattivata — le due cause sono distinte apposta, non
- * un solo booleano: chi ascolta merita di sapere QUALE si applica, non solo che
- * una delle due si applica (vedi {@code REASON_TEXT} sotto).
+ * Perche' la tabella e' disattivata. Resta una sola causa, l'asta in corso: a
+ * modificatore spento la tabella non e' piu' disattivata ma non viene mostrata
+ * affatto (vedi ScoringFieldset).
  */
-export type ThresholdsTableDisabledReason = 'auction-open' | 'modifier-off';
+export type ThresholdsTableDisabledReason = 'auction-open';
 
 const REASON_TEXT: Record<ThresholdsTableDisabledReason, string> = {
   'auction-open':
     'Asta in corso: le soglie sono bloccate, perché cambiarle riscriverebbe i numeri con cui una rosa già pagata era stata valutata.',
-  'modifier-off':
-    'Il modificatore di difesa non è attivo: queste soglie non hanno alcun effetto sul calcolo, quindi non si possono modificare da qui.',
 };
 
 /**
@@ -43,7 +41,7 @@ const REASON_TEXT: Record<ThresholdsTableDisabledReason, string> = {
  * suo docstring).
  *
  * <p>{@code disabledReason} e' {@code null} quando la tabella e' modificabile, o una
- * delle due cause quando non lo e'. Non e' un booleano piu' un motivo separato — che
+ * causa quando non lo e'. Non e' un booleano piu' un motivo separato — che
  * potrebbe disaccordarsi (disabilitata ma senza motivo, o viceversa) — e' l'UNICA
  * fonte di verita' per entrambi: {@code disabled = disabledReason !== null}.
  */

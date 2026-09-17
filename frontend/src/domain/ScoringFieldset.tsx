@@ -64,16 +64,20 @@ export function ScoringFieldset({
   const baseId = useId();
   const groupErrorsId = `${baseId}-group`;
   const lockId = `${baseId}-lock`;
-  // Le due cause sono distinte apposta (non un OR appiattito in un booleano):
-  // ThresholdsTable deve poter dire ALLA PERSONA quale delle due si applica.
-  // "Asta in corso" vince quando entrambe valgono, stessa priorita' degli altri
-  // campi qui sotto (disabled ? lockId : ...): e' la causa che disabilita anche
-  // il checkbox del modificatore, quindi e' anche la piu' "esterna" delle due.
   const thresholdsDisabledReason: ThresholdsTableDisabledReason | null = disabled
     ? 'auction-open'
-    : !value.defenceModifierEnabled
-      ? 'modifier-off'
-      : null;
+    : null;
+  // A modificatore spento i suoi parametri spariscono: non hanno effetto sul
+  // calcolo. Restano pero' nel valore del modulo, e tornano come erano
+  // riaccendendolo. L'eccezione e' un errore su uno di questi campi (il server
+  // valida «Difensori conteggiati» anche a modificatore spento): nasconderlo
+  // lascerebbe un salvataggio rifiutato senza nessun campo da correggere.
+  const showModifier =
+    value.defenceModifierEnabled ||
+    Object.entries(errors).some(
+      ([key, messages]) =>
+        messages.length > 0 && (key === 'defendersCounted' || key.startsWith('thresholds')),
+    );
 
   // La sola chiave davvero sintetica (vedi il commento su isGeneralKey) si
   // accumula in questo elenco unico e resta descritta dal fieldset, non da un
@@ -188,43 +192,47 @@ export function ScoringFieldset({
           Modificatore di difesa attivo
         </label>
 
-        {/* Qui e non nella griglia sopra: quanti difensori conta e' un parametro
-            del modificatore di difesa, non un punteggio a se'. Nella griglia
-            lasciava anche l'ultimo «Gol segnato» da solo su una fila. */}
-        <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className="block text-sm">
-              <span className="flex min-h-6 items-center">Difensori conteggiati</span>
-              <NumberField
-                value={value.defendersCounted}
-                disabled={disabled}
-                aria-invalid={!disabled && errorsFor(errors, 'defendersCounted').length > 0}
-                aria-describedby={
-                  disabled
-                    ? lockId
-                    : errorsFor(errors, 'defendersCounted').length > 0
-                      ? `${baseId}-defendersCounted`
-                      : undefined
-                }
-                onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
-                className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              />
-            </label>
-            <FieldErrors
-              id={`${baseId}-defendersCounted`}
-              errors={errorsFor(errors, 'defendersCounted')}
-            />
-          </div>
-        </div>
+        {showModifier ? (
+          <>
+            {/* Qui e non nella griglia sopra: quanti difensori conta e' un parametro
+                del modificatore di difesa, non un punteggio a se'. Nella griglia
+                lasciava anche l'ultimo «Gol segnato» da solo su una fila. */}
+            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label className="block text-sm">
+                  <span className="flex min-h-6 items-center">Difensori conteggiati</span>
+                  <NumberField
+                    value={value.defendersCounted}
+                    disabled={disabled}
+                    aria-invalid={!disabled && errorsFor(errors, 'defendersCounted').length > 0}
+                    aria-describedby={
+                      disabled
+                        ? lockId
+                        : errorsFor(errors, 'defendersCounted').length > 0
+                          ? `${baseId}-defendersCounted`
+                          : undefined
+                    }
+                    onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
+                    className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  />
+                </label>
+                <FieldErrors
+                  id={`${baseId}-defendersCounted`}
+                  errors={errorsFor(errors, 'defendersCounted')}
+                />
+              </div>
+            </div>
 
-        <div className="mt-6">
-          <ThresholdsTable
-            value={value.thresholds}
-            onChange={(thresholds) => onChange({ ...value, thresholds })}
-            disabledReason={thresholdsDisabledReason}
-            errors={errors}
-          />
-        </div>
+            <div className="mt-6">
+              <ThresholdsTable
+                value={value.thresholds}
+                onChange={(thresholds) => onChange({ ...value, thresholds })}
+                disabledReason={thresholdsDisabledReason}
+                errors={errors}
+              />
+            </div>
+          </>
+        ) : null}
       </div>
 
       <FieldErrors id={groupErrorsId} errors={generalErrors} />
