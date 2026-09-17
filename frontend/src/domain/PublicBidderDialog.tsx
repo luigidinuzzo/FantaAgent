@@ -27,7 +27,7 @@ export function PublicBidderDialog({
   player: PublicBidderResponse | undefined;
 }) {
   return (
-    <section aria-labelledby="public-bidder-name" className="rounded-xl border border-line-strong p-10">
+    <section aria-labelledby="public-bidder-name" className="panel rounded-xl p-10">
       <header className="flex flex-wrap items-center gap-6">
         {/* size="lg": non uno scale() CSS da fuori — quello trasforma il
             disegno ma non la scatola di layout riservata dal flex, quindi la

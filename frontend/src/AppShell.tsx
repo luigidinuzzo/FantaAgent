@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PitchLines } from './domain/PitchLines';
-import { SectionLinks } from './domain/SideNav';
+import { HomeSectionNav, SectionLinks, type HomeSection } from './domain/SideNav';
+import { Wordmark } from './domain/Wordmark';
 
 /**
  * La barra comune a ogni schermata: banner, nome, navigazione, e lo slot di stato
- * di chi la usa. Prende tre forme secondo {@code chrome}, ma la navigazione che
- * collegano e' sempre la stessa (vedi sotto).
+ * di chi la usa. Prende tre forme secondo {@code chrome}.
  *
  * <p><b>Perche' la navigazione vive qui.</b> Due revisioni finali consecutive hanno
  * trovato lo stesso difetto strutturale — "una rotta aggiunta e nessuno che la
@@ -17,9 +17,15 @@ import { SectionLinks } from './domain/SideNav';
  * {@code role="banner"} e lo slot di stato — quindi e' qui che la navigazione va
  * tenuta: una rotta nuova si aggiunge alla lista {@link SECTIONS} in
  * {@code domain/SideNav.tsx} (e a {@code router.tsx}), non a un'altra schermata a
- * caso. {@code SectionLinks} e' un solo elenco, reso in due forme
- * ({@code chrome="side"} verticale, {@code chrome="top"} orizzontale): due elenchi
- * sarebbero due cose da tenere d'accordo.
+ * caso. La barra superiore ({@code chrome="top"}) e' quella che le collega tutte;
+ * la barra laterale ha le sue due voci (sotto).
+ *
+ * <p><b>La barra laterale e' un'altra cosa.</b> La home (e le impostazioni, che
+ * ne sono il seguito) mostrano Asta e Profilo, non le sezioni dell'asta: vedi
+ * {@code HomeSectionNav}. Il nome porta comunque alla home in entrambe le forme.
+ *
+ * <p><b>Pannelli pieni.</b> Header e barra laterale sono pannelli
+ * ({@code panel}): nessun testo poggia direttamente sulle linee del campo.
  *
  * <p><b>La proiezione resta senza chrome.</b> E' una seconda schermata pensata per
  * un proiettore: il suo vincolo permanente e' zero pulsanti e zero caselle di
@@ -34,10 +40,12 @@ export function AppShell({
   slotStatus,
   slotActions,
   title,
+  section = 'asta',
+  onSectionChange,
 }: {
   children: ReactNode;
   /**
-   * "side": barra laterale (home, asta, impostazioni). "top": barra
+   * "side": barra laterale con Asta e Profilo (home, impostazioni). "top": barra
    * compatta dell'asta, con le stesse destinazioni in orizzontale. "none": la
    * proiezione, senza nessuna navigazione.
    */
@@ -47,6 +55,13 @@ export function AppShell({
   slotActions?: ReactNode;
   /** Titolo mostrato nella barra superiore, oltre al nome. */
   title?: string;
+  /** Solo chrome="side": la sezione evidenziata nella barra laterale. */
+  section?: HomeSection;
+  /**
+   * Solo chrome="side": presente sulla home, dove la sezione cambia il contenuto
+   * senza cambiare pagina. Assente altrove, dove le voci portano alla home.
+   */
+  onSectionChange?: (section: HomeSection) => void;
 }) {
   // slotActions con chrome !== 'top' non va nascosto con CSS: non va reso affatto.
   // Un pulsante nascosto alla vista resta comunque raggiungibile da tastiera e dai
@@ -55,29 +70,27 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh bg-background text-foreground font-sans">
-      {/* La proiezione (chrome="none") monta la propria PitchLines con
-          variant="projection": se anche AppShell montasse la sua qui, le due
-          si sommerebbero sullo stesso schermo e l'opacita' percepita non
-          sarebbe piu' quella che PROJECTION_OPACITY dichiara. Ogni schermata
-          ne ha esattamente una. */}
-      {chrome !== 'none' && <PitchLines variant="app" />}
+      {/* Il campo e' uno solo per tutte le schermate, proiezione compresa: il
+          testo sta nei pannelli, quindi le linee non devono piu' farsi
+          discrete in un posto e visibili in un altro. */}
+      <PitchLines />
 
       {chrome === 'side' && (
-        <div className="flex">
+        <div className="flex min-h-dvh flex-col md:flex-row">
           <header
             role="banner"
-            className="relative z-10 flex w-56 flex-col border-r border-line px-4 py-6 text-sm"
+            className="relative z-10 flex shrink-0 flex-col border-b border-panel-border bg-surface px-4 py-4 text-sm md:w-80 md:border-b-0 md:border-r md:py-6"
           >
             <Link
               to="/"
-              className="mb-6 flex min-h-11 items-center font-extrabold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="mb-4 flex min-h-11 items-center md:mb-8 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
-              FantaAgent
+              <Wordmark size="lg" />
             </Link>
-            <SectionLinks orientation="vertical" />
+            <HomeSectionNav current={section} onChange={onSectionChange} />
             <div className="mt-auto flex flex-col items-start gap-4">{slotStatus}</div>
           </header>
-          <main role="main" className="relative z-10 flex-1 p-6">
+          <main role="main" className="relative z-10 min-w-0 flex-1 p-4 md:p-6">
             {children}
           </main>
         </div>
@@ -92,23 +105,23 @@ export function AppShell({
         <>
           <header
             role="banner"
-            className="relative z-10 flex items-center gap-4 border-b border-line-strong px-4 py-3 text-sm"
+            className="relative z-10 flex flex-wrap items-center gap-4 border-b border-panel-border bg-surface px-4 py-3 text-sm"
           >
             {chrome === 'top' ? (
               <Link
                 to="/"
-                className="flex min-h-11 items-center font-extrabold tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="flex min-h-11 items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
-                FantaAgent
+                <Wordmark size="md" />
               </Link>
             ) : (
               // La proiezione resta senza chrome: "FantaAgent" e' testo
               // semplice, non un link — la schermata non mostra nessuna
               // navigazione, nemmeno il nome come porta verso la home.
-              <span className="font-extrabold tracking-tight">FantaAgent</span>
+              <Wordmark size="md" />
             )}
             {chrome === 'top' && title ? <span className="font-bold">{title}</span> : null}
-            {chrome === 'top' ? <SectionLinks orientation="horizontal" /> : null}
+            {chrome === 'top' ? <SectionLinks /> : null}
             <div className="ml-auto flex items-center gap-4">
               {actions}
               {slotStatus}

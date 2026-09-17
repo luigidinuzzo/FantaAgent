@@ -1,7 +1,69 @@
 import { Link } from 'react-router-dom';
 
+/** Le due sezioni della barra laterale: l'asta e il profilo dell'utente. */
+export type HomeSection = 'asta' | 'profilo';
+
+const HOME_SECTIONS: Array<{ key: HomeSection; label: string }> = [
+  { key: 'asta', label: 'Asta' },
+  { key: 'profilo', label: 'Profilo' },
+];
+
 /**
- * Le sezioni che la navigazione collega, oltre alla home a cui porta il nome.
+ * La barra laterale della home: Asta e Profilo.
+ *
+ * <p>Sulla home ({@code onChange} presente) sono bottoni: cambiano il contenuto
+ * della pagina senza cambiarne l'indirizzo. Altrove (le impostazioni) sono link
+ * verso la home, che si apre sulla sezione scelta tramite lo stato della
+ * navigazione — l'indirizzo resta comunque "/". La sezione corrente e' detta con
+ * aria-current, non solo con il colore.
+ */
+export function HomeSectionNav({
+  current,
+  onChange,
+}: {
+  current: HomeSection;
+  onChange?: (section: HomeSection) => void;
+}) {
+  return (
+    <nav aria-label="Sezioni" className="flex flex-col gap-1">
+      {HOME_SECTIONS.map((s) => {
+        const active = s.key === current;
+        // L'hover solo sulle voci inattive: sulla voce corrente un fondo
+        // chiaro sopra bg-accent lascerebbe il testo scuro su grigio.
+        const className = `${LINK_BASE} w-full ${
+          active ? 'bg-accent text-on-accent' : 'hover:bg-line'
+        }`;
+        return onChange ? (
+          <button
+            key={s.key}
+            type="button"
+            aria-current={active ? 'true' : undefined}
+            onClick={() => onChange(s.key)}
+            className={className}
+          >
+            {s.label}
+          </button>
+        ) : (
+          <Link
+            key={s.key}
+            to="/"
+            state={{ section: s.key }}
+            aria-current={active ? 'true' : undefined}
+            className={className}
+          >
+            {s.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+/**
+ * Le sezioni della barra superiore dell'asta, oltre alla home a cui porta il nome.
+ * La barra laterale della home non le usa: ha le sue, {@link HOME_SECTIONS}.
+ *
+ * <p>(Storia) Le sezioni che la navigazione collega, oltre alla home a cui porta il nome.
  *
  * <p>Non c'e' /proiezione: si apre solo dal suo collegamento in /asta, verso il
  * secondo schermo. L'assenza e' verificata da AppShell.test.tsx, che la elenca con
@@ -12,9 +74,6 @@ import { Link } from 'react-router-dom';
  * squadre". Un collegamento qui offrirebbe due voci di menu per la stessa
  * schermata. L'assenza e' verificata anche lei da AppShell.test.tsx.
  *
- * <p>Elenco unico, reso in due forme: un secondo elenco per la barra superiore
- * sarebbe una seconda cosa da tenere d'accordo con questa, ed e' esattamente il
- * tipo di coppia che diverge in silenzio.
  */
 export const SECTIONS: Array<{ to: string; label: string }> = [
   { to: '/asta', label: 'Asta' },
@@ -22,18 +81,15 @@ export const SECTIONS: Array<{ to: string; label: string }> = [
 ];
 
 const LINK_BASE =
-  'flex min-h-11 items-center rounded-full px-4 font-bold hover:bg-surface'
+  'flex min-h-11 items-center rounded-full px-4 font-bold'
   + ' focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
-export function SectionLinks({ orientation }: { orientation: 'vertical' | 'horizontal' }) {
-  const vertical = orientation === 'vertical';
+/** Le sezioni dell'asta, in fila nella barra superiore. */
+export function SectionLinks() {
   return (
-    <nav
-      aria-label="Sezioni"
-      className={vertical ? 'flex flex-col gap-1' : 'flex items-center gap-1'}
-    >
+    <nav aria-label="Sezioni" className="flex items-center gap-1">
       {SECTIONS.map((s) => (
-        <Link key={s.to} to={s.to} className={`${LINK_BASE} ${vertical ? 'w-full' : ''}`}>
+        <Link key={s.to} to={s.to} className={`${LINK_BASE} hover:bg-line`}>
           {s.label}
         </Link>
       ))}

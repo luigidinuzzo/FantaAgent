@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
@@ -373,5 +373,48 @@ describe('HomeRoute', () => {
     expect(
       screen.getByRole('button', { name: `Riprendi l'asta aperta, ${OPEN_AUCTION.label}` }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Profilo cambia il contenuto, non la pagina: l'indirizzo resta "/" e le aste
+   * tornano con Asta. Il profilo e' finto finche' non c'e' l'accesso, e lo dice.
+   */
+  it('Profilo mostra il profilo al posto delle aste, senza cambiare pagina', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    const router = createMemoryRouter([{ path: '/', element: <HomeRoute /> }]);
+    setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
+    render(<QueryProvider><RouterProvider router={router} /></QueryProvider>);
+
+    const nav = screen.getByRole('navigation', { name: 'Sezioni' });
+    expect(within(nav).getByRole('button', { name: 'Asta' })).toHaveAttribute('aria-current', 'true');
+    expect(await screen.findByRole('button', { name: 'Crea asta' })).toBeInTheDocument();
+
+    await userEvent.click(within(nav).getByRole('button', { name: 'Profilo' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Profilo' })).toBeInTheDocument();
+    expect(screen.getByText('Allenatore')).toBeInTheDocument();
+    expect(screen.getByText(/modificabile dopo l'introduzione dell'accesso/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Crea asta' })).not.toBeInTheDocument();
+    expect(within(nav).getByRole('button', { name: 'Profilo' })).toHaveAttribute('aria-current', 'true');
+    expect(router.state.location.pathname).toBe('/');
+    // Il profilo non e' modificabile: nessuna casella che finga di salvare.
+    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+
+    await userEvent.click(within(nav).getByRole('button', { name: 'Asta' }));
+    expect(screen.getByRole('button', { name: 'Crea asta' })).toBeInTheDocument();
+  });
+
+  it('si apre su Profilo quando ci si arriva dalla barra di un altra schermata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([])));
+    setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
+    render(
+      <QueryProvider>
+        <MemoryRouter initialEntries={[{ pathname: '/', state: { section: 'profilo' } }]}>
+          <HomeRoute />
+        </MemoryRouter>
+      </QueryProvider>,
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Profilo' })).toBeInTheDocument();
   });
 });

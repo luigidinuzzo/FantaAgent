@@ -1,14 +1,20 @@
 // Unica fonte dei colori del progetto. tokens.css è generato da qui:
 // modificare il CSS a mano significa perdere la modifica alla prossima build.
 export const PALETTE = {
-  background:         '#0A1F16',
-  surface:            '#0E2A1E',
+  // Il campo: erba viva, con le strisce di taglio di un campo vero. Nessun testo
+  // ci poggia sopra direttamente — sta sempre dentro un pannello (surface).
+  background:         '#2E6B34',
+  'grass-stripe':     '#29612F',
+  // Il pannello: pieno, mai trasparente, con il suo bordo che lo stacca
+  // dall'erba (almeno 3:1, verificato da contrast.test.ts).
+  surface:            '#12301E',
+  'panel-border':     '#9BD3A5',
   foreground:         '#F1F7F2',
   'muted-foreground': '#87A594',
   accent:             '#FFC24B',
   'on-accent':        '#1B1400',
   positive:           '#5FD08A',
-  destructive:        '#E86A4B',
+  destructive:        '#F07A5C',
   // I quattro ruoli. NON riusano positive e destructive nonostante la
   // somiglianza cromatica (il difensore e' verde, l'attaccante e' rosso): sono
   // coincidenze, non lo stesso significato. Il giorno in cui "positivo"
@@ -19,11 +25,13 @@ export const PALETTE = {
   'role-a':           '#FF8FA3',
 };
 
-// Le righe del campo sono bianco con alfa: restano in rgba, perché il loro
-// senso è "la stessa linea, più o meno marcata", non due colori diversi.
+// Divisori dentro i pannelli (line, line-strong) e il gesso delle linee del
+// campo (chalk): bianco con alfa, perché il loro senso è "la stessa linea, più o
+// meno marcata", non tre colori diversi.
 export const LINES = {
   line:        'rgba(255,255,255,0.15)',
   'line-strong': 'rgba(255,255,255,0.25)',
+  chalk:       'rgba(255,255,255,0.8)',
 };
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

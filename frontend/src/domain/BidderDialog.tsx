@@ -179,7 +179,7 @@ export function BidderDialog({
       data-testid="bidder-dialog"
       data-over-ceiling={overCeiling}
       aria-labelledby="bidder-name"
-      className={`border p-5 ${overCeiling ? 'border-destructive' : 'border-line-strong'}`}
+      className={`rounded-2xl border bg-surface p-5 ${overCeiling ? 'border-destructive' : 'border-panel-border'}`}
     >
       <header className="flex items-baseline gap-3">
         <h2 id="bidder-name" className="w-exp text-xl font-extrabold">{valuation.name}</h2>

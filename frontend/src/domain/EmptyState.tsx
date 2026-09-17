@@ -8,7 +8,7 @@
  */
 export function EmptyState({ children }: { children: string }) {
   return (
-    <p className="border border-dashed border-line p-6 text-sm text-muted-foreground">
+    <p className="rounded-xl border border-dashed border-panel-border bg-surface p-6 text-sm text-muted-foreground">
       {children}
     </p>
   );

@@ -109,7 +109,10 @@ export function RosterGrid() {
         // colonna, non un grid a righe multiple — stesso schema di
         // SquadCards.tsx (la fila di card squadra sopra), cosi' le due file
         // scorrono allineate sotto lo stesso participantId.
-        <div className="overflow-x-auto">
+        // relative: senza, i testi sr-only (position:absolute) dentro le colonne
+        // fuori vista non sono tagliati da questo contenitore e allargano la
+        // pagina intera, che scorre di lato.
+        <div className="relative overflow-x-auto">
           <div className="flex gap-4 pb-1">
             {(board.data?.columns ?? []).map((column) => (
               <RosterColumn

@@ -45,7 +45,7 @@ function compositionText(p: ParticipantView): string {
  */
 export function SquadCards({ participants }: { participants: ParticipantView[] }) {
   return (
-    <section aria-label="Chi ha cosa" className="overflow-x-auto">
+    <section aria-label="Chi ha cosa" className="relative overflow-x-auto">
       <ul className="flex gap-3 pb-1">
         {participants.map((p) => {
           // I posti totali (e quelli occupati) si contano sulla mappa di
@@ -62,7 +62,7 @@ export function SquadCards({ participants }: { participants: ParticipantView[] }
               key={p.id}
               data-testid={`manager-${p.id}`}
               data-me={p.me}
-              className={`w-56 shrink-0 rounded-xl border p-3 ${p.me ? 'border-accent' : 'border-line'}`}
+              className={`w-56 shrink-0 rounded-xl border bg-surface p-3 ${p.me ? 'border-accent' : 'border-panel-border'}`}
             >
               <div className="flex items-baseline justify-between gap-2">
                 <span className="truncate font-bold">

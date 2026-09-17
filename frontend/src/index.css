@@ -1,9 +1,17 @@
-@import '@fontsource-variable/archivo';
+/* wdth e non l'import di default: quello porta solo l'asse del peso, e senza
+   l'asse della larghezza .w-cond e .w-exp qui sotto non facevano niente. Il
+   corsivo serve al logo. */
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/archivo/wdth-italic.css';
 @import 'tailwindcss';
 @import './styles/tokens.css';
 
 /* Le cifre confrontate in colonna devono incolonnarsi davvero. Archivo ha le
    cifre tabulari: qui si chiedono, una volta, per tutto il progetto. */
+/* I controlli nativi (caselle, radio, barre di scorrimento) vivono su pannelli
+   scuri: senza questo il browser li disegna chiari, riquadri bianchi sul verde. */
+:root { color-scheme: dark; }
+
 .tnum { font-variant-numeric: tabular-nums; }
 
 /* I tre ruoli ottenuti dall'asse di larghezza della stessa famiglia. */
@@ -15,4 +23,13 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Il pannello: tutto cio' che si legge sta qui dentro, mai direttamente
+   sull'erba. Pieno (niente trasparenze sopra le linee del campo) e con un bordo
+   che lo stacca dal campo — la coppia panel-border/background e' in
+   contrast.test.ts. */
+@utility panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-panel-border);
 }

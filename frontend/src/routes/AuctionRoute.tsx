@@ -319,7 +319,7 @@ export function AuctionRoute() {
         // sopra): al massimo un role="alert" da queste due fonti, non uno
         // per bottone. role="alert", non un secondo role="status": l'unica
         // live region ambientale della pagina resta AuctionAnnouncer.
-        <p role="alert" className="mt-2 text-sm font-bold text-destructive">
+        <p role="alert" className="panel mb-4 rounded-xl p-4 text-sm font-bold text-destructive">
           {barAlertMessage}
         </p>
       ) : null}
@@ -327,7 +327,9 @@ export function AuctionRoute() {
           un giocatore scelto qui passa per setSelectedId esattamente come una
           riga cliccata, quindi valutazione, battitore e aggiudicazione si
           comportano in tutto allo stesso modo. */}
-      <PlayerSearchBox onSelect={setSelectedId} />
+      <div className="panel rounded-2xl p-4">
+        <PlayerSearchBox onSelect={setSelectedId} />
+      </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_22rem]">
         {valuation.data ? (
@@ -406,7 +408,7 @@ export function AuctionRoute() {
         <SquadCards participants={state.data?.participants ?? []} />
       </div>
 
-      <div className="mt-4">
+      <div className="panel mt-4 rounded-2xl p-4">
         {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
             limita a somigliarci: ruolo, stato e frecce sinistra/destra per
             spostare la selezione, come da WAI-ARIA Authoring Practices. */}

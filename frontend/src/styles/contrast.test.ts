@@ -8,36 +8,33 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { PALETTE, LINES, contrastRatio, hexToOklch } from '../../scripts/palette.mjs';
 
-// Ogni coppia che la direzione Campo mette davvero una sopra l'altra.
-// La soglia segue la DIMENSIONE con cui il colore viene reso, non il ruolo del
-// token: 3:1 vale solo per il testo grande. accent, positive e destructive
-// erano fermi a 3 ma escono a text-sm (14-16px) in PlayerDecisionCard,
-// PlayerTable, ConnectionStatus e SquadCards, dove serve 4.5. Li superano
-// gia' tutti: la soglia bassa non proteggeva le dimensioni spedite, e avrebbe
-// lasciato passare la prima ritinteggiatura che le avesse peggiorate.
+// Ogni coppia che l'interfaccia mette davvero una sopra l'altra.
+//
+// Il testo vive SEMPRE dentro un pannello (surface): l'erba (background) e' il
+// campo, non un fondo da leggere. Per questo le coppie di testo sono tutte su
+// surface, e l'unica coppia con background e' quella del bordo del pannello, che
+// deve staccarlo dal campo (3:1, la soglia dei contorni dei componenti).
+//
+// La soglia del testo segue la DIMENSIONE con cui il colore viene reso: accent,
+// positive e destructive escono a text-sm (14-16px), quindi 4.5 e non 3.
 const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
-  ['foreground', 'background', 4.5],
   ['foreground', 'surface', 4.5],
-  ['muted-foreground', 'background', 4.5],
   ['muted-foreground', 'surface', 4.5],
-  ['accent', 'background', 4.5],
   ['accent', 'surface', 4.5],
   ['on-accent', 'accent', 4.5],
-  ['positive', 'background', 4.5],
+  ['on-accent', 'positive', 4.5],
   ['positive', 'surface', 4.5],
-  ['destructive', 'background', 4.5],
   ['destructive', 'surface', 4.5],
-  // I quattro ruoli escono come testo dentro una pillola e come fascia sopra la
-  // griglia delle rose: 4.5, non 3, perche' e' testo piccolo, esattamente come
-  // accent, positive e destructive qui sopra.
-  ['role-p', 'background', 4.5],
+  // I quattro ruoli escono come testo dentro una pillola: 4.5, non 3.
   ['role-p', 'surface', 4.5],
-  ['role-d', 'background', 4.5],
   ['role-d', 'surface', 4.5],
-  ['role-c', 'background', 4.5],
   ['role-c', 'surface', 4.5],
-  ['role-a', 'background', 4.5],
   ['role-a', 'surface', 4.5],
+  // Il bordo del pannello contro l'erba, su entrambe le strisce di taglio, e
+  // contro il pannello stesso.
+  ['panel-border', 'background', 3],
+  ['panel-border', 'grass-stripe', 3],
+  ['panel-border', 'surface', 3],
 ];
 
 describe('palette Campo', () => {

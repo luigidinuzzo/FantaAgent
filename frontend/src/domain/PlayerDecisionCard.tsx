@@ -28,11 +28,13 @@ export function PlayerDecisionCard({
       data-stale={stale}
       aria-labelledby={nameId}
       className={[
-        'relative border p-5 transition-opacity duration-200',
-        // Il gradiente e' l'unico effetto decorativo del progetto, e sta su un
-        // solo elemento: quello che decide.
-        'bg-[radial-gradient(120%_90%_at_30%_0%,var(--color-surface)_0%,var(--color-background)_70%)]',
-        stale ? 'border-dashed border-line opacity-60' : 'border-line-strong',
+        'relative rounded-2xl border bg-surface p-5',
+        // Stantia: si attenua il CONTENUTO, non la card. Il fondo resta pieno —
+        // una card semitrasparente lascerebbe passare le linee del campo sotto
+        // il testo, proprio quando va letto con piu' attenzione.
+        stale
+          ? 'border-dashed border-muted-foreground *:opacity-60 *:transition-opacity *:duration-200'
+          : 'border-panel-border',
       ].join(' ')}
     >
       {/* Arco d'angolo: una linea di campo, non un ornamento. */}

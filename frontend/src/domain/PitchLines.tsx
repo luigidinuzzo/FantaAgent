@@ -1,58 +1,76 @@
-/**
- * Quanto le linee possono farsi vedere, per contesto.
- *
- * <p>Il test di contrasto del progetto misura COPPIE DI TOKEN — un testo sopra un
- * fondo — e non sa niente di una texture disegnata in mezzo ai due. Quel limite non
- * puo' quindi essere verificato li: vive qui, con il suo perche', ed e' fissato da
- * PitchLines.test.tsx. Il tratto usa {@code --line} (rgba(255,255,255,0.15)):
- * l'alfa effettiva sopra il fondo e' 0.15 x 0.04 = 0.006, ben dentro il rumore di
- * quantizzazione dello schermo; il testo che ci passa sopra non se ne accorge.
- */
-export const APP_OPACITY = 0.04;
+/** Quante strisce di taglio attraversano il campo, da una porta all'altra. */
+export const STRIPES = 12;
+
+const W = 1200;
+const H = 800;
 
 /**
- * Sulla proiezione il vincolo cade: lo schermo e' grande, il testo e' enorme, e
- * quella schermata esiste per essere guardata da lontano. Le linee possono
- * finalmente leggersi come linee di un campo invece che come una sfumatura.
- */
-export const PROJECTION_OPACITY = 0.1;
-
-/**
- * Le linee del campo: mezzeria, cerchio di centrocampo, due aree di rigore.
+ * Il campo da gioco dietro ogni schermata: l'erba a strisce di taglio e le linee
+ * in gesso — bordo, metà campo, cerchio e dischetto di centrocampo, aree di
+ * rigore e di porta, dischetti del rigore, lunette e archi d'angolo.
  *
- * <p>Non e' una texture applicata sopra il progetto: e' la continuazione del
- * linguaggio che {@code PlayerDecisionCard} aveva gia' cominciato con l'arco
- * d'angolo commentato «una linea di campo, non un ornamento».
+ * <p>Ora che le linee si vedono davvero, il vincolo che le teneva quasi invisibili
+ * (un'opacita' "sotto la soglia del testo") e' sostituito da uno piu' semplice e
+ * piu' forte: <b>nessun testo poggia sull'erba</b>. Tutto cio' che si legge sta in
+ * un pannello pieno ({@code bg-surface}) con il suo bordo, quindi le linee possono
+ * essere bianche e piene senza intaccare la lettura. La stessa ragione rende
+ * inutile distinguere app e proiezione: il campo e' uno solo.
  *
- * <p>SVG inline e non un'immagine: il tratto e' {@code --line}, cioe' lo stesso
- * token dei bordi di tutta l'applicazione. Un PNG sarebbe un colore in piu' fuori
- * dalla palette, invisibile al test di contrasto e alla prossima ritinteggiatura.
+ * <p>SVG inline e non un'immagine: erba e gesso sono token della palette
+ * ({@code --background}, {@code --grass-stripe}, {@code --chalk}). Un PNG sarebbe
+ * un colore fuori dalla palette, invisibile al test di contrasto e alla prossima
+ * ritinteggiatura.
  */
-export function PitchLines({ variant }: { variant: 'app' | 'projection' }) {
-  const opacity = variant === 'app' ? APP_OPACITY : PROJECTION_OPACITY;
+export function PitchLines() {
+  const stripeWidth = W / STRIPES;
   return (
     // z-0, non -z-10: il componente viene montato dentro una radice che porta
     // bg-background e non crea un proprio contesto di impilamento, quindi un
-    // indice negativo finirebbe dietro il fondo opaco di quella radice e le
-    // linee non si vedrebbero mai. AppShell da' z-10 a header e main (righe 69,
-    // 80, 95, 117), cosi' il contenuto resta sopra a questo sfondo.
+    // indice negativo finirebbe dietro il fondo opaco di quella radice.
+    // AppShell da' z-10 a header e main, cosi' il contenuto resta sopra.
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <svg
         aria-hidden="true"
-        viewBox="0 0 1200 800"
+        viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="xMidYMid slice"
         className="h-full w-full"
-        style={{ opacity }}
       >
-        <g fill="none" stroke="var(--line)" strokeWidth="2">
-          <rect x="20" y="20" width="1160" height="760" />
-          <line x1="600" y1="20" x2="600" y2="780" />
-          <circle cx="600" cy="400" r="110" />
-          <circle cx="600" cy="400" r="4" fill="var(--line)" />
-          <rect x="20" y="220" width="180" height="360" />
-          <rect x="1000" y="220" width="180" height="360" />
-          <rect x="20" y="320" width="70" height="160" />
-          <rect x="1110" y="320" width="70" height="160" />
+        <rect x="0" y="0" width={W} height={H} fill="var(--background)" />
+        {Array.from({ length: STRIPES }, (_, i) =>
+          i % 2 === 1 ? (
+            <rect
+              key={i}
+              data-testid="grass-stripe"
+              x={i * stripeWidth}
+              y="0"
+              width={stripeWidth}
+              height={H}
+              fill="var(--grass-stripe)"
+            />
+          ) : null,
+        )}
+        <g fill="none" stroke="var(--chalk)" strokeWidth="5" strokeLinecap="round">
+          <rect x="40" y="40" width="1120" height="720" />
+          <line x1="600" y1="40" x2="600" y2="760" />
+          <circle cx="600" cy="400" r="100" />
+          {/* Aree di rigore e di porta. */}
+          <rect x="40" y="200" width="180" height="400" />
+          <rect x="980" y="200" width="180" height="400" />
+          <rect x="40" y="310" width="60" height="180" />
+          <rect x="1100" y="310" width="60" height="180" />
+          {/* Lunette: la parte del cerchio di 100 attorno al dischetto che esce dall'area. */}
+          <path d="M 220 320 A 100 100 0 0 1 220 480" />
+          <path d="M 980 320 A 100 100 0 0 0 980 480" />
+          {/* Archi d'angolo. */}
+          <path d="M 40 60 A 20 20 0 0 0 60 40" />
+          <path d="M 1140 40 A 20 20 0 0 0 1160 60" />
+          <path d="M 40 740 A 20 20 0 0 1 60 760" />
+          <path d="M 1160 740 A 20 20 0 0 0 1140 760" />
+        </g>
+        <g fill="var(--chalk)">
+          <circle cx="600" cy="400" r="6" />
+          <circle cx="160" cy="400" r="5" />
+          <circle cx="1040" cy="400" r="5" />
         </g>
       </svg>
     </div>

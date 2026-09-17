@@ -189,7 +189,7 @@ export function SettingsRoute() {
     return (
       <AppShell chrome="side">
         <h1 className="sr-only">Impostazioni</h1>
-        <p role="alert" className="text-sm font-bold text-destructive">
+        <p role="alert" className="panel rounded-xl p-4 text-sm font-bold text-destructive">
           {settings.error instanceof ProblemError
             ? settings.error.detail
             : 'Errore di rete: le impostazioni non si sono caricate. Riprova.'}
@@ -202,7 +202,7 @@ export function SettingsRoute() {
     return (
       <AppShell chrome="side">
         <h1 className="sr-only">Impostazioni</h1>
-        <p className="text-sm text-muted-foreground">Carico le impostazioni…</p>
+        <p className="panel rounded-xl p-4 text-sm text-muted-foreground">Carico le impostazioni…</p>
       </AppShell>
     );
   }
@@ -224,7 +224,9 @@ export function SettingsRoute() {
 
   return (
     <AppShell chrome="side">
-      <div className="mx-auto max-w-4xl">
+      {/* Un unico pannello pieno per tutto il modulo: etichette, pillole e
+          messaggi non poggiano mai sulle linee del campo. */}
+      <div className="panel mx-auto max-w-4xl rounded-2xl p-6">
         <div className="relative mb-6 flex items-center justify-center">
           {/* Nome accessibile esplicito: una freccia da sola sarebbe un'icona
               muta, senza niente che uno screen reader possa leggere. */}

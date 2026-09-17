@@ -1,9 +1,12 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
 import { useAuctions, useLeaveAuction, useSelectAuction } from '../api/hooks';
 import type { AuctionCard } from '../api/types';
 import { EmptyState } from '../domain/EmptyState';
+import { ProfilePanel } from '../domain/ProfilePanel';
+import type { HomeSection } from '../domain/SideNav';
 import { RoleBadge } from '../domain/RoleBadge';
 
 const QUANDO = new Intl.DateTimeFormat('it-IT', {
@@ -52,6 +55,13 @@ export function HomeRoute() {
   const select = useSelectAuction();
   const leave = useLeaveAuction();
   const navigate = useNavigate();
+  // La sezione vive nello stato della pagina, non nell'indirizzo: passare da Asta
+  // a Profilo non e' cambiare pagina. Chi arriva da un'altra schermata (la barra
+  // laterale delle impostazioni) la porta nello stato della navigazione.
+  const location = useLocation();
+  const [section, setSection] = useState<HomeSection>(
+    (location.state as { section?: HomeSection } | null)?.section ?? 'asta',
+  );
 
   // Un fallimento della lista (background refetch, indipendente da qualunque
   // gesto) e un fallimento di una mutazione (select/leave, appena tentata
@@ -97,193 +107,202 @@ export function HomeRoute() {
   }
 
   return (
-    <AppShell chrome="side">
-      {/* Il titolo esiste per chi ascolta: la card-eroe sotto e' gia' visivamente
-          il punto di partenza della pagina, un h1 visibile qui sopra la
-          duplicherebbe. */}
-      <h1 className="sr-only">Le tue aste</h1>
+    <AppShell chrome="side" section={section} onSectionChange={setSection}>
+      {section === 'profilo' ? (
+        <>
+          <h1 className="sr-only">Profilo</h1>
+          <ProfilePanel />
+        </>
+      ) : (
+          <>
+          {/* Il titolo esiste per chi ascolta: la card-eroe sotto e' gia' visivamente
+              il punto di partenza della pagina, un h1 visibile qui sopra la
+              duplicherebbe. */}
+          <h1 className="sr-only">Le tue aste</h1>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <div>
-          {/* La card-eroe: un bersaglio solo, grande, in cima alla colonna. "Crea
-              asta" chiude PRIMA l'asta eventualmente aperta (vedi startNew) e solo
-              dopo va alle impostazioni: non crea niente da sola, l'asta nasce quando
-              le impostazioni vengono confermate. Creare qui lascerebbe dietro aste
-              vuote per chi si ferma alla schermata di conferma — e' gia' successo, ed
-              e' il motivo per cui il flusso e' fatto cosi'. */}
-          <div className="flex flex-wrap items-center gap-6 rounded-2xl border border-line-strong bg-[radial-gradient(120%_90%_at_20%_0%,var(--color-surface)_0%,var(--color-background)_75%)] p-6">
-            <GavelIcon />
-            <div className="min-w-0 flex-1">
-              <p className="w-exp text-lg font-extrabold">Comincia una nuova asta</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Partecipanti e regole di punteggio si copiano dentro, e non
-                cambieranno più.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={startNew}
-              disabled={leave.isPending}
-              className="min-h-11 shrink-0 rounded-full bg-positive px-6 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              Crea asta
-            </button>
-          </div>
-
-          {auctions.isLoading ? (
-            <p className="mt-6 text-sm text-muted-foreground">Carico le aste…</p>
-          ) : auctions.isError ? (
-            // Nessun testo qui: il messaggio (loadErrorMessage) vive nell'unico
-            // role="alert" in fondo alla pagina, non duplicato in due posti.
-            null
-          ) : list.length === 0 ? (
-            <div className="mt-6">
-              <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
-            </div>
-          ) : (
-            <ul className="mt-6 space-y-2">
-              {list.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-center gap-4 rounded-xl border border-line px-4 py-3"
+          <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+            <div>
+              {/* La card-eroe: un bersaglio solo, grande, in cima alla colonna. "Crea
+                  asta" chiude PRIMA l'asta eventualmente aperta (vedi startNew) e solo
+                  dopo va alle impostazioni: non crea niente da sola, l'asta nasce quando
+                  le impostazioni vengono confermate. Creare qui lascerebbe dietro aste
+                  vuote per chi si ferma alla schermata di conferma — e' gia' successo, ed
+                  e' il motivo per cui il flusso e' fatto cosi'. */}
+              <div className="panel flex flex-wrap items-center gap-6 rounded-2xl p-6">
+                <GavelIcon />
+                <div className="min-w-0 flex-1">
+                  <p className="w-exp text-lg font-extrabold">Comincia una nuova asta</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Partecipanti e regole di punteggio si copiano dentro, e non
+                    cambieranno più.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={startNew}
+                  disabled={leave.isPending}
+                  className="min-h-11 shrink-0 rounded-full bg-positive px-6 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  {/* Il pallino e' decorazione — il fatto sta nel testo "In corso"
-                      qui sotto, non nel colore. */}
-                  <span
-                    aria-hidden="true"
-                    className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                      a.selected ? 'bg-positive' : 'bg-muted-foreground'
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold">
-                      {a.label}
-                      {a.selected ? (
-                        // Parita' con la home Thymeleaf (che segna la riga con la classe
-                        // CSS "sel"), ma raggiungibile anche da chi ascolta: senza questo
-                        // testo React non diceva MAI quale asta fosse quella aperta — un
-                        // difetto che si aggiunge al critico qui sopra, perche' senza
-                        // saperlo e' facile premere "Crea asta" credendo che nessuna
-                        // asta sia in corso.
-                        <span className="ml-2 text-xs font-bold text-accent">In corso</span>
-                      ) : null}
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                      {/* RoleBadge dice gia' la fase, in tutti e due i modi che
-                          contano: la lettera colorata per chi vede, il nome
-                          per esteso in sr-only per chi ascolta (vedi il suo
-                          commento, "'D' letto da un sintetizzatore e' una
-                          lettera, non un ruolo"). Un secondo "· fase D" qui
-                          non aggiungeva niente per chi vede — la fase era gia'
-                          in vista — e per chi ascolta ripeteva la fase una
-                          seconda volta, stavolta come lettera nuda e basta:
-                          esattamente il difetto che RoleBadge esiste per
-                          evitare (revisione finale, finding F). */}
-                      <RoleBadge role={a.phase} />
-                      {/* .tnum: la data si confronta riga per riga in colonna, come i
-                          numeri qui accanto — senza cifre tabulari non si allinea. */}
-                      <span className="tnum">
-                        {a.lastWritten ? QUANDO.format(new Date(a.lastWritten)) : 'mai scritta'}
-                      </span>
-                      {' · '}
-                      {/*
-                        Il numero e "acquisti" stanno nello stesso nodo apposta: non e' una
-                        necessita' di accessibilita' (l'accessible name unisce comunque il
-                        testo di tutti i discendenti) ma di test — getByText di Testing
-                        Library concatena solo i nodi-testo DIRETTI di un elemento, saltando
-                        quelli dentro un figlio-elemento. Con <span>{a.purchases}</span>
-                        seguito da testo "acquisti" fuori dallo span, nessun nodo avrebbe
-                        contenuto la stringa intera "3 acquisti" da trovare.
-                      */}
-                      <span className="tnum">{a.purchases} acquisti</span>
-                    </p>
-                  </div>
+                  Crea asta
+                </button>
+              </div>
+
+              {auctions.isLoading ? (
+                <p className="panel mt-6 rounded-xl p-4 text-sm text-muted-foreground">Carico le aste…</p>
+              ) : auctions.isError ? (
+                // Nessun testo qui: il messaggio (loadErrorMessage) vive nell'unico
+                // role="alert" in fondo alla pagina, non duplicato in due posti.
+                null
+              ) : list.length === 0 ? (
+                <div className="mt-6">
+                  <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
+                </div>
+              ) : (
+                <ul className="mt-6 space-y-2">
+                  {list.map((a) => (
+                    <li
+                      key={a.id}
+                      className="panel flex items-center gap-4 rounded-xl px-4 py-3"
+                    >
+                      {/* Il pallino e' decorazione — il fatto sta nel testo "In corso"
+                          qui sotto, non nel colore. */}
+                      <span
+                        aria-hidden="true"
+                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                          a.selected ? 'bg-positive' : 'bg-muted-foreground'
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold">
+                          {a.label}
+                          {a.selected ? (
+                            // Parita' con la home Thymeleaf (che segna la riga con la classe
+                            // CSS "sel"), ma raggiungibile anche da chi ascolta: senza questo
+                            // testo React non diceva MAI quale asta fosse quella aperta — un
+                            // difetto che si aggiunge al critico qui sopra, perche' senza
+                            // saperlo e' facile premere "Crea asta" credendo che nessuna
+                            // asta sia in corso.
+                            <span className="ml-2 text-xs font-bold text-accent">In corso</span>
+                          ) : null}
+                        </p>
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                          {/* RoleBadge dice gia' la fase, in tutti e due i modi che
+                              contano: la lettera colorata per chi vede, il nome
+                              per esteso in sr-only per chi ascolta (vedi il suo
+                              commento, "'D' letto da un sintetizzatore e' una
+                              lettera, non un ruolo"). Un secondo "· fase D" qui
+                              non aggiungeva niente per chi vede — la fase era gia'
+                              in vista — e per chi ascolta ripeteva la fase una
+                              seconda volta, stavolta come lettera nuda e basta:
+                              esattamente il difetto che RoleBadge esiste per
+                              evitare (revisione finale, finding F). */}
+                          <RoleBadge role={a.phase} />
+                          {/* .tnum: la data si confronta riga per riga in colonna, come i
+                              numeri qui accanto — senza cifre tabulari non si allinea. */}
+                          <span className="tnum">
+                            {a.lastWritten ? QUANDO.format(new Date(a.lastWritten)) : 'mai scritta'}
+                          </span>
+                          {' · '}
+                          {/*
+                            Il numero e "acquisti" stanno nello stesso nodo apposta: non e' una
+                            necessita' di accessibilita' (l'accessible name unisce comunque il
+                            testo di tutti i discendenti) ma di test — getByText di Testing
+                            Library concatena solo i nodi-testo DIRETTI di un elemento, saltando
+                            quelli dentro un figlio-elemento. Con <span>{a.purchases}</span>
+                            seguito da testo "acquisti" fuori dallo span, nessun nodo avrebbe
+                            contenuto la stringa intera "3 acquisti" da trovare.
+                          */}
+                          <span className="tnum">{a.purchases} acquisti</span>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={select.isPending}
+                        onClick={() => resume(a.id)}
+                        aria-label={`Riprendi ${a.label}`}
+                        className="ml-auto min-h-11 shrink-0 rounded-full bg-accent px-4 font-bold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+                      >
+                        Riprendi
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/*
+              La colonna destra: l'asta aperta, in grande, oppure l'invito a
+              cominciarne una. Il nome, il conteggio acquisti e "In corso" NON sono
+              ripetuti qui parola per parola come nella riga-pillola sopra: sono la
+              stessa asta, quindi lo stesso testo isolato in un nodo apparirebbe due
+              volte nella pagina, e getByText (qui e nei test di questo file) si aspetta
+              un solo nodo per corrispondenza esatta. Impastare nome e conteggio dentro
+              una frase più lunga evita la duplicazione senza nascondere l'informazione.
+            */}
+            <aside>
+              {openAuction ? (
+                <div className="panel rounded-2xl p-6">
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Asta aperta
+                  </p>
+                  <p className="mt-2 w-exp text-xl font-extrabold">
+                    Stai continuando {openAuction.label}
+                  </p>
+                  <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                    {/* Stessa ragione della riga-pillola sopra: RoleBadge dice
+                        gia' la fase in entrambi i modi (lettera colorata, nome
+                        per esteso in sr-only). "fase D" qui ripeteva la lettera
+                        nuda una seconda volta (revisione finale, finding F). */}
+                    <RoleBadge role={openAuction.phase} />
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Acquisti finora: <span className="tnum">{openAuction.purchases}</span>
+                  </p>
+                  {/*
+                    Due bottoni "Riprendi" convivono sullo schermo quando un'asta e'
+                    aperta (questo e quello della riga-pillola). Il testo visibile puo'
+                    restare "Riprendi" in entrambi perche' il contesto attorno lo
+                    disambigua a chi guarda — ma chi ascolta per elenco di ruoli sente
+                    solo il nome accessibile, senza quel contesto. Un aria-label che
+                    ripetesse esattamente "Riprendi {label}" come la riga darebbe due
+                    voci identiche (e due bottoni indistinguibili anche per una query
+                    per nome nei test): la frase qui e' diversa apposta, e nomina
+                    comunque l'asta.
+                  */}
                   <button
                     type="button"
                     disabled={select.isPending}
-                    onClick={() => resume(a.id)}
-                    aria-label={`Riprendi ${a.label}`}
-                    className="ml-auto min-h-11 shrink-0 rounded-full bg-accent px-4 font-bold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+                    onClick={() => resume(openAuction.id)}
+                    aria-label={`Riprendi l'asta aperta, ${openAuction.label}`}
+                    className="mt-4 min-h-11 w-full rounded-full bg-positive px-4 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     Riprendi
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                </div>
+              ) : list.length === 0 ? (
+                // Deviazione dichiarata dal brief: qui andrebbe un secondo EmptyState
+                // ("altrimenti l'EmptyState esistente"), ma quando la lista e' del
+                // tutto vuota il ramo sopra (list.length === 0, colonna sinistra) mostra
+                // gia' lo stesso EmptyState con lo stesso testo — ripeterlo qui
+                // produrrebbe due nodi identici, ambigui per getByText nei test.
+                // Null e' la scelta deliberata per questo solo caso; con aste presenti
+                // ma nessuna aperta, l'EmptyState sotto resta invece quello del brief.
+                null
+              ) : (
+                <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
+              )}
+            </aside>
+          </div>
 
-        {/*
-          La colonna destra: l'asta aperta, in grande, oppure l'invito a
-          cominciarne una. Il nome, il conteggio acquisti e "In corso" NON sono
-          ripetuti qui parola per parola come nella riga-pillola sopra: sono la
-          stessa asta, quindi lo stesso testo isolato in un nodo apparirebbe due
-          volte nella pagina, e getByText (qui e nei test di questo file) si aspetta
-          un solo nodo per corrispondenza esatta. Impastare nome e conteggio dentro
-          una frase più lunga evita la duplicazione senza nascondere l'informazione.
-        */}
-        <aside>
-          {openAuction ? (
-            <div className="rounded-2xl border border-line-strong bg-surface p-6">
-              <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                Asta aperta
-              </p>
-              <p className="mt-2 w-exp text-xl font-extrabold">
-                Stai continuando {openAuction.label}
-              </p>
-              <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                {/* Stessa ragione della riga-pillola sopra: RoleBadge dice
-                    gia' la fase in entrambi i modi (lettera colorata, nome
-                    per esteso in sr-only). "fase D" qui ripeteva la lettera
-                    nuda una seconda volta (revisione finale, finding F). */}
-                <RoleBadge role={openAuction.phase} />
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Acquisti finora: <span className="tnum">{openAuction.purchases}</span>
-              </p>
-              {/*
-                Due bottoni "Riprendi" convivono sullo schermo quando un'asta e'
-                aperta (questo e quello della riga-pillola). Il testo visibile puo'
-                restare "Riprendi" in entrambi perche' il contesto attorno lo
-                disambigua a chi guarda — ma chi ascolta per elenco di ruoli sente
-                solo il nome accessibile, senza quel contesto. Un aria-label che
-                ripetesse esattamente "Riprendi {label}" come la riga darebbe due
-                voci identiche (e due bottoni indistinguibili anche per una query
-                per nome nei test): la frase qui e' diversa apposta, e nomina
-                comunque l'asta.
-              */}
-              <button
-                type="button"
-                disabled={select.isPending}
-                onClick={() => resume(openAuction.id)}
-                aria-label={`Riprendi l'asta aperta, ${openAuction.label}`}
-                className="mt-4 min-h-11 w-full rounded-full bg-positive px-4 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                Riprendi
-              </button>
-            </div>
-          ) : list.length === 0 ? (
-            // Deviazione dichiarata dal brief: qui andrebbe un secondo EmptyState
-            // ("altrimenti l'EmptyState esistente"), ma quando la lista e' del
-            // tutto vuota il ramo sopra (list.length === 0, colonna sinistra) mostra
-            // gia' lo stesso EmptyState con lo stesso testo — ripeterlo qui
-            // produrrebbe due nodi identici, ambigui per getByText nei test.
-            // Null e' la scelta deliberata per questo solo caso; con aste presenti
-            // ma nessuna aperta, l'EmptyState sotto resta invece quello del brief.
-            null
-          ) : (
-            <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
-          )}
-        </aside>
-      </div>
-
-      {alertMessage ? (
-        // role="alert", non un secondo role="status": l'unica live region
-        // ambientale della pagina resta AuctionAnnouncer (dentro AuctionRoute).
-        <p role="alert" className="mt-4 text-sm font-bold text-destructive">
-          {alertMessage}
-        </p>
-      ) : null}
+          {alertMessage ? (
+            // role="alert", non un secondo role="status": l'unica live region
+            // ambientale della pagina resta AuctionAnnouncer (dentro AuctionRoute).
+            <p role="alert" className="panel mt-4 rounded-xl p-4 text-sm font-bold text-destructive">
+              {alertMessage}
+            </p>
+          ) : null}
+          </>
+      )}
     </AppShell>
   );
 }

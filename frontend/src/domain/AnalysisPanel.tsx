@@ -42,7 +42,7 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse }) {
   const shownDrivers = valuation.drivers.filter((d) => d.explanation.trim().length > 0);
 
   return (
-    <section aria-labelledby={HEADING_ID} className="border border-line p-5">
+    <section aria-labelledby={HEADING_ID} className="panel rounded-2xl p-5">
       <h2 id={HEADING_ID} className="text-sm font-bold text-muted-foreground">
         Perché questo prezzo
       </h2>
