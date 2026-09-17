@@ -99,6 +99,20 @@ describe('AppShell', () => {
     expect(container.querySelectorAll('.pointer-events-none.fixed svg')).toHaveLength(1);
   });
 
+  /** Il campo centrato sui contenuti, non sulla finestra: comincia dove finisce la barra. */
+  it('con la barra laterale il campo comincia dopo la barra, larga quanto lui la sposta', () => {
+    const { container, getByTestId } = render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
+    const offset = getByTestId('pitch').className.match(/md:left-(\d+)/)?.[1];
+    const width = container.querySelector('header')?.className.match(/md:w-(\d+)/)?.[1];
+    expect(offset).toBeDefined();
+    expect(offset).toBe(width);
+  });
+
+  it('con la barra in alto il campo occupa tutta la finestra', () => {
+    const { getByTestId } = render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    expect(getByTestId('pitch').className).toContain('inset-0');
+  });
+
   it('il nome e\' il logo, e resta una parola sola per chi ascolta', () => {
     render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
     const link = screen.getByRole('link', { name: 'FantaAgent' });

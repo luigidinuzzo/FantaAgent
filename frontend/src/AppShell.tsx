@@ -73,7 +73,11 @@ export function AppShell({
       {/* Il campo e' uno solo per tutte le schermate, proiezione compresa: il
           testo sta nei pannelli, quindi le linee non devono piu' farsi
           discrete in un posto e visibili in un altro. */}
-      <PitchLines />
+      {/* Con la barra laterale il campo comincia dove finisce la barra: su tutta
+          la finestra ne finiva sotto un pezzo, e la metà campo cadeva spostata
+          rispetto alle card. md:left-80 va tenuto uguale a md:w-80 della barra
+          qui sotto; sul telefono la barra sta sopra e il campo torna intero. */}
+      <PitchLines className={chrome === 'side' ? 'inset-y-0 right-0 left-0 md:left-80' : 'inset-0'} />
 
       {chrome === 'side' && (
         <div className="flex min-h-dvh flex-col md:flex-row">
