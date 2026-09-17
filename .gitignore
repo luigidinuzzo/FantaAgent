@@ -30,8 +30,11 @@ res/league-members.yml
 res/auction-settings.yml
 # I registri d'asta: ogni acquisto, con prezzo e acquirente.
 res/auctions/
+# Le aste cancellate dalla home: stessi registri, spostati nel cestino.
+res/auctions-cestino/
 res/dossiers/
 data/auctions/
+data/auctions-cestino/
 data/dossiers/
 *.jsonl
 

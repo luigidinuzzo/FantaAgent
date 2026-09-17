@@ -109,9 +109,20 @@ I file di configurazione vivono in `res/`.
 I file XLSX vanno scaricati dall'area download di Fantacalcio.it: non sono inclusi
 qui perché non sono miei da ridistribuire.
 
-**Ogni asta è indipendente.** Quando ne crei una, partecipanti e regole vengono
-copiati dentro la sua cartella: riconfigurare una nuova asta non cambia più né i
-nomi né i numeri di quelle già concluse.
+**Ogni asta è indipendente.** Vive in `res/auctions/<id>/`, creata quando si conferma
+«Salva e comincia l'asta»: `events.jsonl` (il registro), `league-members.yml`,
+`league-settings.yml`, `league-rules.yml` (crediti e slot per ruolo),
+`auction-settings.yml` (timer e avviso) e `rose.csv`, riscritto a ogni download
+dell'export. Le squadre sono i partecipanti. Riconfigurare una nuova asta non cambia
+né i nomi né i numeri di quelle già esistenti.
+
+I file in `res/` fuori da `auctions/`, insieme a `application.yml`, sono il modello da
+cui parte ogni nuova asta: la schermata «Crea asta» ne propone i valori e li lascia
+modificare, ma non li riscrive. Le aste create prima che esistessero `league-rules.yml`
+e `auction-settings.yml` usano i valori del modello.
+
+**Cancellare un'asta** dalla home sposta la sua cartella in `res/auctions-cestino/`:
+per recuperarla basta rimetterla sotto `res/auctions/`.
 
 ---
 
