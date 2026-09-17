@@ -1,5 +1,7 @@
 package com.fantaagent.application.port.out;
 
+import com.fantaagent.config.AuctionSettings;
+import com.fantaagent.config.LeagueRulesSettings;
 import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.domain.league.Participant;
 
@@ -63,4 +65,25 @@ public interface AuctionArchive {
 
     /** Fissa le regole di punteggio di quell'asta. */
     void saveScoring(String auctionId, ScoringSettings settings);
+
+    /** Crediti e slot dell'asta; vuoto per le aste create prima che esistessero. */
+    Optional<LeagueRulesSettings> rules(String auctionId);
+
+    /** Chiamato solo alla creazione: le regole di un'asta aperta non cambiano. */
+    void saveRules(String auctionId, LeagueRulesSettings settings);
+
+    Optional<AuctionSettings> bidder(String auctionId);
+
+    void saveBidder(String auctionId, AuctionSettings settings);
+
+    /** L'ultimo export scaricato, come {@code rose.csv} nella cartella dell'asta. */
+    void saveExport(String auctionId, String csv);
+
+    /**
+     * Toglie l'asta dall'archivio spostandone la cartella nel cestino, intera e con una
+     * sola mossa: il registro non si tronca e non si riscrive.
+     *
+     * @throws IllegalArgumentException se l'asta non esiste
+     */
+    void delete(String auctionId);
 }
