@@ -32,7 +32,7 @@ function GavelIcon() {
     <svg
       aria-hidden="true"
       viewBox="0 0 48 48"
-      className="h-12 w-12 shrink-0 text-accent"
+      className="h-14 w-14 shrink-0 text-accent"
       fill="none"
       stroke="currentColor"
       strokeWidth="3"
@@ -161,27 +161,31 @@ export function HomeRoute() {
               duplicherebbe. */}
           <h1 ref={headingRef} tabIndex={-1} className="sr-only">Le tue aste</h1>
 
-          {/* Larghezza limitata e centrata, come il campo dietro: su uno schermo largo
-              il nome e i bottoni di una riga finivano a 1200px l'uno dall'altro. La
+          {/* Larghezza limitata e centrata, come il campo dietro, ma ampia quanto il
+              campo stesso: i pannelli lo coprono invece di galleggiarci in mezzo.
+              Oltre questa misura, su uno schermo molto largo, nome e bottoni di una
+              riga finirebbero troppo lontani. La
               colonna destra esiste solo con un'asta aperta: senza, non ha niente di
               vero da dire. */}
           <div
             className={`mx-auto grid gap-6 ${
-              openAuction ? 'max-w-6xl lg:grid-cols-[1fr_22rem]' : 'max-w-4xl'
+              openAuction ? 'max-w-[96rem] lg:grid-cols-[1fr_24rem]' : 'max-w-7xl'
             }`}
           >
-            <div>
+            {/* min-w-0: senza, la colonna si allarga fino al contenuto piu' largo
+                di una riga e sul telefono la pagina scorre di lato. */}
+            <div className="min-w-0">
               {/* La card-eroe: un bersaglio solo, grande, in cima alla colonna. "Crea
                   asta" chiude PRIMA l'asta eventualmente aperta (vedi startNew) e solo
                   dopo va alle impostazioni: non crea niente da sola, l'asta nasce quando
                   le impostazioni vengono confermate. Creare qui lascerebbe dietro aste
                   vuote per chi si ferma alla schermata di conferma — e' gia' successo, ed
                   e' il motivo per cui il flusso e' fatto cosi'. */}
-              <div className="panel flex flex-wrap items-center gap-6 rounded-2xl p-6">
+              <div className="panel flex flex-wrap items-center gap-4 rounded-2xl p-5 sm:gap-6 sm:p-8">
                 <GavelIcon />
                 <div className="min-w-0 flex-1">
-                  <p className="w-exp text-lg font-extrabold">Comincia una nuova asta</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="w-exp text-xl font-extrabold sm:text-2xl">Comincia una nuova asta</p>
+                  <p className="mt-2 text-base text-muted-foreground">
                     Scegli partecipanti, regole e punteggio: ogni asta tiene i suoi.
                   </p>
                 </div>
@@ -189,7 +193,7 @@ export function HomeRoute() {
                   type="button"
                   onClick={startNew}
                   disabled={leave.isPending}
-                  className="min-h-11 shrink-0 rounded-full bg-positive px-6 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="min-h-12 shrink-0 rounded-full bg-positive px-8 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
                   Crea asta
                 </button>
@@ -206,11 +210,11 @@ export function HomeRoute() {
                   <EmptyState>{NESSUNA_ASTA_TESTO}</EmptyState>
                 </div>
               ) : (
-                <ul className="mt-6 space-y-2">
+                <ul className="mt-6 space-y-3">
                   {list.map((a) => (
                     <li
                       key={a.id}
-                      className="panel flex items-center gap-4 rounded-xl px-4 py-3"
+                      className="panel flex items-center gap-3 rounded-2xl px-4 py-4 sm:gap-4 sm:px-6 sm:py-5"
                     >
                       {/* Il pallino segna solo l'asta in corso, ed e' decorazione: il
                           fatto sta nel testo "In corso". Grigio su tutte le righe non
@@ -222,7 +226,7 @@ export function HomeRoute() {
                         }`}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="font-bold">
+                        <p className="text-lg font-bold">
                           {a.label}
                           {a.selected ? (
                             // Parita' con la home Thymeleaf (che segna la riga con la classe
@@ -234,7 +238,7 @@ export function HomeRoute() {
                             <span className="ml-2 text-xs font-bold text-accent">In corso</span>
                           ) : null}
                         </p>
-                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-base text-muted-foreground">
                           <PhaseLabel role={a.phase} />
                           {/* .tnum: la data si confronta riga per riga in colonna, come i
                               numeri qui accanto — senza cifre tabulari non si allinea. Il
@@ -271,7 +275,7 @@ export function HomeRoute() {
                         aria-label={`Elimina ${a.label}`}
                         onClick={() => { remove.reset(); setToDelete(a); }}
                         // ml-2: un po' di distanza da «Riprendi», che sta subito accanto.
-                        className="ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                        className="flex h-11 w-11 sm:ml-2 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                       >
                         <TrashIcon />
                       </button>
@@ -291,17 +295,17 @@ export function HomeRoute() {
             */}
             {openAuction ? (
               <aside>
-                <div className="panel rounded-2xl p-6">
-                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                <div className="panel rounded-2xl p-8">
+                  <p className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
                     Asta aperta
                   </p>
-                  <p className="mt-2 w-exp text-xl font-extrabold">
+                  <p className="mt-2 w-exp text-2xl font-extrabold">
                     Stai continuando {openAuction.label}
                   </p>
-                  <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  <p className="mt-3 flex items-center gap-2 text-base text-muted-foreground">
                     <PhaseLabel role={openAuction.phase} />
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="mt-1 text-base text-muted-foreground">
                     Acquisti finora: <span className="tnum">{openAuction.purchases}</span>
                   </p>
                   {/*
@@ -320,7 +324,7 @@ export function HomeRoute() {
                     disabled={select.isPending}
                     onClick={() => resume(openAuction.id)}
                     aria-label={`Riprendi l'asta aperta, ${openAuction.label}`}
-                    className="mt-4 min-h-11 w-full rounded-full bg-positive px-4 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="mt-6 min-h-12 w-full rounded-full bg-positive px-4 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     Riprendi
                   </button>
