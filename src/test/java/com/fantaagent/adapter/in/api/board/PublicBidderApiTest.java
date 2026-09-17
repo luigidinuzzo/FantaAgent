@@ -3,7 +3,7 @@ package com.fantaagent.adapter.in.api.board;
 import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.config.AuctionSettings;
-import com.fantaagent.config.AuctionSettingsHolder;
+import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +45,7 @@ class PublicBidderApiTest {
     private AuctionService auction;
 
     @MockitoBean
-    private AuctionSettingsHolder settings;
+    private AuctionRuntime runtime;
 
     private MockMvc mvc;
 
@@ -53,7 +53,7 @@ class PublicBidderApiTest {
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
         when(catalog.byId("d1")).thenReturn(Optional.of(BASTONI));
-        when(settings.get()).thenReturn(AuctionSettings.DEFAULTS);
+        when(runtime.bidder()).thenReturn(AuctionSettings.DEFAULTS);
     }
 
     /**
@@ -64,7 +64,7 @@ class PublicBidderApiTest {
      */
     @Test
     void portaIlGiocatoreEleImpostazioniDelTimer() throws Exception {
-        when(settings.get()).thenReturn(new AuctionSettings(9, false));
+        when(runtime.bidder()).thenReturn(new AuctionSettings(9, false));
 
         mvc.perform(get(URL))
                 .andExpect(status().isOk())

@@ -3,6 +3,7 @@ package com.fantaagent.adapter.in.api;
 import com.fantaagent.adapter.in.api.dto.AuctionsDtos;
 import com.fantaagent.application.service.AuctionRuntime;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,6 +52,22 @@ public class AuctionsApi {
             // di valutazione, che puo' rifiutare un guasto di configurazione vero con
             // la stessa eccezione. Scartare la causa renderebbe i due casi
             // indistinguibili nei log — la si incatena qui.
+            throw new UnknownAuctionException(auctionId, e);
+        }
+    }
+
+    /**
+     * Toglie un'asta dall'elenco spostandone la cartella nel cestino. Non passa da
+     * AuctionGuard per lo stesso motivo di select: l'asta da cancellare e' spesso una
+     * diversa da quella aperta.
+     */
+    @DeleteMapping("/{auctionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable String leagueId, @PathVariable String auctionId) {
+        leagues.check(leagueId);
+        try {
+            runtime.delete(auctionId);
+        } catch (IllegalArgumentException e) {
             throw new UnknownAuctionException(auctionId, e);
         }
     }

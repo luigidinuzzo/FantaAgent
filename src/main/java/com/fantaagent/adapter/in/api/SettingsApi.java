@@ -2,17 +2,16 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.adapter.in.api.dto.SettingsDtos;
 import com.fantaagent.application.service.AuctionRuntime;
+import com.fantaagent.application.service.AuctionSetup;
 import com.fantaagent.config.AuctionSettings;
-import com.fantaagent.config.AuctionSettingsHolder;
-import com.fantaagent.config.AuctionSettingsStore;
 import com.fantaagent.config.AuctionSettingsValidator;
-import com.fantaagent.config.LeagueMembersSettingsStore;
 import com.fantaagent.config.LeagueMembersSettingsValidator;
+import com.fantaagent.config.LeagueRulesSettings;
+import com.fantaagent.config.LeagueRulesValidator;
 import com.fantaagent.config.ScoringSettings;
-import com.fantaagent.config.ScoringSettingsStore;
 import com.fantaagent.config.ScoringSettingsValidator;
-import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
+import com.fantaagent.domain.player.Role;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,24 +20,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Lettura e scrittura delle impostazioni, e la nascita di un'asta.
  *
- * <p>L'ordine delle scritture non e' un dettaglio, ed e' lo stesso che
- * {@code SettingsController} segue: i punteggi prima (solo in preparazione), poi i
- * partecipanti nella configurazione generale, poi nell'asta aperta se c'e', poi le
- * preferenze del battitore, poi {@link AuctionRuntime#rebuild()} che pubblica la catena
- * nuova in blocco, e solo alla fine la creazione dell'asta. Ricostruire dopo aver
- * creato significherebbe far nascere un'asta con la catena vecchia.
+ * <p><b>Tutto e' dell'asta.</b> Si legge dallo snapshot del runtime — l'asta aperta, o
+ * il modello quando non ce n'e' una — e si scrive solo nella cartella dell'asta: in
+ * preparazione nasce con {@link AuctionRuntime#createNew(AuctionSetup)}, gia' validata
+ * per intero; ad asta aperta cambiano solo nomi e preferenze del battitore. Nessun file
+ * globale viene riscritto da qui: quelli sono il modello della prossima asta.
  *
  * <p><b>Ad asta aperta i parametri di punteggio non vengono nemmeno letti.</b> Non e'
  * ridondante rispetto ai campi disabilitati nell'interfaccia: quelli impediscono di
  * modificarli dal browser, questo impedisce di modificarli, punto. Cambiarli a rosa
- * comprata riscriverebbe i numeri con cui quella rosa e' stata pagata.
+ * comprata riscriverebbe i numeri con cui quella rosa e' stata pagata. Lo stesso vale
+ * per crediti, slot e numero di partecipanti.
  */
 @RestController
 @RequestMapping("/api/leagues/{leagueId}/settings")
@@ -55,37 +56,22 @@ public class SettingsApi {
 
     private final LeagueGuard leagues;
     private final AuctionRuntime runtime;
-    private final ScoringSettingsStore scoringStore;
-    private final LeagueMembersSettingsStore membersStore;
-    private final AuctionSettingsStore auctionStore;
-    private final AuctionSettingsHolder auctionSettings;
-    private final LeagueRules rules;
 
-    public SettingsApi(LeagueGuard leagues, AuctionRuntime runtime,
-                       ScoringSettingsStore scoringStore,
-                       LeagueMembersSettingsStore membersStore,
-                       AuctionSettingsStore auctionStore,
-                       AuctionSettingsHolder auctionSettings,
-                       LeagueRules rules) {
+    public SettingsApi(LeagueGuard leagues, AuctionRuntime runtime) {
         this.leagues = leagues;
         this.runtime = runtime;
-        this.scoringStore = scoringStore;
-        this.membersStore = membersStore;
-        this.auctionStore = auctionStore;
-        this.auctionSettings = auctionSettings;
-        this.rules = rules;
     }
 
     @GetMapping
     public SettingsDtos.SettingsResponse read(@PathVariable String leagueId) {
         leagues.check(leagueId);
-        AuctionSettings bidder = auctionSettings.get();
+        AuctionSettings bidder = runtime.bidder();
         return new SettingsDtos.SettingsResponse(
                 new SettingsDtos.BidderSettings(bidder.bidTimerSeconds(), bidder.beepEnabled()),
-                runtime.snapshot().participants().stream().map(SettingsApi::cardOf).toList(),
-                sectionOf(currentScoring()),
+                runtime.participants().stream().map(SettingsApi::cardOf).toList(),
+                sectionOf(runtime.scoringSettings()),
                 runtime.hasAuction(),
-                SettingsDtos.LeagueRulesView.from(rules));
+                SettingsDtos.LeagueRulesView.from(runtime.rules()));
     }
 
     @PutMapping
@@ -110,10 +96,8 @@ public class SettingsApi {
             }
         }
 
-        // Nessuna lettura di currentScoring() qui quando non si sta preparando: ad asta
-        // aperta i parametri di punteggio non si toccano, e questo campo resta null e
-        // inutilizzato fino alla fine del metodo — leggerli comunque, anche solo per
-        // scartarli, contraddirebbe esattamente l'invariante appena documentato.
+        // Ad asta aperta il punteggio del corpo non si legge nemmeno: i parametri non si
+        // toccano, e questo campo resta null e inutilizzato fino alla fine del metodo.
         ScoringSettings scoring = null;
         if (preparing) {
             // Una chiave "scoring" assente (corpo malformato, non un modulo compilato
@@ -158,36 +142,48 @@ public class SettingsApi {
             mergeErrors(errors, AuctionSettingsValidator.validateByField(bidder));
         }
 
+        LeagueRulesSettings rules = null;
+        if (preparing) {
+            if (body.rules() == null) {
+                addError(errors, "rules", "Le regole della lega sono obbligatorie.");
+            } else {
+                rules = new LeagueRulesSettings(body.rules().budget(), rolesOf(body.rules().slots()));
+                mergeErrors(errors, LeagueRulesValidator.validateByField(rules, members.size()));
+            }
+        } else if (!sameIds(members, runtime.participants())) {
+            // Il numero di squadre e' il numero di partecipanti: aggiungerne o toglierne
+            // uno a meta' serata ricalcolerebbe budget e rose gia' pagate. L'interfaccia
+            // non lo offre; il server non si fida.
+            addError(errors, "participants",
+                    "Ad asta aperta non si aggiungono né si tolgono partecipanti.");
+        }
+
         if (!errors.isEmpty()) {
             throw new InvalidSettingsException(errors);
         }
 
         if (preparing) {
-            scoringStore.save(scoring);
+            return new SettingsDtos.SaveResult(runtime.createNew(
+                    new AuctionSetup(name, rules, members, scoring, bidder)));
         }
-        // La configurazione generale e' il MODELLO per la prossima asta, non i
-        // partecipanti di quella aperta: quelli vivono nell'asta, e riconfigurarne una
-        // nuova non deve riscrivere i nomi mostrati per le precedenti.
-        membersStore.save(members);
-        if (!preparing) {
-            runtime.setParticipants(members);
-        }
-        auctionStore.save(bidder);
-        auctionSettings.set(bidder);
-        runtime.rebuild();
-
-        return new SettingsDtos.SaveResult(preparing ? runtime.createNew(name) : null);
+        runtime.setParticipants(members);
+        runtime.setBidder(bidder);
+        return new SettingsDtos.SaveResult(null);
     }
 
-    private ScoringSettings currentScoring() {
-        return scoringStore.load().orElseGet(
-                () -> ScoringSettings.from(runtime.snapshot().chain().scoring(), defenceActive()));
+    /** Una mappa assente o con un ruolo mancante diventa un ruolo a zero, che il validatore nomina. */
+    private static Map<Role, Integer> rolesOf(Map<Role, Integer> slots) {
+        Map<Role, Integer> out = new EnumMap<>(Role.class);
+        for (Role role : Role.values()) {
+            out.put(role, slots == null ? 0 : slots.getOrDefault(role, 0));
+        }
+        return out;
     }
 
-    /** Attivo se almeno un gradino porta un bonus: la stessa prova di SettingsController. */
-    private boolean defenceActive() {
-        return runtime.snapshot().chain().scoring().defenceModifier().thresholds().stream()
-                .anyMatch(t -> t.bonus() != 0.0);
+    private static boolean sameIds(List<Participant> a, List<Participant> b) {
+        return a.size() == b.size()
+                && a.stream().map(Participant::id).collect(Collectors.toSet())
+                        .equals(b.stream().map(Participant::id).collect(Collectors.toSet()));
     }
 
     private static <T> List<T> orEmpty(List<T> list) {

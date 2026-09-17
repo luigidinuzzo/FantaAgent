@@ -5,7 +5,7 @@ import com.fantaagent.adapter.in.api.LeagueGuard;
 import com.fantaagent.adapter.in.api.UnknownPlayerException;
 import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.config.AuctionSettings;
-import com.fantaagent.config.AuctionSettingsHolder;
+import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.domain.player.Player;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,14 +29,14 @@ public class PublicBidderApi {
     private final LeagueGuard leagues;
     private final AuctionGuard auctions;
     private final PlayerCatalog catalog;
-    private final AuctionSettingsHolder settings;
+    private final AuctionRuntime runtime;
 
     public PublicBidderApi(LeagueGuard leagues, AuctionGuard auctions,
-                           PlayerCatalog catalog, AuctionSettingsHolder settings) {
+                           PlayerCatalog catalog, AuctionRuntime runtime) {
         this.leagues = leagues;
         this.auctions = auctions;
         this.catalog = catalog;
-        this.settings = settings;
+        this.runtime = runtime;
     }
 
     @GetMapping("/bidder/{playerId}")
@@ -47,7 +47,8 @@ public class PublicBidderApi {
         auctions.check(auctionId);
         Player player = catalog.byId(playerId)
                 .orElseThrow(() -> new UnknownPlayerException(playerId));
-        AuctionSettings current = settings.get();
+        // Le preferenze dell'asta aperta, non piu' un valore globale.
+        AuctionSettings current = runtime.bidder();
         return new BoardDtos.PublicBidderResponse(player.id(), player.name(),
                 player.team(), player.role(), player.listPrice(),
                 current.bidTimerSeconds(), current.beepEnabled());

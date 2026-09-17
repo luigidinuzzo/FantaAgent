@@ -1,13 +1,16 @@
 package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.AuctionRuntime;
+import com.fantaagent.application.service.AuctionSetup;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.config.AuctionSettingsStore;
 import com.fantaagent.config.LeagueMembersSettingsStore;
 import com.fantaagent.config.ScoringSettingsStore;
+import com.fantaagent.domain.player.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -17,7 +20,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import static org.mockito.ArgumentMatchers.anyString;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,14 +33,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * La nascita di un'asta al salvataggio, con {@link AuctionRuntime} finto: e' l'unico
- * modo per controllare le due modalita' (nessun'asta aperta / una gia' aperta) senza
- * dipendere da cosa l'archivio su disco contiene davvero, che e' invece cio' che
- * {@link SettingsApiTest} verifica con il runtime vero.
- *
- * <p>I tre store di configurazione sono finti anche loro, come in
- * {@code SettingsControllerTest}: store veri scriverebbero davvero nella data-dir del
- * progetto, lasciando file non tracciati dopo ogni esecuzione dei test.
+ * I salvataggi che arrivano davvero a scrivere, con un {@link AuctionRuntime} finto: cosi'
+ * le due modalita' — preparazione e asta aperta — si controllano senza dipendere da cosa
+ * c'e' nell'archivio.
  */
 @SpringBootTest
 @ActiveProfiles("dev")
@@ -47,55 +49,69 @@ class SettingsApiCreationTest {
     @MockitoBean
     private AuctionRuntime runtime;
 
-    @MockitoBean
-    private AuctionSettingsHolder auctionSettings;
-
-    @MockitoBean
-    private ScoringSettingsStore scoringStore;
-
-    @MockitoBean
-    private LeagueMembersSettingsStore membersStore;
-
-    @MockitoBean
-    private AuctionSettingsStore auctionStore;
-
     private MockMvc mvc;
 
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
-        when(auctionSettings.get()).thenReturn(new AuctionSettings(5, true));
     }
 
     @Test
-    void senzaAstaApertaIlSalvataggioNeCreaUna() throws Exception {
+    void inPreparazioneCreaLAstaConRegolePartecipantiPunteggioEBattitore() throws Exception {
         when(runtime.hasAuction()).thenReturn(false);
-        when(runtime.createNew("Serata di prova")).thenReturn("2026-09-12");
+        when(runtime.createNew(any(AuctionSetup.class))).thenReturn("2026-09-17");
 
         mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
-                        .content(SettingsBodies.valid("Serata di prova", 5)))
+                        .content(SettingsBodies.valid("Serata", 400, Map.of("P", 2, "D", 7, "C", 7, "A", 5))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.auctionId").value("2026-09-12"));
+                .andExpect(jsonPath("$.auctionId").value("2026-09-17"));
 
-        verify(runtime).createNew("Serata di prova");
+        ArgumentCaptor<AuctionSetup> captor = ArgumentCaptor.forClass(AuctionSetup.class);
+        verify(runtime).createNew(captor.capture());
+        assertThat(captor.getValue().name()).isEqualTo("Serata");
+        assertThat(captor.getValue().rules().budget()).isEqualTo(400);
+        assertThat(captor.getValue().rules().slots()).containsEntry(Role.D, 7);
+        assertThat(captor.getValue().participants()).hasSize(2);
+        assertThat(captor.getValue().bidder()).isEqualTo(new AuctionSettings(5, true));
+        verify(runtime, never()).setParticipants(anyList());
+        verify(runtime, never()).setBidder(any());
     }
 
-    /**
-     * Ad asta aperta i parametri di punteggio non vengono nemmeno letti, e nessuna
-     * seconda asta nasce: e' la semantica che SettingsController documenta, e questo
-     * test e' cio' che impedisce all'API di divergerne.
-     */
     @Test
-    void conUnAstaApertaSalvaSenzaCrearneUnAltra() throws Exception {
+    void salvareNonScriveNessunFileGlobale() {
+        // SettingsApi non dipende piu' dagli store globali: se tornasse a scriverli,
+        // dovrebbe tornare a riceverli nel costruttore, e questo test lo vedrebbe.
+        assertThat(SettingsApi.class.getConstructors()[0].getParameterTypes())
+                .doesNotContain(ScoringSettingsStore.class, LeagueMembersSettingsStore.class,
+                        AuctionSettingsStore.class, AuctionSettingsHolder.class);
+    }
+
+    @Test
+    void adAstaApertaAggiornaNomiEBattitoreEIgnoraLeRegole() throws Exception {
         when(runtime.hasAuction()).thenReturn(true);
+        when(runtime.participants()).thenReturn(SettingsBodies.PARTICIPANTS);
 
         mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
-                        .content(SettingsBodies.valid("", 5)))
+                        .content(SettingsBodies.valid("", 1, Map.of("P", 99, "D", 99, "C", 99, "A", 99))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auctionId").doesNotExist());
 
-        verify(runtime, never()).createNew(anyString());
-        verify(runtime).setParticipants(org.mockito.ArgumentMatchers.anyList());
-        verify(runtime).rebuild();
+        verify(runtime).setParticipants(anyList());
+        verify(runtime).setBidder(any(AuctionSettings.class));
+        verify(runtime, never()).createNew(any(AuctionSetup.class));
+    }
+
+    @Test
+    void adAstaApertaUnPartecipanteInPiuVieneRifiutato() throws Exception {
+        when(runtime.hasAuction()).thenReturn(true);
+        when(runtime.participants()).thenReturn(SettingsBodies.PARTICIPANTS.subList(0, 1));
+
+        mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
+                        .content(SettingsBodies.valid("", 500, SettingsBodies.DEFAULT_SLOTS)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors.participants[0]")
+                        .value("Ad asta aperta non si aggiungono né si tolgono partecipanti."));
+        verify(runtime, never()).setParticipants(anyList());
+        verify(runtime, never()).setBidder(any());
     }
 }

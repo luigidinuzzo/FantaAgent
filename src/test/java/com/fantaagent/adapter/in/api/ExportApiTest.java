@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.api;
 
+import com.fantaagent.application.port.out.AuctionArchive;
 import com.fantaagent.application.service.AuctionService;
 import com.fantaagent.domain.auction.AuctionState;
 import com.fantaagent.domain.auction.Squad;
@@ -13,14 +14,22 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -44,6 +53,9 @@ class ExportApiTest {
 
     @MockitoBean
     private AuctionService auction;
+
+    @MockitoBean
+    private AuctionArchive archive;
 
     private MockMvc mvc;
 
@@ -141,5 +153,21 @@ class ExportApiTest {
                 .andReturn().getResponse().getHeader("Content-Disposition");
 
         assertThat(header).contains("filename*=UTF-8''rose-Serie%20citt%C3%A0.csv");
+    }
+
+    @Test
+    void scaricareScriveAncheRoseCsvNellaCartellaDellAsta() throws Exception {
+        MvcResult result = mvc.perform(get("/api/leagues/default/auctions/corrente/export.csv"))
+                .andExpect(status().isOk()).andReturn();
+        verify(archive).saveExport(eq("2026-09-07"),
+                eq(result.getResponse().getContentAsString(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    void seLaScritturaSuDiscoFallisceIlDownloadParteComunque() throws Exception {
+        doThrow(new UncheckedIOException(new IOException("disco pieno")))
+                .when(archive).saveExport(anyString(), anyString());
+        mvc.perform(get("/api/leagues/default/auctions/corrente/export.csv"))
+                .andExpect(status().isOk());
     }
 }

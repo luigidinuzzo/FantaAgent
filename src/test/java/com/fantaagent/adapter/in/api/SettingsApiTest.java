@@ -2,7 +2,6 @@ package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.config.AuctionSettings;
-import com.fantaagent.config.AuctionSettingsHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +12,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+
+import java.util.Map;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,9 +38,6 @@ class SettingsApiTest {
     @Autowired
     private WebApplicationContext context;
 
-    @MockitoBean
-    private AuctionSettingsHolder auctionSettings;
-
     private MockMvc mvc;
 
     @Autowired
@@ -48,15 +46,15 @@ class SettingsApiTest {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
-        when(auctionSettings.get()).thenReturn(new AuctionSettings(9, false));
     }
 
     @Test
     void restituisceLeImpostazioniCorrenti() throws Exception {
         mvc.perform(get(URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.bidder.bidTimerSeconds").value(9))
-                .andExpect(jsonPath("$.bidder.beepEnabled").value(false))
+                // Nessuna asta aperta e nessun file in data/: le preferenze del modello.
+                .andExpect(jsonPath("$.bidder.bidTimerSeconds").value(AuctionSettings.DEFAULTS.bidTimerSeconds()))
+                .andExpect(jsonPath("$.bidder.beepEnabled").value(AuctionSettings.DEFAULTS.beepEnabled()))
                 .andExpect(jsonPath("$.participants").isArray())
                 .andExpect(jsonPath("$.scoring.defendersCounted").isNumber())
                 .andExpect(jsonPath("$.auctionOpen").isBoolean());
@@ -169,5 +167,31 @@ class SettingsApiTest {
                 .andExpect(jsonPath("$.type")
                         .value("https://fantaagent.local/problems/invalid-settings"))
                 .andExpect(jsonPath("$.errors.scoring[0]").isString());
+    }
+
+    @Test
+    void regoleFuoriLimiteTornanoSottoLaLoroChiave() throws Exception {
+        mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
+                        .content(SettingsBodies.valid("Serata", 0, Map.of("P", 0, "D", 8, "C", 8, "A", 31))))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors.budget[0]")
+                        .value("I crediti per squadra devono essere almeno 1: indicati 0."))
+                .andExpect(jsonPath("$.errors['slots[P]']").exists())
+                .andExpect(jsonPath("$.errors['slots[A]']").exists());
+    }
+
+    @Test
+    void senzaRegoleInPreparazioneTornaUn422() throws Exception {
+        mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
+                        .content(SettingsBodies.withoutRules("Serata")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors.rules[0]").value("Le regole della lega sono obbligatorie."));
+    }
+
+    @Test
+    void leRegoleLetteHannoSquadrePariAiPartecipanti() throws Exception {
+        mvc.perform(get(URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.rules.participants").value(runtime.participants().size()));
     }
 }

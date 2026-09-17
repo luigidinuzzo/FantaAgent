@@ -1,6 +1,9 @@
 package com.fantaagent.adapter.in.api;
 
+import com.fantaagent.application.port.out.AuctionArchive;
 import com.fantaagent.application.service.AuctionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fantaagent.application.service.RosterCsvExporter;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -28,14 +31,19 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/leagues/{leagueId}/auctions/{auctionId}")
 public class ExportApi {
 
+    private static final Logger log = LoggerFactory.getLogger(ExportApi.class);
+
     private final LeagueGuard leagues;
     private final AuctionGuard auctions;
     private final AuctionService auction;
+    private final AuctionArchive archive;
 
-    public ExportApi(LeagueGuard leagues, AuctionGuard auctions, AuctionService auction) {
+    public ExportApi(LeagueGuard leagues, AuctionGuard auctions, AuctionService auction,
+                     AuctionArchive archive) {
         this.leagues = leagues;
         this.auctions = auctions;
         this.auction = auction;
+        this.archive = archive;
     }
 
     @GetMapping(value = "/export.csv", produces = "text/csv")
@@ -43,7 +51,15 @@ public class ExportApi {
                                          @PathVariable String auctionId) {
         leagues.check(leagueId);
         auctions.check(auctionId);
-        byte[] csv = RosterCsvExporter.toCsv(auction).getBytes(StandardCharsets.UTF_8);
+        String csvText = RosterCsvExporter.toCsv(auction);
+        byte[] csv = csvText.getBytes(StandardCharsets.UTF_8);
+        try {
+            archive.saveExport(auction.auctionId(), csvText);
+        } catch (RuntimeException e) {
+            // Scaricare e' cio' che l'utente ha chiesto; il file su disco e' una copia.
+            log.warn("export dell'asta {} non salvato su disco: {}",
+                    auction.auctionId(), e.getMessage(), e);
+        }
         String fileName = "rose-" + auction.auctionId() + ".csv";
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))

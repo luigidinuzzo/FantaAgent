@@ -64,9 +64,13 @@ public final class SettingsDtos {
                                    LeagueRulesView rules) {
     }
 
+    /** Crediti e slot scelti per l'asta che nasce. Le squadre no: sono i partecipanti. */
+    public record RulesSection(int budget, Map<Role, Integer> slots) {
+    }
+
     public record SaveRequest(String auctionName, BidderSettings bidder,
                               List<ParticipantSettings> participants,
-                              ScoringSection scoring) {
+                              ScoringSection scoring, RulesSection rules) {
     }
 
     /** @param auctionId l'id dell'asta appena nata, oppure null se ne era gia' aperta una */

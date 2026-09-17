@@ -18,6 +18,7 @@ import java.util.List;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -129,5 +130,20 @@ class AuctionsApiTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type")
                         .value("https://fantaagent.local/problems/unknown-auction"));
+    }
+
+    @Test
+    void cancellareUnAstaRisponde204() throws Exception {
+        mvc.perform(delete("/api/leagues/default/auctions/2026-09-02"))
+                .andExpect(status().isNoContent());
+        verify(runtime).delete("2026-09-02");
+    }
+
+    @Test
+    void cancellareUnAstaSconosciutaRisponde404Problem() throws Exception {
+        doThrow(new IllegalArgumentException("nessuna")).when(runtime).delete("pippo");
+        mvc.perform(delete("/api/leagues/default/auctions/pippo"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("https://fantaagent.local/problems/unknown-auction"));
     }
 }
