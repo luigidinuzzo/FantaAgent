@@ -49,7 +49,12 @@ describe('ThresholdsTable', () => {
   it('toglie una riga', async () => {
     render(<Harness initial={STEPS} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /togli riga 1/i }));
+    const remove = screen.getByRole('button', { name: 'Togli riga 1' });
+    // A vista e' solo una X: nessun testo fuori dallo sr-only.
+    expect(
+      Array.from(remove.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim()),
+    ).toHaveLength(0);
+    await userEvent.click(remove);
 
     expect(screen.getAllByRole('row')).toHaveLength(1 + STEPS.length - 1);
     // La riga rimasta e' la seconda originale, non un duplicato della prima.

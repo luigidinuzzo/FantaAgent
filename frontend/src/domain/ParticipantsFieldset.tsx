@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { ParticipantSettings } from '../api/types';
 import { FieldErrors } from './FieldErrors';
+import { RemoveIcon } from './RemoveIcon';
 
 /**
  * Un identificativo nuovo per un partecipante appena aggiunto, con ripiego.
@@ -108,23 +109,28 @@ export function ParticipantsFieldset({
                   <FieldErrors id={initialErrorsId} errors={initialErrors} />
                 </td>
                 <td className="py-1">
-                  <label className="sr-only" htmlFor={`me-${p.id}`}>Sei tu: {p.name}</label>
-                  <input
-                    id={`me-${p.id}`}
-                    type="radio"
-                    name="me"
-                    checked={p.me}
-                    onChange={() => onChange(value.map((q, j) => ({ ...q, me: j === i })))}
-                    className="h-11 w-11 accent-[color:var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                  />
+                  {/* Il pallino e' della dimensione normale; l'etichetta attorno
+                      tiene comunque 44x44 di area cliccabile. */}
+                  <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
+                    <input
+                      id={`me-${p.id}`}
+                      type="radio"
+                      name="me"
+                      checked={p.me}
+                      onChange={() => onChange(value.map((q, j) => ({ ...q, me: j === i })))}
+                      className="h-5 w-5 shrink-0 accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    />
+                    <span className="sr-only">Sei tu: {p.name}</span>
+                  </label>
                 </td>
                 <td className="py-1 text-right">
                   <button
                     type="button"
                     onClick={() => onChange(value.filter((_, j) => j !== i))}
-                    className="min-h-11 min-w-11 rounded-full px-2 text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   >
-                    Togli <span className="sr-only">{p.name}</span>
+                    <RemoveIcon />
+                    <span className="sr-only">Togli {p.name}</span>
                   </button>
                 </td>
               </tr>

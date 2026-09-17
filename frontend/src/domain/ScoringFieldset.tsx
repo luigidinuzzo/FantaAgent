@@ -197,14 +197,14 @@ export function ScoringFieldset({
             lui stesso l'unico modo di riaccenderlo: se lo disabilitassimo
             insieme alla tabella, un modificatore spento non si potrebbe piu'
             riaccendere da questa schermata. */}
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
           <input
             type="checkbox"
             checked={value.defenceModifierEnabled}
             disabled={disabled}
             aria-describedby={disabled ? lockId : undefined}
             onChange={(e) => onChange({ ...value, defenceModifierEnabled: e.target.checked })}
-            className="h-11 w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="h-5 w-5 shrink-0 accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
           Modificatore di difesa attivo
         </label>

@@ -81,24 +81,6 @@ function errorsFor(errors: SettingsErrors, key: string): string[] {
  * riga precisa). Ogni altra chiave — comprese quelle non ancora note, come
  * {@code thresholds[N]} o {@code goalBonus[R]} — appartiene alla sezione punteggio.
  */
-const NON_SCORING_KEYS = new Set(['auctionName', 'bidTimerSeconds', 'bidder']);
-
-function isParticipantsKey(key: string): boolean {
-  return key === 'participants' || key.startsWith('participants[');
-}
-
-/**
- * La disclosure del punteggio si apre da sola quando un errore ci vive dentro: un
- * <details> chiuso con un campo invalido nasconderebbe il perche' un salvataggio
- * viene rifiutato, costringendo chi lo usa a indovinare quale sezione chiusa lo
- * contiene.
- */
-function hasScoringErrors(errors: SettingsErrors): boolean {
-  return Object.keys(errors).some(
-    (key) => errors[key].length > 0 && !NON_SCORING_KEYS.has(key) && !isParticipantsKey(key),
-  );
-}
-
 /**
  * Restringe {@link ProblemError#body}: la classe porta il corpo indistinto apposta
  * (vedi il commento su di lei), quindi chi legge un 422 di questo endpoint deve
@@ -220,7 +202,6 @@ export function SettingsRoute() {
   // Non si crea niente mentre si sta solo modificando: il titolo lo dice, non solo
   // il testo del bottone in fondo.
   const title = auctionOpen ? 'Impostazioni' : 'Crea asta';
-  const scoringOpen = hasScoringErrors(errors);
 
   return (
     <AppShell chrome="side">
@@ -334,7 +315,7 @@ export function SettingsRoute() {
               </div>
 
               <div className="flex items-center">
-                <label className="flex min-h-11 w-full items-center gap-2 rounded-full border border-line-strong px-4 text-sm">
+                <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-full border border-line-strong px-4 text-sm">
                   <input
                     type="checkbox"
                     checked={form.bidder.beepEnabled}
@@ -344,7 +325,7 @@ export function SettingsRoute() {
                         bidder: { ...form.bidder, beepEnabled: e.target.checked },
                       })
                     }
-                    className="h-11 w-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="h-5 w-5 shrink-0 accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   Avviso acustico allo scadere
                 </label>
@@ -364,19 +345,15 @@ export function SettingsRoute() {
             errors={errors}
           />
 
-          <details open={scoringOpen}>
-            <summary className="flex min-h-11 cursor-pointer items-center font-bold">
-              Punteggio
-            </summary>
-            <div className="mt-3">
-              <ScoringFieldset
-                value={form.scoring}
-                onChange={(scoring) => setForm({ ...form, scoring })}
-                errors={errors}
-                disabled={auctionOpen}
-              />
-            </div>
-          </details>
+          {/* Sempre aperto, non una disclosure: il punteggio e' parte della
+              creazione dell'asta quanto i partecipanti, e un <details> chiuso
+              nascondeva anche il campo invalido che bloccava il salvataggio. */}
+          <ScoringFieldset
+            value={form.scoring}
+            onChange={(scoring) => setForm({ ...form, scoring })}
+            errors={errors}
+            disabled={auctionOpen}
+          />
 
           <div className="flex flex-col items-center gap-3 pt-2">
             <button

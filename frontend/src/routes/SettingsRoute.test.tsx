@@ -358,54 +358,16 @@ describe('SettingsRoute', () => {
   });
 
   /**
-   * Un <details> chiuso con un campo invalido dentro nasconderebbe il perche' un
-   * salvataggio viene rifiutato: chi lo usa dovrebbe indovinare quale sezione
-   * chiusa contiene il problema. Il punteggio si apre da solo quando l'errore gli
-   * appartiene.
+   * Il punteggio fa parte della creazione quanto i partecipanti: sempre aperto,
+   * senza nessun controllo per chiuderlo. Era un <details>, che da chiuso
+   * nascondeva anche un campo invalido che bloccava il salvataggio.
    */
-  it('apre le regole di punteggio quando un errore ci vive dentro', async () => {
-    renderSettings(() =>
-      Promise.resolve(
-        jsonResponse(
-          {
-            type: 'https://fantaagent.local/problems/invalid-settings',
-            detail: 'Alcune impostazioni non sono valide.',
-            errors: {
-              defendersCounted: ['Il valore per «difensori conteggiati» non è un numero valido.'],
-            },
-          },
-          422,
-        ),
-      ),
-    );
+  it('il punteggio e\' sempre visibile, e non si puo\' chiudere', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
 
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
-
-    // Il campo deve essere raggiungibile subito, senza che l'utente debba
-    // indovinare quale sezione chiusa lo nasconde.
     expect(await screen.findByRole('group', { name: /punteggio/i })).toBeVisible();
     expect(screen.getByText('Difensori conteggiati')).toBeVisible();
-  });
-
-  /** Il contrario del test sopra: un errore che non appartiene al punteggio non lo apre. */
-  it('le tiene chiuse quando gli errori stanno altrove', async () => {
-    renderSettings(() =>
-      Promise.resolve(
-        jsonResponse(
-          {
-            type: 'https://fantaagent.local/problems/invalid-settings',
-            detail: 'Alcune impostazioni non sono valide.',
-            errors: { auctionName: ['Dai un nome alla tua asta.'] },
-          },
-          422,
-        ),
-      ),
-    );
-
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
-
-    await screen.findByText('Dai un nome alla tua asta.');
-    expect(screen.getByRole('group', { name: /punteggio/i })).not.toBeVisible();
-    expect(screen.getByText('Difensori conteggiati')).not.toBeVisible();
+    expect(document.querySelector('details, summary')).toBeNull();
+    expect(screen.queryByRole('button', { name: /punteggio/i })).not.toBeInTheDocument();
   });
 });

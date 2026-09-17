@@ -2,6 +2,7 @@ import { Fragment, useId } from 'react';
 import type { ScoringStep } from '../api/types';
 import { FieldErrors } from './FieldErrors';
 import { NumberField } from './NumberField';
+import { RemoveIcon } from './RemoveIcon';
 
 function errorsFor(errors: Record<string, string[]>, key: string): string[] {
   return errors[key] ?? [];
@@ -154,9 +155,10 @@ export function ThresholdsTable({
                       type="button"
                       disabled={disabled}
                       onClick={() => onChange(value.filter((_, j) => j !== i))}
-                      className="min-h-11 min-w-11 px-2 text-muted-foreground disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-foreground disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     >
-                      Togli <span className="sr-only">riga {i + 1}</span>
+                      <RemoveIcon />
+                      <span className="sr-only">Togli riga {i + 1}</span>
                     </button>
                   </td>
                 </tr>

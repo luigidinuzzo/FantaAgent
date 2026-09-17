@@ -52,14 +52,11 @@ describe('ParticipantsFieldset', () => {
   });
 
   /**
-   * Il nome accessibile del bottone "Togli" deve dire QUALE riga toglie, non solo
-   * il suo contenuto testuale: uno spazio scritto DENTRO lo <span sr-only> (invece
-   * che nel nodo di testo prima di lui) si perde nel calcolo del nome accessibile
-   * anche se resta visibile in {@code textContent} — "TogliAnna", non "Togli Anna".
-   * getByRole con `name` e' l'unica delle due che lo scoprirebbe: un'asserzione su
-   * {@code textContent} sarebbe passata anche col bug.
+   * A vista il bottone e' solo una X: il nome accessibile deve dire cosa fa e
+   * QUALE riga toglie. getByRole con `name` e' l'unica verifica che lo scopre —
+   * un'asserzione su textContent passerebbe anche con "TogliAnna" attaccato.
    */
-  it('il bottone "Togli" ha per nome accessibile "Togli" seguito dal nome della riga', () => {
+  it('il bottone X ha per nome accessibile "Togli" seguito dal nome della riga, e nessun testo visibile', () => {
     render(
       <ParticipantsFieldset
         value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
@@ -68,7 +65,27 @@ describe('ParticipantsFieldset', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Togli Anna' })).toBeInTheDocument();
+    const remove = screen.getByRole('button', { name: 'Togli Anna' });
+    expect(remove.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    // Tutto il testo del bottone e' per chi ascolta: a vista resta la X.
+    remove.querySelectorAll(':scope > :not(.sr-only):not(svg)').forEach((el) => {
+      expect(el.textContent).toBe('');
+    });
+    expect(
+      Array.from(remove.childNodes).filter((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim()),
+    ).toHaveLength(0);
+  });
+
+  it('"Sei tu" resta un radio col nome della riga', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
+        onChange={() => {}}
+        errors={{}}
+      />,
+    );
+
+    expect(screen.getByRole('radio', { name: 'Sei tu: Anna' })).toBeChecked();
   });
 
   /**
