@@ -101,14 +101,14 @@ export function ThresholdsTable({
         </p>
       ) : null}
 
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm">
         <caption className="mb-2 text-left text-sm font-bold">
           {GROUP_LABEL}
         </caption>
         <thead>
           <tr className="text-left text-muted-foreground">
-            <th scope="col" className="py-1">Da media</th>
-            <th scope="col" className="py-1">Bonus</th>
+            <th scope="col" className="w-36 py-1 pr-3">Da media</th>
+            <th scope="col" className="w-36 py-1 pr-3">Bonus</th>
             <th scope="col" className="py-1"><span className="sr-only">Azioni</span></th>
           </tr>
         </thead>
@@ -120,7 +120,7 @@ export function ThresholdsTable({
             return (
               <Fragment key={i}>
                 <tr>
-                  <td className="py-1">
+                  <td className="py-1 pr-3">
                     <label className="sr-only" htmlFor={`${baseId}-min-${i}`}>
                       Soglia da media, riga {i + 1}
                     </label>
@@ -132,10 +132,10 @@ export function ThresholdsTable({
                       aria-invalid={!disabled && rowErrors.length > 0}
                       aria-describedby={describedBy}
                       onChange={(minAverage) => updateRow(i, { minAverage })}
-                      className="tnum min-h-11 w-24 border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      className="tnum min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     />
                   </td>
-                  <td className="py-1">
+                  <td className="py-1 pr-3">
                     <label className="sr-only" htmlFor={`${baseId}-bonus-${i}`}>
                       Bonus, riga {i + 1}
                     </label>
@@ -147,7 +147,7 @@ export function ThresholdsTable({
                       aria-invalid={!disabled && rowErrors.length > 0}
                       aria-describedby={describedBy}
                       onChange={(bonus) => updateRow(i, { bonus })}
-                      className="tnum min-h-11 w-24 border border-line bg-transparent px-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      className="tnum min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     />
                   </td>
                   <td className="py-1 text-right">
@@ -182,7 +182,7 @@ export function ThresholdsTable({
         type="button"
         disabled={disabled}
         onClick={() => onChange([...value, { minAverage: 0, bonus: 0 }])}
-        className="mt-3 min-h-11 border border-line px-4 text-sm disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="mt-3 min-h-11 rounded-full border border-line-strong px-4 text-sm disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         Aggiungi soglia
       </button>

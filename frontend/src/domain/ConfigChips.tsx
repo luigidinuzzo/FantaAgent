@@ -30,8 +30,6 @@ export function ConfigChips({ rules }: { rules: LeagueRulesView }) {
           {rules.participants}
           <span className="font-normal text-muted-foreground">squadre</span>
         </span>
-      </div>
-      <div className="flex flex-wrap gap-2">
         {ROLES.map((role) => (
           <span
             key={role}

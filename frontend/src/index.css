@@ -12,6 +12,12 @@
    scuri: senza questo il browser li disegna chiari, riquadri bianchi sul verde. */
 :root { color-scheme: dark; }
 
+/* Le frecce native dei campi numerici: sul tema scuro diventano un riquadro
+   chiaro dentro ogni pillola, e si digita comunque. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+
 .tnum { font-variant-numeric: tabular-nums; }
 
 /* I tre ruoli ottenuti dall'asse di larghezza della stessa famiglia. */

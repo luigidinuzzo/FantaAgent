@@ -63,16 +63,16 @@ export function ParticipantsFieldset({
           stesso — un group — che supporta una descrizione, non la legend. */}
       <legend className="px-2 font-bold">Partecipanti</legend>
 
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-sm">
         <caption className="sr-only">
           Nome, iniziale e chi sei tu, per ogni partecipante alla lega
         </caption>
         <thead>
           <tr className="text-left text-muted-foreground">
-            <th scope="col" className="py-1">Nome</th>
-            <th scope="col" className="py-1">Iniziale</th>
-            <th scope="col" className="py-1">Sei tu</th>
-            <th scope="col" className="py-1"><span className="sr-only">Azioni</span></th>
+            <th scope="col" className="py-1 pr-3">Nome</th>
+            <th scope="col" className="w-20 py-1 pr-3">Iniziale</th>
+            <th scope="col" className="w-16 py-1 text-center">Sei tu</th>
+            <th scope="col" className="w-14 py-1"><span className="sr-only">Azioni</span></th>
           </tr>
         </thead>
         <tbody>
@@ -83,7 +83,7 @@ export function ParticipantsFieldset({
             const initialErrorsId = `${baseId}-initial-${p.id}`;
             return (
               <tr key={p.id}>
-                <td className="py-1">
+                <td className="py-1 pr-3">
                   <label className="sr-only" htmlFor={`name-${p.id}`}>Nome del partecipante</label>
                   <input
                     id={`name-${p.id}`}
@@ -95,7 +95,7 @@ export function ParticipantsFieldset({
                   />
                   <FieldErrors id={nameErrorsId} errors={nameErrors} />
                 </td>
-                <td className="py-1">
+                <td className="py-1 pr-3">
                   <label className="sr-only" htmlFor={`initial-${p.id}`}>Iniziale di {p.name}</label>
                   <input
                     id={`initial-${p.id}`}
@@ -104,11 +104,11 @@ export function ParticipantsFieldset({
                     aria-invalid={initialErrors.length > 0}
                     aria-describedby={initialErrors.length > 0 ? initialErrorsId : undefined}
                     onChange={(e) => update(i, { initial: e.target.value.toUpperCase() })}
-                    className="tnum min-h-11 min-w-11 w-14 rounded-full border border-line-strong bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum min-h-11 w-full rounded-full border border-line-strong bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={initialErrorsId} errors={initialErrors} />
                 </td>
-                <td className="py-1">
+                <td className="py-1 text-center">
                   {/* Il pallino e' della dimensione normale; l'etichetta attorno
                       tiene comunque 44x44 di area cliccabile. */}
                   <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">

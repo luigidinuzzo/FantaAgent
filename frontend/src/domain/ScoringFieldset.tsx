@@ -108,34 +108,10 @@ export function ScoringFieldset({
         cella della grid.
       */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label className="text-sm">
-            Difensori conteggiati
-            <NumberField
-              value={value.defendersCounted}
-              disabled={disabled}
-              aria-invalid={!disabled && errorsFor(errors, 'defendersCounted').length > 0}
-              aria-describedby={
-                disabled
-                  ? lockId
-                  : errorsFor(errors, 'defendersCounted').length > 0
-                    ? `${baseId}-defendersCounted`
-                    : undefined
-              }
-              onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
-              className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            />
-          </label>
-          <FieldErrors
-            id={`${baseId}-defendersCounted`}
-            errors={errorsFor(errors, 'defendersCounted')}
-          />
-        </div>
-
         {NUMERIC.map(({ key, label }) => (
           <div key={key}>
-            <label className="text-sm">
-              {label}
+            <label className="block text-sm">
+              <span className="flex min-h-6 items-center">{label}</span>
               <NumberField
                 step="0.5"
                 value={value[key] as number}
@@ -160,8 +136,11 @@ export function ScoringFieldset({
           const key = `goalBonus[${role}]`;
           return (
             <div key={role}>
-              <label className="text-sm">
-                <span className="flex items-center gap-1.5">
+              {/* min-h-6 su tutte le etichette: la RoleBadge e' piu' alta di una
+                  riga di testo, e senza un'altezza comune i campi della stessa
+                  fila della griglia scendevano di qualche pixel. */}
+              <label className="block text-sm">
+                <span className="flex min-h-6 items-center gap-1.5">
                   Gol segnato <RoleBadge role={role} />
                 </span>
                 <NumberField
@@ -209,7 +188,36 @@ export function ScoringFieldset({
           Modificatore di difesa attivo
         </label>
 
-        <div className="mt-2">
+        {/* Qui e non nella griglia sopra: quanti difensori conta e' un parametro
+            del modificatore di difesa, non un punteggio a se'. Nella griglia
+            lasciava anche l'ultimo «Gol segnato» da solo su una fila. */}
+        <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="block text-sm">
+              <span className="flex min-h-6 items-center">Difensori conteggiati</span>
+              <NumberField
+                value={value.defendersCounted}
+                disabled={disabled}
+                aria-invalid={!disabled && errorsFor(errors, 'defendersCounted').length > 0}
+                aria-describedby={
+                  disabled
+                    ? lockId
+                    : errorsFor(errors, 'defendersCounted').length > 0
+                      ? `${baseId}-defendersCounted`
+                      : undefined
+                }
+                onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
+                className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              />
+            </label>
+            <FieldErrors
+              id={`${baseId}-defendersCounted`}
+              errors={errorsFor(errors, 'defendersCounted')}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6">
           <ThresholdsTable
             value={value.thresholds}
             onChange={(thresholds) => onChange({ ...value, thresholds })}

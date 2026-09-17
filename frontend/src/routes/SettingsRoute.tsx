@@ -267,15 +267,15 @@ export function SettingsRoute() {
             // nome accessibile, ed e' quello che uno screen reader legge digitando
             // il campo — includerci l'elenco degli errori lo renderebbe "Nome
             // dell'asta" + il messaggio, non piu' semplicemente "Nome dell'asta".
-            <div className="mx-auto max-w-2xl">
-              <label className="block text-center text-sm">
+            <div>
+              <label className="block text-sm">
                 Nome dell'asta
                 <input
                   value={form.auctionName}
                   aria-invalid={auctionNameErrors.length > 0}
                   aria-describedby={auctionNameErrors.length > 0 ? auctionNameErrorId : undefined}
                   onChange={(e) => setForm({ ...form, auctionName: e.target.value })}
-                  className="mt-2 block min-h-11 w-full rounded-2xl border border-line-strong bg-transparent px-4 py-3 text-center text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-4 text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </label>
               {/* Tutti i messaggi, non solo il primo: i validatori tornano l'elenco
@@ -284,13 +284,13 @@ export function SettingsRoute() {
             </div>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-6">
             {/* Legend nascosta: il fieldset resta un group nominato "Battitore"
                 per chi ascolta, ma visivamente e' solo la griglia delle sue due
                 pillole — la cornice del fieldset non serve al disegno, che la
                 mette gia' sulle singole pillole. */}
             <fieldset
-              className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2 md:col-span-2"
+              className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2 sm:items-end"
               aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
             >
               <legend className="sr-only">Battitore</legend>
@@ -308,13 +308,13 @@ export function SettingsRoute() {
                         bidder: { ...form.bidder, bidTimerSeconds },
                       })
                     }
-                    className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-4 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                 </label>
                 <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
               </div>
 
-              <div className="flex items-center">
+              <div>
                 <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-full border border-line-strong px-4 text-sm">
                   <input
                     type="checkbox"
