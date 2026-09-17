@@ -257,8 +257,8 @@ Ad asta aperta i campi delle regole sono disabilitati e descritti dal motivo (§
 
 ### 7.2 Tipi e test di confine
 
-`LeagueRulesView` e il corpo di `SaveSettingsRequest` si aggiornano nei tipi TS. Il
-test che tiene allineati DTO Java e tipi TS copre i campi nuovi.
+`LeagueRulesView` e il corpo di `SaveSettingsRequest` si aggiornano nei tipi TS, a
+specchio dei DTO Java (`SettingsDtos.RulesSection`).
 
 ---
 
