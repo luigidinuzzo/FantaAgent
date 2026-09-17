@@ -151,7 +151,7 @@ class SettingsControllerTest {
                         new com.fantaagent.domain.league.ModifierTable(0, List.of(
                                 new com.fantaagent.domain.league.ModifierTable.Threshold(0.0, 0.0))),
                         0.55);
-        return new com.fantaagent.application.service.RuntimeSnapshot(null, null, PARTICIPANTS,
+        return new com.fantaagent.application.service.RuntimeSnapshot(null, null, PARTICIPANTS, RULES,
                 com.fantaagent.application.service.ValuationChain.build(
                         RULES, scoring, catalog, List.of(1.0)));
     }

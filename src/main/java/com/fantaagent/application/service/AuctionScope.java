@@ -1,9 +1,11 @@
 package com.fantaagent.application.service;
 
 import com.fantaagent.application.port.out.AuctionEventStore;
+import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * L'asta su cui una richiesta sta lavorando: il suo identificatore, il suo log e i
@@ -15,9 +17,10 @@ import java.util.List;
  * partecipanti di un'altra.
  */
 public record AuctionScope(String auctionId, AuctionEventStore store,
-                           List<Participant> participants) {
+                           List<Participant> participants, LeagueRules rules) {
 
     public AuctionScope {
         participants = List.copyOf(participants);
+        Objects.requireNonNull(rules, "rules");
     }
 }

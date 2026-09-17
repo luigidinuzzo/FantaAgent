@@ -89,7 +89,7 @@ public class AuctionRuntime {
         this.participantsLoader = participantsLoader;
         this.archive = archive;
         this.scoringSnapshot = scoringSnapshot;
-        this.current = new RuntimeSnapshot(null, null, participantsLoader.get(),
+        this.current = new RuntimeSnapshot(null, null, participantsLoader.get(), rules,
                 ValuationChain.build(rules, scoringLoader.apply(null), catalog, seasonWeights));
     }
 
@@ -162,7 +162,7 @@ public class AuctionRuntime {
         // punteggio, e riusare quella di prima significherebbe rileggere una rosa gia'
         // pagata con un modello che non e' quello con cui e' stata comprata.
         current = new RuntimeSnapshot(auctionId, archive.open(auctionId),
-                participantsOf(auctionId),
+                participantsOf(auctionId), rules,
                 ValuationChain.build(rules, scoringLoader.apply(auctionId), catalog, seasonWeights));
     }
 
@@ -218,7 +218,7 @@ public class AuctionRuntime {
         // E lo stesso per le regole di punteggio: da qui in avanti configurarne altre
         // non tocchera' i numeri di questa.
         scoringSnapshot.accept(id);
-        current = new RuntimeSnapshot(id, store, participants,
+        current = new RuntimeSnapshot(id, store, participants, rules,
                 ValuationChain.build(rules, scoringLoader.apply(id), catalog, seasonWeights));
         return id;
     }
@@ -242,7 +242,7 @@ public class AuctionRuntime {
      * da cui parte la prossima asta.
      */
     public synchronized void deselect() {
-        current = new RuntimeSnapshot(null, null, participantsLoader.get(),
+        current = new RuntimeSnapshot(null, null, participantsLoader.get(), rules,
                 ValuationChain.build(rules, scoringLoader.apply(null), catalog, seasonWeights));
     }
 
@@ -257,7 +257,8 @@ public class AuctionRuntime {
         if (base.auctionId() != null) {
             archive.saveParticipants(base.auctionId(), participants);
         }
-        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, base.chain());
+        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, base.rules(),
+                base.chain());
     }
 
     public synchronized void rebuild() {
@@ -265,7 +266,7 @@ public class AuctionRuntime {
         ScoringRules scoring = scoringLoader.apply(base.auctionId());
         List<Participant> participants = participantsOf(base.auctionId());
         ValuationChain chain = ValuationChain.build(rules, scoring, catalog, seasonWeights);
-        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, chain);
+        current = new RuntimeSnapshot(base.auctionId(), base.store(), participants, rules, chain);
     }
 
     /** Le aste presenti sull'archivio, dalla più recente. */

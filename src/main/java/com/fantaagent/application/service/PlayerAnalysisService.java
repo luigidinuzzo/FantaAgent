@@ -2,7 +2,6 @@ package com.fantaagent.application.service;
 
 import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.domain.auction.AuctionState;
-import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.PlayerProjection;
 import com.fantaagent.domain.strategy.PriceModel;
@@ -26,24 +25,22 @@ import java.util.function.Supplier;
  */
 public class PlayerAnalysisService {
 
-    private final LeagueRules rules;
     private final PlayerCatalog catalog;
     private final Supplier<ValuationChain> chain;
     private final AuctionService auction;
 
-    public PlayerAnalysisService(LeagueRules rules, PlayerCatalog catalog,
+    public PlayerAnalysisService(PlayerCatalog catalog,
                                  Supplier<ValuationChain> chain, AuctionService auction) {
-        this.rules = rules;
         this.catalog = catalog;
         this.chain = chain;
         this.auction = auction;
     }
 
     /** Catena fissa, decisa alla costruzione: la forma usata dai test. */
-    public PlayerAnalysisService(LeagueRules rules, PlayerCatalog catalog,
+    public PlayerAnalysisService(PlayerCatalog catalog,
                                  ProjectionRegistry projections, ValuationEngine engine,
                                  AuctionService auction) {
-        this(rules, catalog, fixedChain(projections, engine), auction);
+        this(catalog, fixedChain(projections, engine), auction);
     }
 
     private static Supplier<ValuationChain> fixedChain(ProjectionRegistry projections,
@@ -77,7 +74,7 @@ public class PlayerAnalysisService {
 
     /** Costruisce il modello di prezzo per uno stato, da riusare su più valutazioni. */
     public PriceModel priceModelFor(AuctionState state, ValuationChain chain) {
-        return PriceModel.build(rules, state, chain.projections().all(),
+        return PriceModel.build(state.rules(), state, chain.projections().all(),
                 id -> catalog.byId(id).map(Player::listPrice).orElse(1));
     }
 

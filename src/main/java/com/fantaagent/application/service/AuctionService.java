@@ -28,7 +28,6 @@ import java.util.function.Supplier;
  */
 public class AuctionService {
 
-    private final LeagueRules rules;
     private final PlayerCatalog catalog;
 
     /**
@@ -57,8 +56,7 @@ public class AuctionService {
     /** Nessuna asta ha mai questo identificativo: distingue "mai calcolato" da null. */
     private static final String NEVER_SUMMARIZED = "\u0000mai";
 
-    public AuctionService(LeagueRules rules, PlayerCatalog catalog, Supplier<AuctionScope> scope) {
-        this.rules = rules;
+    public AuctionService(PlayerCatalog catalog, Supplier<AuctionScope> scope) {
         this.catalog = catalog;
         this.scope = scope;
         this.summarizedAuctionId = NEVER_SUMMARIZED;
@@ -70,13 +68,13 @@ public class AuctionService {
      */
     public AuctionService(LeagueRules rules, List<Participant> participants,
                           PlayerCatalog catalog, AuctionEventStore store) {
-        this(rules, catalog, fixedScope(participants, store));
+        this(catalog, fixedScope(rules, participants, store));
         syncResumeSummary();
     }
 
-    private static Supplier<AuctionScope> fixedScope(List<Participant> participants,
+    private static Supplier<AuctionScope> fixedScope(LeagueRules rules, List<Participant> participants,
                                                      AuctionEventStore store) {
-        AuctionScope fixed = new AuctionScope("fissa", store, participants);
+        AuctionScope fixed = new AuctionScope("fissa", store, participants, rules);
         return () -> fixed;
     }
 
@@ -85,7 +83,8 @@ public class AuctionService {
     }
 
     private AuctionState state(AuctionScope currentScope) {
-        return AuctionProjector.project(rules, currentScope.participants(), catalog,
+        // Le regole dello scope, non catturate alla costruzione: ogni asta ha le sue.
+        return AuctionProjector.project(currentScope.rules(), currentScope.participants(), catalog,
                 currentScope.store().load());
     }
 
@@ -237,7 +236,8 @@ public class AuctionService {
 
     /** @return false se non c'era una fase successiva (si è già all'ultima) */
     public boolean advancePhase() {
-        Optional<Role> next = rules.nextPhase(state().currentPhase());
+        AuctionState current = state();
+        Optional<Role> next = current.rules().nextPhase(current.currentPhase());
         return next.isPresent() && selectPhase(next.get());
     }
 
@@ -253,14 +253,17 @@ public class AuctionService {
      * @throws IllegalArgumentException se il ruolo non è una fase configurata
      */
     public boolean selectPhase(Role role) {
-        if (!rules.phases().contains(role)) {
+        // Un solo scope per tutta la mutazione: tre letture separate potrebbero vedere
+        // aste diverse se nel frattempo se ne seleziona un'altra.
+        AuctionScope currentScope = scope.get();
+        if (!currentScope.rules().phases().contains(role)) {
             throw new IllegalArgumentException("fase non prevista dal regolamento: " + role);
         }
-        Role current = state().currentPhase();
+        Role current = state(currentScope).currentPhase();
         if (current == role) {
             return false;
         }
-        AuctionEventStore store = scope.get().store();
+        AuctionEventStore store = currentScope.store();
         store.backup("fine-" + current.name());
         store.appendWithNextSeq(seq -> new AuctionEvent.PhaseAdvanced(seq, Instant.now(), role));
         return true;

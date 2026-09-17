@@ -1,6 +1,7 @@
 package com.fantaagent.application.service;
 
 import com.fantaagent.application.port.out.AuctionEventStore;
+import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.league.Participant;
 
 import java.util.List;
@@ -8,7 +9,9 @@ import java.util.Objects;
 
 /**
  * Tutto ciò che una richiesta deve leggere per essere servita: l'asta selezionata, i
- * partecipanti e la catena di valutazione.
+ * partecipanti, le regole della lega e la catena di valutazione. Regole e catena
+ * nascono nella stessa assegnazione: non esiste una catena calcolata con regole
+ * diverse da quelle dello snapshot.
  *
  * <p>Un solo oggetto immutabile, pubblicato da {@link AuctionRuntime} con una sola
  * scrittura volatile. Chi legge prende questo record e da lì ricava tutto: non esiste
@@ -19,7 +22,8 @@ import java.util.Objects;
  * dalla home: è uno stato legittimo dell'applicazione appena avviata, non un errore.
  */
 public record RuntimeSnapshot(String auctionId, AuctionEventStore store,
-                              List<Participant> participants, ValuationChain chain) {
+                              List<Participant> participants, LeagueRules rules,
+                              ValuationChain chain) {
 
     public RuntimeSnapshot {
         if ((auctionId == null) != (store == null)) {
@@ -27,6 +31,7 @@ public record RuntimeSnapshot(String auctionId, AuctionEventStore store,
                     "auction id and event store must be either both present or both absent");
         }
         participants = List.copyOf(participants);
+        Objects.requireNonNull(rules, "rules");
         Objects.requireNonNull(chain, "chain");
     }
 
@@ -39,6 +44,6 @@ public record RuntimeSnapshot(String auctionId, AuctionEventStore store,
         if (!hasAuction()) {
             throw new NoAuctionSelectedException();
         }
-        return new AuctionScope(auctionId, store, participants);
+        return new AuctionScope(auctionId, store, participants, rules);
     }
 }

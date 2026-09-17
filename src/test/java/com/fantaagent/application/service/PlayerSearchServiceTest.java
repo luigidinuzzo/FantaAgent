@@ -77,7 +77,7 @@ class PlayerSearchServiceTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
         List<PlayerSearchService.TargetRow> result = search.targets(20);
@@ -106,7 +106,7 @@ class PlayerSearchServiceTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
         PlayerSearchService.PhasePage page = search.phasePlayers(0, 10);
@@ -133,7 +133,7 @@ class PlayerSearchServiceTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
         // Quotazioni 1..5, quindi l'ordine atteso è d4, d3, d2 | d1, d0.
@@ -246,7 +246,7 @@ class PlayerSearchServiceTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         return new PlayerSearchService(catalog, projections, auction, analysis);
     }
 
@@ -349,7 +349,7 @@ class PlayerSearchServiceTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
         loadCalls.set(0);

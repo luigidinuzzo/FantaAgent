@@ -113,21 +113,19 @@ public class BeanConfig {
 
     @Bean
     public com.fantaagent.application.service.AuctionService auctionService(
-            com.fantaagent.domain.league.LeagueRules rules,
             com.fantaagent.application.port.out.PlayerCatalog catalog,
             com.fantaagent.application.service.AuctionRuntime runtime) {
         return new com.fantaagent.application.service.AuctionService(
-                rules, catalog, runtime.scopes());
+                catalog, runtime.scopes());
     }
 
     @Bean
     public com.fantaagent.application.service.PlayerAnalysisService playerAnalysisService(
-            com.fantaagent.domain.league.LeagueRules rules,
             com.fantaagent.application.port.out.PlayerCatalog catalog,
             com.fantaagent.application.service.AuctionRuntime runtime,
             com.fantaagent.application.service.AuctionService auction) {
         return new com.fantaagent.application.service.PlayerAnalysisService(
-                rules, catalog, runtime.chains(), auction);
+                catalog, runtime.chains(), auction);
     }
 
     @Bean

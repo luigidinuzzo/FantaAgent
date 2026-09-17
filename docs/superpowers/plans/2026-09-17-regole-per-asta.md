@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- `/legacy` è abbandonato: **nessuna modifica** a `adapter/in/web/**`, ai template Thymeleaf e ai loro test. Devono compilare e restare verdi: per questo `AuctionRuntime.createNew(String)`, `AuctionRuntime.rebuild()`, `AuctionRuntime.setParticipants(List<Participant>)` e il bean `AuctionSettingsHolder` restano. Verifica di fine task: `git diff main -- src/main/java/com/fantaagent/adapter/in/web src/main/resources/templates src/test/java/com/fantaagent/adapter/in/web` vuoto.
+- `/legacy` è abbandonato: **nessuna modifica** a `adapter/in/web/**`, ai template Thymeleaf e ai loro test. Devono compilare e restare verdi: per questo `AuctionRuntime.createNew(String)`, `AuctionRuntime.rebuild()`, `AuctionRuntime.setParticipants(List<Participant>)` e il bean `AuctionSettingsHolder` restano. Verifica di fine task: `git diff main -- src/main/java/com/fantaagent/adapter/in/web src/main/resources/templates` vuoto. Unica eccezione ammessa: nei test di `adapter/in/web`, adattamenti meccanici alle firme cambiate (per esempio un argomento in più a `new RuntimeSnapshot(...)`), senza cambiare cosa verificano.
 - Il formato di `events.jsonl`, `league-members.yml`, `league-settings.yml`, `auction-settings.yml` non cambia.
 - File nuovi nella cartella dell'asta: `league-rules.yml`, `auction-settings.yml`, `rose.csv`. Cestino: `<data-dir>/auctions-cestino/<id>-<yyyyMMdd-HHmmss UTC>/`.
 - Limiti: crediti ≥ 1; slot per ruolo fra 1 e 30; partecipanti ≥ 2; timer fra 1 e 120 (`AuctionSettingsValidator.MIN_SECONDS`/`MAX_SECONDS`).

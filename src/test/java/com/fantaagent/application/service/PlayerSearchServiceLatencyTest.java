@@ -101,7 +101,7 @@ class PlayerSearchServiceLatencyTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
         search.targets(10); // riscaldamento della JIT
@@ -184,7 +184,7 @@ class PlayerSearchServiceLatencyTest {
         RosterCompleter completer = new RosterCompleter(modifiers, projections.replacement());
         ValuationEngine engine = new ValuationEngine(completer, modifiers);
         PlayerAnalysisService analysis =
-                new PlayerAnalysisService(RULES, catalog, projections, engine, auction);
+                new PlayerAnalysisService(catalog, projections, engine, auction);
         PlayerSearchService search = new PlayerSearchService(catalog, projections, auction, analysis);
 
         search.phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE); // riscaldamento della JIT
