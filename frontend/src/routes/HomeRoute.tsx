@@ -166,7 +166,11 @@ export function HomeRoute() {
           <ProfilePanel />
         </>
       ) : (
-          <>
+          // Colonna alta almeno quanto la finestra (meno il padding di main): cosi' il
+          // marchio sta in fondo alla pagina anche con poche aste, invece di salire
+          // sotto l'ultima riga. Sul telefono la barra sta sopra e l'elenco riempie
+          // gia' lo schermo: il marchio segue il contenuto.
+          <div className="flex flex-col md:min-h-[calc(100dvh-3rem)]">
           {/* Il titolo esiste per chi ascolta: la card-eroe sotto e' gia' visivamente
               il punto di partenza della pagina, un h1 visibile qui sopra la
               duplicherebbe. */}
@@ -179,7 +183,7 @@ export function HomeRoute() {
               colonna destra esiste solo con un'asta aperta: senza, non ha niente di
               vero da dire. */}
           <div
-            className={`mx-auto grid gap-6 ${
+            className={`mx-auto grid w-full gap-6 ${
               openAuction ? 'max-w-[96rem] lg:grid-cols-[1fr_24rem]' : 'max-w-7xl'
             }`}
           >
@@ -361,12 +365,20 @@ export function HomeRoute() {
             ) : null}
           </div>
 
+          {alertMessage ? (
+            // role="alert", non un secondo role="status": l'unica live region
+            // ambientale della pagina resta AuctionAnnouncer (dentro AuctionRoute).
+            <p role="alert" className="panel mt-4 rounded-xl p-4 text-sm font-bold text-destructive">
+              {alertMessage}
+            </p>
+          ) : null}
+
           {/* Il marchio in fondo alla pagina, sotto le aste, direttamente sul campo:
               l'unica eccezione voluta alla regola «niente testo sull'erba». Regge
               perche' e' grande e in colori verificati sull'erba (contrast.test.ts:
               foreground e accent su background e grass-stripe); l'ombra lo stacca
               dalle linee in gesso che gli passano dietro. */}
-          <footer className="mx-auto mt-12 flex flex-col items-center gap-4 pb-8 [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]">
+          <footer className="mx-auto mt-auto flex flex-col pt-12 items-center gap-4 pb-8 [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]">
             {/* Ombra piu' marcata sul marchio che sulla firma: il marchio deve staccarsi
                 dal campo. drop-shadow e non text-shadow, perche' segue anche il pallone. */}
             <span className="[filter:drop-shadow(0_4px_6px_rgb(0_0_0/0.55))_drop-shadow(0_10px_24px_rgb(0_0_0/0.45))]">
@@ -375,13 +387,6 @@ export function HomeRoute() {
             <p className="text-sm font-bold text-foreground">2026, Luigi di Nuzzo</p>
           </footer>
 
-          {alertMessage ? (
-            // role="alert", non un secondo role="status": l'unica live region
-            // ambientale della pagina resta AuctionAnnouncer (dentro AuctionRoute).
-            <p role="alert" className="panel mt-4 rounded-xl p-4 text-sm font-bold text-destructive">
-              {alertMessage}
-            </p>
-          ) : null}
           {/* L'errore di una cancellazione non entra in alertMessage: vive dentro la
               modale, che mentre e' aperta e' l'unico role="alert" della pagina. */}
           <DeleteAuctionDialog
@@ -402,7 +407,7 @@ export function HomeRoute() {
               })
             }
           />
-          </>
+          </div>
       )}
     </AppShell>
   );
