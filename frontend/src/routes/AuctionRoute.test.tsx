@@ -346,7 +346,7 @@ describe('AuctionRoute', () => {
 
     const PURCHASE = { seq: 1, playerId: 'p1', participantId: 'anna', price: 7 };
     const PROBLEM = {
-      type: 'https://fantaagent.local/problems/budget-insufficiente',
+      type: 'https://fantaagent.local/problems/insufficient-budget',
       detail: 'Anna ha solo 12 crediti di budget residuo',
     };
 
@@ -541,7 +541,7 @@ describe('AuctionRoute', () => {
   it("un'aggiudicazione fallita dal battitore lo dice, anche a chi ascolta", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const PROBLEM = {
-      type: 'https://fantaagent.local/problems/budget-insufficiente',
+      type: 'https://fantaagent.local/problems/insufficient-budget',
       detail: 'Anna ha solo 12 crediti di budget residuo',
     };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -887,7 +887,7 @@ describe('AuctionRoute', () => {
   it("riaprire il battitore per un altro giocatore non mostra il fallimento del precedente", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const PROBLEM = {
-      type: 'https://fantaagent.local/problems/budget-insufficiente',
+      type: 'https://fantaagent.local/problems/insufficient-budget',
       detail: 'Anna ha solo 12 crediti di budget residuo',
     };
     const BIDDER_SETTINGS_P2 = { ...BIDDER_SETTINGS, playerId: 'p2', name: 'Giocatore Due' };
@@ -953,8 +953,10 @@ describe('AuctionRoute', () => {
   it('un cambio fase rifiutato lo dice, anche a chi ascolta', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const PROBLEM = {
-      type: 'https://fantaagent.local/problems/fase-non-modificabile',
-      detail: 'Non puoi cambiare fase: ci sono lotti ancora aperti',
+      // Il server rifiuta un cambio di fase con invalid-request, il cui detail e'
+      // tecnico: chi gioca vede la frase della schermata, non quella del server.
+      type: 'https://fantaagent.local/problems/invalid-request',
+      detail: 'fase non prevista dal regolamento: X',
     };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const href = typeof input === 'string' ? input : input.toString();
@@ -983,7 +985,7 @@ describe('AuctionRoute', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'Non puoi cambiare fase: ci sono lotti ancora aperti',
+        'Il cambio di fase non è riuscito. Riprova.',
       ),
     );
   });
@@ -1017,7 +1019,7 @@ describe('AuctionRoute', () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const STATE_UNDOABLE = { ...STATE, canUndo: true };
     const PROBLEM = {
-      type: 'https://fantaagent.local/problems/niente-da-annullare',
+      type: 'https://fantaagent.local/problems/nothing-to-undo',
       detail: 'Niente da annullare',
     };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -1060,11 +1062,13 @@ describe('AuctionRoute', () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const STATE_UNDOABLE = { ...STATE, canUndo: true };
     const PHASE_PROBLEM = {
-      type: 'https://fantaagent.local/problems/fase-non-modificabile',
-      detail: 'Non puoi cambiare fase: ci sono lotti ancora aperti',
+      // Il server rifiuta un cambio di fase con invalid-request, il cui detail e'
+      // tecnico: chi gioca vede la frase della schermata, non quella del server.
+      type: 'https://fantaagent.local/problems/invalid-request',
+      detail: 'fase non prevista dal regolamento: X',
     };
     const UNDO_PROBLEM = {
-      type: 'https://fantaagent.local/problems/niente-da-annullare',
+      type: 'https://fantaagent.local/problems/nothing-to-undo',
       detail: 'Niente da annullare',
     };
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -1101,7 +1105,7 @@ describe('AuctionRoute', () => {
     await userEvent.click(phaseButton);
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'Non puoi cambiare fase: ci sono lotti ancora aperti',
+        'Il cambio di fase non è riuscito. Riprova.',
       ),
     );
     expect(screen.getAllByRole('alert')).toHaveLength(1);
@@ -1114,7 +1118,7 @@ describe('AuctionRoute', () => {
     // Il piu' recente ha preso il posto del precedente: un solo alert vivo,
     // non due, e non e' quello del cambio fase.
     expect(screen.getAllByRole('alert')).toHaveLength(1);
-    expect(screen.queryByText('Non puoi cambiare fase: ci sono lotti ancora aperti')).not.toBeInTheDocument();
+    expect(screen.queryByText('Il cambio di fase non è riuscito. Riprova.')).not.toBeInTheDocument();
   });
 
   it('un annullamento riuscito lo annuncia a chi ascolta', async () => {

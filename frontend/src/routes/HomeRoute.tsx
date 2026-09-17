@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { ProblemError } from '../api/client';
+import { userMessage } from '../api/client';
 import { useAuctions, useDeleteAuction, useLeaveAuction, useSelectAuction } from '../api/hooks';
 import type { AuctionCard } from '../api/types';
 import { DeleteAuctionDialog } from '../domain/DeleteAuctionDialog';
@@ -119,16 +119,13 @@ export function HomeRoute() {
   // due live region che parlano nello stesso istante si sovrappongono, e uno
   // screen reader ne perde una.
   const loadErrorMessage = auctions.isError
-    ? auctions.error instanceof ProblemError
-      ? auctions.error.detail
-      : "Errore di rete: l'elenco delle aste non si è caricato. Riprova."
+    ? userMessage(auctions.error, "L'elenco delle aste non si è caricato. Riprova.")
     : null;
-  const mutationErrorMessage =
-    select.error instanceof ProblemError
-      ? select.error.detail
-      : leave.error instanceof ProblemError
-        ? leave.error.detail
-        : null;
+  const mutationErrorMessage = select.error
+    ? userMessage(select.error, "Non è stato possibile riprendere l'asta. Riprova.")
+    : leave.error
+      ? userMessage(leave.error, "Non è stato possibile preparare una nuova asta. Riprova.")
+      : null;
   const alertMessage = mutationErrorMessage ?? loadErrorMessage;
 
   const list: AuctionCard[] = auctions.data ?? [];
@@ -390,8 +387,9 @@ export function HomeRoute() {
           <DeleteAuctionDialog
             auction={toDelete}
             pending={remove.isPending}
-            error={remove.error instanceof ProblemError ? remove.error.detail
-              : remove.error ? "Errore di rete: l'asta non è stata eliminata. Riprova." : null}
+            error={remove.error
+              ? userMessage(remove.error, "Non è stato possibile eliminare l'asta. Riprova.")
+              : null}
             onCancel={() => setToDelete(null)}
             onConfirm={(id) =>
               remove.mutate(id, {

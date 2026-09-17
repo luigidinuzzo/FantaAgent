@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { ProblemError } from '../api/client';
+import { ProblemError, userMessage } from '../api/client';
 import { useSaveSettings, useSettings } from '../api/hooks';
 import type { SaveSettingsRequest, SettingsErrors } from '../api/types';
 import { FieldErrors } from '../domain/FieldErrors';
@@ -183,9 +183,7 @@ export function SettingsRoute() {
       <AppShell chrome="side">
         <h1 className="sr-only">Impostazioni</h1>
         <p role="alert" className="panel rounded-xl p-4 text-sm font-bold text-destructive">
-          {settings.error instanceof ProblemError
-            ? settings.error.detail
-            : 'Errore di rete: le impostazioni non si sono caricate. Riprova.'}
+          {userMessage(settings.error, 'Le impostazioni non si sono caricate. Riprova.')}
         </p>
       </AppShell>
     );
@@ -264,11 +262,7 @@ export function SettingsRoute() {
                     return;
                   }
                 }
-                setSaveError(
-                  error instanceof ProblemError
-                    ? error.detail
-                    : 'Errore di rete: il salvataggio non e\' riuscito. Riprova.',
-                );
+                setSaveError(userMessage(error, 'Il salvataggio non è riuscito. Riprova.'));
               },
             });
           }}

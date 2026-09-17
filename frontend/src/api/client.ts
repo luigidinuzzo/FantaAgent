@@ -33,6 +33,34 @@ export class ProblemError extends Error {
   }
 }
 
+/**
+ * I tipi di problema il cui {@code detail} e' scritto per chi gioca: una frase in
+ * italiano sul gesto appena fatto («Mario ha solo 12 crediti di budget residuo»).
+ * Tutti gli altri portano dettagli per chi sviluppa — un indirizzo, un id, il nome
+ * di un campo — e non vanno mostrati: l'app e' un prodotto per clienti finali.
+ */
+const USER_FACING_PROBLEMS = new Set([
+  'invalid-settings',
+  'no-auction-selected',
+  'nothing-to-undo',
+  'player-already-sold',
+  'insufficient-budget',
+  'role-slots-exhausted',
+  'purchase-already-revoked',
+]);
+
+/**
+ * Il messaggio da mostrare per un errore: il testo del server solo se e' scritto per
+ * l'utente, altrimenti la frase di ripiego di chi chiama, che dice cosa non e'
+ * riuscito con le parole della schermata.
+ */
+export function userMessage(error: unknown, fallback: string): string {
+  if (error instanceof ProblemError && USER_FACING_PROBLEMS.has(error.slug)) {
+    return error.detail;
+  }
+  return fallback;
+}
+
 let context = { leagueId: 'default', auctionId: '' };
 
 export function setAuctionContext(next: { leagueId: string; auctionId: string }) {

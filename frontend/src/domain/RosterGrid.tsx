@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { auctionExportUrl, ProblemError } from '../api/client';
+import { auctionExportUrl, ProblemError, userMessage } from '../api/client';
 import { useAuctionState, useBoard, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
 import { BG_ROLE_CLASS, ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
@@ -156,7 +156,7 @@ function voidErrorMessage(error: ProblemError): string {
     case 'purchase-not-found':
       return "Quell'acquisto non c'è più: ricarica la pagina.";
     default:
-      return error.detail;
+      return userMessage(error, "L'annullamento non è riuscito. Riprova.");
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { ProblemError } from '../api/client';
+import { userMessage } from '../api/client';
 import {
   useAssign,
   useAuctionState,
@@ -158,12 +158,15 @@ export function AuctionRoute() {
     now,
   });
 
-  const assignError =
-    assign.error instanceof ProblemError ? assign.error.detail : null;
-  const changePhaseError =
-    changePhase.error instanceof ProblemError ? changePhase.error.detail : null;
-  const undoError =
-    undoLast.error instanceof ProblemError ? undoLast.error.detail : null;
+  const assignError = assign.error
+    ? userMessage(assign.error, "L'aggiudicazione non è riuscita. Riprova.")
+    : null;
+  const changePhaseError = changePhase.error
+    ? userMessage(changePhase.error, 'Il cambio di fase non è riuscito. Riprova.')
+    : null;
+  const undoError = undoLast.error
+    ? userMessage(undoLast.error, "L'annullamento non è riuscito. Riprova.")
+    : null;
 
   // Un solo alert, mai due insieme: stessa disciplina di HomeRoute
   // (mutationErrorMessage ?? loadErrorMessage). Le tre mutazioni che questa

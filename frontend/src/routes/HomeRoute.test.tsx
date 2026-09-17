@@ -129,7 +129,7 @@ describe('HomeRoute', () => {
     // due tentativi — il timeout di default di findByRole non basterebbe ad
     // aspettarlo.
     expect(await screen.findByRole('alert', {}, { timeout: 3000 }))
-      .toHaveTextContent(/errore interno/i);
+      .toHaveTextContent("L'elenco delle aste non si è caricato. Riprova.");
     expect(screen.queryByText(/nessuna asta/i)).not.toBeInTheDocument();
   });
 
@@ -217,7 +217,8 @@ describe('HomeRoute', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /crea asta/i }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/errore interno/i);
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('Non è stato possibile preparare una nuova asta. Riprova.');
   });
 
   /**
@@ -259,7 +260,7 @@ describe('HomeRoute', () => {
       // Come sopra: questa query trova solo il "Riprendi" della riga-pillola, non
       // quello della card destra (nome accessibile diverso apposta).
       await user.click(await screen.findByRole('button', { name: /riprendi lega no name/i }));
-      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/selezione fallita/i));
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/riprendere l'asta/i));
 
       // Il refetch periodico (refetchInterval 5s) fallisce a sua volta, e la
       // query riprova una volta (retry: 1) prima di arrendersi. A piccoli
