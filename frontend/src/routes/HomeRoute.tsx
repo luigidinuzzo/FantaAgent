@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError } from '../api/client';
-import { useAuctions, useLeaveAuction, useSelectAuction } from '../api/hooks';
+import { useAuctions, useDeleteAuction, useLeaveAuction, useSelectAuction } from '../api/hooks';
 import type { AuctionCard } from '../api/types';
+import { DeleteAuctionDialog } from '../domain/DeleteAuctionDialog';
 import { EmptyState } from '../domain/EmptyState';
 import { ProfilePanel } from '../domain/ProfilePanel';
 import type { HomeSection } from '../domain/SideNav';
@@ -44,6 +45,24 @@ function GavelIcon() {
   );
 }
 
+/** Il cestino accanto a ogni asta: decorazione, il nome sta nell'aria-label del bottone. */
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
+    </svg>
+  );
+}
+
 /**
  * La home: l'elenco delle aste della lega, con un modo per riprenderne una
  * o per cominciarne una nuova. E' la rotta radice — senza di lei il
@@ -54,6 +73,10 @@ export function HomeRoute() {
   const auctions = useAuctions();
   const select = useSelectAuction();
   const leave = useLeaveAuction();
+  const remove = useDeleteAuction();
+  // L'asta di cui si sta chiedendo conferma, o null a modale chiusa.
+  const [toDelete, setToDelete] = useState<AuctionCard | null>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const navigate = useNavigate();
   // La sezione vive nello stato della pagina, non nell'indirizzo: passare da Asta
   // a Profilo non e' cambiare pagina. Chi arriva da un'altra schermata (la barra
@@ -118,7 +141,7 @@ export function HomeRoute() {
           {/* Il titolo esiste per chi ascolta: la card-eroe sotto e' gia' visivamente
               il punto di partenza della pagina, un h1 visibile qui sopra la
               duplicherebbe. */}
-          <h1 className="sr-only">Le tue aste</h1>
+          <h1 ref={headingRef} tabIndex={-1} className="sr-only">Le tue aste</h1>
 
           <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
             <div>
@@ -224,6 +247,14 @@ export function HomeRoute() {
                       >
                         Riprendi
                       </button>
+                      <button
+                        type="button"
+                        aria-label={`Elimina ${a.label}`}
+                        onClick={() => { remove.reset(); setToDelete(a); }}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-line hover:text-destructive focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      >
+                        <TrashIcon />
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -301,6 +332,25 @@ export function HomeRoute() {
               {alertMessage}
             </p>
           ) : null}
+          {/* L'errore di una cancellazione non entra in alertMessage: vive dentro la
+              modale, che mentre e' aperta e' l'unico role="alert" della pagina. */}
+          <DeleteAuctionDialog
+            auction={toDelete}
+            pending={remove.isPending}
+            error={remove.error instanceof ProblemError ? remove.error.detail
+              : remove.error ? "Errore di rete: l'asta non è stata eliminata. Riprova." : null}
+            onCancel={() => setToDelete(null)}
+            onConfirm={(id) =>
+              remove.mutate(id, {
+                onSuccess: () => {
+                  setToDelete(null);
+                  // Il bottone che aveva aperto la modale non esiste piu': il focus
+                  // torna all'inizio della pagina invece di perdersi sul body.
+                  headingRef.current?.focus();
+                },
+              })
+            }
+          />
           </>
       )}
     </AppShell>

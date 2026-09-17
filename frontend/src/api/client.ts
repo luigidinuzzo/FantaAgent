@@ -162,6 +162,15 @@ export async function apiLeaguePost<T>(path: string, body?: unknown): Promise<T 
   });
 }
 
+/** Gemello di {@link apiLeaguePost} per le cancellazioni: un'asta si toglie dall'archivio. */
+export async function apiLeagueDelete(path: string): Promise<null> {
+  await request<null>(leagueUrl(path), {
+    method: 'DELETE',
+    headers: { accept: 'application/json' },
+  });
+  return null;
+}
+
 /**
  * Gemello di {@link apiPost} che si ferma alla lega, per le scritture che vogliono
  * PUT invece di POST — le impostazioni della lega (task 10/11), che non creano una

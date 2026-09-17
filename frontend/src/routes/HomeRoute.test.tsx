@@ -417,4 +417,38 @@ describe('HomeRoute', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Profilo' })).toBeInTheDocument();
   });
+  it('il cestino apre la conferma, e confermare cancella e ricarica', async () => {
+    const fetchMock = vi.fn((_input: RequestInfo, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.resolve(json([CLOSED_AUCTION]));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderHome();
+
+    await userEvent.click(await screen.findByRole('button', { name: `Elimina ${CLOSED_AUCTION.label}` }));
+    await userEvent.click(screen.getByRole('button', { name: 'Elimina' }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/leagues/default/auctions/${CLOSED_AUCTION.id}`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('heading', { level: 1, name: 'Le tue aste' })).toHaveFocus();
+  });
+
+  it('annullare non chiama il server', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(json([CLOSED_AUCTION]));
+    vi.stubGlobal('fetch', fetchMock);
+    renderHome();
+    await userEvent.click(await screen.findByRole('button', { name: `Elimina ${CLOSED_AUCTION.label}` }));
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
+  });
+
+  it('la card dell asta aperta non ha il cestino', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    renderHome();
+    await screen.findByRole('button', { name: `Riprendi l'asta aperta, ${OPEN_AUCTION.label}` });
+    expect(screen.getAllByRole('button', { name: /^Elimina / })).toHaveLength(1);
+  });
 });

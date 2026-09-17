@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   apiGet,
+  apiLeagueDelete,
   apiLeagueGet,
   apiLeaguePost,
   apiLeaguePut,
@@ -54,6 +55,16 @@ export function useLeaveAuction() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => apiLeaguePost('/auctions/current/leave'),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export function useDeleteAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (auctionId: string) =>
+      apiLeagueDelete(`/auctions/${encodeURIComponent(auctionId)}`),
+    // Nessun aggiornamento ottimistico: l'elenco si rilegge dal server.
     onSuccess: () => client.invalidateQueries(),
   });
 }

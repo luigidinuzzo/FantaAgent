@@ -23,6 +23,8 @@ const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
   ['accent', 'surface', 4.5],
   ['on-accent', 'accent', 4.5],
   ['on-accent', 'positive', 4.5],
+  // Il bottone «Elimina» della conferma di cancellazione.
+  ['on-accent', 'destructive', 4.5],
   ['positive', 'surface', 4.5],
   ['destructive', 'surface', 4.5],
   // I quattro ruoli escono come testo dentro una pillola: 4.5, non 3.
