@@ -42,6 +42,7 @@ export function AppShell({
   title,
   section = 'asta',
   onSectionChange,
+  footerBand = false,
 }: {
   children: ReactNode;
   /**
@@ -62,6 +63,13 @@ export function AppShell({
    * senza cambiare pagina. Assente altrove, dove le voci portano alla home.
    */
   onSectionChange?: (section: HomeSection) => void;
+  /**
+   * Lascia in fondo una fascia di sola erba, senza linee: la home ci mette il
+   * marchio, e nessuna linea del campo lo attraversa. L'altezza esatta della linea
+   * di fondo dipende dalle proporzioni della finestra, quindi spostare il marchio di
+   * qualche pixel non basterebbe: e' il campo a doversi fermare prima.
+   */
+  footerBand?: boolean;
 }) {
   // slotActions con chrome !== 'top' non va nascosto con CSS: non va reso affatto.
   // Un pulsante nascosto alla vista resta comunque raggiungibile da tastiera e dai
@@ -77,7 +85,12 @@ export function AppShell({
           la finestra ne finiva sotto un pezzo, e la metà campo cadeva spostata
           rispetto alle card. md:left-80 va tenuto uguale a md:w-80 della barra
           qui sotto; sul telefono la barra sta sopra e il campo torna intero. */}
-      <PitchLines className={chrome === 'side' ? 'inset-y-0 right-0 left-0 md:left-80' : 'inset-0'} />
+      <PitchLines
+        className={[
+          chrome === 'side' ? 'top-0 right-0 left-0 md:left-80' : 'top-0 right-0 left-0',
+          footerBand ? 'bottom-32 md:bottom-48' : 'bottom-0',
+        ].join(' ')}
+      />
 
       {chrome === 'side' && (
         <div className="flex min-h-dvh flex-col md:flex-row">

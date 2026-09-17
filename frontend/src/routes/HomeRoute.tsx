@@ -159,7 +159,14 @@ export function HomeRoute() {
   }
 
   return (
-    <AppShell chrome="side" section={section} onSectionChange={setSection}>
+    // footerBand: il campo si ferma sopra il marchio in fondo alla pagina, che resta
+    // sull'erba oltre la linea di fondo invece di esserne attraversato.
+    <AppShell
+      chrome="side"
+      section={section}
+      onSectionChange={setSection}
+      footerBand={section === 'asta'}
+    >
       {section === 'profilo' ? (
         <>
           <h1 className="sr-only">Profilo</h1>

@@ -533,5 +533,15 @@ describe('HomeRoute', () => {
     expect(within(footer as HTMLElement).getByTestId('wordmark')).toBeInTheDocument();
     expect(footer).toHaveTextContent('2026, Luigi di Nuzzo');
   });
-});
 
+  /** Sul profilo non c'e' marchio in fondo: il campo torna intero. */
+  it('la fascia libera in fondo c e solo nella sezione delle aste', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    await screen.findByText(CLOSED_AUCTION.label);
+    expect(screen.getByTestId('pitch').className).toContain('md:bottom-48');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Profilo' }));
+    expect(screen.getByTestId('pitch').className).toContain('bottom-0');
+  });
+});
