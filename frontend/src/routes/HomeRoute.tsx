@@ -8,7 +8,9 @@ import { DeleteAuctionDialog } from '../domain/DeleteAuctionDialog';
 import { EmptyState } from '../domain/EmptyState';
 import { ProfilePanel } from '../domain/ProfilePanel';
 import type { HomeSection } from '../domain/SideNav';
+import { PhasePager } from '../domain/PhasePager';
 import { RoleBadge } from '../domain/RoleBadge';
+import { Wordmark } from '../domain/Wordmark';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
 
 const QUANDO = new Intl.DateTimeFormat('it-IT', {
@@ -20,6 +22,9 @@ const QUANDO = new Intl.DateTimeFormat('it-IT', {
  * nessuna aperta diceva «Nessuna asta ancora» accanto a un elenco pieno.
  */
 const NESSUNA_ASTA_TESTO = 'Nessuna asta ancora. Creane una con «Crea asta».';
+
+/** Quante aste per pagina: oltre, l'elenco si sfoglia invece di allungarsi. */
+const AUCTIONS_PER_PAGE = 5;
 
 /** «1 acquisto», «3 acquisti»: il numero e la parola nello stesso nodo di testo. */
 function purchasesLabel(n: number): string {
@@ -95,6 +100,7 @@ export function HomeRoute() {
   // L'asta di cui si sta chiedendo conferma, o null a modale chiusa.
   const [toDelete, setToDelete] = useState<AuctionCard | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [page, setPage] = useState(0);
   const navigate = useNavigate();
   // La sezione vive nello stato della pagina, non nell'indirizzo: passare da Asta
   // a Profilo non e' cambiare pagina. Chi arriva da un'altra schermata (la barra
@@ -127,6 +133,14 @@ export function HomeRoute() {
 
   const list: AuctionCard[] = auctions.data ?? [];
   const openAuction = list.find((a) => a.selected);
+  // La pagina non puo' restare oltre l'ultima: dopo una cancellazione che svuota
+  // l'ultima pagina si torna a quella prima, invece di mostrare un elenco vuoto.
+  const pages = Math.max(1, Math.ceil(list.length / AUCTIONS_PER_PAGE));
+  const currentPage = Math.min(page, pages - 1);
+  const pageItems = list.slice(
+    currentPage * AUCTIONS_PER_PAGE,
+    (currentPage + 1) * AUCTIONS_PER_PAGE,
+  );
 
   function resume(id: string) {
     select.mutate(id, { onSuccess: () => navigate('/asta') });
@@ -211,7 +225,7 @@ export function HomeRoute() {
                 </div>
               ) : (
                 <ul className="mt-6 space-y-3">
-                  {list.map((a) => (
+                  {pageItems.map((a) => (
                     <li
                       key={a.id}
                       className="panel flex items-center gap-3 rounded-2xl px-4 py-4 sm:gap-4 sm:px-6 sm:py-5"
@@ -283,6 +297,23 @@ export function HomeRoute() {
                   ))}
                 </ul>
               )}
+              {/* In un pannello: il conteggio «1–5 di 7» e' testo, e sull'erba non si
+                  legge. Con cinque aste o meno il pager non c'e' affatto. */}
+              {list.length > AUCTIONS_PER_PAGE ? (
+                <div className="panel mt-3 rounded-2xl px-4 py-3 [&>nav]:mt-0 [&>nav]:justify-center">
+                  <PhasePager
+                    offset={currentPage * AUCTIONS_PER_PAGE}
+                    pageSize={AUCTIONS_PER_PAGE}
+                    total={list.length}
+                    hasPrevious={currentPage > 0}
+                    hasNext={currentPage < pages - 1}
+                    onPrevious={() => setPage(currentPage - 1)}
+                    onNext={() => setPage(currentPage + 1)}
+                    navLabel="Pagine delle aste"
+                    scope="dell'elenco"
+                  />
+                </div>
+              ) : null}
             </div>
 
             {/*
@@ -332,6 +363,16 @@ export function HomeRoute() {
               </aside>
             ) : null}
           </div>
+
+          {/* Il marchio in fondo alla pagina, sotto le aste, direttamente sul campo:
+              l'unica eccezione voluta alla regola «niente testo sull'erba». Regge
+              perche' e' grande e in colori verificati sull'erba (contrast.test.ts:
+              foreground e accent su background e grass-stripe); l'ombra lo stacca
+              dalle linee in gesso che gli passano dietro. */}
+          <footer className="mx-auto mt-12 flex flex-col items-center gap-3 pb-6 [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]">
+            <Wordmark size="xl" />
+            <p className="text-sm font-bold text-foreground">2026, Luigi di Nuzzo</p>
+          </footer>
 
           {alertMessage ? (
             // role="alert", non un secondo role="status": l'unica live region

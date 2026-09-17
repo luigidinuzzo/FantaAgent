@@ -491,5 +491,46 @@ describe('HomeRoute', () => {
     expect(open.className).toContain('bg-accent');
     expect(closed.className).not.toContain('bg-accent');
   });
+
+  /** Oltre cinque aste l'elenco si sfoglia, invece di allungarsi senza fine. */
+  it('mostra al massimo cinque aste e sfoglia le altre', async () => {
+    const seven = Array.from({ length: 7 }, (_, i) => ({
+      ...CLOSED_AUCTION, id: `a${i}`, label: `Asta ${i + 1}`,
+    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(seven)));
+    renderHome();
+
+    expect(await screen.findByText('Asta 1')).toBeInTheDocument();
+    expect(screen.getByText('Asta 5')).toBeInTheDocument();
+    expect(screen.queryByText('Asta 6')).not.toBeInTheDocument();
+    const pager = screen.getByRole('navigation', { name: 'Pagine delle aste' });
+    expect(pager).toHaveTextContent('1–5 di 7');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pagina successiva' }));
+    expect(screen.getByText('Asta 6')).toBeInTheDocument();
+    expect(screen.getByText('Asta 7')).toBeInTheDocument();
+    expect(screen.queryByText('Asta 1')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pagina successiva' })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pagina precedente' }));
+    expect(screen.getByText('Asta 1')).toBeInTheDocument();
+  });
+
+  it('con cinque aste o meno non mostra i bottoni delle pagine', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    await screen.findByText(CLOSED_AUCTION.label);
+    expect(screen.queryByRole('navigation', { name: 'Pagine delle aste' })).not.toBeInTheDocument();
+  });
+
+  it('sotto le aste mostra il marchio e la firma', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    await screen.findByText(CLOSED_AUCTION.label);
+    const footer = document.querySelector('footer');
+    expect(footer).not.toBeNull();
+    expect(within(footer as HTMLElement).getByTestId('wordmark')).toBeInTheDocument();
+    expect(footer).toHaveTextContent('2026, Luigi di Nuzzo');
+  });
 });
 

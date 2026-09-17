@@ -32,6 +32,12 @@ const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
   ['role-d', 'surface', 4.5],
   ['role-c', 'surface', 4.5],
   ['role-a', 'surface', 4.5],
+  // Il marchio e la firma in fondo alla home stanno direttamente sull'erba: la firma
+  // e' testo piccolo (4.5), «Agent» in accento e' testo grande (3).
+  ['foreground', 'background', 4.5],
+  ['foreground', 'grass-stripe', 4.5],
+  ['accent', 'background', 3],
+  ['accent', 'grass-stripe', 3],
   // Il bordo del pannello contro l'erba, su entrambe le strisce di taglio, e
   // contro il pannello stesso.
   ['panel-border', 'background', 3],

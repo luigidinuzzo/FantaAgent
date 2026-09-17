@@ -23,6 +23,8 @@ export function PhasePager({
   hasNext,
   onPrevious,
   onNext,
+  navLabel = 'Pagine della fase',
+  scope = 'della fase',
 }: {
   offset: number;
   pageSize: number;
@@ -31,6 +33,10 @@ export function PhasePager({
   hasNext: boolean;
   onPrevious: () => void;
   onNext: () => void;
+  /** Nome del gruppo di navigazione per chi ascolta: il pager serve anche fuori dalla fase. */
+  navLabel?: string;
+  /** Di cosa sono le pagine, nei motivi dei bottoni spenti: «della fase», «dell'elenco». */
+  scope?: string;
 }) {
   const previousHintId = useId();
   const nextHintId = useId();
@@ -41,13 +47,13 @@ export function PhasePager({
     return null;
   }
 
-  const previousReason = !hasPrevious ? 'Non disponibile: questa è già la prima pagina della fase.' : null;
-  const nextReason = !hasNext ? "Non disponibile: questa è l'ultima pagina della fase." : null;
+  const previousReason = !hasPrevious ? `Non disponibile: questa è già la prima pagina ${scope}.` : null;
+  const nextReason = !hasNext ? `Non disponibile: questa è l'ultima pagina ${scope}.` : null;
   const from = total === 0 ? 0 : offset + 1;
   const to = Math.min(offset + pageSize, total);
 
   return (
-    <nav aria-label="Pagine della fase" className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+    <nav aria-label={navLabel} className="mt-3 flex flex-wrap items-center gap-3 text-sm">
       <button
         type="button"
         onClick={onPrevious}

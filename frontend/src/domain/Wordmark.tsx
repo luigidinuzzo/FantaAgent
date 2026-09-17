@@ -8,16 +8,16 @@
  * ne' un'immagine senza nome. Quando arrivera' il logo vero, cambia solo questo
  * file.
  */
-export function Wordmark({ size }: { size: 'lg' | 'md' }) {
-  const large = size === 'lg';
+const TEXT_SIZE = { md: 'text-2xl', lg: 'text-[1.625rem]', xl: 'text-4xl sm:text-5xl' } as const;
+const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-12 sm:w-12' } as const;
+
+export function Wordmark({ size }: { size: 'md' | 'lg' | 'xl' }) {
   return (
     <span
       data-testid="wordmark"
-      className={`inline-flex items-center gap-2 font-black italic uppercase leading-none tracking-tight [font-stretch:125%] ${
-        large ? 'text-[1.625rem]' : 'text-2xl'
-      }`}
+      className={`inline-flex items-center gap-2 font-black italic uppercase leading-none tracking-tight [font-stretch:125%] ${TEXT_SIZE[size]}`}
     >
-      <BallIcon className={large ? 'h-8 w-8' : 'h-7 w-7'} />
+      <BallIcon className={BALL_SIZE[size]} />
       <span>
         <span className="text-foreground">Fanta</span>
         <span className="text-accent">Agent</span>
