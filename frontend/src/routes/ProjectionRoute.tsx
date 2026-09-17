@@ -107,8 +107,8 @@ export function ProjectionRoute() {
         // tabelloni sono aggiornati" mentre il server e' anche lui stantio,
         // le due frasi si contraddirebbero nello stesso istante.
         <p className="rounded-xl border border-dashed border-panel-border bg-surface p-6 text-lg text-accent">
-          Questa finestra non riceve dalla schermata privata: il giocatore all'asta non
-          e' visibile qui.
+          Questa schermata non è collegata a quella dell'asta: il giocatore all'asta non
+          compare qui.
         </p>
       ) : null}
 

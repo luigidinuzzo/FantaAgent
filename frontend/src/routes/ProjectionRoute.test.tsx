@@ -160,7 +160,7 @@ describe('ProjectionRoute', () => {
     publishBid({ kind: 'bidding', playerId: 'd1', price: 41, remainingMs: 3000 });
     // Il prezzo arriva dal canale ed e' visibile subito; il nome arriva dal server.
     expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
-    expect(screen.queryByText(/non riceve dalla schermata privata/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/non è collegata a quella dell'asta/i)).not.toBeInTheDocument();
   });
 
   it('dice di non ricevere invece di restare ferma fingendo, quando il browser non ha il canale', () => {
@@ -168,7 +168,7 @@ describe('ProjectionRoute', () => {
     stubFetch();
     vi.stubGlobal('BroadcastChannel', undefined);
     renderProjection();
-    expect(screen.getByText(/non riceve dalla schermata privata/i)).toBeInTheDocument();
+    expect(screen.getByText(/non è collegata a quella dell'asta/i)).toBeInTheDocument();
   });
 
   // Bug (revisione): la versione precedente controllava solo se il BROWSER
@@ -182,7 +182,7 @@ describe('ProjectionRoute', () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();
     renderProjection();
-    expect(screen.getByText(/non riceve dalla schermata privata/i)).toBeInTheDocument();
+    expect(screen.getByText(/non è collegata a quella dell'asta/i)).toBeInTheDocument();
   });
 
   it('carica correttamente ma non trova nessun tabellone', async () => {
@@ -273,7 +273,7 @@ describe('ProjectionRoute', () => {
 
     expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
     expect(screen.getByTestId('public-clock')).toHaveTextContent('0');
-    expect(screen.queryByText(/non riceve dalla schermata privata/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/non è collegata a quella dell'asta/i)).not.toBeInTheDocument();
   });
 
   // L'altra meta' della stessa correzione: idle deve restare univoco
@@ -331,7 +331,7 @@ describe('ProjectionRoute', () => {
       });
 
       // Il canale non ha mai sentito nulla: e' anche lui stantio.
-      expect(screen.getByText(/non riceve dalla schermata privata/i)).toBeInTheDocument();
+      expect(screen.getByText(/non è collegata a quella dell'asta/i)).toBeInTheDocument();
       expect(screen.getByTestId('connection-status')).toHaveTextContent(/connessione persa/i);
       // Nessuno dei due avvisi afferma che l'altra fonte va bene.
       expect(screen.queryByText(/tabelloni.*aggiornati/i)).not.toBeInTheDocument();

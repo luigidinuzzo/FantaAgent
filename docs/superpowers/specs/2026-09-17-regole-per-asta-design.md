@@ -296,9 +296,9 @@ cestino:
 - nome accessibile «Elimina <nome asta>», area 44×44, colore `destructive` all'hover;
 - apre una **modale di conferma**, un `<dialog>` nativo aperto con `showModal()`:
   focus intrappolato dal browser, Esc annulla, sfondo inerte;
-- titolo «Eliminare «<nome>»?», testo con il conto degli acquisti e dove finisce:
-  *«3 acquisti. L'asta sparisce dall'elenco e la sua cartella va nel cestino
-  (res/auctions-cestino), da dove si può recuperare a mano.»*;
+- titolo «Eliminare «<nome>»?» e testo «Sei sicuro? L'azione è irreversibile.». Il
+  testo non nomina cartelle, percorsi o cestino: è un prodotto per chi gioca, non per
+  chi sviluppa (il cestino resta un dettaglio del README);
 - due bottoni: **«Annulla»**, che riceve il focus all'apertura, ed **«Elimina»** in
   `destructive`. Il focus iniziale su «Annulla» evita che un Invio di troppo cancelli;
 - durante la richiesta «Elimina» è disabilitato e dice «Elimino…»;

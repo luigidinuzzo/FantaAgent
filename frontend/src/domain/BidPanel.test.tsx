@@ -88,7 +88,7 @@ describe('BidPanel', () => {
   it("durante l'attesa spiega a chi ascolta che sta aspettando il server", () => {
     panel({ pending: true });
     expect(screen.getByRole('button', { name: /Aggiudico/ })).toHaveAccessibleDescription(
-      /conferma del server/i,
+      /attendi la conferma/i,
     );
   });
 
@@ -102,7 +102,7 @@ describe('BidPanel', () => {
   it("se stantio e in attesa insieme, vince la spiegazione dell'attesa: e' quella che si risolve da sola", () => {
     panel({ disabled: true, pending: true });
     expect(screen.getByRole('button', { name: /Aggiudico/ })).toHaveAccessibleDescription(
-      /conferma del server/i,
+      /attendi la conferma/i,
     );
   });
 

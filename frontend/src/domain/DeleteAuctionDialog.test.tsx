@@ -9,11 +9,15 @@ const AUCTION: AuctionCard = {
 };
 
 describe('DeleteAuctionDialog', () => {
-  it('chiede conferma nominando asta, acquisti e cestino, con il focus su Annulla', () => {
+  /**
+   * Un prodotto per chi gioca: il testo dice cosa succede, non dove finiscono i file.
+   * Nessun percorso, nessun nome di cartella.
+   */
+  it('chiede conferma nominando l asta, con il focus su Annulla', () => {
     render(<DeleteAuctionDialog auction={AUCTION} pending={false} error={null} onConfirm={() => {}} onCancel={() => {}} />);
     const dialog = screen.getByRole('dialog', { name: 'Eliminare «Lega No Name»?' });
-    expect(dialog).toHaveTextContent('3 acquisti');
-    expect(dialog).toHaveTextContent('res/auctions-cestino');
+    expect(dialog).toHaveTextContent("Sei sicuro? L'azione è irreversibile.");
+    expect(dialog).not.toHaveTextContent(/res\/|cartella|cestino/i);
     expect(screen.getByRole('button', { name: 'Annulla' })).toHaveFocus();
   });
 

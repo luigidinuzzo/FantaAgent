@@ -96,7 +96,7 @@ export function BidderDialog({
   // bordo della scheda o dalla testata. Le due ragioni non sono la stessa
   // situazione: l'attesa si scioglie da sola, lo stantio no.
   const disabledReason = pending
-    ? 'Invio in corso: attendi la conferma del server.'
+    ? 'Invio in corso: attendi la conferma.'
     : disabled
       ? 'Aggiudica non disponibile: i valori mostrati non sono aggiornati.'
       : null;

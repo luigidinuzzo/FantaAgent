@@ -48,7 +48,7 @@ export function UndoLastButton({
   // annunciato come "non disponibile" e basta, e le due ragioni (attesa,
   // niente da annullare) non sono la stessa situazione per chi ascolta.
   const disabledReason = pending
-    ? 'Invio in corso: attendi la conferma del server.'
+    ? 'Invio in corso: attendi la conferma.'
     : !canUndo
       ? 'Nessun acquisto da annullare.'
       : null;

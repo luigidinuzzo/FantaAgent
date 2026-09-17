@@ -64,7 +64,7 @@ export function BidPanel({
   // situazione: l'attesa si scioglie da sola in decine di millisecondi, lo
   // stantio no — richiede che il dato torni fresco, non che il tempo passi.
   const disabledReason = pending
-    ? 'Invio in corso: attendi la conferma del server.'
+    ? 'Invio in corso: attendi la conferma.'
     : disabled
       ? 'Aggiudica non disponibile: i valori mostrati non sono aggiornati.'
       : null;

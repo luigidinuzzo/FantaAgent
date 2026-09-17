@@ -42,10 +42,7 @@ export function DeleteAuctionDialog({
       <h2 id="delete-auction-title" className="w-exp text-lg font-extrabold">
         Eliminare «{auction.label}»?
       </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        <span className="tnum">{auction.purchases}</span> acquisti. L'asta sparisce dall'elenco e
-        la sua cartella va nel cestino (res/auctions-cestino), da dove si può recuperare a mano.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">Sei sicuro? L'azione è irreversibile.</p>
       {error ? (
         <p role="alert" className="mt-3 text-sm font-bold text-destructive">{error}</p>
       ) : null}
