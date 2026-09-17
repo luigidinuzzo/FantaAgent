@@ -369,8 +369,12 @@ export function HomeRoute() {
               perche' e' grande e in colori verificati sull'erba (contrast.test.ts:
               foreground e accent su background e grass-stripe); l'ombra lo stacca
               dalle linee in gesso che gli passano dietro. */}
-          <footer className="mx-auto mt-12 flex flex-col items-center gap-3 pb-6 [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]">
-            <Wordmark size="xl" />
+          <footer className="mx-auto mt-12 flex flex-col items-center gap-4 pb-8 [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]">
+            {/* Ombra piu' marcata sul marchio che sulla firma: il marchio deve staccarsi
+                dal campo. drop-shadow e non text-shadow, perche' segue anche il pallone. */}
+            <span className="[filter:drop-shadow(0_4px_6px_rgb(0_0_0/0.55))_drop-shadow(0_10px_24px_rgb(0_0_0/0.45))]">
+              <Wordmark size="xl" />
+            </span>
             <p className="text-sm font-bold text-foreground">2026, Luigi di Nuzzo</p>
           </footer>
 

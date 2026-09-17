@@ -8,8 +8,8 @@
  * ne' un'immagine senza nome. Quando arrivera' il logo vero, cambia solo questo
  * file.
  */
-const TEXT_SIZE = { md: 'text-2xl', lg: 'text-[1.625rem]', xl: 'text-4xl sm:text-5xl' } as const;
-const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-12 sm:w-12' } as const;
+const TEXT_SIZE = { md: 'text-2xl', lg: 'text-[1.625rem]', xl: 'text-3xl min-[400px]:text-4xl sm:text-7xl' } as const;
+const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-16 sm:w-16' } as const;
 
 export function Wordmark({ size }: { size: 'md' | 'lg' | 'xl' }) {
   return (
