@@ -160,17 +160,19 @@ export function HomeRoute() {
 
   return (
     <AppShell chrome="side" section={section} onSectionChange={setSection}>
+      {/* Colonna alta almeno quanto la finestra (meno il padding di main): cosi' il
+          marchio sta in fondo alla pagina anche con poco contenuto, invece di salire
+          sotto l'ultima riga. Sul telefono la barra sta sopra e il contenuto riempie
+          gia' lo schermo: il marchio lo segue. Le due sezioni condividono la stessa
+          colonna e lo stesso marchio in fondo. */}
+      <div className="flex flex-col md:min-h-[calc(100dvh-3rem)]">
       {section === 'profilo' ? (
         <>
           <h1 className="sr-only">Profilo</h1>
           <ProfilePanel />
         </>
       ) : (
-          // Colonna alta almeno quanto la finestra (meno il padding di main): cosi' il
-          // marchio sta in fondo alla pagina anche con poche aste, invece di salire
-          // sotto l'ultima riga. Sul telefono la barra sta sopra e l'elenco riempie
-          // gia' lo schermo: il marchio segue il contenuto.
-          <div className="flex flex-col md:min-h-[calc(100dvh-3rem)]">
+          <>
           {/* Il titolo esiste per chi ascolta: la card-eroe sotto e' gia' visivamente
               il punto di partenza della pagina, un h1 visibile qui sopra la
               duplicherebbe. */}
@@ -376,18 +378,6 @@ export function HomeRoute() {
             </p>
           ) : null}
 
-          {/* Il marchio in fondo alla pagina, sotto le aste, direttamente sul campo:
-              l'unica eccezione voluta alla regola «niente testo sull'erba». Il bordo
-              nero del marchio e il blocchetto bianco della firma li staccano dal campo
-              e dalle linee in gesso che ci passano dietro. */}
-          <footer className="mx-auto mt-auto flex flex-col items-center gap-4 pt-12 pb-8">
-            <Wordmark size="xl" outlined />
-            {/* Chiaro su scuro, al contrario di tutto il resto: e' il blocchetto a dare
-                il contrasto. La coppia surface/foreground e' in contrast.test.ts. */}
-            <p className="rounded-full bg-foreground px-4 py-1.5 text-sm font-bold text-surface">
-              2026, Luigi di Nuzzo
-            </p>
-          </footer>
 
           {/* L'errore di una cancellazione non entra in alertMessage: vive dentro la
               modale, che mentre e' aperta e' l'unico role="alert" della pagina. */}
@@ -409,8 +399,21 @@ export function HomeRoute() {
               })
             }
           />
-          </div>
+          </>
       )}
+      {/* Il marchio in fondo alla pagina, sotto il contenuto, direttamente sul campo:
+          l'unica eccezione voluta alla regola «niente testo sull'erba». Il bordo
+          nero del marchio e il blocchetto bianco della firma li staccano dal campo e
+          dalle linee in gesso che ci passano dietro. */}
+      <footer className="mx-auto mt-auto flex flex-col items-center gap-4 pt-12 pb-8">
+        <Wordmark size="xl" outlined />
+        {/* Chiaro su scuro, al contrario di tutto il resto: e' il blocchetto a dare il
+            contrasto. La coppia surface/foreground e' in contrast.test.ts. */}
+        <p className="rounded-full bg-foreground px-4 py-1.5 text-sm font-bold text-surface">
+          2026, Luigi di Nuzzo
+        </p>
+      </footer>
+      </div>
     </AppShell>
   );
 }

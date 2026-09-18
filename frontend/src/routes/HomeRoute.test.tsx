@@ -524,7 +524,7 @@ describe('HomeRoute', () => {
     expect(screen.queryByRole('navigation', { name: 'Pagine delle aste' })).not.toBeInTheDocument();
   });
 
-  it('sotto le aste mostra il marchio e la firma', async () => {
+  it('sotto il contenuto mostra il marchio e la firma, in entrambe le sezioni', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
@@ -532,6 +532,9 @@ describe('HomeRoute', () => {
     expect(footer).not.toBeNull();
     expect(within(footer as HTMLElement).getByTestId('wordmark')).toBeInTheDocument();
     expect(footer).toHaveTextContent('2026, Luigi di Nuzzo');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Profilo' }));
+    expect(document.querySelector('footer')).toHaveTextContent('2026, Luigi di Nuzzo');
   });
 
 
