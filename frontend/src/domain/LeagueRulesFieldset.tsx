@@ -34,8 +34,10 @@ export function LeagueRulesFieldset({
     disabled ? lockId : (errors[key]?.length ?? 0) > 0 ? `${baseId}-${key}` : undefined;
 
   return (
-    <fieldset className="m-0 space-y-3 border-0 p-0">
-      <legend className="text-base font-bold text-muted-foreground">Regole della lega</legend>
+    // Cornice e titolo come «Partecipanti» e «Punteggio»: sono le tre sezioni del
+    // modulo, e questa si leggeva come una riga qualunque fra i campi del battitore.
+    <fieldset className="space-y-3 rounded-2xl border border-line-strong p-4">
+      <legend className="px-2 text-base font-bold">Regole della lega</legend>
       {disabled ? <p id={lockId} className="text-base text-muted-foreground">{LOCK_TEXT}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

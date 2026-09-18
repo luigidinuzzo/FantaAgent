@@ -62,4 +62,13 @@ describe('LeagueRulesFieldset', () => {
     // lettera colorata con il singolare di RoleBadge.
     expect(screen.getByRole('spinbutton', { name: 'Slot portieri' })).toHaveAccessibleDescription(/fra 1 e 30/);
   });
+
+  /** Le tre sezioni del modulo si somigliano: cornice e titolo in evidenza. */
+  it('e una sezione con cornice e titolo, come Partecipanti e Punteggio', () => {
+    const { container } = render(<Harness />);
+    const fieldset = container.querySelector('fieldset');
+    expect(fieldset?.className).toContain('border-line-strong');
+    expect(fieldset?.className).not.toContain('border-0');
+    expect(screen.getByText('Regole della lega').tagName).toBe('LEGEND');
+  });
 });
