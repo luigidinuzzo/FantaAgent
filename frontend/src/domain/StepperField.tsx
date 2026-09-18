@@ -1,7 +1,7 @@
 import { NumberField } from './NumberField';
 
 const STEP_BUTTON =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong text-xl font-bold hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
+  'flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line-strong text-xl font-bold hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
 /**
  * Un numero con − e + ai lati: si regola senza tastiera, a passi, dentro limiti che
@@ -38,7 +38,7 @@ export function StepperField({
         aria-invalid={invalid}
         aria-describedby={describedBy}
         onChange={onChange}
-        className="tnum block min-h-11 w-full min-w-0 flex-1 rounded-full border border-line-strong bg-transparent px-4 text-center font-bold disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="tnum block min-h-12 w-full min-w-0 flex-1 rounded-full border border-line-strong bg-transparent px-4 text-center text-lg font-bold disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       />
       <button type="button" aria-label={increaseLabel} disabled={disabled || value >= max}
         onClick={() => set(value + step)} className={STEP_BUTTON}>

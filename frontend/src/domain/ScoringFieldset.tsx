@@ -93,7 +93,7 @@ export function ScoringFieldset({
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
           stesso — un group — che supporta una descrizione, non la legend. */}
-      <legend className="px-2 font-bold">Punteggio</legend>
+      <legend className="px-2 text-base font-bold">Punteggio</legend>
 
       {disabled ? (
         <p id={lockId} className="mb-3 text-sm text-muted-foreground">
@@ -114,7 +114,7 @@ export function ScoringFieldset({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {NUMERIC.map(({ key, label }) => (
           <div key={key}>
-            <label className="block text-sm">
+            <label className="block text-base">
               <span className="flex min-h-6 items-center">{label}</span>
               <NumberField
                 step="0.5"
@@ -129,7 +129,7 @@ export function ScoringFieldset({
                       : undefined
                 }
                 onChange={(next) => onChange({ ...value, [key]: next })}
-                className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="tnum mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </label>
             <FieldErrors id={`${baseId}-${key}`} errors={errorsFor(errors, key)} />
@@ -143,7 +143,7 @@ export function ScoringFieldset({
               {/* min-h-6 su tutte le etichette: la RoleBadge e' piu' alta di una
                   riga di testo, e senza un'altezza comune i campi della stessa
                   fila della griglia scendevano di qualche pixel. */}
-              <label className="block text-sm">
+              <label className="block text-base">
                 <span className="flex min-h-6 items-center gap-1.5">
                   Gol segnato <RoleBadge role={role} />
                 </span>
@@ -165,7 +165,7 @@ export function ScoringFieldset({
                       goalBonus: { ...value.goalBonus, [role]: next },
                     })
                   }
-                  className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="tnum mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </label>
               <FieldErrors id={`${baseId}-${key}`} errors={errorsFor(errors, key)} />
@@ -180,7 +180,7 @@ export function ScoringFieldset({
             lui stesso l'unico modo di riaccenderlo: se lo disabilitassimo
             insieme alla tabella, un modificatore spento non si potrebbe piu'
             riaccendere da questa schermata. */}
-        <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+        <label className="flex min-h-12 cursor-pointer items-center gap-3 text-base">
           <input
             type="checkbox"
             checked={value.defenceModifierEnabled}
@@ -199,7 +199,7 @@ export function ScoringFieldset({
                 lasciava anche l'ultimo «Gol segnato» da solo su una fila. */}
             <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="block text-sm">
+                <label className="block text-base">
                   <span className="flex min-h-6 items-center">Difensori conteggiati</span>
                   <NumberField
                     value={value.defendersCounted}
@@ -213,7 +213,7 @@ export function ScoringFieldset({
                           : undefined
                     }
                     onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
-                    className="tnum mt-1 block min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                 </label>
                 <FieldErrors

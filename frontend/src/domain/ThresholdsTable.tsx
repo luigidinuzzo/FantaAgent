@@ -99,8 +99,8 @@ export function ThresholdsTable({
         </p>
       ) : null}
 
-      <table className="w-full table-fixed text-sm">
-        <caption className="mb-2 text-left text-sm font-bold">
+      <table className="w-full table-fixed text-base">
+        <caption className="mb-2 text-left text-base font-bold">
           {GROUP_LABEL}
         </caption>
         <thead>
@@ -130,7 +130,7 @@ export function ThresholdsTable({
                       aria-invalid={!disabled && rowErrors.length > 0}
                       aria-describedby={describedBy}
                       onChange={(minAverage) => updateRow(i, { minAverage })}
-                      className="tnum min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      className="tnum min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     />
                   </td>
                   <td className="py-1 pr-3">
@@ -145,7 +145,7 @@ export function ThresholdsTable({
                       aria-invalid={!disabled && rowErrors.length > 0}
                       aria-describedby={describedBy}
                       onChange={(bonus) => updateRow(i, { bonus })}
-                      className="tnum min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      className="tnum min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     />
                   </td>
                   <td className="py-1 text-right">
@@ -180,7 +180,7 @@ export function ThresholdsTable({
         type="button"
         disabled={disabled}
         onClick={() => onChange([...value, { minAverage: 0, bonus: 0 }])}
-        className="mt-3 min-h-11 rounded-full border border-line-strong px-4 text-sm disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="mt-4 min-h-12 rounded-full border border-line-strong px-5 text-base disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         Aggiungi soglia
       </button>

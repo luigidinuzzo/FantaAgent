@@ -68,9 +68,9 @@ export function ParticipantsFieldset({
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
           stesso — un group — che supporta una descrizione, non la legend. */}
-      <legend className="px-2 font-bold">Partecipanti</legend>
+      <legend className="px-2 text-base font-bold">Partecipanti</legend>
 
-      <table className="w-full table-fixed text-sm">
+      <table className="w-full table-fixed text-base">
         <caption className="sr-only">
           Nome, iniziale e chi sei tu, per ogni partecipante alla lega
         </caption>
@@ -100,7 +100,7 @@ export function ParticipantsFieldset({
                     aria-invalid={nameErrors.length > 0}
                     aria-describedby={nameErrors.length > 0 ? nameErrorsId : undefined}
                     onChange={(e) => update(i, { name: e.target.value })}
-                    className="min-h-11 w-full rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={nameErrorsId} errors={nameErrors} />
                 </td>
@@ -113,7 +113,7 @@ export function ParticipantsFieldset({
                     aria-invalid={initialErrors.length > 0}
                     aria-describedby={initialErrors.length > 0 ? initialErrorsId : undefined}
                     onChange={(e) => update(i, { initial: e.target.value.toUpperCase() })}
-                    className="tnum min-h-11 w-full rounded-full border border-line-strong bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum min-h-12 w-full rounded-full border border-line-strong bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={initialErrorsId} errors={initialErrors} />
                 </td>
@@ -159,7 +159,7 @@ export function ParticipantsFieldset({
               { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
             ])
           }
-          className="mt-3 min-h-11 rounded-full border border-line-strong px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="mt-4 min-h-12 rounded-full border border-line-strong px-5 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           Aggiungi partecipante
         </button>

@@ -35,12 +35,12 @@ export function LeagueRulesFieldset({
 
   return (
     <fieldset className="m-0 space-y-3 border-0 p-0">
-      <legend className="text-sm font-bold text-muted-foreground">Regole della lega</legend>
-      {disabled ? <p id={lockId} className="text-sm text-muted-foreground">{LOCK_TEXT}</p> : null}
+      <legend className="text-base font-bold text-muted-foreground">Regole della lega</legend>
+      {disabled ? <p id={lockId} className="text-base text-muted-foreground">{LOCK_TEXT}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <label htmlFor={`${baseId}-budget`} className="block text-sm">Crediti per squadra</label>
+          <label htmlFor={`${baseId}-budget`} className="block text-base">Crediti per squadra</label>
           <StepperField
             id={`${baseId}-budget`}
             value={value.budget}
@@ -62,7 +62,7 @@ export function LeagueRulesFieldset({
           const name = ROLE_NAME_PLURAL[role];
           return (
             <div key={role}>
-              <label htmlFor={`${baseId}-${role}`} className="flex min-h-6 items-center gap-1.5 text-sm">
+              <label htmlFor={`${baseId}-${role}`} className="flex min-h-6 items-center gap-1.5 text-base">
                 {/* Due forme della stessa etichetta: la lettera colorata per chi guarda,
                     «Slot portieri» per chi ascolta — un solo nodo di testo, perche' lo
                     spazio fra due nodi separati si perde nel nome accessibile. */}
@@ -88,7 +88,7 @@ export function LeagueRulesFieldset({
         })}
 
         <div className="flex items-end">
-          <span className="tnum inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line-strong px-4 font-extrabold">
+          <span className="tnum inline-flex min-h-12 items-center gap-1.5 rounded-full border border-line-strong px-4 text-lg font-extrabold">
             {participants}
             <span className="font-normal text-muted-foreground">squadre</span>
           </span>

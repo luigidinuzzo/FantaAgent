@@ -217,7 +217,9 @@ export function SettingsRoute() {
     <AppShell chrome="side">
       {/* Un unico pannello pieno per tutto il modulo: etichette, pillole e
           messaggi non poggiano mai sulle linee del campo. */}
-      <div className="panel mx-auto max-w-4xl rounded-2xl p-6">
+      {/* Le stesse misure della home: larghezza massima, riempimento e corpi di testo
+          delle sue card. */}
+      <div className="panel mx-auto w-full max-w-7xl rounded-2xl p-5 sm:p-8">
         <div className="relative mb-6 flex items-center justify-center">
           {/* Nome accessibile esplicito: una freccia da sola sarebbe un'icona
               muta, senza niente che uno screen reader possa leggere. */}
@@ -230,7 +232,7 @@ export function SettingsRoute() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
-          <h1 className="text-xl font-extrabold">{title}</h1>
+          <h1 className="text-xl font-extrabold sm:text-2xl">{title}</h1>
         </div>
 
         <form
@@ -274,7 +276,7 @@ export function SettingsRoute() {
             // il campo — includerci l'elenco degli errori lo renderebbe "Nome
             // dell'asta" + il messaggio, non piu' semplicemente "Nome dell'asta".
             <div>
-              <label className="block text-sm">
+              <label className="block text-base">
                 Nome dell'asta
                 <input
                   value={form.auctionName}
@@ -302,7 +304,7 @@ export function SettingsRoute() {
               <legend className="sr-only">Battitore</legend>
 
               <div>
-                <label htmlFor={bidTimerId} className="block text-sm">
+                <label htmlFor={bidTimerId} className="block text-base">
                   Secondi di countdown
                 </label>
                 {/* − e + ai lati del campo: si regola il timer senza tastiera, dentro
@@ -324,7 +326,7 @@ export function SettingsRoute() {
               </div>
 
               <div>
-                <label className="flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-full border border-line-strong px-4 text-sm">
+                <label className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-full border border-line-strong px-4 text-base">
                   <input
                     type="checkbox"
                     checked={form.bidder.beepEnabled}
@@ -375,7 +377,7 @@ export function SettingsRoute() {
             <button
               type="submit"
               disabled={save.isPending}
-              className="min-h-11 rounded-full bg-positive px-8 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+              className="min-h-12 rounded-full bg-positive px-8 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
             >
               {save.isPending ? 'Salvo…' : auctionOpen ? 'Salva' : "Salva e comincia l'asta"}
             </button>
