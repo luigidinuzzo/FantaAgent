@@ -13,7 +13,6 @@ function Harness({ disabled = false, onValue }: { disabled?: boolean; onValue?: 
     <LeagueRulesFieldset
       value={value}
       onChange={(next) => { setValue(next); onValue?.(next); }}
-      participants={7}
       errors={{}}
       disabled={disabled}
     />
@@ -30,12 +29,11 @@ describe('LeagueRulesFieldset', () => {
     expect(last!.slots.D).toBe(7);
   });
 
-  it('le squadre sono i partecipanti, in sola lettura', () => {
+  /** Le squadre non si configurano qui: il loro numero sta sotto i partecipanti. */
+  it('non contiene il numero di squadre', () => {
     render(<Harness />);
     const group = screen.getByRole('group', { name: 'Regole della lega' });
-    expect(within(group).getByText('7')).toBeInTheDocument();
-    expect(within(group).getByText('squadre')).toBeInTheDocument();
-    expect(within(group).queryByLabelText(/squadre/i)).not.toBeInTheDocument();
+    expect(within(group).queryByText('squadre')).not.toBeInTheDocument();
   });
 
   it('ad asta aperta i campi sono bloccati e dicono perche', () => {
@@ -53,8 +51,7 @@ describe('LeagueRulesFieldset', () => {
       <LeagueRulesFieldset
         value={RULES}
         onChange={() => {}}
-        participants={7}
-        errors={{ 'slots[P]': ['Gli slot dei portieri devono essere fra 1 e 30: indicati 0.'] }}
+          errors={{ 'slots[P]': ['Gli slot dei portieri devono essere fra 1 e 30: indicati 0.'] }}
         disabled={false}
       />,
     );

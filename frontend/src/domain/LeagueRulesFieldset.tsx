@@ -16,15 +16,14 @@ const LOCK_TEXT =
   'Asta in corso: crediti, slot e numero di squadre sono bloccati, perché cambiarli ricalcolerebbe budget e rose già pagate.';
 
 /**
- * Le regole della lega per l'asta che si sta creando. Le squadre non sono un campo:
- * sono i partecipanti, e cambiano mentre se ne aggiungono o tolgono righe.
+ * Le regole della lega per l'asta che si sta creando. Le squadre non sono qui: sono i
+ * partecipanti, e il loro numero si legge sotto la sezione che li elenca.
  */
 export function LeagueRulesFieldset({
-  value, onChange, participants, errors, disabled,
+  value, onChange, errors, disabled,
 }: {
   value: RulesSection;
   onChange: (next: RulesSection) => void;
-  participants: number;
   errors: Record<string, string[]>;
   disabled: boolean;
 }) {
@@ -88,13 +87,6 @@ export function LeagueRulesFieldset({
             </div>
           );
         })}
-
-        <div className="flex items-end">
-          <span className="tnum inline-flex min-h-12 items-center gap-1.5 rounded-full border border-line-strong px-4 text-lg font-extrabold">
-            {participants}
-            <span className="font-normal text-muted-foreground">squadre</span>
-          </span>
-        </div>
       </div>
     </fieldset>
   );

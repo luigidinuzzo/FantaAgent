@@ -13,6 +13,21 @@ import { StepperField } from '../domain/StepperField';
 
 const NO_ERRORS: SettingsErrors = {};
 
+/**
+ * I partecipanti di un'asta nuova: otto squadre con un nome segnaposto, da cambiare
+ * con quelli veri. Meglio di una lista gia' piena di nomi di un'altra lega: quelli
+ * andrebbero corretti uno per uno senza che si veda quali sono ancora da sistemare.
+ */
+const DEFAULT_PARTICIPANTS: SaveSettingsRequest['participants'] = Array.from(
+  { length: 8 },
+  (_, i) => ({
+    id: `team-${i + 1}`,
+    name: `Team ${i + 1}`,
+    initial: String(i + 1),
+    me: i === 0,
+  }),
+);
+
 /** Gli stessi limiti di AuctionSettingsValidator (MIN_SECONDS, MAX_SECONDS). */
 const MIN_TIMER_SECONDS = 1;
 const MAX_TIMER_SECONDS = 120;
@@ -172,7 +187,10 @@ export function SettingsRoute() {
     setForm({
       auctionName: '',
       bidder: settings.data.bidder,
-      participants: settings.data.participants,
+      // Asta nuova: otto squadre segnaposto. Ad asta aperta, i suoi partecipanti veri.
+      participants: settings.data.auctionOpen
+        ? settings.data.participants
+        : DEFAULT_PARTICIPANTS,
       scoring: settings.data.scoring,
       rules: { budget: settings.data.rules.budget, slots: settings.data.rules.slots },
     });
@@ -350,7 +368,6 @@ export function SettingsRoute() {
             <LeagueRulesFieldset
               value={form.rules}
               onChange={(rules) => setForm({ ...form, rules })}
-              participants={form.participants.length}
               errors={errors}
               disabled={auctionOpen}
             />
@@ -362,6 +379,15 @@ export function SettingsRoute() {
             errors={errors}
             lockCount={auctionOpen}
           />
+
+          {/* Il numero di squadre sta sotto l'elenco che lo determina: e' la lunghezza
+              della lista, non un campo da compilare. */}
+          <p className="-mt-2 flex justify-end">
+            <span className="tnum inline-flex min-h-12 items-center gap-1.5 rounded-full border border-line-strong px-4 text-lg font-extrabold">
+              {form.participants.length}
+              <span className="font-normal text-muted-foreground">squadre</span>
+            </span>
+          </p>
 
           {/* Sempre aperto, non una disclosure: il punteggio e' parte della
               creazione dell'asta quanto i partecipanti, e un <details> chiuso

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -56,8 +56,36 @@ describe('SettingsRoute', () => {
 
   it('mostra le impostazioni che arrivano dal server', async () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    expect(await screen.findByLabelText(/secondi/i)).toHaveValue(5);
+    expect(screen.getByLabelText('Crediti per squadra')).toHaveValue(SETTINGS.rules.budget);
+  });
+
+  /**
+   * Un'asta nuova parte da otto squadre segnaposto, non dai nomi di un'altra lega:
+   * quelli andrebbero corretti uno per uno senza che si veda quali mancano ancora.
+   */
+  it('una nuova asta parte da otto squadre segnaposto', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    expect(await screen.findByDisplayValue('Team 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Team 8')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Anna')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('radio')).toHaveLength(8);
+  });
+
+  /** Ad asta aperta, invece, si vedono i partecipanti veri di quell'asta. */
+  it('ad asta aperta mostra i partecipanti dell asta', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', vi.fn(() =>
+      Promise.resolve(jsonResponse({ ...SETTINGS, auctionOpen: true }))));
+    render(
+      <QueryProvider>
+        <MemoryRouter>
+          <SettingsRoute />
+        </MemoryRouter>
+      </QueryProvider>,
+    );
     expect(await screen.findByDisplayValue('Anna')).toBeInTheDocument();
-    expect(screen.getByLabelText(/secondi/i)).toHaveValue(5);
+    expect(screen.queryByDisplayValue('Team 1')).not.toBeInTheDocument();
   });
 
   /**
@@ -141,7 +169,7 @@ describe('SettingsRoute', () => {
       return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
     });
 
-    await screen.findByDisplayValue('Anna');
+    await screen.findByDisplayValue('Team 1');
     await userEvent.type(await screen.findByLabelText(/nome dell'asta/i), 'Lega');
     await userEvent.click(screen.getByRole('button', { name: /salva/i }));
 
@@ -416,15 +444,17 @@ describe('SettingsRoute', () => {
   });
 
   /** Le squadre non sono un campo: seguono la lista dei partecipanti mentre la si modifica. */
+  /** Il numero di squadre sta sotto i partecipanti, e li segue. */
   it('le squadre seguono i partecipanti aggiunti', async () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
-    const group = await screen.findByRole('group', { name: 'Regole della lega' });
-    const before = SETTINGS.participants.length;
-    expect(within(group).getByText(String(before))).toBeInTheDocument();
+    const squadre = (await screen.findByText('squadre')).parentElement;
+    expect(squadre).toHaveTextContent('8');
 
     await userEvent.click(screen.getByRole('button', { name: /aggiungi partecipante/i }));
+    expect(screen.getByText('squadre').parentElement).toHaveTextContent('9');
 
-    expect(within(group).getByText(String(before + 1))).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Togli Team 8' }));
+    expect(screen.getByText('squadre').parentElement).toHaveTextContent('8');
   });
 
   it('ad asta aperta regole e numero di partecipanti sono bloccati', async () => {
