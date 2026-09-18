@@ -110,25 +110,7 @@ describe('AppShell', () => {
 
   it('con la barra in alto il campo occupa tutta la finestra', () => {
     const { getByTestId } = render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
-    const className = getByTestId('pitch').className;
-    expect(className).toContain('left-0');
-    expect(className).toContain('bottom-0');
-    expect(className).not.toContain('md:left-80');
-  });
-
-  /**
-   * La fascia in fondo: il campo si ferma prima, cosi' il marchio della home non
-   * viene attraversato dalla linea di fondo — la cui altezza dipende dalle
-   * proporzioni della finestra, e non si puo' schivare spostando il marchio.
-   */
-  it('con footerBand il campo lascia libera la fascia in fondo', () => {
-    const { getByTestId } = render(
-      withRouter(<AppShell chrome="side" footerBand><p>x</p></AppShell>),
-    );
-    const className = getByTestId('pitch').className;
-    expect(className).toContain('bottom-32');
-    expect(className).toContain('md:bottom-48');
-    expect(className).not.toContain('bottom-0');
+    expect(getByTestId('pitch').className).toContain('inset-0');
   });
 
   it('il nome e\' il logo, e resta una parola sola per chi ascolta', () => {

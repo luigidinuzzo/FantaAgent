@@ -11,13 +11,27 @@
 const TEXT_SIZE = { md: 'text-2xl', lg: 'text-[1.625rem]', xl: 'text-3xl min-[400px]:text-4xl sm:text-7xl' } as const;
 const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-16 sm:w-16' } as const;
 
-export function Wordmark({ size }: { size: 'md' | 'lg' | 'xl' }) {
+/**
+ * Il bordo nero: il contorno delle lettere disegnato DIETRO il riempimento
+ * (paint-order), cosi' le ingrossa invece di assottigliarle, piu' un'ombra stretta.
+ * Serve al marchio grande in fondo alla home, che sta sull'erba e deve staccarsi
+ * dalle linee del campo.
+ */
+const OUTLINE =
+  '[-webkit-text-stroke:2px_#000] sm:[-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]'
+  + ' [filter:drop-shadow(0_3px_5px_rgb(0_0_0/0.55))]';
+
+export function Wordmark({ size, outlined = false }: {
+  size: 'md' | 'lg' | 'xl';
+  /** Contorno nero attorno a lettere e pallone: per il marchio sul campo. */
+  outlined?: boolean;
+}) {
   return (
     <span
       data-testid="wordmark"
-      className={`inline-flex items-center gap-2 font-black italic uppercase leading-none tracking-tight [font-stretch:125%] ${TEXT_SIZE[size]}`}
+      className={`inline-flex items-center gap-2 font-black italic uppercase leading-none tracking-tight [font-stretch:125%] ${TEXT_SIZE[size]} ${outlined ? OUTLINE : ''}`}
     >
-      <BallIcon className={BALL_SIZE[size]} />
+      <BallIcon className={BALL_SIZE[size]} outlined={outlined} />
       <span>
         <span className="text-foreground">Fanta</span>
         <span className="text-accent">Agent</span>
@@ -26,10 +40,17 @@ export function Wordmark({ size }: { size: 'md' | 'lg' | 'xl' }) {
   );
 }
 
-function BallIcon({ className }: { className: string }) {
+function BallIcon({ className, outlined = false }: { className: string; outlined?: boolean }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 32 32" className={`shrink-0 ${className}`}>
-      <circle cx="16" cy="16" r="14" fill="var(--foreground)" />
+      <circle
+        cx="16"
+        cy="16"
+        r="14"
+        fill="var(--foreground)"
+        stroke={outlined ? '#000' : undefined}
+        strokeWidth={outlined ? 2.5 : undefined}
+      />
       <path
         d="M16 9.5l5.5 4-2.1 6.5h-6.8l-2.1-6.5z"
         fill="var(--surface)"

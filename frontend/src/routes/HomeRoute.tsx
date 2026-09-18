@@ -159,14 +159,7 @@ export function HomeRoute() {
   }
 
   return (
-    // footerBand: il campo si ferma sopra il marchio in fondo alla pagina, che resta
-    // sull'erba oltre la linea di fondo invece di esserne attraversato.
-    <AppShell
-      chrome="side"
-      section={section}
-      onSectionChange={setSection}
-      footerBand={section === 'asta'}
-    >
+    <AppShell chrome="side" section={section} onSectionChange={setSection}>
       {section === 'profilo' ? (
         <>
           <h1 className="sr-only">Profilo</h1>
@@ -381,17 +374,16 @@ export function HomeRoute() {
           ) : null}
 
           {/* Il marchio in fondo alla pagina, sotto le aste, direttamente sul campo:
-              l'unica eccezione voluta alla regola «niente testo sull'erba». Regge
-              perche' e' grande e in colori verificati sull'erba (contrast.test.ts:
-              foreground e accent su background e grass-stripe); l'ombra lo stacca
-              dalle linee in gesso che gli passano dietro. */}
-          <footer className="mx-auto mt-auto flex flex-col pt-12 items-center gap-4 pb-8 [text-shadow:0_1px_3px_rgb(0_0_0/0.45)]">
-            {/* Ombra piu' marcata sul marchio che sulla firma: il marchio deve staccarsi
-                dal campo. drop-shadow e non text-shadow, perche' segue anche il pallone. */}
-            <span className="[filter:drop-shadow(0_4px_6px_rgb(0_0_0/0.55))_drop-shadow(0_10px_24px_rgb(0_0_0/0.45))]">
-              <Wordmark size="xl" />
-            </span>
-            <p className="text-sm font-bold text-foreground">2026, Luigi di Nuzzo</p>
+              l'unica eccezione voluta alla regola «niente testo sull'erba». Il bordo
+              nero del marchio e il blocchetto bianco della firma li staccano dal campo
+              e dalle linee in gesso che ci passano dietro. */}
+          <footer className="mx-auto mt-auto flex flex-col items-center gap-4 pt-12 pb-8">
+            <Wordmark size="xl" outlined />
+            {/* Chiaro su scuro, al contrario di tutto il resto: e' il blocchetto a dare
+                il contrasto. La coppia surface/foreground e' in contrast.test.ts. */}
+            <p className="rounded-full bg-foreground px-4 py-1.5 text-sm font-bold text-surface">
+              2026, Luigi di Nuzzo
+            </p>
           </footer>
 
           {/* L'errore di una cancellazione non entra in alertMessage: vive dentro la
