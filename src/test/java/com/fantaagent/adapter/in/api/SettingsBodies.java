@@ -35,6 +35,15 @@ final class SettingsBodies {
         return body(auctionName, 5, rules(budget, slots));
     }
 
+    /** Due partecipanti senza iniziale, come li manda il modulo di «Crea asta». */
+    static String withoutInitials(String auctionName) {
+        return body(auctionName, 5, rules(500, DEFAULT_SLOTS))
+                .replace("\"initial\": \"A\", ", "")
+                .replace("\"initial\": \"B\", ", "")
+                .replace("\"name\": \"Anna\"", "\"name\": \"Team 1\"")
+                .replace("\"name\": \"Bruno\"", "\"name\": \"Team 2\"");
+    }
+
     static String withoutRules(String auctionName) {
         return body(auctionName, 5, null);
     }

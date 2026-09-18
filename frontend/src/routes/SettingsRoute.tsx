@@ -23,7 +23,8 @@ const DEFAULT_PARTICIPANTS: SaveSettingsRequest['participants'] = Array.from(
   (_, i) => ({
     id: `team-${i + 1}`,
     name: `Team ${i + 1}`,
-    initial: String(i + 1),
+    // L'iniziale la calcola il server dal nome: qui non si chiede piu'.
+    initial: '',
     me: i === 0,
   }),
 );

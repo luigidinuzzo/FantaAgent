@@ -117,4 +117,21 @@ describe('ParticipantsFieldset', () => {
     expect(screen.getByLabelText('Nome del partecipante')).not.toBeDisabled();
   });
 
+
+  /**
+   * L'iniziale non si chiede piu': la calcola il server dal nome. Nella schermata
+   * restano nome, «sei tu» e la X.
+   */
+  it('non chiede l iniziale', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'anna', name: 'Anna', initial: 'A', me: true }]}
+        onChange={() => {}}
+        errors={{}}
+      />,
+    );
+    expect(screen.queryByLabelText(/iniziale/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Iniziale')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Nome del partecipante')).toBeInTheDocument();
+  });
 });

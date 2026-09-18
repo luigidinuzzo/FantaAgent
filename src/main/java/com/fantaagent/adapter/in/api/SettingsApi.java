@@ -8,6 +8,7 @@ import com.fantaagent.config.AuctionSettingsValidator;
 import com.fantaagent.config.LeagueMembersSettingsValidator;
 import com.fantaagent.config.LeagueRulesSettings;
 import com.fantaagent.config.LeagueRulesValidator;
+import com.fantaagent.config.ParticipantInitials;
 import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.config.ScoringSettingsValidator;
 import com.fantaagent.domain.league.Participant;
@@ -126,6 +127,9 @@ public class SettingsApi {
             }
             members.add(new Participant(p.id(), p.name(), initialOf(p.initial()), p.me()));
         }
+        // L'iniziale non arriva piu' dal modulo: la calcola il server dal nome (vedi
+        // ParticipantInitials). Serve solo al comando di /legacy, ma deve restare unica.
+        members = ParticipantInitials.assign(members);
         mergeErrors(errors, LeagueMembersSettingsValidator.validateByField(members));
 
         // Stessa storia del "scoring" qui sopra: una chiave "bidder" assente e' un

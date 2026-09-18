@@ -70,6 +70,8 @@ describe('SettingsRoute', () => {
     expect(screen.getByDisplayValue('Team 8')).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Anna')).not.toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(8);
+    // Nessuna iniziale da compilare: la calcola il server dai nomi.
+    expect(screen.queryByLabelText(/iniziale/i)).not.toBeInTheDocument();
   });
 
   /** Ad asta aperta, invece, si vedono i partecipanti veri di quell'asta. */

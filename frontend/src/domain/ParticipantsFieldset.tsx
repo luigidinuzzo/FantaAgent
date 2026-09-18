@@ -27,13 +27,13 @@ function errorsFor(errors: Record<string, string[]>, key: string): string[] {
 /**
  * I partecipanti alla serata.
  *
- * <p>L'iniziale ha un campo suo e non si deduce dal nome: e' quella che il comando
- * "giocatore prezzo iniziale" usa per riconoscere l'acquirente, e due Anna nella stessa
- * lega devono poter scegliere lettere diverse.
+ * <p>L'iniziale non si chiede piu': nella SPA non compare da nessuna parte — rose,
+ * card squadra e battitore mostrano il nome per esteso — e il server la calcola dal
+ * nome, tenendola unica (vedi {@code ParticipantInitials}). Serve solo al comando
+ * «giocatore prezzo iniziale» delle pagine /legacy.
  *
- * <p>Le chiavi sono di campo (task 16): {@code "participants[<id>].name"} e
- * {@code "participants[<id>].initial"} riguardano una riga precisa e stanno accanto
- * al suo input; {@code "participants"} — l'insieme vuoto, l'iniziale duplicata, chi
+ * <p>Le chiavi sono di campo: {@code "participants[<id>].name"} riguarda una riga
+ * precisa e sta accanto al suo input; {@code "participants"} — l'insieme vuoto, l'iniziale duplicata, chi
  * e' segnato come «tu» — riguarda piu' di una riga (o nessuna) e resta a livello di
  * fieldset, com'era prima di questo task.
  */
@@ -77,7 +77,6 @@ export function ParticipantsFieldset({
         <thead>
           <tr className="text-left text-muted-foreground">
             <th scope="col" className="py-1 pr-3">Nome</th>
-            <th scope="col" className="w-20 py-1 pr-3">Iniziale</th>
             <th scope="col" className="w-16 py-1 text-center">Sei tu</th>
             {lockCount ? null : (
               <th scope="col" className="w-14 py-1"><span className="sr-only">Azioni</span></th>
@@ -87,9 +86,7 @@ export function ParticipantsFieldset({
         <tbody>
           {value.map((p, i) => {
             const nameErrors = errorsFor(errors, `participants[${p.id}].name`);
-            const initialErrors = errorsFor(errors, `participants[${p.id}].initial`);
             const nameErrorsId = `${baseId}-name-${p.id}`;
-            const initialErrorsId = `${baseId}-initial-${p.id}`;
             return (
               <tr key={p.id}>
                 <td className="py-1 pr-3">
@@ -103,19 +100,6 @@ export function ParticipantsFieldset({
                     className="min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={nameErrorsId} errors={nameErrors} />
-                </td>
-                <td className="py-1 pr-3">
-                  <label className="sr-only" htmlFor={`initial-${p.id}`}>Iniziale di {p.name}</label>
-                  <input
-                    id={`initial-${p.id}`}
-                    value={p.initial}
-                    maxLength={1}
-                    aria-invalid={initialErrors.length > 0}
-                    aria-describedby={initialErrors.length > 0 ? initialErrorsId : undefined}
-                    onChange={(e) => update(i, { initial: e.target.value.toUpperCase() })}
-                    className="tnum min-h-12 w-full rounded-full border border-line-strong bg-transparent px-2 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                  />
-                  <FieldErrors id={initialErrorsId} errors={initialErrors} />
                 </td>
                 <td className="py-1 text-center">
                   {/* Il pallino e' della dimensione normale; l'etichetta attorno

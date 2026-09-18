@@ -114,4 +114,25 @@ class SettingsApiCreationTest {
         verify(runtime, never()).setParticipants(anyList());
         verify(runtime, never()).setBidder(any());
     }
+
+    /**
+     * L'iniziale non si chiede piu' a chi crea l'asta: un corpo senza quel campo deve
+     * passare, e il server assegna lettere diverse a ogni partecipante — il comando di
+     * /legacy le usa per riconoscere l'acquirente.
+     */
+    @Test
+    void senzaInizialiIlServerLeCalcolaDaiNomi() throws Exception {
+        when(runtime.hasAuction()).thenReturn(false);
+        when(runtime.createNew(any(AuctionSetup.class))).thenReturn("2026-09-18");
+
+        mvc.perform(put(URL).contentType(MediaType.APPLICATION_JSON)
+                        .content(SettingsBodies.withoutInitials("Serata")))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<AuctionSetup> captor = ArgumentCaptor.forClass(AuctionSetup.class);
+        verify(runtime).createNew(captor.capture());
+        assertThat(captor.getValue().participants())
+                .extracting(com.fantaagent.domain.league.Participant::initial)
+                .containsExactly('T', 'E');
+    }
 }
