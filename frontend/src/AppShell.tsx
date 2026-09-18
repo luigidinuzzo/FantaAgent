@@ -83,7 +83,12 @@ export function AppShell({
         <div className="flex min-h-dvh flex-col md:flex-row">
           <header
             role="banner"
-            className="relative z-10 flex shrink-0 flex-col border-b border-panel-border bg-surface px-4 py-4 text-sm md:w-80 md:border-b-0 md:border-r md:py-6"
+            // md:sticky + md:h-dvh: scorrendo una pagina lunga (le impostazioni) il
+            // marchio e le due voci restano al loro posto invece di uscire dallo
+            // schermo. self-start toglie lo stiramento del flex, che impedirebbe allo
+            // sticky di attaccarsi; overflow-y-auto serve alle barre piu' alte della
+            // finestra. Sul telefono la barra sta sopra e scorre col contenuto.
+            className="relative z-10 flex shrink-0 flex-col border-b border-panel-border bg-surface px-4 py-4 text-sm md:sticky md:top-0 md:h-dvh md:w-80 md:self-start md:overflow-y-auto md:border-b-0 md:border-r md:py-6"
           >
             <Link
               to="/"

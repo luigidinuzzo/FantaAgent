@@ -113,6 +113,18 @@ describe('AppShell', () => {
     expect(getByTestId('pitch').className).toContain('inset-0');
   });
 
+  /**
+   * Le impostazioni sono una pagina lunga: scorrendola, marchio e voci devono restare
+   * in vista invece di uscire dallo schermo.
+   */
+  it('la barra laterale resta ferma mentre il contenuto scorre', () => {
+    const { container } = render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
+    const header = container.querySelector('header');
+    expect(header?.className).toContain('md:sticky');
+    expect(header?.className).toContain('md:top-0');
+    expect(header?.className).toContain('md:h-dvh');
+  });
+
   it('il nome e\' il logo, e resta una parola sola per chi ascolta', () => {
     render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
     const link = screen.getByRole('link', { name: 'FantaAgent' });
