@@ -9,6 +9,10 @@ export const PALETTE = {
   // dall'erba (almeno 3:1, verificato da contrast.test.ts).
   surface:            '#12301E',
   'panel-border':     '#9BD3A5',
+  // Un pannello piu' chiaro per il solo invito principale (la card «Crea asta»):
+  // lo distingue dagli altri senza cambiargli forma. Non e' un secondo fondo di
+  // uso generale — tutto il resto resta su surface.
+  'surface-raised':   '#163A24',
   foreground:         '#F1F7F2',
   'muted-foreground': '#87A594',
   accent:             '#FFC24B',

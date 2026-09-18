@@ -25,12 +25,14 @@ export function HomeSectionNav({
   onChange?: (section: HomeSection) => void;
 }) {
   return (
-    <nav aria-label="Sezioni" className="flex flex-col gap-1">
+    // Voci grandi come il resto dell'interfaccia: nella barra laterale sono le uniche
+    // due, e con la misura dei link della barra superiore sembravano minute.
+    <nav aria-label="Sezioni" className="flex flex-col gap-2">
       {HOME_SECTIONS.map((s) => {
         const active = s.key === current;
         // L'hover solo sulle voci inattive: sulla voce corrente un fondo
         // chiaro sopra bg-accent lascerebbe il testo scuro su grigio.
-        const className = `${LINK_BASE} w-full ${
+        const className = `${LINK_BASE} w-full min-h-12 px-5 text-lg ${
           active ? 'bg-accent text-on-accent' : 'hover:bg-line'
         }`;
         return onChange ? (

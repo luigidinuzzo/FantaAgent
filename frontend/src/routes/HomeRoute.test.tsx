@@ -534,4 +534,17 @@ describe('HomeRoute', () => {
     expect(footer).toHaveTextContent('2026, Luigi di Nuzzo');
   });
 
+
+  /** L'invito a cominciare non deve sembrare una riga dell'elenco. */
+  it('la card «Crea asta» si distingue dalle righe delle aste', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+
+    const row = (await screen.findByRole('button', { name: `Riprendi ${CLOSED_AUCTION.label}` }))
+      .closest('li');
+    const hero = screen.getByRole('button', { name: 'Crea asta' }).closest('div');
+    expect(hero?.className).toContain('bg-surface-raised');
+    expect(hero?.className).toContain('border-accent');
+    expect(row?.className).not.toContain('bg-surface-raised');
+  });
 });

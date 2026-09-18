@@ -6,6 +6,7 @@
   --grass-stripe: oklch(0.4416 0.0991 145.74);
   --surface: oklch(0.2801 0.0493 155.09);
   --panel-border: oklch(0.8159 0.0865 149.61);
+  --surface-raised: oklch(0.3149 0.0576 154.42);
   --foreground: oklch(0.9702 0.0091 150.69);
   --muted-foreground: oklch(0.6942 0.0414 160.28);
   --accent: oklch(0.8490 0.1484 80.73);
@@ -27,6 +28,7 @@
   --color-grass-stripe: var(--grass-stripe);
   --color-surface: var(--surface);
   --color-panel-border: var(--panel-border);
+  --color-surface-raised: var(--surface-raised);
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);

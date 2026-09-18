@@ -19,6 +19,13 @@ import { PALETTE, LINES, contrastRatio, hexToOklch } from '../../scripts/palette
 // positive e destructive escono a text-sm (14-16px), quindi 4.5 e non 3.
 const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
   ['foreground', 'surface', 4.5],
+  // La card «Crea asta» usa surface-raised: tutto cio' che le sta sopra va verificato
+  // anche li', non solo su surface.
+  ['foreground', 'surface-raised', 4.5],
+  ['muted-foreground', 'surface-raised', 4.5],
+  ['accent', 'surface-raised', 4.5],
+  ['positive', 'surface-raised', 4.5],
+  ['panel-border', 'surface-raised', 3],
   ['muted-foreground', 'surface', 4.5],
   ['accent', 'surface', 4.5],
   ['on-accent', 'accent', 4.5],

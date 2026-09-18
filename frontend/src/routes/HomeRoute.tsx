@@ -196,7 +196,10 @@ export function HomeRoute() {
                   le impostazioni vengono confermate. Creare qui lascerebbe dietro aste
                   vuote per chi si ferma alla schermata di conferma — e' gia' successo, ed
                   e' il motivo per cui il flusso e' fatto cosi'. */}
-              <div className="panel flex flex-wrap items-center gap-4 rounded-2xl p-5 sm:gap-6 sm:p-8">
+              {/* Diversa dalle altre card: fondo un tono piu' chiaro e bordo in
+                  accento, cosi' l'invito a cominciare si distingue dall'elenco senza
+                  cambiare forma ne' misura. */}
+              <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-accent bg-surface-raised p-5 sm:gap-6 sm:p-8">
                 <GavelIcon />
                 <div className="min-w-0 flex-1">
                   <p className="w-exp text-xl font-extrabold sm:text-2xl">Comincia una nuova asta</p>
