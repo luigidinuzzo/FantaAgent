@@ -34,7 +34,24 @@ function Star({ filled }: { filled: boolean }) {
  * <p>Non e' una live region: l'unico {@code role="status"} della pagina resta
  * {@code AuctionAnnouncer}, e una seconda competerebbe con quella.
  */
-export function AnalysisPanel({ valuation }: { valuation: ValuationResponse }) {
+export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | null }) {
+  // Senza giocatore scelto la colonna non cambia forma: resta lo stesso
+  // pannello, con lo stesso titolo e la stessa altezza, e dentro l'invito a
+  // sceglierne uno. Prima qui compariva un riquadro tratteggiato diverso da
+  // tutto il resto: sembrava un guasto, non un invito.
+  if (!valuation) {
+    return (
+      <section aria-labelledby={HEADING_ID} className="panel flex flex-col rounded-2xl p-5">
+        <h2 id={HEADING_ID} className="text-sm font-bold text-muted-foreground">
+          Perché questo prezzo
+        </h2>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Cerca un giocatore o scegline uno dalla tabella per vedere quanto conviene spendere.
+        </p>
+      </section>
+    );
+  }
+
   // I driver con spiegazione vuota non sono un errore di battitura da
   // mostrare: senza filtro, un driver con spiegazione vuota comparirebbe come
   // una voce muta nell'elenco. Il filtro (e il testo che descrive) vengono da
@@ -42,12 +59,23 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse }) {
   const shownDrivers = valuation.drivers.filter((d) => d.explanation.trim().length > 0);
 
   return (
-    <section aria-labelledby={HEADING_ID} className="panel rounded-2xl p-5">
-      <h2 id={HEADING_ID} className="text-sm font-bold text-muted-foreground">
+    // Nessun self-start: i tre pannelli della riga — crediti, battitore,
+    // consigli — finiscono sulla stessa linea, ed e' la griglia a stirarli
+    // perche' lo facciano. Alto quanto il suo testo, questo si fermava a meta'
+    // colonna e la riga si leggeva come sbilenca.
+    // min-h-0: senza, un figlio che scorre dentro un contenitore flex si
+    // allunga comunque fino al proprio contenuto invece di fermarsi — e la
+    // colonna tornerebbe a spingere in alto la riga, che e' esattamente cio'
+    // che qui si vuole impedire.
+    <section
+      aria-labelledby={HEADING_ID}
+      className="panel flex min-h-0 flex-col rounded-2xl p-5"
+    >
+      <h2 id={HEADING_ID} className="shrink-0 text-sm font-bold text-muted-foreground">
         Perché questo prezzo
       </h2>
 
-      <div className="mt-3 flex flex-wrap items-end gap-6">
+      <div className="mt-3 flex shrink-0 flex-wrap items-end gap-6">
         <p>
           <span data-testid="hard-cap" className="tnum w-exp block text-3xl font-extrabold">
             {valuation.hardCap}
@@ -70,8 +98,13 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse }) {
         </div>
       </div>
 
+      {/* I driver scorrono dentro il pannello: sono da uno a cinque, con
+          spiegazioni lunghe quanto capita, ed erano loro a decidere l'altezza
+          dell'intera riga — scegliendo un giocatore il riquadro del battitore e
+          la colonna delle squadre si allungavano di conseguenza. Qui dentro il
+          contenuto varia e la cornice no. */}
       {shownDrivers.length > 0 ? (
-        <dl className="mt-4 space-y-3 text-sm">
+        <dl className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2 text-sm">
           {shownDrivers.map((driver) => (
             <div key={driver.label}>
               <div className="flex items-baseline gap-2">

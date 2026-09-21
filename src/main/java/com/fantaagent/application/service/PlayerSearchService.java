@@ -174,6 +174,79 @@ public class PlayerSearchService {
                 .toList();
     }
 
+    /**
+     * Quanti risultati al massimo porta la modale di ricerca. Sfogliando una squadra
+     * intera si resta sotto i quaranta nomi, e un ruolo intero sotto i duecento: il
+     * tetto non taglia nessuna domanda sensata, ma impedisce che un filtro largo su un
+     * listone grande diventi una risposta senza fine.
+     */
+    public static final int BROWSE_LIMIT = 200;
+
+    /**
+     * Ordine di chi si sfoglia senza aver scritto niente: la quotazione, dal piu' caro
+     * al piu' economico. A parita' decide il nome e poi l'identificativo — decine di
+     * giocatori stanno a 1 credito, e senza un ordine totale l'elenco cambierebbe da
+     * una richiesta all'altra.
+     */
+    private static final Comparator<Player> BY_LIST_PRICE_DESC =
+            Comparator.comparingInt(Player::listPrice).reversed()
+                    .thenComparing(Player::name)
+                    .thenComparing(Player::id);
+
+    /**
+     * La ricerca della modale: per nome, per ruolo, per squadra, in qualunque
+     * combinazione — e anche solo per filtri, senza nome.
+     *
+     * <p>E' un metodo nuovo e non un parametro aggiunto a {@link #search(String, Role)}
+     * per la stessa ragione di allora: quelle firme le usano i controller Thymeleaf in
+     * {@code adapter/in/web}, che restano come sono.
+     *
+     * <p>Senza testo NE' filtri non torna il listone intero: torna niente. Aprire la
+     * modale non e' aver posto una domanda, e rovesciare seicento nomi addosso a
+     * qualcuno che non ha ancora chiesto nulla non e' una risposta.
+     *
+     * <p>Col testo comanda la rilevanza del nome (la stessa graduatoria di sempre,
+     * spinta dal ruolo della fase corrente); i filtri restringono quella graduatoria.
+     * Senza testo non c'e' niente da graduare e comanda la quotazione. In entrambi i
+     * casi chi e' gia' stato comprato resta fuori: e' il criterio di tutte le ricerche
+     * di questo servizio.
+     */
+    public List<Player> browse(String query, Role roleFilter, String teamFilter) {
+        String text = query == null ? "" : query.trim();
+        String team = teamFilter == null || teamFilter.isBlank() ? null : teamFilter.trim();
+        if (text.isEmpty() && roleFilter == null && team == null) {
+            return List.of();
+        }
+        AuctionState state = auction.state();
+        Set<String> sold = state.soldPlayerIds();
+        // Il filtro va applicato PRIMA del taglio, come in search(String, Role): qui la
+        // finestra chiesta al dominio e' l'intero elenco dei nomi che combaciano,
+        // quindi il taglio finale non puo' nascondere un risultato del ruolo giusto.
+        List<Player> candidates = text.isEmpty()
+                ? catalog.all().stream().sorted(BY_LIST_PRICE_DESC).toList()
+                : search.search(text, state.currentPhase(), Integer.MAX_VALUE);
+        return candidates.stream()
+                .filter(p -> !sold.contains(p.id()))
+                .filter(p -> roleFilter == null || p.role() == roleFilter)
+                .filter(p -> team == null || p.team().equalsIgnoreCase(team))
+                .limit(BROWSE_LIMIT)
+                .toList();
+    }
+
+    /**
+     * Le squadre di Serie A su cui si puo' filtrare, dedotte dal listone: quelle
+     * distinte dei giocatori in catalogo, in ordine alfabetico. Nessun elenco separato
+     * da tenere allineato a mano — cambia il listone, cambiano le squadre.
+     */
+    public List<String> teams() {
+        return catalog.all().stream()
+                .map(Player::team)
+                .filter(t -> t != null && !t.isBlank())
+                .distinct()
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+    }
+
     /** Migliori obiettivi della fase corrente, ordinati per margine decrescente. */
     public List<TargetRow> targets(int limit) {
         ValuationChain current = chain.get();

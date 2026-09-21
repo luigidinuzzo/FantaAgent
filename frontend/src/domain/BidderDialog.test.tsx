@@ -55,6 +55,116 @@ function open(overrides = {}) {
 }
 
 describe('BidderDialog', () => {
+  it('il conto parte all\'apertura, non al primo rilancio', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    open();
+
+    // Il difetto che questo blocca: il battitore si apriva col numero pieno e
+    // fermo — sembrava avviato e non lo era. Su un lotto che nessuno contende
+    // (nessun rilancio) il tempo non sarebbe mai partito.
+    expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('5');
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('3');
+
+    vi.useRealTimers();
+  });
+
+  it('l\'offerta diretta porta il prezzo al numero scritto e fa ripartire il conto', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime.bind(vi) });
+    open();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+
+    // «Offri», non «Rilancia»: il numero scritto diventa l'offerta, non ci si
+    // somma. Al tavolo si grida un prezzo, non un incremento.
+    await user.type(screen.getByLabelText('Offerta diretta'), '20');
+    await user.click(screen.getByRole('button', { name: 'Offri' }));
+
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('20');
+    expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('5');
+    expect(screen.getByLabelText('Offerta diretta')).toHaveValue(null);
+
+    vi.useRealTimers();
+  });
+
+  it('la riga «in testa» dice chi sta vincendo, e non finge nessuno quando non c\'e\'', () => {
+    open({ leader: { name: 'Anna' } });
+    expect(screen.getByText('in testa')).toBeInTheDocument();
+    expect(screen.getByText('Anna')).toBeInTheDocument();
+  });
+
+  it('senza offerte da altre postazioni la riga «in testa» dice Nessuno', () => {
+    open();
+    // Finche' a battere e' una persona sola per tutto il tavolo nessuno "sta
+    // vincendo": si sta chiamando un prezzo. Mostrare li' una squadra sarebbe
+    // inventare un dato che non c'e'.
+    expect(screen.getByText('Nessuno')).toBeInTheDocument();
+  });
+
+  it('rilanciare mette la propria squadra in testa, da qualunque gesto arrivi', async () => {
+    open();
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Nessuno');
+
+    // Cliccare «Rilancia» e non vedere comparire la propria squadra direbbe il
+    // falso al contrario: che nessuno sta vincendo un'offerta appena fatta.
+    await userEvent.click(screen.getByRole('button', { name: /Rilancia \+1/ }));
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Anna');
+  });
+
+  it('Esc chiude il conto alla rovescia', async () => {
+    const onClose = vi.fn();
+    open({ onClose });
+
+    // Il bottone «Chiudi» nell'intestazione se n'e' andato: accanto a «Togli
+    // dal battitore» sembrava il suo doppione. La via di ritorno resta, sulla
+    // tastiera — senza, per tornare all'aggiudicazione diretta bisognerebbe
+    // togliere il giocatore dal banco e riselezionarlo.
+    await userEvent.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('il ruolo accanto al nome e la pillola, e il nome per esteso resta per chi ascolta', () => {
+    open();
+
+    // La stessa pillola della tabella di fase e dei risultati della ricerca: il
+    // giocatore sul banco si riconosce con lo stesso colpo d'occhio. La parola
+    // non se ne va, cambia solo chi la riceve — RoleBadge la porta in sr-only.
+    expect(screen.getByText('difensore')).toHaveClass('sr-only');
+    expect(screen.getByText('Inter')).toBeInTheDocument();
+  });
+
+  it('i tre passi rilanciano e fanno ripartire il conto, come la barra spaziatrice', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime.bind(vi) });
+    open();
+
+    // Cinque secondi di timer: dopo tre, un rilancio deve riportare il conto
+    // all'inizio. Al tavolo si rilancia anche di dieci, e farlo con dieci
+    // pressioni di barra spaziatrice non e' un gesto, e' una raffica.
+    await user.click(screen.getByRole('button', { name: /^\+5/ }));
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('6');
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+    expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('2');
+
+    await user.click(screen.getByRole('button', { name: /^\+10/ }));
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('16');
+    expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('5');
+
+    vi.useRealTimers();
+  });
+
+  it('secondi e offerta stanno sulla stessa riga della griglia, incolonnati', () => {
+    open();
+
+    // Il difetto che questo blocca: impilando le due colonne a mano, quella col
+    // countdown e' piu' alta (ha la barra sotto) e le due cifre finivano a
+    // quote diverse. Stessa riga di griglia, stesso corpo: sono incolonnate.
+    expect(screen.getByTestId('bidder-remaining').parentElement).toHaveClass('row-start-1');
+    expect(screen.getByTestId('bidder-price').parentElement).toHaveClass('row-start-1');
+  });
+
   it('mostra il giocatore e il tetto: e la versione privata', () => {
     open();
     expect(screen.getByText('Bastoni')).toBeInTheDocument();
@@ -96,9 +206,9 @@ describe('BidderDialog', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('la barra spaziatrice non rilancia col focus sul bottone Chiudi, ma rilancia appena il focus se ne va', async () => {
+  it('la barra spaziatrice non rilancia col focus su un bottone, ma rilancia appena il focus se ne va', async () => {
     open();
-    const closeButton = screen.getByRole('button', { name: 'Chiudi' });
+    const closeButton = screen.getByRole('button', { name: 'Offri' });
     closeButton.focus();
 
     // Spazio sul bottone focalizzato e' il gesto normale del browser per
@@ -120,6 +230,26 @@ describe('BidderDialog', () => {
     // advanceTimersByTime esplicito e il successivo.
     beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
     afterEach(() => vi.useRealTimers());
+
+    it('«Riprendi le offerte» riapre il banco dal prezzo raggiunto, non da uno', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open();
+
+      await user.keyboard('  ');
+      await act(async () => { await vi.advanceTimersByTimeAsync(6_000); });
+      expect(screen.getByRole('button', { name: 'Aggiudica' })).toBeInTheDocument();
+
+      // Il tempo e' scaduto ma al tavolo qualcuno rilancia lo stesso. Senza
+      // questa via di ritorno l'unico modo di riaprire le offerte era chiudere
+      // il battitore e riaprirlo, perdendo il prezzo a cui si era arrivati.
+      await user.click(screen.getByRole('button', { name: /Riprendi le offerte/ }));
+
+      expect(screen.getByTestId('bidder-price')).toHaveTextContent('3');
+      expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('5');
+      expect(screen.queryByRole('button', { name: 'Aggiudica' })).not.toBeInTheDocument();
+      // I rilanci tornano al loro posto: si riparte da dove si era arrivati.
+      expect(screen.getByRole('button', { name: /Rilancia \+1/ })).toBeInTheDocument();
+    });
 
     it('aggiudica al prezzo raggiunto', async () => {
       // Timer finti perche' il bottone Aggiudica compare solo a countdown

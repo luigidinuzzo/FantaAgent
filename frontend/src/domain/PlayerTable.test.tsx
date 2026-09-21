@@ -102,4 +102,20 @@ describe('PlayerTable', () => {
     render(<PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} />);
     expect(screen.getByRole('button', { name: /Dimarco/ })).not.toBeDisabled();
   });
+
+  // Il nome del giocatore cominciava esattamente sul bordo sinistro della
+  // cornice e la titolarita' finiva su quello destro: le celle avevano solo
+  // riempimento verticale. Nella prima colonna il riempimento sta sul bottone,
+  // che occupa tutta la cella, non sulla cella stessa.
+  it('stacca il testo dai bordi: ogni cella ha il suo riempimento laterale', () => {
+    render(<PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} />);
+    screen.getAllByRole('columnheader').forEach((th) => {
+      expect(th.className).toContain('px-');
+    });
+    const row = screen.getByTestId('row-d1');
+    expect(within(row).getByRole('button', { name: /Dimarco/ }).className).toContain('px-');
+    within(row).getAllByRole('cell').slice(1).forEach((td) => {
+      expect(td.className).toContain('px-');
+    });
+  });
 });

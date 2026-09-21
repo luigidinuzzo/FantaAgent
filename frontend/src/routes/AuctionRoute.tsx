@@ -18,14 +18,15 @@ import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } f
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
-import { EmptyState } from '../domain/EmptyState';
+import { BID_CONTROL_H } from '../domain/controls';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PhasePager } from '../domain/PhasePager';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerSearchBox } from '../domain/PlayerSearchBox';
+import { ParticipantsColumn } from '../domain/ParticipantsColumn';
 import { PlayerTable } from '../domain/PlayerTable';
+import { RemoveIcon } from '../domain/RemoveIcon';
 import { RosterGrid } from '../domain/RosterGrid';
-import { SquadCards } from '../domain/SquadCards';
 import { UndoLastButton } from '../domain/UndoLastButton';
 import { useIdleHeartbeat } from './useIdleHeartbeat';
 
@@ -48,7 +49,13 @@ function ProjectionIcon() {
   );
 }
 
-/** L'ingranaggio delle impostazioni: tratto vettoriale, mai un'emoji. */
+/**
+ * L'ingranaggio delle impostazioni: tratto vettoriale, mai un'emoji.
+ *
+ * <p>Una ruota dentata vera, con i denti sul contorno. Il disegno precedente —
+ * un cerchio con otto raggi dritti attorno — si leggeva come un sole, non come
+ * un ingranaggio: l'icona diceva «luce», non «impostazioni».
+ */
 function SettingsIcon() {
   return (
     <svg
@@ -57,12 +64,12 @@ function SettingsIcon() {
       className="h-5 w-5"
       fill="none"
       stroke="currentColor"
-      strokeWidth={2}
+      strokeWidth={1.8}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
+      <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.076.124l1.217-.456a1.125 1.125 0 0 1 1.369.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.004.827c-.292.24-.437.613-.43.992a7.7 7.7 0 0 1 0 .255c-.007.378.138.75.43.99l1.004.828c.424.35.534.954.26 1.43l-1.296 2.247a1.125 1.125 0 0 1-1.37.491l-1.216-.456c-.356-.133-.751-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.332.183-.582.495-.645.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.93 6.93 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
       <circle cx="12" cy="12" r="3" />
-      <path d="M12 3v3M12 18v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M3 12h3M18 12h3M4.9 19.1l2.1-2.1M17 7l2.1-2.1" />
     </svg>
   );
 }
@@ -89,9 +96,14 @@ export function AuctionRoute() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bidderOpen, setBidderOpen] = useState(false);
+  // "Si sta cercando": lo dichiara PlayerSearchBox (c'e' del testo nel campo, o
+  // un ruolo scelto) e serve qui per una cosa sola — cedere ai risultati il
+  // posto del battitore, invece di spingerlo giu' a ogni lettera digitata.
+  const [searchActive, setSearchActive] = useState(false);
   const [pageOffset, setPageOffset] = useState(0);
   const [activeTab, setActiveTab] = useState<TabKey>('fase');
   const bidderHintId = useId();
+  const bidderPanelId = useId();
   // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
   // cambia scheda: senza, la selezione si sposterebbe ma il focus della
   // tastiera resterebbe indietro sul bottone precedente, che e' esattamente il
@@ -276,7 +288,6 @@ export function AuctionRoute() {
   return (
     <AppShell
       chrome="top"
-      title={state.data?.auctionName}
       slotActions={
         <>
           <PhaseSwitcher
@@ -326,89 +337,181 @@ export function AuctionRoute() {
           {barAlertMessage}
         </p>
       ) : null}
-      {/* La stessa selezione della tabella di fase, non un secondo percorso:
-          un giocatore scelto qui passa per setSelectedId esattamente come una
-          riga cliccata, quindi valutazione, battitore e aggiudicazione si
-          comportano in tutto allo stesso modo. */}
-      <div className="panel rounded-2xl p-4">
-        <PlayerSearchBox onSelect={setSelectedId} />
-      </div>
+      {/* Tre colonne, come si sta al tavolo: a sinistra chi ha quanto, al centro
+          il giocatore su cui si sta decidendo, a destra il perche' del prezzo. In
+          fondo, fuori da questa griglia, restano le due schede — fase corrente e
+          rose. Sotto lg la griglia si srotola in una colonna sola, nell'ordine in
+          cui e' scritta: crediti, ricerca, consigli. */}
+      {/* Altezza DECISA, non derivata dal contenuto. Prima la riga era alta
+          quanto la sua colonna piu' alta: scegliendo un giocatore, «Perche'
+          questo prezzo» passava da due righe a cinque driver con spiegazioni e
+          si trascinava dietro il battitore e le squadre, che crescevano insieme
+          a lui. La misura e' tagliata sullo stato piu' alto del BATTITORE (il
+          conto alla rovescia scaduto, con il suo modulo di aggiudicazione), cosi'
+          quella colonna non ha mai bisogno di scorrere: misurato sullo stato
+          piu' alto che il battitore puo' assumere — conto alla rovescia
+          scaduto, con l'avviso di offerta oltre il tetto E un errore di
+          aggiudicazione insieme — piu' la barra di ricerca, che vive in quella
+          stessa colonna e le toglie altezza. Le altre due colonne scorrono
+          dentro di se'. Solo da lg in su: in colonna sola l'altezza torna
+          quella del contenuto. */}
+      <div className="grid gap-5 lg:h-[35rem] lg:grid-cols-[14rem_1fr_22rem]">
+        <ParticipantsColumn participants={state.data?.participants ?? []} />
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_22rem]">
-        {valuation.data ? (
-          <PlayerDecisionCard valuation={valuation.data} stale={stale}>
-            {/* key: un giocatore nuovo deve azzerare il campo prezzo. La
-                reattivita' interna di BidPanel a suggestedPrice serve per
-                la rivalutazione dello STESSO giocatore (un'offerta altrui
-                che sposta il tetto) e deliberatamente non tocca un campo
-                gia' toccato dall'utente — senza remount, cambiando
-                giocatore il prezzo digitato per il precedente resterebbe
-                nel campo. Le due cose sono complementari, non alternative. */}
-            {bidderOpen && bidderSettings.data ? (
-              <BidderDialog
-                key={valuation.data.playerId}
-                valuation={valuation.data}
-                participants={state.data?.participants ?? []}
-                timerSeconds={bidderSettings.data.timerSeconds}
-                beepEnabled={bidderSettings.data.beepEnabled}
-                error={assignError}
-                disabled={stale}
-                pending={assign.isPending}
-                onAssign={assignPlayer}
-                onClose={() => setBidderOpen(false)}
-              />
-            ) : (
-              <>
-                {/* Apre il battitore per il lotto conteso: BidPanel resta
-                    la via diretta per un giocatore che nessuno contende,
-                    questo e' l'altra via alla STESSA mutazione (assignPlayer),
-                    non una seconda. Disabilitato finche' le preferenze vere
-                    non sono arrivate: aprire subito significherebbe mostrare
-                    un timer finto, e questa migrazione non finge mai un dato
-                    che non ha ancora. */}
+        <div className="flex min-h-0 min-w-0 flex-col gap-5">
+          {/* La stessa selezione della tabella di fase, non un secondo percorso:
+              un giocatore scelto qui passa per setSelectedId esattamente come una
+              riga cliccata, quindi valutazione, battitore e aggiudicazione si
+              comportano in tutto allo stesso modo.
+
+              Nessun riquadro attorno alla barra: il bordo del campo e' gia' un
+              contorno, e un pannello attorno ne disegnava un secondo. */}
+          {/* Mentre si cerca il pannello e' l'unica cosa in questa colonna, e
+              prende tutta l'altezza della riga: cosi' il suo bordo inferiore
+              cade sulla stessa linea di quelli dei crediti e dei consigli. A
+              riposo no — resta alto quanto la barra, ed e' il battitore qui
+              sotto (flex-1) a riempire la colonna. */}
+          <div className={searchActive ? 'flex min-h-0 flex-1 flex-col' : undefined}>
+            <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} />
+          </div>
+
+          {/* Il battitore e' un posto fisso in pagina, non un riquadro che appare e
+              scompare: sta sempre sotto la ricerca, vuoto finche' nessuno e' sul
+              banco e pieno appena si sceglie un giocatore.
+
+              L'unica eccezione e' mentre si cerca: i nomi prendono il suo posto,
+              cosi' crescono sotto la barra invece di spingere giu' mezza pagina a
+              ogni lettera. Nascosto, non svuotato — selectedId resta intatto, e
+              uscendo dalla ricerca si ritrova il lotto com'era. */}
+          {searchActive ? null : (
+          <section aria-labelledby={bidderPanelId} className="panel flex flex-1 flex-col rounded-2xl p-4">
+            <div className="flex min-h-11 items-center justify-between gap-3">
+              <h2 id={bidderPanelId} className="text-sm font-bold text-muted-foreground">
+                Battitore
+              </h2>
+              {valuation.data ? (
+                // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
+                // se e' aperto — lasciarlo acceso su un lotto che non c'e' piu'
+                // continuerebbe a suonare per nessuno.
                 <button
                   type="button"
-                  onClick={() => setBidderOpen(true)}
-                  disabled={!bidderSettings.data}
-                  aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
-                  className="mb-3 min-h-11 border border-line-strong px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                  onClick={() => {
+                    setBidderOpen(false);
+                    setSelectedId(null);
+                  }}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 text-sm font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  Apri il battitore per {valuation.data.name}
+                  <RemoveIcon />
+                  Togli dal battitore
                 </button>
-                {!bidderSettings.data ? (
-                  <span id={bidderHintId} className="sr-only">
-                    Le preferenze del battitore non sono disponibili.
-                  </span>
-                ) : null}
-                <BidPanel
-                  key={valuation.data.playerId}
-                  suggestedPrice={valuation.data.maxBid}
-                  participants={state.data?.participants ?? []}
-                  disabled={stale}
-                  pending={assign.isPending}
-                  error={assignError}
-                  onAssign={assignPlayer}
-                />
-              </>
-            )}
-          </PlayerDecisionCard>
-        ) : (
-          <EmptyState>
-            Cerca un giocatore o scegline uno dalla tabella per vedere quanto conviene spendere.
-          </EmptyState>
-        )}
+              ) : null}
+            </div>
 
-        {/* AnalysisPanel mostra maxBid, hardCap e i driver: e' esattamente la
-            classe di componenti che la proiezione non puo' importare (vedi
-            no-restricted-imports in .oxlintrc.json). Compare solo insieme a
-            una valutazione: senza, non c'e' alcun prezzo da spiegare. */}
-        {valuation.data ? <AnalysisPanel valuation={valuation.data} /> : null}
-      </div>
+            {/* flex-1: la card dentro riceve un'altezza vera da riempire, ed
+                e' cosi' che distribuisce il contenuto invece di ammucchiarlo
+                in cima al riquadro. */}
+            {/* overflow-y-auto e' una valvola, non il modo normale di leggere
+                questa colonna: l'altezza e' tagliata sul suo stato piu' alto e
+                in condizioni normali non scorre mai. Serve a non TAGLIARE il
+                contenuto se qualcosa esce dalle misure previste — un ingrandimento
+                del browser al 150%, un carattere di sistema piu' grande. */}
+            <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
+              {valuation.data ? (
+                bidderOpen && bidderSettings.data ? (
+                  // Il battitore SOSTITUISCE la scheda di decisione, non ci sta
+                  // dentro: montato come suo figlio, rendeva nome e tetto una
+                  // seconda volta, dentro una seconda cornice. Mentre il conto
+                  // alla rovescia corre la card e' una sola, e porta i due
+                  // numeri che cambiano davvero — offerta e secondi.
+                  // key: un giocatore nuovo riparte da un conto alla rovescia
+                  // nuovo, non da quello del precedente.
+                  <BidderDialog
+                    key={valuation.data.playerId}
+                    valuation={valuation.data}
+                    participants={state.data?.participants ?? []}
+                    timerSeconds={bidderSettings.data.timerSeconds}
+                    beepEnabled={bidderSettings.data.beepEnabled}
+                    error={assignError}
+                    disabled={stale}
+                    pending={assign.isPending}
+                    onAssign={assignPlayer}
+                    onClose={() => setBidderOpen(false)}
+                  />
+                ) : (
+                  <PlayerDecisionCard valuation={valuation.data} stale={stale} bare>
+                    {/* Impilati, nell'ordine in cui le cose succedono: prima
+                        si fa correre il conto alla rovescia, poi si registra a
+                        quanto e a chi e' andato. Affiancati, i due gesti si
+                        leggevano come alternative pari; incolonnati si leggono
+                        come una sequenza. */}
+                    <div className="flex flex-col items-start gap-4">
+                    {/* Apre il battitore per il lotto conteso: BidPanel resta
+                        la via diretta per un giocatore che nessuno contende,
+                        questo e' l'altra via alla STESSA mutazione (assignPlayer),
+                        non una seconda. Disabilitato finche' le preferenze vere
+                        non sono arrivate: aprire subito significherebbe mostrare
+                        un timer finto, e questa migrazione non finge mai un dato
+                        che non ha ancora. */}
+                    {/* L'oro, e il bersaglio piu' largo della riga: battere un
+                        lotto E' il prodotto, e questo bottone era una pillola di
+                        contorno in fondo a sinistra mentre il pieno stava su
+                        «Aggiudica». La gerarchia diceva il contrario di quello
+                        che si fa al tavolo. */}
+                    <button
+                      type="button"
+                      onClick={() => setBidderOpen(true)}
+                      disabled={!bidderSettings.data}
+                      aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
+                      // Su una riga tutta sua e alla taglia dei bersagli del
+                      // rilancio (BID_CONTROL_H, 64px): e' l'azione principale
+                      // del lotto, e ora ha la larghezza della barra «Rilancia
+                      // +1» che prendera' il suo posto appena il conto parte.
+                      className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-full bg-accent px-8 text-lg font-extrabold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+                    >
+                      Avvia il conto alla rovescia
+                    </button>
+                    {!bidderSettings.data ? (
+                      <span id={bidderHintId} className="sr-only">
+                        Le preferenze del battitore non sono disponibili.
+                      </span>
+                    ) : null}
+                    {/* key: un giocatore nuovo deve azzerare il campo prezzo.
+                        E' l'unico modo, ora che il campo parte sempre da uno e
+                        non insegue piu' nessuna proposta: senza il remount,
+                        cambiando giocatore il prezzo digitato per il precedente
+                        resterebbe nel campo, pronto a essere inviato per il
+                        lotto sbagliato. */}
+                    <BidPanel
+                      key={valuation.data.playerId}
+                      participants={state.data?.participants ?? []}
+                      disabled={stale}
+                      pending={assign.isPending}
+                      error={assignError}
+                      onAssign={assignPlayer}
+                    />
+                    </div>
+                  </PlayerDecisionCard>
+                )
+              ) : (
+                // Centrato nello spazio riservato, non appeso in alto a
+                // sinistra: il riquadro ha la sua altezza fin dall'inizio, e una
+                // riga di testo incollata all'angolo di una scatola vuota si
+                // legge come un guasto invece che come un invito.
+                <p className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                  Nessun giocatore sul battitore. Cercalo qui sopra o scegline uno dalla tabella.
+                </p>
+              )}
+            </div>
+          </section>
+          )}
+        </div>
 
-      {/* La fila di card squadra: chi ha quanto, a colpo d'occhio, senza
-          bisogno di aprire la scheda "Rose squadre" sotto. */}
-      <div className="mt-5">
-        <SquadCards participants={state.data?.participants ?? []} />
+        {/* I consigli: AnalysisPanel mostra maxBid, hardCap e i driver — esattamente
+            la classe di dati che la proiezione non puo' mostrare (vedi
+            no-restricted-imports in .oxlintrc.json). Senza un giocatore scelto la
+            colonna non sparisce e non cambia forma: lo stesso pannello, con lo
+            stesso titolo, porta l'invito a sceglierne uno. */}
+        <AnalysisPanel valuation={valuation.data ?? null} />
       </div>
 
       <div className="panel mt-4 rounded-2xl p-4">

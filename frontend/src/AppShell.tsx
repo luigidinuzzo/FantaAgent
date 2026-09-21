@@ -1,28 +1,25 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PitchLines } from './domain/PitchLines';
-import { HomeSectionNav, SectionLinks, type HomeSection } from './domain/SideNav';
+import { HomeSectionNav, type HomeSection } from './domain/SideNav';
 import { Wordmark } from './domain/Wordmark';
 
 /**
  * La barra comune a ogni schermata: banner, nome, navigazione, e lo slot di stato
  * di chi la usa. Prende tre forme secondo {@code chrome}.
  *
- * <p><b>Perche' la navigazione vive qui.</b> Due revisioni finali consecutive hanno
- * trovato lo stesso difetto strutturale — "una rotta aggiunta e nessuno che la
- * collega": /proiezione alla tappa 4 (corretto con un link isolato dentro
- * AuctionRoute), /riepilogo alla tappa 5 (nessun link da nessuna parte). Un terzo
- * link isolato per la prossima rotta sarebbe lo stesso difetto una terza volta.
- * AppShell e' l'unico elemento che OGNI schermata condivide — e' gia' qui che vive
- * {@code role="banner"} e lo slot di stato — quindi e' qui che la navigazione va
- * tenuta: una rotta nuova si aggiunge alla lista {@link SECTIONS} in
- * {@code domain/SideNav.tsx} (e a {@code router.tsx}), non a un'altra schermata a
- * caso. La barra superiore ({@code chrome="top"}) e' quella che le collega tutte;
- * la barra laterale ha le sue due voci (sotto).
+ * <p><b>La barra dell'asta porta solo il marchio.</b> Durante la serata la barra
+ * superiore non elenca piu' le sezioni ne' ripete il nome dell'asta: resta il
+ * marchio, che riporta alla home, e i pulsanti icona a destra ({@code slotActions})
+ * — proiezione, annulla, impostazioni. Le destinazioni non spariscono, cambiano
+ * porta: /impostazioni si raggiunge dall'ingranaggio, /proiezione dal suo pulsante,
+ * /asta dalla home, e la home dal marchio o dal pulsante «Home» accanto. Chi aggiunge una rotta deve darle una porta da qualche parte,
+ * non necessariamente qui.
  *
- * <p><b>La barra laterale e' un'altra cosa.</b> La home (e le impostazioni, che
- * ne sono il seguito) mostrano Asta e Profilo, non le sezioni dell'asta: vedi
- * {@code HomeSectionNav}. Il nome porta comunque alla home in entrambe le forme.
+ * <p><b>La barra laterale e' un'altra cosa.</b> Vive solo sulla home, dove le sue
+ * due voci — Asta e Profilo — cambiano il contenuto senza cambiare pagina (vedi
+ * {@code HomeSectionNav}). Ogni altra schermata porta la barra compatta in alto. Il
+ * nome porta comunque alla home in entrambe le forme.
  *
  * <p><b>Pannelli pieni.</b> Header e barra laterale sono pannelli
  * ({@code panel}): nessun testo poggia direttamente sulle linee del campo.
@@ -39,7 +36,6 @@ export function AppShell({
   chrome,
   slotStatus,
   slotActions,
-  title,
   section = 'asta',
   onSectionChange,
 }: {
@@ -53,13 +49,11 @@ export function AppShell({
   slotStatus?: ReactNode;
   /** I pulsanti icona dell'asta. Renderizzato solo con chrome="top": vedi sotto. */
   slotActions?: ReactNode;
-  /** Titolo mostrato nella barra superiore, oltre al nome. */
-  title?: string;
   /** Solo chrome="side": la sezione evidenziata nella barra laterale. */
   section?: HomeSection;
   /**
-   * Solo chrome="side": presente sulla home, dove la sezione cambia il contenuto
-   * senza cambiare pagina. Assente altrove, dove le voci portano alla home.
+   * Solo chrome="side": lo monta la home, dove la sezione cambia il contenuto senza
+   * cambiare pagina. Senza, la barra laterale non mostra nessuna voce.
    */
   onSectionChange?: (section: HomeSection) => void;
 }) {
@@ -96,7 +90,12 @@ export function AppShell({
             >
               <Wordmark size="lg" />
             </Link>
-            <HomeSectionNav current={section} onChange={onSectionChange} />
+            {/* Le due voci esistono solo dove servono a qualcosa: sono bottoni che
+                cambiano sezione, e senza chi ascolta quel cambio non avrebbero
+                niente da fare. Oggi le monta la sola home. */}
+            {onSectionChange ? (
+              <HomeSectionNav current={section} onChange={onSectionChange} />
+            ) : null}
             <div className="mt-auto flex flex-col items-start gap-4">{slotStatus}</div>
           </header>
           <main role="main" className="relative z-10 min-w-0 flex-1 p-4 md:p-6">
@@ -117,21 +116,33 @@ export function AppShell({
             className="relative z-10 flex flex-wrap items-center gap-4 border-b border-panel-border bg-surface px-4 py-3 text-sm"
           >
             {chrome === 'top' ? (
-              <Link
-                to="/"
-                className="flex min-h-11 items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <Wordmark size="md" />
-              </Link>
+              <>
+                <Link
+                  to="/"
+                  className="flex min-h-11 items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  <Wordmark size="md" />
+                </Link>
+                {/* Il marchio porta gia' alla home, ma solo chi ha imparato che i
+                    loghi si cliccano lo sa: accanto c'e' la stessa destinazione
+                    detta a parole. */}
+                <Link
+                  to="/"
+                  className="flex min-h-11 items-center rounded-full border border-line-strong px-4 font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  Home
+                </Link>
+              </>
             ) : (
               // La proiezione resta senza chrome: "FantaAgent" e' testo
               // semplice, non un link — la schermata non mostra nessuna
               // navigazione, nemmeno il nome come porta verso la home.
               <Wordmark size="md" />
             )}
-            {chrome === 'top' && title ? <span className="font-bold">{title}</span> : null}
-            {chrome === 'top' ? <SectionLinks /> : null}
-            <div className="ml-auto flex items-center gap-4">
+            {/* Anche il gruppo di destra sa andare a capo: su un telefono i pulsanti
+                icona piu' lo stato di connessione superano la larghezza dello schermo,
+                e senza questo la pagina intera scorreva di lato. */}
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
               {actions}
               {slotStatus}
             </div>

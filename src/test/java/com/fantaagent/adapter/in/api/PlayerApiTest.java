@@ -62,7 +62,7 @@ class PlayerApiTest {
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
         when(catalog.byId("d1")).thenReturn(Optional.of(BASTONI));
-        when(search.search("bast", null)).thenReturn(List.of(BASTONI));
+        when(search.browse("bast", null, null)).thenReturn(List.of(BASTONI));
         when(analysis.analyze("d1")).thenReturn(RECOMMENDATION);
     }
 
@@ -79,13 +79,37 @@ class PlayerApiTest {
 
     @Test
     void ilFiltroDiRuoloArrivaAlServizio() throws Exception {
-        when(search.search("rossi", Role.A)).thenReturn(List.of(LAUTARO));
+        when(search.browse("rossi", Role.A, null)).thenReturn(List.of(LAUTARO));
 
         mvc.perform(get("/api/leagues/default/auctions/corrente/players?q=rossi&role=A"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("a1"));
 
-        verify(search).search("rossi", Role.A);
+        verify(search).browse("rossi", Role.A, null);
+    }
+
+    /** La modale sfoglia anche senza testo: una squadra, e basta. */
+    @Test
+    void ilFiltroDiSquadraArrivaAlServizioAncheSenzaTesto() throws Exception {
+        when(search.browse("", null, "Inter")).thenReturn(List.of(BASTONI, LAUTARO));
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players?team=Inter"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("d1"))
+                .andExpect(jsonPath("$[1].id").value("a1"));
+
+        verify(search).browse("", null, "Inter");
+    }
+
+    /** Le squadre su cui filtrare vengono dal listone, non da un elenco scritto a mano. */
+    @Test
+    void leSquadreDelListoneSonoUnaRottaAPartE() throws Exception {
+        when(search.teams()).thenReturn(List.of("Inter", "Juventus"));
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/teams"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("Inter"))
+                .andExpect(jsonPath("$[1]").value("Juventus"));
     }
 
     /**

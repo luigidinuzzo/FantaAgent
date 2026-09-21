@@ -60,6 +60,45 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('tre alternative sopra soglia')).toBeInTheDocument();
   });
 
+  it('senza giocatore scelto resta lo stesso pannello, con l\'invito dentro', () => {
+    const { container } = render(<AnalysisPanel valuation={null} />);
+
+    // Non un riquadro tratteggiato diverso da tutto il resto, stirato per
+    // l'altezza della griglia: la colonna non cambia forma fra "nessuno scelto"
+    // e "uno scelto", cambia solo quello che ci sta dentro.
+    const pannello = screen.getByRole('region', { name: 'Perché questo prezzo' });
+    expect(pannello).toHaveClass('panel');
+    // Nessun self-start: la griglia lo stira come gli altri due pannelli della
+    // riga, e i tre bordi inferiori cadono sulla stessa linea.
+    expect(pannello).not.toHaveClass('self-start');
+    expect(pannello).toHaveTextContent(/Cerca un giocatore o scegline uno dalla tabella/);
+    expect(container.querySelector('[data-testid="hard-cap"]')).toBeNull();
+  });
+
+  /**
+   * Il contributo arriva dal calcolo in virgola mobile e puo' presentarsi come
+   * 0.14296393920221817. Scritto per intero mandava a capo la riga del driver e
+   * allungava la colonna, che a sua volta allungava l'intera riga della pagina.
+   * E comunque non e' un numero che si legge: sono crediti.
+   */
+  it('arrotonda il contributo dei driver: non stampa la virgola mobile per intero', () => {
+    render(
+      <AnalysisPanel
+        valuation={{
+          ...VALUATION,
+          drivers: [
+            { label: 'modificatori', contribution: 0.14296393920221817, explanation: 'nessun effetto rilevante' },
+            { label: 'concorrenza', contribution: 15.7, explanation: 'sette avversari cercano ancora un P' },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText('+0')).toBeInTheDocument();
+    expect(screen.getByText('+16')).toBeInTheDocument();
+    expect(screen.queryByText(/0\.14296/)).not.toBeInTheDocument();
+  });
+
   it('non e una live region: la pagina ne ha gia una sola', () => {
     const { container } = render(<AnalysisPanel valuation={VALUATION} />);
     expect(container.querySelector('[role="status"]')).toBeNull();

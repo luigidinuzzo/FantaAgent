@@ -23,7 +23,6 @@ function panel(overrides = {}) {
   const onAssign = vi.fn();
   render(
     <BidPanel
-      suggestedPrice={47}
       participants={PARTICIPANTS}
       disabled={false}
       pending={false}
@@ -36,9 +35,14 @@ function panel(overrides = {}) {
 }
 
 describe('BidPanel', () => {
-  it('propone il tetto come prezzo di partenza', () => {
+  // Il tetto e' il punto oltre il quale NON conviene, non il prezzo a cui si
+  // aggiudica: proporlo nel campo suggeriva di pagare sempre il massimo, e un
+  // invio distratto registrava il tetto al posto del prezzo vero — che per i
+  // giocatori che nessuno contende e' quasi sempre uno. Il tetto resta grande
+  // e in evidenza nella scheda, dove si consulta.
+  it('parte da uno, non dal tetto', () => {
     panel();
-    expect(screen.getByLabelText('Prezzo')).toHaveValue(47);
+    expect(screen.getByLabelText('Prezzo')).toHaveValue(1);
   });
 
   it('aggiudica al partecipante scelto', async () => {
@@ -47,7 +51,7 @@ describe('BidPanel', () => {
     await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), 'bruno');
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
 
-    expect(onAssign).toHaveBeenCalledWith({ participantId: 'bruno', price: 47 });
+    expect(onAssign).toHaveBeenCalledWith({ participantId: 'bruno', price: 1 });
   });
 
   it("durante l'attesa il bottone lo dice e non si puo' ripremere", () => {
@@ -123,7 +127,6 @@ describe('BidPanel', () => {
     const onAssign = vi.fn();
     const { rerender } = render(
       <BidPanel
-        suggestedPrice={47}
         participants={[]}
         disabled={false}
         pending={false}
@@ -134,7 +137,6 @@ describe('BidPanel', () => {
 
     rerender(
       <BidPanel
-        suggestedPrice={47}
         participants={PARTICIPANTS}
         disabled={false}
         pending={false}
@@ -145,7 +147,7 @@ describe('BidPanel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
 
-    expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 47 });
+    expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 1 });
   });
 
   // Un refetch che ridisegna lo stesso elenco con un nuovo riferimento
@@ -156,7 +158,6 @@ describe('BidPanel', () => {
     const onAssign = vi.fn();
     const { rerender } = render(
       <BidPanel
-        suggestedPrice={47}
         participants={PARTICIPANTS}
         disabled={false}
         pending={false}
@@ -170,7 +171,6 @@ describe('BidPanel', () => {
     // Stessi partecipanti, nuovo riferimento d'array: cosi' arriva un refetch.
     rerender(
       <BidPanel
-        suggestedPrice={47}
         participants={[...PARTICIPANTS]}
         disabled={false}
         pending={false}
@@ -181,21 +181,18 @@ describe('BidPanel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
 
-    expect(onAssign).toHaveBeenCalledWith({ participantId: 'bruno', price: 47 });
+    expect(onAssign).toHaveBeenCalledWith({ participantId: 'bruno', price: 1 });
   });
 
-  // useValuation (Task 11) rivaluta ogni 5 s anche il giocatore GIA'
-  // selezionato: se nel frattempo qualcun altro aggiudica altrove, i budget
-  // cambiano e il tetto di QUESTO giocatore puo' ricalcolarsi pur restando lo
-  // stesso giocatore. BidPanel non riceve un playerId con cui distinguere
-  // "e' cambiato il giocatore" da "e' stato rivalutato lo stesso": deve
-  // dedurlo da cio' che ha per le mani, o rischia di cancellare in silenzio
-  // un prezzo che l'utente sta scrivendo in quel preciso istante.
-  it("una rivalutazione del giocatore gia' selezionato non cancella il prezzo che si sta scrivendo", async () => {
+  // Il campo e' dell'utente e di nessun altro: una volta scritto un prezzo,
+  // niente lo sovrascrive finche' resta in scena lo stesso giocatore. Prima il
+  // pannello inseguiva il tetto a ogni rivalutazione (ogni 5 s), e per non
+  // cancellare quello che si stava scrivendo serviva un flag "toccato" e tre
+  // test a coprirlo: senza una proposta da inseguire, il problema non esiste.
+  it('il prezzo scritto resta: niente lo sovrascrive', async () => {
     const onAssign = vi.fn();
     const { rerender } = render(
       <BidPanel
-        suggestedPrice={47}
         participants={PARTICIPANTS}
         disabled={false}
         pending={false}
@@ -207,13 +204,11 @@ describe('BidPanel', () => {
     const input = screen.getByLabelText('Prezzo');
     await userEvent.clear(input);
     await userEvent.type(input, '60');
-    expect(input).toHaveValue(60);
 
-    // Stesso giocatore, nuova rivalutazione: il tetto e' sceso a 45.
+    // Una rivalutazione ridisegna il pannello: il prezzo scritto non si muove.
     rerender(
       <BidPanel
-        suggestedPrice={45}
-        participants={PARTICIPANTS}
+        participants={[...PARTICIPANTS]}
         disabled={false}
         pending={false}
         error={null}
@@ -222,72 +217,5 @@ describe('BidPanel', () => {
     );
 
     expect(input).toHaveValue(60);
-  });
-
-  // Confrontare il prezzo con l'ultimo tetto suggerito tratterebbe come
-  // "intatto" un prezzo che l'utente ha ridigitato uguale a quello di prima
-  // — per esempio correggendo un refuso e tornando allo stesso numero. Il
-  // segnale giusto e' che l'utente ha scritto, non che il numero e' diverso.
-  it("un prezzo ridigitato uguale al tetto di prima resta \"toccato\": la rivalutazione successiva non lo tocca", async () => {
-    const onAssign = vi.fn();
-    const { rerender } = render(
-      <BidPanel
-        suggestedPrice={47}
-        participants={PARTICIPANTS}
-        disabled={false}
-        pending={false}
-        error={null}
-        onAssign={onAssign}
-      />,
-    );
-
-    const input = screen.getByLabelText('Prezzo');
-    await userEvent.clear(input);
-    await userEvent.type(input, '47');
-
-    rerender(
-      <BidPanel
-        suggestedPrice={50}
-        participants={PARTICIPANTS}
-        disabled={false}
-        pending={false}
-        error={null}
-        onAssign={onAssign}
-      />,
-    );
-
-    expect(input).toHaveValue(47);
-  });
-
-  // Un campo non toccato deve seguire un nuovo tetto in ogni caso: da qui
-  // dentro una rivalutazione dello stesso giocatore e un vero cambio di
-  // giocatore sono lo stesso evento, un nuovo suggestedPrice. Il nome del
-  // test non promette un cambio di giocatore che questo componente, da
-  // solo, non puo' mettere in scena.
-  it('un campo non toccato segue comunque un nuovo tetto (rivalutazione o cambio giocatore: da qui indistinguibili)', () => {
-    const onAssign = vi.fn();
-    const { rerender } = render(
-      <BidPanel
-        suggestedPrice={47}
-        participants={PARTICIPANTS}
-        disabled={false}
-        pending={false}
-        error={null}
-        onAssign={onAssign}
-      />,
-    );
-
-    rerender(
-      <BidPanel
-        suggestedPrice={52}
-        participants={PARTICIPANTS}
-        disabled={false}
-        pending={false}
-        error={null}
-        onAssign={onAssign}
-      />,
-    );
-
-    expect(screen.getByLabelText('Prezzo')).toHaveValue(52);
   });
 });

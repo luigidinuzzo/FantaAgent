@@ -1,15 +1,26 @@
 import { useEffect, useId, useState } from 'react';
 import type { ParticipantView } from '../api/types';
+import { CONTROL_H, FOCUS_RING } from './controls';
+
+/**
+ * Il prezzo di partenza: uno, l'offerta minima, non il tetto.
+ *
+ * <p>Il tetto e' il punto oltre il quale NON conviene, non il prezzo a cui si
+ * aggiudica: proporlo nel campo significava suggerire di pagare sempre il
+ * massimo consentito, e un invio distratto registrava il tetto al posto del
+ * prezzo vero — che a un'asta, per i giocatori che nessuno contende, e' quasi
+ * sempre uno. Il tetto resta grande e in evidenza nella scheda, che e' il suo
+ * posto: un numero da consultare, non un valore precompilato.
+ */
+const STARTING_PRICE = 1;
 
 export function BidPanel({
-  suggestedPrice,
   participants,
   disabled,
   pending,
   error,
   onAssign,
 }: {
-  suggestedPrice: number;
   participants: ParticipantView[];
   disabled: boolean;
   pending: boolean;
@@ -21,21 +32,11 @@ export function BidPanel({
   const errorId = useId();
   const hintId = useId();
 
-  const [price, setPrice] = useState(suggestedPrice);
-  const [touched, setTouched] = useState(false);
-
-  // Cambiando giocatore il prezzo deve tornare al tetto di QUEL giocatore. Ma
-  // useValuation (Task 11) rivaluta ogni 5 s anche il giocatore GIA'
-  // selezionato: un'offerta altrui sposta i budget e quindi il tetto puo'
-  // ricalcolarsi pur restando lo stesso giocatore, e da qui (nessun playerId
-  // da confrontare) le due situazioni sono indistinguibili. "touched" e'
-  // esplicito, non dedotto per coincidenza numerica: confrontare il prezzo
-  // con l'ultimo suggerito avrebbe scambiato per "intatto" un prezzo che
-  // l'utente ha ridigitato uguale a quello precedente — correggendo un
-  // refuso, per esempio — un caso reale, non solo teorico.
-  useEffect(() => {
-    if (!touched) setPrice(suggestedPrice);
-  }, [suggestedPrice, touched]);
+  // Nessuna risincronizzazione con una proposta che cambia: il campo parte da
+  // uno e da li' si muove solo se lo muove l'utente. Cambiando giocatore e'
+  // la route a rimontare il pannello (key sul playerId), e il campo riparte da
+  // uno per il lotto nuovo.
+  const [price, setPrice] = useState(STARTING_PRICE);
 
   const [participantId, setParticipantId] = useState(
     participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '',
@@ -70,57 +71,59 @@ export function BidPanel({
       : null;
 
   return (
+    // Etichette ACCANTO ai campi, non sopra, e riga allineata al centro: con le
+    // etichette in cima le scatole partivano da quote diverse e, allineando per
+    // il fondo, campo e menu sporgevano sopra il bottone. Tutti i controlli
+    // condividono CONTROL_H — l'enfasi la porta il colore, mai l'altezza.
     <form
-      className="flex flex-wrap items-end gap-2"
+      className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         onAssign({ participantId, price });
       }}
     >
-      <div>
-        <label htmlFor={priceId} className="block text-sm text-muted-foreground">
-          Prezzo
-        </label>
-        <input
-          id={priceId}
-          type="number"
-          min={1}
-          value={price}
-          onChange={(e) => {
-            setTouched(true);
-            setPrice(Number(e.target.value));
-          }}
-          aria-invalid={error !== null}
-          aria-describedby={error ? errorId : undefined}
-          className="tnum mt-1 min-h-11 w-24 rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-        />
-      </div>
+      <label htmlFor={priceId} className="text-sm text-muted-foreground">
+        Prezzo
+      </label>
+      <input
+        id={priceId}
+        type="number"
+        min={1}
+        value={price}
+        onChange={(e) => setPrice(Number(e.target.value))}
+        aria-invalid={error !== null}
+        aria-describedby={error ? errorId : undefined}
+        className={`tnum ${CONTROL_H} w-24 rounded-full border border-line-strong bg-transparent px-4 font-bold ${FOCUS_RING}`}
+      />
 
-      <div>
-        <label htmlFor={buyerId} className="block text-sm text-muted-foreground">
-          Aggiudica a
-        </label>
-        <select
-          id={buyerId}
-          value={participantId}
-          onChange={(e) => setParticipantId(e.target.value)}
-          className="mt-1 min-h-11 rounded-full border border-line bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          {participants.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <label htmlFor={buyerId} className="ml-2 text-sm text-muted-foreground">
+        Aggiudica a
+      </label>
+      <select
+        id={buyerId}
+        value={participantId}
+        onChange={(e) => setParticipantId(e.target.value)}
+        className={`${CONTROL_H} rounded-full border border-line-strong bg-transparent px-4 font-bold ${FOCUS_RING}`}
+      >
+        {participants.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
 
       {/* Il verbo del bottone e' lo stesso dell'esito: si preme Aggiudica e
-          l'evento registrato e' un'aggiudicazione. */}
+          l'evento registrato e' un'aggiudicazione.
+
+          Di contorno, non pieno: l'oro e' passato a «Avvia il conto alla
+          rovescia», che e' il gesto con cui si batte un lotto conteso. Questa
+          resta la via diretta per un giocatore che nessuno contende — a portata
+          di mano, ma non e' lei a guidare la scheda. */}
       <button
         type="submit"
         disabled={disabled || pending}
         aria-describedby={disabledReason ? hintId : undefined}
-        className="min-h-11 rounded-full bg-accent px-5 font-bold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+        className={`${CONTROL_H} ml-2 rounded-full border border-line-strong px-6 font-bold transition-opacity duration-200 hover:bg-line disabled:opacity-50 ${FOCUS_RING}`}
       >
         {pending ? 'Aggiudico…' : 'Aggiudica'}
       </button>

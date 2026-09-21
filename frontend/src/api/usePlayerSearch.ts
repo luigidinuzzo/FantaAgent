@@ -53,6 +53,9 @@ export function usePlayerSearch(query: string, role: Role | null) {
       if (role) params.set('role', role);
       return apiGet<PlayerSummary[]>(`/players?${params.toString()}`);
     },
-    enabled: settled.length > 0,
+    // Un filtro e' gia' una domanda: scelto un ruolo si sfoglia chi c'e', senza
+    // dover scrivere anche un nome. A campo vuoto e senza ruolo, invece, la
+    // ricerca non interroga niente: nessuno ha ancora chiesto nulla.
+    enabled: settled.length > 0 || role !== null,
   });
 }

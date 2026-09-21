@@ -113,6 +113,7 @@ function fullFetchMock({
         jsonResponse([{ id: 'p2', name: 'Giocatore Due', team: 'BBB', role: 'P', listPrice: 2 }]),
       );
     }
+    if (href.includes('/players/teams')) return Promise.resolve(jsonResponse(['Inter', 'Roma']));
     if (href.includes('/board/bidder/p1')) return Promise.resolve(jsonResponse(BIDDER_SETTINGS));
     if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
     if (href.includes('/purchases')) {
@@ -141,8 +142,10 @@ describe('AuctionRoute', () => {
   // in cache (staleTime 5s), quindi valuation.data passa da quella di p2 a
   // quella di p1 SENZA alcun istante vuoto in mezzo. Senza key, PlayerDecisionCard
   // (e con essa BidPanel) non smonterebbe mai, e il prezzo digitato per p2
-  // resterebbe nel campo anche per p1.
-  it('tornando su un giocatore gia visto (dato in cache, nessun vuoto) il prezzo torna comunque al suo tetto', async () => {
+  // resterebbe nel campo anche per p1 — pronto a essere inviato per il lotto
+  // sbagliato. Ora che il campo parte sempre da uno, il remount e' l'UNICO
+  // meccanismo che lo azzera: niente insegue piu' una proposta.
+  it('tornando su un giocatore gia visto (dato in cache, nessun vuoto) il campo prezzo riparte comunque da uno', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
 
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -162,30 +165,31 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    const price = await screen.findByLabelText('Prezzo');
-    await waitFor(() => expect(price).toHaveValue(50));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
 
+    const price = screen.getByLabelText('Prezzo');
     await userEvent.clear(price);
     await userEvent.type(price, '99');
     expect(price).toHaveValue(99);
 
     // p1 -> p2: passa per il vuoto, quindi non e' la prova che conta.
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Due/ }));
-    const price2 = await screen.findByLabelText('Prezzo');
-    await waitFor(() => expect(price2).toHaveValue(80));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('80'));
+    const price2 = screen.getByLabelText('Prezzo');
+    expect(price2).toHaveValue(1);
     await userEvent.clear(price2);
     await userEvent.type(price2, '15');
     expect(price2).toHaveValue(15);
 
     // p2 -> p1: p1 e' gia' in cache, nessun vuoto. Questa e' la prova.
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(50));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
+    expect(screen.getByLabelText('Prezzo')).toHaveValue(1);
   });
 
-  // Task 6: PlayerSearchBox riceve onSelect={setSelectedId}, la STESSA
-  // selezione della tabella di fase, non un secondo percorso. Un giocatore
-  // scelto dalla ricerca deve comportarsi in tutto come uno scelto dalla
-  // tabella: valutazione, battitore, aggiudicazione.
+  // La ricerca riceve onSelect={setSelectedId}, la STESSA selezione della tabella
+  // di fase, non un secondo percorso. Un giocatore scelto cosi' deve comportarsi
+  // in tutto come uno scelto dalla tabella: valutazione, battitore, aggiudicazione.
   it('un giocatore scelto dalla ricerca si comporta come uno scelto dalla tabella', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     let purchaseBody: unknown = null;
@@ -203,15 +207,29 @@ describe('AuctionRoute', () => {
       </QueryProvider>,
     );
 
-    await userEvent.type(await screen.findByLabelText('Cerca giocatore'), 'due');
-    const result = await screen.findByRole('button', { name: /Giocatore Due/ });
-    await userEvent.click(result);
+    await userEvent.type(await screen.findByRole('searchbox', { name: /cerca giocatore/i }), 'due');
+
+    // Mentre si cerca, il battitore cede il posto ai nomi: crescono sotto la
+    // barra invece di spingere giu' mezza pagina a ogni lettera.
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Battitore' })).not.toBeInTheDocument(),
+    );
+
+    // Scelto fra i risultati della ricerca, non in pagina: la tabella di fase
+    // porta un suo «Valuta Giocatore Due», e sceglierlo proverebbe la tabella.
+    const risultati = await screen.findByRole('list', { name: /risultati/i });
+    await userEvent.click(await within(risultati).findByRole('button', { name: /Giocatore Due/ }));
+
+    // Scelto il giocatore, la ricerca si chiude da se' e il battitore torna al
+    // suo posto: non si resta su un elenco aperto su una scelta gia' fatta.
+    expect(screen.getByRole('searchbox', { name: /cerca giocatore/i })).toHaveValue('');
+    expect(await screen.findByRole('region', { name: 'Battitore' })).toBeInTheDocument();
 
     // La scheda di decisione mostra QUEL giocatore, non un placeholder di un
     // percorso di ricerca separato: e' la stessa valutazione che una riga di
     // tabella avrebbe prodotto.
     expect(await screen.findByRole('heading', { name: 'Giocatore Due' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(80));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('80'));
 
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
 
@@ -275,7 +293,7 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(7));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('7'));
 
     const status = screen.getByRole('status');
     const seenTexts: string[] = [];
@@ -327,7 +345,7 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(7));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('7'));
     expect(screen.getAllByRole('status')).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
@@ -377,7 +395,7 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(7));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('7'));
 
     // Primo invio: riuscito, l'annuncio compare.
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
@@ -410,18 +428,46 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(50));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
 
-    const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+    const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
     await waitFor(() => expect(open).not.toBeDisabled());
     await userEvent.click(open);
 
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
-    // 12s, non 5s: se il numero letto qui fosse una costante fissa nella
+    // 12 secondi, non 5: se il numero letto qui fosse una costante fissa nella
     // route invece delle preferenze restituite da usePublicBidder, questa
     // asserzione lo scoprirebbe.
-    expect(screen.getByText('12s')).toBeInTheDocument();
+    expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('12');
     expect(screen.getByTestId('bidder-ceiling')).toHaveTextContent('50');
+  });
+
+  /**
+   * Col conto alla rovescia aperto la card e' UNA. Montato dentro la scheda di
+   * decisione, il battitore rendeva nome e tetto una seconda volta, dentro una
+   * seconda cornice: due volte lo stesso dato a mezzo centimetro di distanza.
+   */
+  it('col battitore aperto nome e tetto compaiono una volta sola', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
+    await waitFor(() => expect(open).not.toBeDisabled());
+    await userEvent.click(open);
+
+    const battitore = screen.getByRole('region', { name: 'Battitore' });
+    expect(within(battitore).getAllByRole('heading', { name: 'Giocatore Uno' })).toHaveLength(1);
+    expect(within(battitore).getAllByText(/^tetto$/)).toHaveLength(1);
+    // La scheda di decisione non e' piu' in scena: il battitore la sostituisce,
+    // non ci si annida dentro.
+    expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
   });
 
   it('chiudere il battitore torna al pannello di aggiudicazione diretta', async () => {
@@ -435,12 +481,15 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+    const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
     await waitFor(() => expect(open).not.toBeDisabled());
     await userEvent.click(open);
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+    // Esc chiude il conto alla rovescia: il bottone «Chiudi» nell'intestazione
+    // se n'e' andato (accanto a «Togli dal battitore» sembrava il suo doppione)
+    // e la via di ritorno e' passata alla tastiera.
+    await userEvent.keyboard('{Escape}');
 
     expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
     // BidPanel e' di nuovo la' — non un secondo percorso di aggiudicazione,
@@ -464,7 +513,7 @@ describe('AuctionRoute', () => {
     );
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+    const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
     await waitFor(() => expect(open).not.toBeDisabled());
     await userEvent.click(open);
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
@@ -482,9 +531,12 @@ describe('AuctionRoute', () => {
     expect(screen.queryByLabelText('Prezzo')).not.toBeInTheDocument();
 
     // Chiudendo il battitore, la selezione torna deliberatamente possibile.
-    await userEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+    // Esc chiude il conto alla rovescia: il bottone «Chiudi» nell'intestazione
+    // se n'e' andato (accanto a «Togli dal battitore» sembrava il suo doppione)
+    // e la via di ritorno e' passata alla tastiera.
+    await userEvent.keyboard('{Escape}');
     await userEvent.click(screen.getByRole('button', { name: /Valuta Giocatore Due/ }));
-    await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(80));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('80'));
   });
 
   it("aggiudicare dal battitore passa per la stessa mutazione di BidPanel, non per una seconda", async () => {
@@ -508,7 +560,7 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
 
@@ -572,7 +624,7 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
       await user.keyboard(' ');
@@ -643,7 +695,7 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
       expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
@@ -686,7 +738,7 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
       await user.keyboard(' '); // avvia il countdown (12 s, dalle preferenze)
@@ -722,14 +774,14 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
 
       const seen: BidBroadcast[] = [];
       const unsubscribe = subscribeBid((m) => seen.push(m));
 
-      await user.click(screen.getByRole('button', { name: 'Chiudi' }));
+      await user.keyboard('{Escape}');
       await flushChannel();
 
       expect(seen.some((m) => m.kind === 'idle')).toBe(true);
@@ -863,7 +915,7 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      const open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
       await user.keyboard(' ');
@@ -921,7 +973,7 @@ describe('AuctionRoute', () => {
       );
 
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      let open = await screen.findByRole('button', { name: /battitore per Giocatore Uno/i });
+      let open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
       await user.keyboard(' ');
@@ -935,9 +987,9 @@ describe('AuctionRoute', () => {
 
       // Il dialogo resta apposta in scena (l'aggiudicazione e' fallita): lo
       // si chiude a mano, come farebbe un operatore che rinuncia al lotto.
-      await user.click(screen.getByRole('button', { name: 'Chiudi' }));
+      await user.keyboard('{Escape}');
       await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Due/ }));
-      open = await screen.findByRole('button', { name: /battitore per Giocatore Due/i });
+      open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
 
@@ -1187,7 +1239,7 @@ describe('AuctionRoute', () => {
 
       // Prima pagina: seleziona Giocatore Uno, la sua valutazione si carica.
       await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-      await waitFor(() => expect(screen.getByLabelText('Prezzo')).toHaveValue(50));
+      await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
       expect(screen.queryByText('Giocatore Tre')).not.toBeInTheDocument();
 
       await userEvent.click(screen.getByRole('button', { name: /pagina successiva/i }));
@@ -1197,7 +1249,7 @@ describe('AuctionRoute', () => {
       expect(await screen.findByText('Giocatore Tre')).toBeInTheDocument();
       // La selezione precedente (e la sua valutazione) non e' stata disturbata
       // dal cambio pagina: cambiare pagina non e' selezionare un altro giocatore.
-      expect(screen.getByLabelText('Prezzo')).toHaveValue(50);
+      expect(screen.getByTestId('max-bid')).toHaveTextContent('50');
     });
 
     it('cambiare fase riporta la paginazione a pagina 1', async () => {
@@ -1347,5 +1399,141 @@ describe('AuctionRoute', () => {
       expect(roseTab).toHaveAttribute('aria-selected', 'true');
       expect(roseTab).toHaveFocus();
     });
+  });
+
+  /**
+   * Tre colonne al tavolo: a sinistra chi ha quanto, al centro il giocatore su cui
+   * si decide, a destra il perche' del prezzo. La colonna dei consigli non sparisce
+   * quando nessuno e' scelto — mostra l'invito — cosi' la pagina non cambia forma a
+   * ogni lotto scelto o abbandonato.
+   */
+  it('dispone crediti, ricerca e consigli in tre colonne, e i consigli restano anche senza giocatore scelto', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const crediti = await screen.findByRole('region', { name: 'Crediti delle squadre' });
+    const consigli = screen.getByRole('region', { name: 'Perché questo prezzo' });
+    const griglia = crediti.parentElement;
+    expect(griglia?.className).toContain('grid-cols');
+    // Le tre colonne sono figlie della stessa griglia, nell'ordine dichiarato.
+    expect(consigli.parentElement).toBe(griglia);
+    expect(griglia?.children).toHaveLength(3);
+
+    // Senza giocatore scelto la colonna non e' un riquadro diverso dagli altri:
+    // e' lo STESSO pannello, con lo stesso titolo, e dentro l'invito.
+    expect(consigli).toHaveTextContent(/Cerca un giocatore o scegline uno dalla tabella/);
+
+    // Scelto un giocatore, l'invito lascia il posto all'analisi nello stesso pannello.
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await screen.findByLabelText('Prezzo');
+    expect(screen.getByRole('region', { name: 'Crediti delle squadre' })).toBeInTheDocument();
+    const dopo = screen.getByRole('region', { name: 'Perché questo prezzo' });
+    expect(dopo).not.toHaveTextContent(/Cerca un giocatore o scegline uno dalla tabella/);
+    expect(dopo).toHaveTextContent(/tetto duro/);
+    expect(griglia?.children).toHaveLength(3);
+  });
+
+  /**
+   * Il battitore e' un posto fisso: c'e' anche quando non c'e' nessun giocatore, e si
+   * popola scegliendone uno. Prima la card compariva dal nulla e spingeva giu' tutto
+   * il resto della pagina a ogni selezione.
+   */
+  it('il riquadro del battitore resta in pagina anche vuoto, e si popola scegliendo un giocatore', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const battitore = await screen.findByRole('region', { name: 'Battitore' });
+    expect(battitore).toHaveTextContent(/Nessun giocatore sul battitore/);
+    expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await screen.findByLabelText('Prezzo');
+    expect(within(battitore).getByTestId('decision-card')).toBeInTheDocument();
+    expect(battitore).not.toHaveTextContent(/Nessun giocatore sul battitore/);
+  });
+
+  /**
+   * Cercare nasconde il battitore, non lo svuota: il giocatore sul banco resta
+   * scelto, e annullata la ricerca (Esc) lo si ritrova com'era — prezzo incluso.
+   */
+  it('la ricerca prende il posto del battitore, e uscendo il lotto e ancora li', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
+
+    const barra = screen.getByRole('searchbox', { name: /cerca giocatore/i });
+    await userEvent.type(barra, 'due');
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Battitore' })).not.toBeInTheDocument(),
+    );
+
+    await userEvent.type(barra, '{Escape}');
+
+    expect(barra).toHaveValue('');
+    expect(await screen.findByRole('region', { name: 'Battitore' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Giocatore Uno' })).toBeInTheDocument();
+    expect(screen.getByTestId('max-bid')).toHaveTextContent('50');
+  });
+
+  /** Si toglie il giocatore dal banco, e il conto alla rovescia si spegne con lui. */
+  it('«Togli dal battitore» svuota il riquadro e chiude il conto alla rovescia', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
+    await waitFor(() => expect(open).not.toBeDisabled());
+    await userEvent.click(open);
+    expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /Togli dal battitore/ }));
+
+    expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Battitore' }))
+      .toHaveTextContent(/Nessun giocatore sul battitore/);
+  });
+
+  /** La colonna a sinistra dice nome e crediti, e chi ascolta riconosce la propria riga. */
+  it('la colonna delle squadre mostra i crediti rimasti, e dice a parole qual e la tua', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const crediti = await screen.findByRole('region', { name: 'Crediti delle squadre' });
+    expect(within(crediti).getByText('Anna')).toBeInTheDocument();
+    expect(within(crediti).getByTestId('budget-anna')).toHaveTextContent('300');
+    expect(within(crediti).getByTestId('manager-anna')).toHaveTextContent(', sei tu');
   });
 });

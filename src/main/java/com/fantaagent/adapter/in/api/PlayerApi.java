@@ -33,14 +33,32 @@ public class PlayerApi {
         this.catalog = catalog;
     }
 
+    /**
+     * Nome, ruolo, squadra: in qualunque combinazione, e anche solo filtri senza nome —
+     * la modale di ricerca sfoglia, non interroga soltanto. Senza niente di tutto
+     * questo il servizio torna un elenco vuoto: aprire la modale non e' una domanda.
+     */
     @GetMapping
     public List<PlayerDtos.PlayerSummary> search(@PathVariable String leagueId,
                                                  @PathVariable String auctionId,
                                                  @RequestParam(defaultValue = "") String q,
-                                                 @RequestParam(required = false) Role role) {
+                                                 @RequestParam(required = false) Role role,
+                                                 @RequestParam(required = false) String team) {
         leagues.check(leagueId);
         auctions.check(auctionId);
-        return search.search(q, role).stream().map(PlayerDtos.PlayerSummary::from).toList();
+        return search.browse(q, role, team).stream().map(PlayerDtos.PlayerSummary::from).toList();
+    }
+
+    /**
+     * Le squadre di Serie A su cui si puo' filtrare, dedotte dal listone. Rotta a se'
+     * e non un campo della ricerca: cambia solo quando cambia il listone, mentre i
+     * risultati cambiano a ogni tasto premuto.
+     */
+    @GetMapping("/teams")
+    public List<String> teams(@PathVariable String leagueId, @PathVariable String auctionId) {
+        leagues.check(leagueId);
+        auctions.check(auctionId);
+        return search.teams();
     }
 
     @GetMapping("/phase")

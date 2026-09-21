@@ -199,7 +199,7 @@ export function SettingsRoute() {
 
   if (settings.isError) {
     return (
-      <AppShell chrome="side">
+      <AppShell chrome="top">
         <h1 className="sr-only">Impostazioni</h1>
         <p role="alert" className="panel rounded-xl p-4 text-sm font-bold text-destructive">
           {userMessage(settings.error, 'Le impostazioni non si sono caricate. Riprova.')}
@@ -210,7 +210,7 @@ export function SettingsRoute() {
 
   if (!form || !settings.data) {
     return (
-      <AppShell chrome="side">
+      <AppShell chrome="top">
         <h1 className="sr-only">Impostazioni</h1>
         <p className="panel rounded-xl p-4 text-sm text-muted-foreground">Carico le impostazioni…</p>
       </AppShell>
@@ -233,7 +233,7 @@ export function SettingsRoute() {
 
 
   return (
-    <AppShell chrome="side">
+    <AppShell chrome="top">
       {/* Un unico pannello pieno per tutto il modulo: etichette, pillole e
           messaggi non poggiano mai sulle linee del campo. */}
       {/* Le stesse misure della home: larghezza massima, riempimento e corpi di testo
@@ -242,9 +242,13 @@ export function SettingsRoute() {
         <div className="relative mb-6 flex items-center justify-center">
           {/* Nome accessibile esplicito: una freccia da sola sarebbe un'icona
               muta, senza niente che uno screen reader possa leggere. */}
+          {/* Ad asta aperta si torna all'asta, non alla home: da li' si e' arrivati
+              (l'ingranaggio nella barra dell'asta) ed e' li' che si sta giocando.
+              Senza un'asta aperta questa schermata e' invece «Crea asta», e la
+              porta da cui si entra — e a cui si torna — e' la home. */}
           <Link
-            to="/"
-            aria-label="Torna alla home"
+            to={auctionOpen ? '/asta' : '/'}
+            aria-label={auctionOpen ? "Torna all'asta" : 'Torna alla home'}
             className="absolute left-0 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>

@@ -91,6 +91,44 @@ describe('SettingsRoute', () => {
   });
 
   /**
+   * Si entra qui dall'ingranaggio della barra dell'asta: la freccia deve riportare
+   * dove si era, non alla home. Senza asta aperta la schermata e' invece «Crea asta»,
+   * e la porta — di andata e di ritorno — e' la home.
+   */
+  it("ad asta aperta la freccia torna all'asta, non alla home", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', vi.fn(() =>
+      Promise.resolve(jsonResponse({ ...SETTINGS, auctionOpen: true }))));
+    render(
+      <QueryProvider>
+        <MemoryRouter>
+          <SettingsRoute />
+        </MemoryRouter>
+      </QueryProvider>,
+    );
+    expect(await screen.findByRole('link', { name: "Torna all'asta" }))
+      .toHaveAttribute('href', '/asta');
+  });
+
+  /**
+   * Le impostazioni portano la barra compatta dell'asta, non la spalla della home:
+   * quelle due voci riportavano alla home proprio mentre la freccia riporta
+   * all'asta, due uscite diverse per la stessa schermata.
+   */
+  it('porta la barra compatta, senza la spalla di Asta e Profilo', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    await screen.findByLabelText(/secondi/i);
+    expect(screen.queryByRole('navigation', { name: 'Sezioni' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'FantaAgent' })).toHaveAttribute('href', '/');
+  });
+
+  it('senza asta aperta la freccia torna alla home', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    expect(await screen.findByRole('link', { name: 'Torna alla home' }))
+      .toHaveAttribute('href', '/');
+  });
+
+  /**
    * Il nome dell'asta esiste solo in preparazione: ad asta aperta non se ne crea una
    * seconda, e il campo non avrebbe niente da fare.
    */

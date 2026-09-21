@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AppShell } from './AppShell';
-import { routeDefinitions } from './router';
 
 function withRouter(node: React.ReactNode) {
   return <MemoryRouter>{node}</MemoryRouter>;
@@ -28,41 +27,32 @@ describe('AppShell', () => {
   });
 
   /**
-   * Il difetto strutturale delle tappe precedenti: due revisioni consecutive hanno
-   * trovato "una rotta aggiunta e nessuno che la collega". La barra superiore e'
-   * quella che ogni schermata dell'asta condivide, quindi e' li' che la
-   * navigazione vive.
+   * Durante la serata la barra porta solo il marchio: niente nome dell'asta ripetuto
+   * (sta gia' nell'elenco da cui si e' entrati) e niente elenco di sezioni. Le
+   * destinazioni restano raggiungibili da altrove — /impostazioni dall'ingranaggio
+   * dell'asta, /proiezione dal suo pulsante, /asta dalla home.
    */
-  it('con chrome=top collega ogni rotta del router', () => {
+  it('con chrome=top la barra porta il marchio e il pulsante Home, e nient altro', () => {
     render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
 
-    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
-    const reachable = routeDefinitions
-      .map((r) => r.path)
-      // La proiezione e' l'eccezione voluta: seconda schermata per un proiettore,
-      // zero controlli, si apre solo dal suo collegamento in /asta.
-      .filter((path) => path !== '/proiezione')
-      // /riepilogo non e' piu' una destinazione ma un reindirizzamento verso /asta,
-      // tenuto vivo per i segnalibri: collegarlo darebbe due voci per la stessa
-      // schermata.
-      .filter((path) => path !== '/riepilogo');
-
-    for (const path of reachable) {
-      expect(hrefs).toContain(path);
-    }
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(2);
+    links.forEach((l) => expect(l).toHaveAttribute('href', '/'));
+    expect(within(links[0]).getByTestId('wordmark')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
   it('la barra laterale offre Asta e Profilo, con la sezione corrente dichiarata', () => {
-    render(withRouter(<AppShell chrome="side" section="profilo"><p>x</p></AppShell>));
+    render(withRouter(
+      <AppShell chrome="side" section="profilo" onSectionChange={() => {}}><p>x</p></AppShell>,
+    ));
 
     const nav = screen.getByRole('navigation', { name: 'Sezioni' });
-    const items = within(nav).getAllByRole('link');
-    expect(items.map((l) => l.textContent)).toEqual(['Asta', 'Profilo']);
-    // Fuori dalla home le voci riportano alla home: nessuna porta verso l'asta
-    // o le impostazioni da qui.
-    items.forEach((l) => expect(l).toHaveAttribute('href', '/'));
-    expect(within(nav).getByRole('link', { name: 'Profilo' })).toHaveAttribute('aria-current', 'true');
-    expect(within(nav).getByRole('link', { name: 'Asta' })).not.toHaveAttribute('aria-current');
+    const items = within(nav).getAllByRole('button');
+    expect(items.map((b) => b.textContent)).toEqual(['Asta', 'Profilo']);
+    expect(within(nav).getByRole('button', { name: 'Profilo' })).toHaveAttribute('aria-current', 'true');
+    expect(within(nav).getByRole('button', { name: 'Asta' })).not.toHaveAttribute('aria-current');
   });
 
   it('sulla home le voci della barra laterale cambiano sezione senza navigare', async () => {
@@ -80,6 +70,16 @@ describe('AppShell', () => {
   it('il nome porta alla home', () => {
     render(withRouter(<AppShell chrome="side"><p>x</p></AppShell>));
     expect(screen.getByRole('link', { name: 'FantaAgent' })).toHaveAttribute('href', '/');
+  });
+
+  /**
+   * Su un telefono i pulsanti icona dell'asta piu' lo stato di connessione non stanno
+   * su una riga sola: senza andare a capo, la pagina intera scorreva di lato.
+   */
+  it('il gruppo di destra della barra sa andare a capo', () => {
+    const { container } = render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    const group = container.querySelector('header > div.ml-auto');
+    expect(group?.className).toContain('flex-wrap');
   });
 
   it('con chrome=none (proiezione) non mostra nessun link, nemmeno il nome', () => {

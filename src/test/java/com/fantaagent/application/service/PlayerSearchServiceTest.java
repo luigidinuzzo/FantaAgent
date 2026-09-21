@@ -282,6 +282,79 @@ class PlayerSearchServiceTest {
                 .containsExactly("a1");
     }
 
+    /**
+     * Sfogliare, non cercare: nella modale si scelgono i filtri e si guarda chi c'e',
+     * anche senza scrivere un nome. Senza testo l'ordine e' la quotazione, dal piu'
+     * caro al piu' economico, e chi e' gia' stato comprato resta fuori come sempre.
+     */
+    @Test
+    void sfogliarePerSquadraSenzaTestoElencaTuttiInOrdineDiQuotazione() {
+        List<Player> players = List.of(
+                new Player("d1", "Bastoni", "Inter", Role.D, 20),
+                new Player("a1", "Lautaro", "Inter", Role.A, 30),
+                new Player("d2", "Dimarco", "Inter", Role.D, 18),
+                new Player("d3", "Gatti", "Juventus", Role.D, 16));
+
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        auction.recordPurchase("a1", "marco", 30);
+        PlayerSearchService service = serviceFor(catalog, auction);
+
+        assertThat(service.browse("", null, "Inter"))
+                .extracting(Player::id)
+                .containsExactly("d1", "d2");
+    }
+
+    /** I due filtri si sommano: i difensori dell'Inter sono quelli dell'Inter che sono difensori. */
+    @Test
+    void sfogliareCombinaRuoloESquadra() {
+        PlayerSearchService service = serviceWith(List.of(
+                new Player("d1", "Bastoni", "Inter", Role.D, 20),
+                new Player("a1", "Lautaro", "Inter", Role.A, 30),
+                new Player("d3", "Gatti", "Juventus", Role.D, 16)));
+
+        assertThat(service.browse("", Role.D, "Inter"))
+                .extracting(Player::id)
+                .containsExactly("d1");
+    }
+
+    /** Col testo comanda il testo, ma i filtri continuano a restringere. */
+    @Test
+    void sfogliareConTestoRestringeAnchePerSquadra() {
+        PlayerSearchService service = serviceWith(List.of(
+                new Player("d1", "Rossi", "Inter", Role.D, 20),
+                new Player("d2", "Rossi", "Juventus", Role.D, 16)));
+
+        assertThat(service.browse("rossi", null, "Juventus"))
+                .extracting(Player::id)
+                .containsExactly("d2");
+    }
+
+    /**
+     * Nessun testo e nessun filtro non significa «tutto il listone»: significa che non
+     * e' stata ancora posta nessuna domanda.
+     */
+    @Test
+    void sfogliareSenzaTestoNeFiltriNonRestituisceNulla() {
+        PlayerSearchService service = serviceWith(List.of(
+                new Player("d1", "Bastoni", "Inter", Role.D, 20)));
+
+        assertThat(service.browse("", null, null)).isEmpty();
+    }
+
+    /** Le squadre su cui si filtra sono quelle del listone: nessun elenco da mantenere a mano. */
+    @Test
+    void leSquadreSonoQuelleDistinteDelListoneInOrdineAlfabetico() {
+        PlayerSearchService service = serviceWith(List.of(
+                new Player("d1", "Bastoni", "Inter", Role.D, 20),
+                new Player("a1", "Lautaro", "Inter", Role.A, 30),
+                new Player("d3", "Gatti", "Juventus", Role.D, 16),
+                new Player("p1", "Svilar", "Roma", Role.P, 18)));
+
+        assertThat(service.teams()).containsExactly("Inter", "Juventus", "Roma");
+    }
+
     @Test
     void senzaFiltroLaRicercaSiComportaEsattamenteComePrima() {
         List<Player> players = List.of(

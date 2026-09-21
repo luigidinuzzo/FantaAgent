@@ -4,6 +4,12 @@ import { EmptyState } from './EmptyState';
 
 const CAPTION_ID = 'player-table-caption';
 
+// Il riempimento laterale delle celle, uguale per intestazione e corpo: senza,
+// il nome del giocatore comincia esattamente sul bordo sinistro della cornice e
+// la titolarita' finisce su quello destro. Vive in una costante perche' le due
+// file devono restare incolonnate: cambiarlo in un punto solo le disallinea.
+const CELL_X = 'px-3';
+
 export function PlayerTable({
   rows,
   selectedId,
@@ -49,12 +55,12 @@ export function PlayerTable({
         </caption>
         <thead>
           <tr className="border-b border-line-strong text-left text-muted-foreground">
-            <th scope="col" className="py-2 font-normal">Giocatore</th>
-            <th scope="col" className="py-2 font-normal">Sq</th>
-            <th scope="col" className="py-2 text-right font-normal">Quot</th>
-            <th scope="col" className="py-2 text-right font-normal">Tetto</th>
-            <th scope="col" className="py-2 text-right font-normal">FM attesa</th>
-            <th scope="col" className="py-2 text-right font-normal">Titolarità</th>
+            <th scope="col" className={`${CELL_X} py-2 font-normal`}>Giocatore</th>
+            <th scope="col" className={`${CELL_X} py-2 font-normal`}>Sq</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Quot</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Tetto</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>FM attesa</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Titolarità</th>
           </tr>
         </thead>
         <tbody>
@@ -87,16 +93,16 @@ export function PlayerTable({
                     aria-label={accessibleLabel}
                     disabled={disabled}
                     aria-describedby={disabled ? lockedHintId : undefined}
-                    className="flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+                    className={`${CELL_X} flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50`}
                   >
                     {row.name}
                   </button>
                 </td>
-                <td className="py-2 text-muted-foreground">{row.team}</td>
-                <td className="tnum py-2 text-right text-muted-foreground">{row.listPrice}</td>
+                <td className={`${CELL_X} py-2 text-muted-foreground`}>{row.team}</td>
+                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>{row.listPrice}</td>
                 <td
                   data-testid={`maxbid-${row.id}`}
-                  className={`tnum py-2 text-right ${above ? 'text-destructive' : 'text-accent'}`}
+                  className={`tnum ${CELL_X} py-2 text-right ${above ? 'text-destructive' : 'text-accent'}`}
                 >
                   {row.maxBid}
                   {/* Il colore da solo non e' informazione, e data-above-threshold
@@ -105,10 +111,10 @@ export function PlayerTable({
                       non vede, letto insieme al numero. */}
                   {above ? <span className="sr-only">, oltre il tetto stimato</span> : null}
                 </td>
-                <td className="tnum py-2 text-right text-muted-foreground">
+                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>
                   {row.fantamediaAttesa.toFixed(1)}
                 </td>
-                <td className="tnum py-2 text-right text-muted-foreground">
+                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>
                   {Math.round(row.titolaritaPercent)}%
                 </td>
               </tr>
