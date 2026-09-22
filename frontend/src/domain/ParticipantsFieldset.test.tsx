@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -133,5 +133,18 @@ describe('ParticipantsFieldset', () => {
     expect(screen.queryByLabelText(/iniziale/i)).not.toBeInTheDocument();
     expect(screen.queryByText('Iniziale')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Nome del partecipante')).toBeInTheDocument();
+  });
+
+  it('ogni riga ha il segnaposto col suo numero, e il conto delle squadre sta nel riquadro', () => {
+    render(
+      <ParticipantsFieldset
+        value={[{ id: 'a', name: '', initial: '', me: true }, { id: 'b', name: '', initial: '', me: false }]}
+        onChange={() => {}}
+        errors={{}}
+      />,
+    );
+    expect(screen.getByPlaceholderText('Nome della squadra 2')).toBeInTheDocument();
+    const group = screen.getByRole('group', { name: 'Partecipanti' });
+    expect(within(group).getByText('squadre').parentElement).toHaveTextContent('2');
   });
 });

@@ -30,7 +30,15 @@ export function PhaseSwitcher({
           ruolo dentro ognuna — lo stesso che colora la tabella di fase e la
           ricerca — cosi' la fase corrente non e' segnalata solo dal riquadro
           chiaro dietro, che il colore da solo non basterebbe a dire. */}
-      <nav aria-label="Fase dell'asta" className="flex gap-1 rounded-full border border-line p-1">
+      {/* Senza bordo ne' padding attorno ai bottoni: il fondo appena piu' chiaro
+          basta a farne una pillola sola, e la pillola resta alta quanto i suoi
+          bottoni (44px). Con la cornice era 54px, e alzava la barra dell'asta
+          sopra quella delle altre pagine, coprendo piu' campo. */}
+      <nav aria-label="Fase dell'asta" className="flex items-center gap-0.5 rounded-full bg-white/[0.06]">
+        {/* La parola, accanto alle quattro lettere: senza, erano quattro tondi
+            colorati di cui non si capiva il compito. Per chi ascolta c'e' gia' il
+            nome della navigazione. */}
+        <span aria-hidden="true" className="pl-3 pr-1 text-sm font-bold text-muted-foreground max-sm:hidden">Fase</span>
         {phases.map((role) => {
           const isCurrent = role === current;
           return (
@@ -41,7 +49,7 @@ export function PhaseSwitcher({
               aria-label={isCurrent ? `${ROLE_NAME_PLURAL[role]}, fase corrente` : ROLE_NAME_PLURAL[role]}
               onClick={() => onChange(role)}
               className={`flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                isCurrent ? 'bg-surface' : ''
+                isCurrent ? 'bg-surface ring-1 ring-line-strong' : ''
               }`}
             >
               <RoleBadge role={role} filled={isCurrent} />

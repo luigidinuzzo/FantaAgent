@@ -15,8 +15,11 @@ import com.fantaagent.domain.player.Role;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -49,9 +52,24 @@ import java.util.function.Supplier;
  */
 public class AuctionRuntime {
 
-    /** Una riga della home: come riconoscere l'asta e a che punto era rimasta. */
+    /**
+     * Una riga della home: come riconoscere l'asta e a che punto era rimasta.
+     *
+     * <p>{@code teams}, {@code budget} e {@code totalSlots} vengono dai file dell'asta
+     * (o dal modello per quelle scritte prima): {@code totalSlots} e' squadre per
+     * posti in rosa, cosi' che {@code purchases} su {@code totalSlots} dica quanto manca.
+     * {@code myName} e {@code myBudgetRemaining} sono null se nessun partecipante e'
+     * segnato come proprio.
+     */
     public record AuctionSummary(String id, String name, Instant lastWritten, int purchases,
-                                 Role phase, boolean selected) {
+                                 Role phase, boolean selected, int teams, int budget,
+                                 int totalSlots, String myName, Integer myBudgetRemaining) {
+
+        /** Senza i dati della lega: per chi deve solo riconoscere l'asta. */
+        public AuctionSummary(String id, String name, Instant lastWritten, int purchases,
+                              Role phase, boolean selected) {
+            this(id, name, lastWritten, purchases, phase, selected, 0, 0, 0, null, null);
+        }
 
         /** Il nome se c'e', altrimenti l'identificativo: i registri vecchi non lo hanno. */
         public String label() {
@@ -146,12 +164,19 @@ public class AuctionRuntime {
      * risultato nullo fa un Optional vuoto, che e' esattamente il significato voluto.
      */
     private static String nameOf(List<AuctionEvent> events) {
-        return events.stream()
+        String name = events.stream()
                 .filter(AuctionEvent.AuctionStarted.class::isInstance)
                 .map(AuctionEvent.AuctionStarted.class::cast)
                 .findFirst()
                 .map(AuctionEvent.AuctionStarted::name)
                 .orElse(null);
+        // Una rinomina vale sul nome di avvio, e l'ultima sulle precedenti.
+        for (AuctionEvent event : events) {
+            if (event instanceof AuctionEvent.AuctionRenamed renamed) {
+                name = renamed.name();
+            }
+        }
+        return name;
     }
 
     public boolean hasAuction() {
@@ -283,6 +308,75 @@ public class AuctionRuntime {
         archive.delete(auctionId);
     }
 
+    /**
+     * Da' un nuovo nome a un'asta, aperta o no, aggiungendo un evento al suo registro.
+     *
+     * <p>Sull'asta aperta si scrive con lo store dello snapshot, non con uno nuovo
+     * aperto dall'archivio: il lock che assegna i numeri di sequenza e' dello store, e
+     * due store sullo stesso file potrebbero dare lo stesso numero a due eventi.
+     *
+     * @throws IllegalArgumentException se l'asta non esiste o il nome e' vuoto
+     */
+    public synchronized void rename(String auctionId, String name) {
+        if (!archive.exists(auctionId)) {
+            throw new IllegalArgumentException("nessuna asta con identificativo " + auctionId);
+        }
+        String trimmed = name == null ? "" : name.trim();
+        AuctionEventStore store = auctionId.equals(current.auctionId())
+                ? current.store()
+                : archive.open(auctionId);
+        store.appendWithNextSeq(seq -> new AuctionEvent.AuctionRenamed(seq, Instant.now(), trimmed));
+    }
+
+    /**
+     * Crea un'asta nuova con partecipanti, regole, punteggio e battitore di un'altra, e
+     * nessun acquisto. Non cambia l'asta aperta: duplicare dalla home non deve chiudere
+     * quella in corso.
+     *
+     * @return l'identificatore dell'asta creata
+     * @throws IllegalArgumentException se l'asta da copiare non esiste
+     */
+    public synchronized String duplicate(String auctionId, String name) {
+        if (!archive.exists(auctionId)) {
+            throw new IllegalArgumentException("nessuna asta con identificativo " + auctionId);
+        }
+        AuctionSetup source = setupOf(auctionId);
+        String id = freeId(LocalDate.now().toString());
+        // Come in createNew, il registro per ULTIMO.
+        archive.saveParticipants(id, source.participants());
+        archive.saveScoring(id, source.scoring());
+        archive.saveRules(id, source.rules());
+        archive.saveBidder(id, source.bidder());
+        archive.open(id).appendWithNextSeq(seq -> new AuctionEvent.AuctionStarted(seq, Instant.now(), name));
+        return id;
+    }
+
+    /**
+     * Partecipanti, regole, punteggio e battitore di un'asta, aperta o no, col suo
+     * nome. Ogni parte viene dall'asta se ha il suo file, altrimenti dal modello:
+     * lo stesso ripiego di {@link #snapshotOf}. Serve a copiarla e a partire da lei
+     * preparando un'asta nuova.
+     *
+     * @throws IllegalArgumentException se l'asta non esiste
+     */
+    public AuctionSetup setupOf(String auctionId) {
+        String name = labelOf(auctionId);
+        return new AuctionSetup(name,
+                archive.rules(auctionId).orElseGet(template::rules),
+                archive.participants(auctionId).orElseGet(template::participants),
+                archive.scoring(auctionId).orElseGet(template::scoring),
+                archive.bidder(auctionId).orElseGet(template::bidder));
+    }
+
+    /** Il nome di un'asta come lo mostra la home: serve a proporre quello della copia. */
+    public String labelOf(String auctionId) {
+        if (!archive.exists(auctionId)) {
+            throw new IllegalArgumentException("nessuna asta con identificativo " + auctionId);
+        }
+        String name = nameOf(archive.open(auctionId).load());
+        return name == null || name.isBlank() ? auctionId : name;
+    }
+
     /** Rilegge dall'archivio e dal modello l'asta corrente. Usato da /legacy. */
     public synchronized void rebuild() {
         current = snapshotOf(current.auctionId());
@@ -294,12 +388,21 @@ public class AuctionRuntime {
         List<AuctionSummary> summaries = new ArrayList<>();
         for (String id : archive.auctionIds()) {
             List<AuctionEvent> events = archive.open(id).load();
+            List<Participant> members = archive.participants(id).orElseGet(template::participants);
+            LeagueRulesSettings rules = archive.rules(id).orElseGet(template::rules);
+            int slotsPerTeam = rules.slots().values().stream().mapToInt(Integer::intValue).sum();
+            Participant me = members.stream().filter(Participant::me).findFirst().orElse(null);
             summaries.add(new AuctionSummary(id,
                     nameOf(events),
                     archive.lastWritten(id).orElse(null),
                     countPurchases(events),
                     lastPhase(events, phases.getFirst()),
-                    id.equals(selected)));
+                    id.equals(selected),
+                    members.size(),
+                    rules.budget(),
+                    members.size() * slotsPerTeam,
+                    me == null ? null : me.name(),
+                    me == null ? null : rules.budget() - spentBy(events, me.id())));
         }
         summaries.sort((a, b) -> {
             if (a.lastWritten() == null || b.lastWritten() == null) {
@@ -343,6 +446,43 @@ public class AuctionRuntime {
             }
         }
         return purchases;
+    }
+
+    /**
+     * I crediti spesi da un partecipante, letti dal log come {@link #countPurchases}:
+     * gli acquisti annullati non contano, e una correzione sposta il prezzo (ed
+     * eventualmente l'acquirente) dell'acquisto che corregge.
+     */
+    static int spentBy(List<AuctionEvent> events, String participantId) {
+        Map<Long, AuctionEvent.PlayerPurchased> active = new LinkedHashMap<>();
+        Map<Long, String> buyer = new HashMap<>();
+        Map<Long, Integer> price = new HashMap<>();
+        for (AuctionEvent event : events) {
+            switch (event) {
+                case AuctionEvent.PlayerPurchased p -> {
+                    active.put(p.seq(), p);
+                    buyer.put(p.seq(), p.participantId());
+                    price.put(p.seq(), p.price());
+                }
+                case AuctionEvent.PurchaseRevoked r -> active.remove(r.targetSeq());
+                case AuctionEvent.PurchaseCorrected c -> {
+                    if (active.containsKey(c.targetSeq())) {
+                        buyer.put(c.targetSeq(), c.newParticipantId());
+                        price.put(c.targetSeq(), c.newPrice());
+                    }
+                }
+                default -> {
+                    // nome e fasi non spostano crediti
+                }
+            }
+        }
+        int spent = 0;
+        for (Long seq : active.keySet()) {
+            if (participantId.equals(buyer.get(seq))) {
+                spent += price.get(seq);
+            }
+        }
+        return spent;
     }
 
     static Role lastPhase(List<AuctionEvent> events, Role fallback) {

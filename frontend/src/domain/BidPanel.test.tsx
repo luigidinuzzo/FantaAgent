@@ -35,23 +35,43 @@ function panel(overrides = {}) {
 }
 
 describe('BidPanel', () => {
-  // Il tetto e' il punto oltre il quale NON conviene, non il prezzo a cui si
-  // aggiudica: proporlo nel campo suggeriva di pagare sempre il massimo, e un
-  // invio distratto registrava il tetto al posto del prezzo vero — che per i
-  // giocatori che nessuno contende e' quasi sempre uno. Il tetto resta grande
-  // e in evidenza nella scheda, dove si consulta.
-  it('parte da uno, non dal tetto', () => {
+  /**
+   * Niente precompilato: con prezzo 1 e la propria squadra gia' scelti, un
+   * «Aggiudica» premuto per sbaglio registrava un acquisto vero. Il tetto non si
+   * propone mai come prezzo.
+   */
+  it('parte vuoto: prezzo e squadra si scelgono, e fino ad allora non si aggiudica', async () => {
     panel();
-    expect(screen.getByLabelText('Prezzo')).toHaveValue(1);
+    expect(screen.getByLabelText('Prezzo')).toHaveValue(null);
+    expect(screen.getByLabelText('Aggiudica a')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Aggiudica' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Prezzo'), '3');
+    expect(screen.getByRole('button', { name: 'Aggiudica' })).toBeDisabled();
   });
 
-  it('aggiudica al partecipante scelto', async () => {
+  it('aggiudica al partecipante scelto, al prezzo scritto', async () => {
     const onAssign = panel();
 
+    await userEvent.type(screen.getByLabelText('Prezzo'), '7');
     await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), 'bruno');
     await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
 
-    expect(onAssign).toHaveBeenCalledWith({ participantId: 'bruno', price: 1 });
+    expect(onAssign).toHaveBeenCalledWith({ participantId: 'bruno', price: 7 });
+  });
+
+  /** Il server rifiuterebbe: lo si dice prima dell'invio. */
+  it('avvisa se la squadra scelta non puo permettersi il prezzo', async () => {
+    panel();
+    // Anna: 312 crediti, 17 posti liberi -> al massimo 296.
+    await userEvent.type(screen.getByLabelText('Prezzo'), '300');
+    await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), 'anna');
+    expect(screen.getByText('Anna può offrire al massimo 296.')).toBeInTheDocument();
+  });
+
+  it('avvisa se la squadra ha gia tutti i posti di quel ruolo', async () => {
+    panel({ participants: [{ ...PARTICIPANTS[0], filledByRole: { P: 3, D: 3, C: 0, A: 0 } }], role: 'P' });
+    await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), 'anna');
+    expect(screen.getByText('Anna ha già tutti i posti portieri.')).toBeInTheDocument();
   });
 
   it("durante l'attesa il bottone lo dice e non si puo' ripremere", () => {
@@ -115,39 +135,17 @@ describe('BidPanel', () => {
     expect(screen.getByRole('button', { name: 'Aggiudica' })).toHaveAccessibleDescription('');
   });
 
-  // La route (Task 17) monta questo pannello con participants=[] finche' la
-  // query dei partecipanti non risolve, e nessuna delle due chiamate cambia
-  // istanza (nessun key): se la selezione iniziale, calcolata una volta sola
-  // dall'array vuoto, non si risincronizza quando i dati arrivano, resta ''
-  // per sempre. Il <select> del browser mostrerebbe comunque la prima
-  // opzione — sembra scelta — mentre un invio senza toccare il menu manda
-  // participantId: '' nel registro d'aggiudicazione: una scrittura corrotta
-  // sul percorso piu' comune, assegnare a se stessi.
-  it('i partecipanti arrivano dopo il mount: la selezione segue i dati invece di restare vuota per sempre', async () => {
+  /** Se la squadra scelta sparisce dall'elenco, la scelta si azzera: niente id orfani. */
+  it('se la squadra scelta sparisce dall elenco, la scelta si azzera', async () => {
     const onAssign = vi.fn();
     const { rerender } = render(
-      <BidPanel
-        participants={[]}
-        disabled={false}
-        pending={false}
-        error={null}
-        onAssign={onAssign}
-      />,
+      <BidPanel participants={PARTICIPANTS} disabled={false} pending={false} error={null} onAssign={onAssign} />,
     );
-
+    await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), 'bruno');
     rerender(
-      <BidPanel
-        participants={PARTICIPANTS}
-        disabled={false}
-        pending={false}
-        error={null}
-        onAssign={onAssign}
-      />,
+      <BidPanel participants={[PARTICIPANTS[0]]} disabled={false} pending={false} error={null} onAssign={onAssign} />,
     );
-
-    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
-
-    expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 1 });
+    expect(screen.getByLabelText('Aggiudica a')).toHaveValue('');
   });
 
   // Un refetch che ridisegna lo stesso elenco con un nuovo riferimento
@@ -166,6 +164,7 @@ describe('BidPanel', () => {
       />,
     );
 
+    await userEvent.type(screen.getByLabelText('Prezzo'), '1');
     await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), 'bruno');
 
     // Stessi partecipanti, nuovo riferimento d'array: cosi' arriva un refetch.
@@ -202,7 +201,6 @@ describe('BidPanel', () => {
     );
 
     const input = screen.getByLabelText('Prezzo');
-    await userEvent.clear(input);
     await userEvent.type(input, '60');
 
     // Una rivalutazione ridisegna il pannello: il prezzo scritto non si muove.

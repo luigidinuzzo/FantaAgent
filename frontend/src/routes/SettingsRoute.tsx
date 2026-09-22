@@ -1,28 +1,34 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { ProblemError, userMessage } from '../api/client';
-import { useSaveSettings, useSettings } from '../api/hooks';
+import { useAuctions, useSaveSettings, useSettings, useSettingsFrom } from '../api/hooks';
 import type { SaveSettingsRequest, SettingsErrors } from '../api/types';
 import { FieldErrors } from '../domain/FieldErrors';
 import { LeagueRulesFieldset } from '../domain/LeagueRulesFieldset';
 import { ParticipantsFieldset } from '../domain/ParticipantsFieldset';
 import { ScoringFieldset } from '../domain/ScoringFieldset';
+import { RulesSummary, ScoringSummary } from '../domain/SettingsSummary';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
 import { StepperField } from '../domain/StepperField';
+import { useActiveSection } from '../domain/useActiveSection';
 
 const NO_ERRORS: SettingsErrors = {};
 
+/** Le sezioni del modulo, nell'ordine della pagina: ancore dell'indice a sinistra. */
+const SECTION_IDS = ['sezione-asta', 'sezione-regole', 'sezione-partecipanti', 'sezione-punteggio'] as const;
+
 /**
- * I partecipanti di un'asta nuova: otto squadre con un nome segnaposto, da cambiare
- * con quelli veri. Meglio di una lista gia' piena di nomi di un'altra lega: quelli
- * andrebbero corretti uno per uno senza che si veda quali sono ancora da sistemare.
+ * I partecipanti di un'asta nuova: otto righe vuote, col segnaposto «Nome della
+ * squadra N». Prima erano «Team 1…Team 8», nomi finti da cancellare uno per uno
+ * senza che si vedesse quali fossero ancora da sistemare. Per ripartire dai nomi
+ * veri di una lega c'e' «Parti da».
  */
 const DEFAULT_PARTICIPANTS: SaveSettingsRequest['participants'] = Array.from(
   { length: 8 },
   (_, i) => ({
     id: `team-${i + 1}`,
-    name: `Team ${i + 1}`,
+    name: '',
     // L'iniziale la calcola il server dal nome: qui non si chiede piu'.
     initial: '',
     me: i === 0,
@@ -41,7 +47,7 @@ const MAX_TIMER_SECONDS = 120;
  */
 const FIELD_LABELS: Record<string, string> = {
   auctionName: "nome dell'asta",
-  bidTimerSeconds: 'timer',
+  bidTimerSeconds: 'secondi del conto alla rovescia',
   bidder: 'battitore',
   defendersCounted: 'difensori conteggiati',
   thresholds: 'tabella soglie',
@@ -74,7 +80,7 @@ function fieldLabel(key: string): string {
   const bonus = /^goalBonus\[(.+)]$/.exec(key);
   if (bonus) return `bonus gol ${bonus[1]}`;
   const slot = /^slots\[(P|D|C|A)]$/.exec(key);
-  if (slot) return `slot ${ROLE_NAME_PLURAL[slot[1] as 'P' | 'D' | 'C' | 'A']}`;
+  if (slot) return `posti ${ROLE_NAME_PLURAL[slot[1] as 'P' | 'D' | 'C' | 'A']}`;
   const participantField = /^participants\[[^\]]+]\.(name|initial)$/.exec(key);
   if (participantField) {
     return participantField[1] === 'name' ? 'nome di un partecipante' : "iniziale di un partecipante";
@@ -159,6 +165,11 @@ function settingsErrorsOf(body: unknown): SettingsErrors | null {
 export function SettingsRoute() {
   const settings = useSettings();
   const save = useSaveSettings();
+  const auctions = useAuctions();
+  const startFrom = useSettingsFrom();
+  const startFromId = useId();
+  // Da quale asta si e' partiti, per dirlo accanto alla scelta: '' e' il modello.
+  const [startedFrom, setStartedFrom] = useState('');
   const navigate = useNavigate();
   const auctionNameErrorId = useId();
   const bidTimerErrorId = useId();
@@ -182,6 +193,10 @@ export function SettingsRoute() {
   // gli errori: non un secondo role="status", che il vincolo di questa schermata
   // vieta.
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  // Il corpo del modulo, che da tablet in su scorre dentro il riquadro fermo.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // La sezione che si sta leggendo, evidenziata nell'indice mentre si scorre.
+  const activeSection = useActiveSection(SECTION_IDS, form !== null, scrollRef);
 
   useEffect(() => {
     if (!settings.data || form) return;
@@ -209,10 +224,30 @@ export function SettingsRoute() {
   }
 
   if (!form || !settings.data) {
+    // La stessa cornice della schermata pronta — indice a sinistra, pannello alto
+    // quanto la finestra — con la frase in mezzo: prima era un pannellino piccolo
+    // che un attimo dopo diventava quello grande, e arrivando dalla home la pagina
+    // sembrava cambiare due volte.
     return (
       <AppShell chrome="top">
         <h1 className="sr-only">Impostazioni</h1>
-        <p className="panel rounded-xl p-4 text-sm text-muted-foreground">Carico le impostazioni…</p>
+        <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
+          {/* Lo scheletro dell'indice: stessa struttura di quello vero (titolo e
+              quattro voci da 44px), cosi' ha anche la stessa altezza. */}
+          <div aria-hidden="true" className="panel self-start rounded-2xl p-3 max-lg:hidden">
+            <p className="px-3 pb-2 pt-1 text-sm font-bold text-muted-foreground">&nbsp;</p>
+            <ol className="flex flex-col gap-1">
+              {Array.from({ length: 4 }, (_, i) => (
+                <li key={i} className="flex min-h-11 items-center px-3">
+                  <span className="h-4 w-32 rounded-full bg-line" />
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="panel flex min-h-[60dvh] items-center justify-center rounded-2xl md:min-h-0">
+            <p className="text-sm text-muted-foreground">Carico le impostazioni…</p>
+          </div>
+        </div>
       </AppShell>
     );
   }
@@ -232,34 +267,104 @@ export function SettingsRoute() {
   const title = auctionOpen ? 'Impostazioni' : 'Crea asta';
 
 
+  /**
+   * Riempie il modulo con le impostazioni di un'asta esistente: regole, punteggio,
+   * battitore e i nomi dei partecipanti. Il nome della nuova asta resta quello che
+   * si sta scrivendo. Tornare a «Impostazioni predefinite» rimette quelle arrivate
+   * all'apertura della schermata.
+   */
+  function applyStart(auctionId: string) {
+    setStartedFrom(auctionId);
+    setErrors(NO_ERRORS);
+    if (!form || !settings.data) return;
+    if (auctionId === '') {
+      setForm({
+        ...form,
+        bidder: settings.data.bidder,
+        participants: DEFAULT_PARTICIPANTS,
+        scoring: settings.data.scoring,
+        rules: { budget: settings.data.rules.budget, slots: settings.data.rules.slots },
+      });
+      return;
+    }
+    startFrom.mutate(auctionId, {
+      onSuccess: (from) => {
+        setForm((current) => current && {
+          ...current,
+          bidder: from.bidder,
+          participants: from.participants,
+          scoring: from.scoring,
+          rules: { budget: from.rules.budget, slots: from.rules.slots },
+        });
+      },
+    });
+  }
+
+  const labels: Record<(typeof SECTION_IDS)[number], string> = {
+    'sezione-asta': auctionOpen ? 'Battitore' : "L'asta",
+    'sezione-regole': 'Regole della lega',
+    'sezione-partecipanti': 'Partecipanti',
+    'sezione-punteggio': 'Punteggio',
+  };
+  const sections = SECTION_IDS.map((id) => ({ id, label: labels[id] }));
+
   return (
     <AppShell chrome="top">
+      {/* Due colonne da lg in su: a sinistra l'indice delle sezioni, fermo mentre il
+          modulo scorre; a destra il modulo. Prima era una colonna sola alta due
+          schermi, senza sapere quanto mancasse alla fine. */}
+      {/* Da tablet in su la pagina non scorre: il riquadro e' alto quanto la finestra
+          (meno barra e padding di main) e scorre dentro, con titolo e «Salva» sempre
+          in vista. Sul telefono scorre la pagina, come sempre: un riquadro con lo
+          scorrimento interno e la tastiera aperta sopra lascerebbe una fessura. */}
+      <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <nav aria-label="Sezioni del modulo" className="self-start max-lg:hidden">
+          <div className="panel rounded-2xl p-3">
+            <p className="px-3 pb-2 pt-1 text-sm font-bold text-muted-foreground">{title}</p>
+            <ol className="flex flex-col gap-1">
+              {sections.map((section) => (
+                <li key={section.id}>
+                  {/* La sezione in cui ci si trova in giallo pieno, come ogni «dove sei»
+                      dell'app; per chi ascolta, aria-current="location". */}
+                  <a
+                    href={`#${section.id}`}
+                    aria-current={activeSection === section.id ? 'location' : undefined}
+                    className={`flex min-h-11 items-center rounded-full px-3 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                      activeSection === section.id ? 'bg-accent text-on-accent' : 'hover:bg-line'
+                    }`}
+                  >
+                    {section.label}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </nav>
+
       {/* Un unico pannello pieno per tutto il modulo: etichette, pillole e
           messaggi non poggiano mai sulle linee del campo. */}
-      {/* Le stesse misure della home: larghezza massima, riempimento e corpi di testo
-          delle sue card. */}
-      <div className="panel mx-auto w-full max-w-7xl rounded-2xl p-5 sm:p-8">
-        <div className="relative mb-6 flex items-center justify-center">
-          {/* Nome accessibile esplicito: una freccia da sola sarebbe un'icona
-              muta, senza niente che uno screen reader possa leggere. */}
-          {/* Ad asta aperta si torna all'asta, non alla home: da li' si e' arrivati
-              (l'ingranaggio nella barra dell'asta) ed e' li' che si sta giocando.
-              Senza un'asta aperta questa schermata e' invece «Crea asta», e la
-              porta da cui si entra — e a cui si torna — e' la home. */}
-          <Link
-            to={auctionOpen ? '/asta' : '/'}
-            aria-label={auctionOpen ? "Torna all'asta" : 'Torna alla home'}
-            className="absolute left-0 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
-          <h1 className="text-xl font-extrabold sm:text-2xl">{title}</h1>
+      <div className="panel flex min-h-0 min-w-0 flex-col rounded-2xl">
+        <div className="relative flex items-center justify-center px-5 pt-5 sm:px-8 sm:pt-8">
+          {/* Solo ad asta aperta: si torna all'asta, da cui si e' arrivati
+              (l'ingranaggio). Preparando un'asta nuova la via d'uscita e' «Le mie
+              aste» nella barra: una seconda freccia verso la stessa home era una
+              doppia navigazione. */}
+          {auctionOpen ? (
+            <Link
+              to="/asta"
+              aria-label="Torna all'asta"
+              className="absolute left-5 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:left-8"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+          ) : null}
+          <h1 className="w-exp text-xl font-extrabold sm:text-2xl">{title}</h1>
         </div>
 
         <form
-          className="space-y-6"
+          className="mt-6 flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
             setErrors(NO_ERRORS);
@@ -292,6 +397,46 @@ export function SettingsRoute() {
             });
           }}
         >
+          {/* Il corpo che scorre: overscroll-contain perche' arrivati in fondo la
+              rotella non passi a far scorrere la pagina dietro. relative: i testi
+              sr-only dentro (position:absolute) altrimenti si agganciano a un
+              antenato fuori dal riquadro e allungano la pagina, che torna a scorrere. */}
+          <div ref={scrollRef} className="relative min-h-0 flex-1 space-y-8 px-5 pb-8 sm:px-8 md:overflow-y-auto md:overscroll-contain">
+          {/* Blocchi senza nome, solo ancore dell'indice: il nome ce l'hanno gia' i
+              riquadri dentro, e due regioni con lo stesso nome si confondono. */}
+          <div id="sezione-asta" className="scroll-mt-[calc(var(--header-h)+1.5rem)] md:scroll-mt-6 space-y-6">
+          {!auctionOpen ? (
+            // Partire da un'asta gia' fatta: regole, punteggio, battitore e nomi
+            // copiati nel modulo, da ritoccare. Per chi rifa' l'asta ogni stagione
+            // con la stessa lega, e' la differenza fra un minuto e dieci.
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-0 flex-1 basis-72">
+                <label htmlFor={startFromId} className="block text-base">Parti da</label>
+                <select
+                  id={startFromId}
+                  value={startedFrom}
+                  disabled={startFrom.isPending}
+                  onChange={(e) => applyStart(e.target.value)}
+                  className="mt-1 block min-h-12 w-full max-w-md rounded-full border border-line-strong bg-surface px-4 text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  <option value="">Impostazioni predefinite</option>
+                  {(auctions.data ?? []).map((a) => (
+                    <option key={a.id} value={a.id}>{`Le regole di «${a.label}»`}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="basis-full text-sm text-muted-foreground" aria-live="polite">
+                {startFrom.isPending
+                  ? 'Copio le impostazioni…'
+                  : startFrom.isError
+                    ? 'Non è stato possibile copiare le impostazioni. Riprova.'
+                    : startedFrom
+                      ? 'Regole, punteggio, battitore e partecipanti copiati: cambia quello che serve.'
+                      : 'Scegli un\'asta che hai già fatto per ripartire dalle sue regole e dai suoi partecipanti.'}
+              </p>
+            </div>
+          ) : null}
+
           {!auctionOpen ? (
             // FieldErrors sta FUORI dal <label>: un <label> che avvolge il suo
             // <input> presta all'input il proprio intero contenuto testuale come
@@ -305,8 +450,9 @@ export function SettingsRoute() {
                   value={form.auctionName}
                   aria-invalid={auctionNameErrors.length > 0}
                   aria-describedby={auctionNameErrors.length > 0 ? auctionNameErrorId : undefined}
+                  placeholder="Per esempio: Lega del bar, stagione 2026"
                   onChange={(e) => setForm({ ...form, auctionName: e.target.value })}
-                  className="mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-4 text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="mt-1 block min-h-12 w-full max-w-xl rounded-full border border-line-strong bg-transparent px-4 text-lg placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </label>
               {/* Tutti i messaggi, non solo il primo: i validatori tornano l'elenco
@@ -315,20 +461,19 @@ export function SettingsRoute() {
             </div>
           ) : null}
 
-          <div className="space-y-6">
             {/* Legend nascosta: il fieldset resta un group nominato "Battitore"
-                per chi ascolta, ma visivamente e' solo la griglia delle sue due
+                per chi ascolta, ma visivamente e' solo la fila delle sue due
                 pillole — la cornice del fieldset non serve al disegno, che la
                 mette gia' sulle singole pillole. */}
             <fieldset
-              className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2 sm:items-end"
+              className="m-0 grid max-w-3xl gap-4 border-0 p-0 sm:grid-cols-2 sm:items-end"
               aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
             >
               <legend className="sr-only">Battitore</legend>
 
               <div>
                 <label htmlFor={bidTimerId} className="block text-base">
-                  Secondi di countdown
+                  Secondi del conto alla rovescia
                 </label>
                 {/* − e + ai lati del campo: si regola il timer senza tastiera, dentro
                     i limiti che il server accetta (AuctionSettingsValidator). */}
@@ -369,65 +514,82 @@ export function SettingsRoute() {
                 <FieldErrors id={bidderGroupErrorId} errors={bidderGroupErrors} />
               </div>
             </fieldset>
-
-            <LeagueRulesFieldset
-              value={form.rules}
-              onChange={(rules) => setForm({ ...form, rules })}
-              errors={errors}
-              disabled={auctionOpen}
-            />
           </div>
 
-          <ParticipantsFieldset
-            value={form.participants}
-            onChange={(participants) => setForm({ ...form, participants })}
-            errors={errors}
-            lockCount={auctionOpen}
-          />
+          {/* Ad asta aperta regole e punteggio sono valori da leggere, non campi
+              spenti: la ragione e' detta una volta sola, qui. */}
+          {auctionOpen ? (
+            <p className="rounded-xl border border-line p-4 text-base text-muted-foreground">
+              Asta in corso: regole della lega e punteggio sono fissati alla creazione, perché
+              cambiarli ricalcolerebbe budget e valutazioni di rose già pagate. Puoi cambiare
+              il battitore e i nomi dei partecipanti.
+            </p>
+          ) : null}
 
-          {/* Il numero di squadre sta sotto l'elenco che lo determina: e' la lunghezza
-              della lista, non un campo da compilare. */}
-          <p className="-mt-2 flex justify-end">
-            <span className="tnum inline-flex min-h-12 items-center gap-1.5 rounded-full border border-line-strong px-4 text-lg font-extrabold">
-              {form.participants.length}
-              <span className="font-normal text-muted-foreground">squadre</span>
-            </span>
-          </p>
+          <div id="sezione-regole" className="scroll-mt-[calc(var(--header-h)+1.5rem)] md:scroll-mt-6">
+            {auctionOpen ? (
+              <RulesSummary rules={form.rules} teams={form.participants.length} />
+            ) : (
+              <LeagueRulesFieldset
+                value={form.rules}
+                onChange={(rules) => setForm({ ...form, rules })}
+                errors={errors}
+                disabled={false}
+              />
+            )}
+          </div>
+
+          <div id="sezione-partecipanti" className="scroll-mt-[calc(var(--header-h)+1.5rem)] md:scroll-mt-6">
+            <ParticipantsFieldset
+              value={form.participants}
+              onChange={(participants) => setForm({ ...form, participants })}
+              errors={errors}
+              lockCount={auctionOpen}
+            />
+          </div>
 
           {/* Sempre aperto, non una disclosure: il punteggio e' parte della
               creazione dell'asta quanto i partecipanti, e un <details> chiuso
               nascondeva anche il campo invalido che bloccava il salvataggio. */}
-          <ScoringFieldset
-            value={form.scoring}
-            onChange={(scoring) => setForm({ ...form, scoring })}
-            errors={errors}
-            disabled={auctionOpen}
-          />
+          <div id="sezione-punteggio" className="scroll-mt-[calc(var(--header-h)+1.5rem)] md:scroll-mt-6">
+            {auctionOpen ? (
+              <ScoringSummary scoring={form.scoring} />
+            ) : (
+              <ScoringFieldset
+                value={form.scoring}
+                onChange={(scoring) => setForm({ ...form, scoring })}
+                errors={errors}
+                disabled={false}
+              />
+            )}
+          </div>
+          </div>
 
-          <div className="flex flex-col items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={save.isPending}
-              className="min-h-12 rounded-full bg-positive px-8 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
-            >
-              {save.isPending ? 'Salvo…' : auctionOpen ? 'Salva' : "Salva e comincia l'asta"}
-            </button>
-
-            {/* Un solo annuncio, col conto e il dove: piu' alert di campo che si
-                popolano insieme se ne mangerebbero tutti tranne uno. Il dettaglio sta
-                accanto a ciascun campo, raggiungibile navigando. Stesso nodo anche per
-                la conferma di un salvataggio riuscito: colore positivo invece di
-                destructive, non un secondo role="status". */}
+          {/* Sempre in vista: in fondo al riquadro, che non scorre, e sul telefono
+              ferma in fondo allo schermo. Prima il bottone stava dopo duemila pixel
+              di campi. Un solo annuncio, col
+              conto e il dove: piu' alert di campo che si popolano insieme se ne
+              mangerebbero tutti tranne uno. Stesso nodo anche per la conferma di un
+              salvataggio riuscito, non un secondo role="status". */}
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-6 gap-y-2 rounded-b-2xl border-t border-line-strong bg-surface px-5 py-4 max-md:sticky max-md:bottom-0 max-md:z-10 sm:px-8">
             {alertMessage ? (
               <p
                 role="alert"
-                className={`text-sm font-bold ${summary ? 'text-destructive' : 'text-positive'}`}
+                className={`mr-auto text-sm font-bold ${summary ? 'text-destructive' : 'text-positive'}`}
               >
                 {alertMessage}
               </p>
             ) : null}
+            <button
+              type="submit"
+              disabled={save.isPending}
+              className="min-h-12 rounded-full bg-accent px-8 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+            >
+              {save.isPending ? 'Salvo…' : auctionOpen ? 'Salva' : "Salva e comincia l'asta"}
+            </button>
           </div>
         </form>
+      </div>
       </div>
     </AppShell>
   );

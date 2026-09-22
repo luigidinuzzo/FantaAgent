@@ -3,6 +3,7 @@ import {
   apiGet,
   apiLeagueDelete,
   apiLeagueGet,
+  apiLeaguePatch,
   apiLeaguePost,
   apiLeaguePut,
   apiPost,
@@ -19,6 +20,7 @@ import type {
   SaveSettingsRequest,
   SaveSettingsResult,
   SettingsResponse,
+  TargetView,
   ValuationResponse,
 } from './types';
 
@@ -69,6 +71,39 @@ export function useDeleteAuction() {
   });
 }
 
+/** Il nuovo nome di un'asta, aperta o no: l'elenco si rilegge dal server. */
+export function useRenameAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiLeaguePatch(`/auctions/${encodeURIComponent(id)}`, { name }),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+/** Una copia dell'asta senza acquisti; quella aperta resta aperta. */
+export function useDuplicateAuction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiLeaguePost<{ id: string }>(`/auctions/${encodeURIComponent(id)}/duplicate`),
+    onSuccess: () => client.invalidateQueries({ queryKey: KEYS.auctions }),
+  });
+}
+
+/**
+ * Le impostazioni di un'asta esistente, come punto di partenza per una nuova: le
+ * chiede la schermata di creazione quando si sceglie «Parti da». Una mutazione e
+ * non una query: e' un gesto dell'utente che riempie il modulo, non un dato da
+ * tenere aggiornato.
+ */
+export function useSettingsFrom() {
+  return useMutation({
+    mutationFn: (auctionId: string) =>
+      apiLeagueGet<SettingsResponse>(`/settings/from/${encodeURIComponent(auctionId)}`),
+  });
+}
+
 export function useAuctionState() {
   return useQuery({
     queryKey: KEYS.state,
@@ -80,6 +115,19 @@ export function usePhasePlayers(offset: number) {
   return useQuery({
     queryKey: KEYS.phase(offset),
     queryFn: () => apiGet<PhasePageResponse>(`/players/phase?offset=${offset}&limit=25`),
+  });
+}
+
+/**
+ * Le occasioni della fase corrente, dalla migliore: riempiono il pannello dei
+ * consigli finche' nessun giocatore e' sul battitore. Ogni acquisto e cambio di
+ * fase invalida tutte le query, quindi si rileggono da sole.
+ */
+export function useTargets(enabled: boolean) {
+  return useQuery({
+    queryKey: ['targets'] as const,
+    queryFn: () => apiGet<TargetView[]>('/players/targets?limit=5'),
+    enabled,
   });
 }
 

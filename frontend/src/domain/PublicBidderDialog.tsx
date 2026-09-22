@@ -49,6 +49,16 @@ export function PublicBidderDialog({
           </span>
           <span className="mt-2 block text-2xl text-muted-foreground">offerta</span>
         </p>
+        {/* Chi e' in testa, quando l'operatore l'ha segnato: e' la prima cosa che
+            la sala chiede. Senza, non si inventa nessuno. */}
+        {bid.leaderName ? (
+          <p>
+            <span data-testid="public-leader" className="w-exp block text-7xl font-extrabold leading-none">
+              {bid.leaderName}
+            </span>
+            <span className="mt-2 block text-2xl text-muted-foreground">in testa</span>
+          </p>
+        ) : null}
         <p data-testid="public-clock" className="tnum pb-4 text-8xl font-extrabold">
           {Math.ceil(bid.remainingMs / 1000)}s
         </p>

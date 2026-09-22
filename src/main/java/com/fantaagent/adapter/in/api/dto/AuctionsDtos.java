@@ -22,11 +22,22 @@ public final class AuctionsDtos {
      * formato appartiene a chi mostra, e il client sa gia' in che lingua sta.
      */
     public record AuctionCard(String id, String label, Instant lastWritten,
-                              int purchases, Role phase, boolean selected) {
+                              int purchases, Role phase, boolean selected,
+                              int teams, int budget, int totalSlots,
+                              String myName, Integer myBudgetRemaining) {
 
         public static AuctionCard from(AuctionRuntime.AuctionSummary s) {
             return new AuctionCard(s.id(), s.label(), s.lastWritten(),
-                    s.purchases(), s.phase(), s.selected());
+                    s.purchases(), s.phase(), s.selected(),
+                    s.teams(), s.budget(), s.totalSlots(), s.myName(), s.myBudgetRemaining());
         }
+    }
+
+    /** Il nuovo nome di un'asta. */
+    public record RenameRequest(String name) {
+    }
+
+    /** L'asta appena creata copiando un'altra. */
+    public record DuplicateResponse(String id) {
     }
 }

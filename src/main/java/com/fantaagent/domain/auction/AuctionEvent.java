@@ -23,6 +23,19 @@ public sealed interface AuctionEvent {
     record AuctionStarted(long seq, Instant at, String name) implements AuctionEvent {
     }
 
+    /**
+     * Il nuovo nome di un'asta. Il registro non si riscrive: il nome dato alla
+     * creazione resta sull'evento di avvio, e vale l'ultimo di questi eventi.
+     */
+    record AuctionRenamed(long seq, Instant at, String name) implements AuctionEvent {
+
+        public AuctionRenamed {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("name must not be blank");
+            }
+        }
+    }
+
     record PhaseAdvanced(long seq, Instant at, Role role) implements AuctionEvent {
     }
 

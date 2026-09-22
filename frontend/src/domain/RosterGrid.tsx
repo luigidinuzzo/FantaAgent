@@ -1,15 +1,44 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { auctionExportUrl, ProblemError, userMessage } from '../api/client';
 import { useAuctionState, useBoard, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
-import { BG_ROLE_CLASS, ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
+import { ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
 
-// Lo stesso fondo pieno di RoleBadge {filled}, ma qui serve come classe a se'
-// stante: la fascia della griglia e' un bottone a tutta larghezza, non la
-// pillola stretta che RoleBadge disegna altrove (ConfigChips, PhaseSwitcher).
-// La coppia di colori e' quella verificata in contrast.test.ts: on-accent
-// sopra ciascuno dei quattro role-*, 4.5:1.
-const ROLE_BAND_CLASS = BG_ROLE_CLASS;
+/**
+ * La fascia di ruolo, leggera: un filo del colore del ruolo a sinistra e la lettera
+ * colorata, su un fondo appena piu' chiaro. Prima era una barra piena a tutta
+ * larghezza, quattro per colonna: in una griglia di otto squadre erano trentadue
+ * rettangoli colorati che coprivano i nomi.
+ */
+const ROLE_BAND_CLASS: Record<Role, string> = {
+  P: 'border-role-p', D: 'border-role-d', C: 'border-role-c', A: 'border-role-a',
+};
+const ROLE_LETTER_CLASS: Record<Role, string> = {
+  P: 'text-role-p', D: 'text-role-d', C: 'text-role-c', A: 'text-role-a',
+};
+
+/**
+ * Vero se il contenuto dell'elemento scorre di lato piu' di quanto si vede, e non
+ * e' gia' arrivato in fondo: serve a dire che ci sono altre squadre a destra.
+ */
+function useMoreToTheRight<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    check();
+    el.addEventListener('scroll', check, { passive: true });
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(check);
+    observer?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', check);
+      observer?.disconnect();
+    };
+  });
+  return [ref, more] as const;
+}
 
 /**
  * Le rose comprate, con la revoca riga per riga — dove prima viveva
@@ -65,6 +94,8 @@ export function RosterGrid() {
     );
   }
 
+  const [scrollerRef, moreToTheRight] = useMoreToTheRight<HTMLDivElement>();
+
   function toggleSection(key: string) {
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   }
@@ -83,7 +114,7 @@ export function RosterGrid() {
           <a
             href={auctionExportUrl(board.data.auctionId)}
             download
-            className="flex min-h-11 items-center gap-2 border border-line px-3 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             <DownloadIcon />
             Scarica il CSV delle rose
@@ -112,8 +143,22 @@ export function RosterGrid() {
         // relative: senza, i testi sr-only (position:absolute) dentro le colonne
         // fuori vista non sono tagliati da questo contenitore e allargano la
         // pagina intera, che scorre di lato.
-        <div className="relative overflow-x-auto">
-          <div className="flex gap-4 pb-1">
+        // Le colonne si dividono la larghezza che c'e' (almeno 11rem l'una): su uno
+        // schermo largo otto squadre stanno tutte in vista, su uno stretto si scorre.
+        // Quando ne restano fuori, una sfumatura sul bordo destro e una riga di
+        // testo lo dicono: prima le colonne finivano tagliate a meta' senza nessun
+        // segno che ce ne fossero altre.
+        <div className="relative">
+          {moreToTheRight ? (
+            <p className="mb-2 text-sm text-muted-foreground">Scorri di lato per vedere le altre squadre.</p>
+          ) : null}
+        <div ref={scrollerRef} className="relative overflow-x-auto">
+          <div
+            className="grid gap-3 pb-1"
+            style={{
+              gridTemplateColumns: `repeat(${board.data?.columns.length ?? 0}, minmax(11rem, 1fr))`,
+            }}
+          >
             {(board.data?.columns ?? []).map((column) => (
               <RosterColumn
                 key={column.participantId}
@@ -129,6 +174,13 @@ export function RosterGrid() {
               />
             ))}
           </div>
+        </div>
+          {moreToTheRight ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-surface to-transparent"
+            />
+          ) : null}
         </div>
       )}
     </div>
@@ -239,18 +291,21 @@ function RosterColumn({
   onToggleSection: (key: string) => void;
 }) {
   return (
-    // w-56 shrink-0: la stessa larghezza fissa delle card di SquadCards.tsx
-    // (riga 65), cosi' le due file scorrono in orizzontale allineate colonna
-    // per colonna sotto lo stesso participantId, non solo entrambe scorrevoli.
+    // La larghezza la decide la griglia di RosterGrid; min-w-0 perche' un nome
+    // lungo non allarghi la colonna oltre la sua parte. La tua ha il bordo giallo,
+    // come nella colonna delle squadre e nella proiezione.
     <section
       aria-labelledby={`roster-${column.participantId}`}
-      className="w-56 shrink-0 border border-line p-4"
+      className={`min-w-0 rounded-xl border p-3 ${column.me ? 'border-accent' : 'border-line'}`}
     >
-      <h3 id={`roster-${column.participantId}`} className="flex items-baseline justify-between">
-        <span className="font-bold">{column.participantName}</span>
-        <span className="tnum w-exp font-bold">
-          {column.budgetRemaining}
-          <span className="sr-only"> crediti residui</span>
+      <h3 id={`roster-${column.participantId}`} className="flex items-baseline justify-between gap-2">
+        <span className="truncate font-bold">{column.participantName}</span>
+        {/* I crediti con la loro parola accanto: un numero nudo accanto al nome
+            si capiva solo sapendolo gia'. */}
+        <span className="shrink-0 whitespace-nowrap">
+          <span className={`tnum w-exp font-bold ${column.me ? 'text-accent' : ''}`}>{column.budgetRemaining}</span>
+          <span className="text-xs text-muted-foreground"> crediti</span>
+          <span className="sr-only"> residui</span>
         </span>
       </h3>
 
@@ -272,7 +327,6 @@ function RosterColumn({
           // Il totale viene dalla mappa DI QUESTA colonna (capacity), non da
           // un'altra presa a caso: le regole della lega sono condivise, ma la
           // sezione di Bruno non deve dipendere da un partecipante che non e' lui.
-          const percent = total > 0 ? Math.round((occupied / total) * 100) : 0;
           const key = `${column.participantId}-${role}`;
           const open = !collapsed[key];
           const panelId = `roster-panel-${key}`;
@@ -299,14 +353,16 @@ function RosterColumn({
                       aria-controls={panelId}
                       onClick={() => onToggleSection(key)}
                       className={[
-                        'flex min-h-11 w-full items-center justify-between gap-2 px-3 font-bold text-on-accent',
+                        'flex min-h-10 w-full items-center gap-2 rounded-r-lg border-l-4 bg-white/[0.04] px-2 font-bold hover:bg-white/[0.08]',
                         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
                         ROLE_BAND_CLASS[role],
                       ].join(' ')}
                     >
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden="true">{role}</span>
-                        <span className="tnum">{percent}%</span>
+                      <span aria-hidden="true" className={ROLE_LETTER_CLASS[role]}>{role}</span>
+                      {/* «2 di 3», non «67%»: i posti si contano, non si stimano.
+                          Nascosto a chi ascolta, che sente gia' «2 su 3» qui sotto. */}
+                      <span aria-hidden="true" className="tnum ml-auto text-sm text-muted-foreground">
+                        {`${occupied} di ${total}`}
                       </span>
                       <ChevronIcon open={open} />
                       <span className="sr-only">
@@ -323,7 +379,7 @@ function RosterColumn({
                   dice di essere chiusa. */}
               <tbody id={panelId}>
                 {!open ? null : slots.map((slot) => (
-                  <tr key={slot.seq}>
+                  <tr key={slot.seq} className="group">
                     <td className="py-1">{slot.playerName}</td>
                     <td className="tnum py-1 text-right text-muted-foreground">
                       {slot.price}
@@ -335,7 +391,13 @@ function RosterColumn({
                         disabled={pendingSeq === slot.seq}
                         onClick={() => onVoid(slot.seq)}
                         aria-label={`Annulla l'acquisto di ${slot.playerName}`}
-                        className="inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-muted-foreground disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                        // Compare passando sulla riga o arrivandoci da tastiera: prima
+                        // era una ✕ sempre visibile accanto a ognuno dei duecento
+                        // giocatori, un gesto distruttivo ripetuto su tutta la
+                        // griglia. Sui dispositivi senza puntatore che passa sopra
+                        // (telefoni, tablet) resta sempre visibile, o non si
+                        // raggiungerebbe mai.
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-muted-foreground opacity-0 hover:bg-line hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [@media(hover:none)]:opacity-100"
                       >
                         <CancelIcon />
                       </button>

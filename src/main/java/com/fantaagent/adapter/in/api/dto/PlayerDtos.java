@@ -57,6 +57,22 @@ public final class PlayerDtos {
         }
     }
 
+    /**
+     * Un'occasione della fase: un giocatore libero del ruolo in corso, con quanto lo
+     * paghera' il mercato e fin dove conviene spingersi. Serve al pannello dei
+     * consigli quando nessun giocatore e' ancora sul battitore.
+     */
+    public record TargetView(String id, String name, String team, Role role, int listPrice,
+                             int maxBid, int expectedPrice, int margin, boolean worthPursuing) {
+
+        public static TargetView from(PlayerSearchService.TargetRow row) {
+            Player p = row.player();
+            PriceRecommendation r = row.recommendation();
+            return new TargetView(p.id(), p.name(), p.team(), p.role(), p.listPrice(),
+                    r.maxBid(), r.expectedPrice(), r.margin(), r.worthPursuing());
+        }
+    }
+
     public record PhasePageResponse(List<PhaseRowView> rows, int offset, int pageSize,
                                     int total, boolean hasPrevious, boolean hasNext) {
 

@@ -59,7 +59,7 @@ describe('PlayerDecisionCard', () => {
     const voci = [...lista.children].map((el) => el.textContent?.trim());
 
     // dt seguito dal suo dd, nell'ordine in cui si leggono ad alta voce.
-    expect(voci[0]).toBe('il tuo tetto');
+    expect(voci[0]).toBe('il tuo tetto · fin qui conviene');
     expect(voci[1]).toContain('47');
     expect(voci[2]).toBe('quotazione');
     expect(voci[3]).toBe('20');

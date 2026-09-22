@@ -13,8 +13,10 @@ function UndoIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M7 7H4v6" />
-      <path d="M4.6 17a8 8 0 1 0 1.5-11.3L4 9" />
+      {/* La freccia che torna indietro a U: la freccia circolare di prima si
+          leggeva come «ricarica». */}
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </svg>
   );
 }
@@ -60,10 +62,13 @@ export function UndoLastButton({
         disabled={!canUndo || pending}
         aria-describedby={disabledReason ? hintId : undefined}
         onClick={onUndo}
-        className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-line-strong font-bold disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:px-4"
       >
         <UndoIcon />
-        <span className="sr-only">
+        {/* Detto a parole accanto all'icona da tablet in su: e' un gesto che si fa
+            di rado e in fretta, quando si e' sbagliato, e non si deve indovinare
+            quale dei tondi sia. Sul telefono resta l'icona, col nome per chi ascolta. */}
+        <span className="max-md:sr-only">
           {pending ? 'Annullo l’ultimo acquisto…' : 'Annulla ultimo acquisto'}
         </span>
       </button>

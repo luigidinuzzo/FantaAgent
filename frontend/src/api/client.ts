@@ -211,3 +211,12 @@ export async function apiLeaguePut<T>(path: string, body: unknown): Promise<T | 
     body: JSON.stringify(body),
   });
 }
+
+/** Gemello di {@link apiLeaguePut} per le modifiche parziali: il nome di un'asta. */
+export async function apiLeaguePatch<T>(path: string, body: unknown): Promise<T | null> {
+  return request<T>(leagueUrl(path), {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+}

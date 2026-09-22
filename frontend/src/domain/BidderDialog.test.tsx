@@ -37,6 +37,20 @@ const PARTICIPANTS: ParticipantView[] = [
   },
 ];
 
+/**
+ * Tre squadre per i casi del tavolo: Anna (tu), Diego, Bruno con pochi crediti e
+ * molti posti liberi, Carla con i difensori gia' tutti presi.
+ */
+const TEAMS: ParticipantView[] = [
+  PARTICIPANTS[0],
+  { id: 'diego', name: 'Diego', initial: 'D', me: false, budgetRemaining: 300, slotsRemaining: 20,
+    filledByRole: { P: 1, D: 2, C: 1, A: 1 }, slotsByRole: { P: 3, D: 8, C: 8, A: 6 } },
+  { id: 'bruno', name: 'Bruno', initial: 'B', me: false, budgetRemaining: 20, slotsRemaining: 10,
+    filledByRole: { P: 3, D: 4, C: 5, A: 3 }, slotsByRole: { P: 3, D: 8, C: 8, A: 6 } },
+  { id: 'carla', name: 'Carla', initial: 'C', me: false, budgetRemaining: 200, slotsRemaining: 9,
+    filledByRole: { P: 3, D: 8, C: 3, A: 2 }, slotsByRole: { P: 3, D: 8, C: 8, A: 6 } },
+];
+
 function open(overrides = {}) {
   const onAssign = vi.fn();
   render(
@@ -91,7 +105,7 @@ describe('BidderDialog', () => {
   it('la riga «in testa» dice chi sta vincendo, e non finge nessuno quando non c\'e\'', () => {
     open({ leader: { name: 'Anna' } });
     expect(screen.getByText('in testa')).toBeInTheDocument();
-    expect(screen.getByText('Anna')).toBeInTheDocument();
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Anna');
   });
 
   it('senza offerte da altre postazioni la riga «in testa» dice Nessuno', () => {
@@ -102,14 +116,63 @@ describe('BidderDialog', () => {
     expect(screen.getByText('Nessuno')).toBeInTheDocument();
   });
 
-  it('rilanciare mette la propria squadra in testa, da qualunque gesto arrivi', async () => {
-    open();
+  /**
+   * Chi batte al portatile chiama i prezzi per tutto il tavolo: un rilancio premuto
+   * non dice chi l'ha fatto. Prima metteva in testa la propria squadra, e allo
+   * scadere si proponeva di aggiudicare a se' un giocatore vinto da un altro.
+   */
+  it('rilanciare non inventa chi e in testa: lo dice la squadra toccata', async () => {
+    open({ participants: TEAMS });
+    await userEvent.click(screen.getByRole('button', { name: /Rilancia \+1/ }));
     expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Nessuno');
 
-    // Cliccare «Rilancia» e non vedere comparire la propria squadra direbbe il
-    // falso al contrario: che nessuno sta vincendo un'offerta appena fatta.
-    await userEvent.click(screen.getByRole('button', { name: /Rilancia \+1/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Diego/ }));
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Diego');
+    expect(screen.getByRole('button', { name: /^Diego/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  /** La prima squadra prende il prezzo d'apertura; le successive rilanciano di uno. */
+  it('la prima squadra prende il prezzo d apertura, le altre rilanciano di uno', async () => {
+    open({ participants: TEAMS });
+    await userEvent.click(screen.getByRole('button', { name: /^Diego/ }));
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('1');
+    await userEvent.click(screen.getByRole('button', { name: /^Anna/ }));
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('2');
     expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Anna');
+  });
+
+  /** I tasti numerici: la squadra in quella posizione fa l'offerta. */
+  it('il tasto con il numero della squadra la mette in testa', async () => {
+    open({ participants: TEAMS });
+    await userEvent.keyboard('2');
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Diego');
+  });
+
+  /**
+   * Chi non puo' permettersi l'offerta successiva — crediti meno uno per ogni altro
+   * posto da riempire — o ha gia' pieni i posti del ruolo non si puo' toccare, e
+   * dice perche'.
+   */
+  it('le squadre che non possono permettersi l offerta restano spente, col motivo', async () => {
+    open({ participants: TEAMS });
+    // Bruno: 20 crediti, 10 posti liberi -> al massimo 11.
+    const bruno = screen.getByRole('button', { name: /^Bruno/ });
+    expect(bruno).toHaveTextContent('max 11');
+    expect(bruno).not.toBeDisabled();
+    await userEvent.click(screen.getByRole('button', { name: /^Diego/ }));
+    const offer = screen.getByLabelText('Offerta diretta');
+    await userEvent.type(offer, '11');
+    await userEvent.click(screen.getByRole('button', { name: 'Offri' }));
+    // Alla prossima offerta servirebbero 12: Bruno non puo'.
+    expect(screen.getByRole('button', { name: /^Bruno/ })).toBeDisabled();
+    // Carla ha gia' tutti i difensori.
+    expect(screen.getByRole('button', { name: /^Carla/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Carla/ })).toHaveTextContent('posti difensori pieni');
+  });
+
+  it('accanto all offerta dice quanto manca al tuo tetto', async () => {
+    open();
+    expect(screen.getByTestId('bidder-ceiling-distance')).toHaveTextContent('46 sotto il tuo tetto');
   });
 
   it('Esc chiude il conto alla rovescia', async () => {
@@ -181,7 +244,9 @@ describe('BidderDialog', () => {
     open({ valuation: { ...VALUATION, maxBid: 2 } });
     await userEvent.keyboard('   ');
     expect(screen.getByTestId('bidder-dialog')).toHaveAttribute('data-over-ceiling', 'true');
-    expect(screen.getByText(/oltre il tuo tetto/i)).toBeInTheDocument();
+    expect(screen.getByTestId('bidder-ceiling-distance')).toHaveTextContent('2 oltre il tuo tetto');
+    // E per chi ascolta, una frase intera.
+    expect(screen.getByText(/Sei oltre il tuo tetto di 2/)).toHaveClass('sr-only');
   });
 
   it('sotto il tetto non segnala niente', async () => {
@@ -237,7 +302,7 @@ describe('BidderDialog', () => {
 
       await user.keyboard('  ');
       await act(async () => { await vi.advanceTimersByTimeAsync(6_000); });
-      expect(screen.getByRole('button', { name: 'Aggiudica' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Aggiudica/ })).toBeInTheDocument();
 
       // Il tempo e' scaduto ma al tavolo qualcuno rilancia lo stesso. Senza
       // questa via di ritorno l'unico modo di riaprire le offerte era chiudere
@@ -246,7 +311,7 @@ describe('BidderDialog', () => {
 
       expect(screen.getByTestId('bidder-price')).toHaveTextContent('3');
       expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('5');
-      expect(screen.queryByRole('button', { name: 'Aggiudica' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Aggiudica/ })).not.toBeInTheDocument();
       // I rilanci tornano al loro posto: si riparte da dove si era arrivati.
       expect(screen.getByRole('button', { name: /Rilancia \+1/ })).toBeInTheDocument();
     });
@@ -260,6 +325,8 @@ describe('BidderDialog', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onAssign = open();
 
+      // Anna apre a 1 e poi rilancia due volte con la barra.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard('  ');
       expect(screen.getByTestId('bidder-price')).toHaveTextContent('3');
 
@@ -271,8 +338,47 @@ describe('BidderDialog', () => {
         vi.advanceTimersByTime(5100);
       });
 
-      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+      await user.click(screen.getByRole('button', { name: 'Aggiudica a 3' }));
       expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 3 });
+    });
+
+    /** Senza nessuno in testa l'acquirente va scelto: non si propone la propria squadra. */
+    it('senza nessuno in testa l acquirente va scelto prima di aggiudicare', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onAssign = open({ participants: TEAMS });
+      await user.keyboard('  ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Tempo scaduto: scegli a chi va.');
+      const assign = screen.getByRole('button', { name: 'Aggiudica a 3' });
+      expect(assign).toBeDisabled();
+      await user.selectOptions(screen.getByLabelText('Aggiudica a'), 'diego');
+      expect(assign).not.toBeDisabled();
+      await user.click(assign);
+      expect(onAssign).toHaveBeenCalledWith({ participantId: 'diego', price: 3 });
+    });
+
+    /** Chi e' in testa e' proposto come acquirente, e l'avviso lo dice. */
+    it('allo scadere propone chi e in testa', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.click(screen.getByRole('button', { name: /^Diego/ }));
+      await act(async () => { vi.advanceTimersByTime(5100); });
+      expect(screen.getByRole('alert')).toHaveTextContent('Tempo scaduto: Diego è in testa a 1.');
+      expect(screen.getByLabelText('Aggiudica a')).toHaveValue('diego');
+    });
+
+    /** Il server rifiuterebbe: dirlo prima evita un «Aggiudica» che torna indietro. */
+    it('avvisa se l acquirente scelto non puo pagare quel prezzo', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.click(screen.getByRole('button', { name: /^Diego/ }));
+      const offer = screen.getByLabelText('Offerta diretta');
+      await user.type(offer, '30');
+      await user.click(screen.getByRole('button', { name: 'Offri' }));
+      await act(async () => { vi.advanceTimersByTime(5100); });
+      await user.selectOptions(screen.getByLabelText('Aggiudica a'), 'bruno');
+      expect(screen.getByText(/Bruno non può comprarlo a 30: può offrire al massimo 11/)).toBeInTheDocument();
     });
   });
 
@@ -429,6 +535,7 @@ describe('BidderDialog', () => {
     async function openExpired(overrides = {}) {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onAssign = open(overrides);
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(5100);
@@ -444,14 +551,14 @@ describe('BidderDialog', () => {
 
     it('disabled (dati stantii) disabilita il bottone Aggiudica, e lo dice a chi ascolta', async () => {
       await openExpired({ disabled: true });
-      const button = screen.getByRole('button', { name: 'Aggiudica' });
+      const button = screen.getByRole('button', { name: 'Aggiudica a 2' });
       expect(button).toBeDisabled();
       expect(button).toHaveAccessibleDescription(/non sono aggiornat/i);
     });
 
     it('ne pending ne disabled: il bottone resta attivo', async () => {
       await openExpired({ pending: false, disabled: false });
-      expect(screen.getByRole('button', { name: 'Aggiudica' })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Aggiudica a 2' })).not.toBeDisabled();
     });
   });
 });

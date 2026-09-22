@@ -26,6 +26,9 @@ public record EventDto(
             case AuctionEvent.AuctionStarted e ->
                     new EventDto("AuctionStarted", e.seq(), e.at(), null, null, null, null, null,
                             e.name(), null);
+            case AuctionEvent.AuctionRenamed e ->
+                    new EventDto("AuctionRenamed", e.seq(), e.at(), null, null, null, null, null,
+                            e.name(), null);
             case AuctionEvent.PhaseAdvanced e ->
                     new EventDto("PhaseAdvanced", e.seq(), e.at(), e.role(), null, null, null, null,
                             null, null);
@@ -47,6 +50,7 @@ public record EventDto(
             // name assente nei registri scritti prima che il nome esistesse: resta null,
             // e chi lo mostra ricade sull'identificativo dell'asta.
             case "AuctionStarted" -> new AuctionEvent.AuctionStarted(seq, at, name);
+            case "AuctionRenamed" -> new AuctionEvent.AuctionRenamed(seq, at, name);
             case "PhaseAdvanced" -> new AuctionEvent.PhaseAdvanced(seq, at, role);
             case "PlayerPurchased" ->
                     new AuctionEvent.PlayerPurchased(seq, at, playerId, participantId,

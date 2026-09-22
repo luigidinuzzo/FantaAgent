@@ -28,6 +28,9 @@ public final class AuctionProjector {
                 case AuctionEvent.AuctionStarted ignored -> {
                     // nessun effetto sullo stato derivato
                 }
+                case AuctionEvent.AuctionRenamed ignored -> {
+                    // il nome non entra nello stato derivato
+                }
                 case AuctionEvent.PhaseAdvanced advanced -> currentPhase = advanced.role();
                 case AuctionEvent.PlayerPurchased purchased -> active.put(purchased.seq(),
                         new Holding(purchased.seq(), purchased.playerId(),

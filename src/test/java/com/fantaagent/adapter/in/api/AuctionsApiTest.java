@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -145,5 +146,86 @@ class AuctionsApiTest {
         mvc.perform(delete("/api/leagues/default/auctions/pippo"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.type").value("https://fantaagent.local/problems/unknown-auction"));
+    }
+
+    @Test
+    void laRigaPortaIDatiDellaLega() throws Exception {
+        when(runtime.auctions()).thenReturn(List.of(
+                new AuctionRuntime.AuctionSummary("2026-09-02", "Lega", null, 48, Role.D, false,
+                        8, 500, 200, "Anna", 320)));
+
+        mvc.perform(get("/api/leagues/default/auctions"))
+                .andExpect(jsonPath("$[0].teams").value(8))
+                .andExpect(jsonPath("$[0].budget").value(500))
+                .andExpect(jsonPath("$[0].totalSlots").value(200))
+                .andExpect(jsonPath("$[0].myName").value("Anna"))
+                .andExpect(jsonPath("$[0].myBudgetRemaining").value(320));
+    }
+
+    @Test
+    void rinominareUnAstaRisponde204() throws Exception {
+        mvc.perform(patch("/api/leagues/default/auctions/2025-08-30")
+                        .contentType("application/json").content("{\"name\":\" Lega Nuova \"}"))
+                .andExpect(status().isNoContent());
+
+        verify(runtime).rename("2025-08-30", "Lega Nuova");
+    }
+
+    @Test
+    void unNomeVuotoVieneRifiutatoComeImpostazioneNonValida() throws Exception {
+        mvc.perform(patch("/api/leagues/default/auctions/2025-08-30")
+                        .contentType("application/json").content("{\"name\":\"  \"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.errors.auctionName[0]").exists());
+    }
+
+    @Test
+    void rinominareUnAstaSconosciutaRisponde404() throws Exception {
+        doThrow(new IllegalArgumentException("nessuna asta")).when(runtime).rename("inventata", "X");
+
+        mvc.perform(patch("/api/leagues/default/auctions/inventata")
+                        .contentType("application/json").content("{\"name\":\"X\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void duplicareProponeIlNomeConCopia() throws Exception {
+        when(runtime.labelOf("2026-09-02")).thenReturn("Lega No Name");
+        when(runtime.duplicate("2026-09-02", "Lega No Name (copia)")).thenReturn("2026-09-22");
+
+        mvc.perform(post("/api/leagues/default/auctions/2026-09-02/duplicate"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value("2026-09-22"));
+    }
+
+    /** Preparando un'asta si puo' partire da una vecchia: stessa forma delle impostazioni. */
+    @Test
+    void leImpostazioniDiUnAstaVecchiaSiLeggonoComePuntoDiPartenza() throws Exception {
+        when(runtime.setupOf("2025-08-30")).thenReturn(new com.fantaagent.application.service.AuctionSetup(
+                "Lega Passata",
+                new com.fantaagent.config.LeagueRulesSettings(600,
+                        java.util.Map.of(Role.P, 3, Role.D, 8, Role.C, 8, Role.A, 6)),
+                List.of(new com.fantaagent.domain.league.Participant("anna", "Anna", 'A', true),
+                        new com.fantaagent.domain.league.Participant("bruno", "Bruno", 'B', false)),
+                new com.fantaagent.config.ScoringSettings(true, 3,
+                        List.of(new com.fantaagent.config.ScoringSettings.Step(6.0, 1.0)),
+                        java.util.Map.of(Role.P, 3.0, Role.D, 3.0, Role.C, 3.0, Role.A, 3.0),
+                        1.0, 3.0, -3.0, 3.0, -0.5, -1.0, -1.0, 1.0, true),
+                com.fantaagent.config.AuctionSettings.DEFAULTS));
+
+        mvc.perform(get("/api/leagues/default/settings/from/2025-08-30"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auctionOpen").value(false))
+                .andExpect(jsonPath("$.rules.budget").value(600))
+                .andExpect(jsonPath("$.rules.participants").value(2))
+                .andExpect(jsonPath("$.participants[1].name").value("Bruno"));
+    }
+
+    @Test
+    void partireDaUnAstaSconosciutaRisponde404() throws Exception {
+        doThrow(new IllegalArgumentException("nessuna asta")).when(runtime).setupOf("inventata");
+
+        mvc.perform(get("/api/leagues/default/settings/from/inventata"))
+                .andExpect(status().isNotFound());
     }
 }

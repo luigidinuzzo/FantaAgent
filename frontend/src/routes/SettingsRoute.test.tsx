@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -61,13 +61,15 @@ describe('SettingsRoute', () => {
   });
 
   /**
-   * Un'asta nuova parte da otto squadre segnaposto, non dai nomi di un'altra lega:
-   * quelli andrebbero corretti uno per uno senza che si veda quali mancano ancora.
+   * Un'asta nuova parte da otto righe vuote col segnaposto, non da nomi finti né da
+   * quelli di un'altra lega: «Team 1» andava cancellato a mano, e non si vedeva
+   * quali righe fossero ancora da scrivere.
    */
-  it('una nuova asta parte da otto squadre segnaposto', async () => {
+  it('una nuova asta parte da otto righe vuote con il segnaposto', async () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
-    expect(await screen.findByDisplayValue('Team 1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Team 8')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('Nome della squadra 1')).toHaveValue('');
+    expect(screen.getByPlaceholderText('Nome della squadra 8')).toHaveValue('');
+    expect(screen.queryByDisplayValue('Team 1')).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue('Anna')).not.toBeInTheDocument();
     expect(screen.getAllByRole('radio')).toHaveLength(8);
     // Nessuna iniziale da compilare: la calcola il server dai nomi.
@@ -122,10 +124,12 @@ describe('SettingsRoute', () => {
     expect(screen.getByRole('link', { name: 'FantaAgent' })).toHaveAttribute('href', '/');
   });
 
-  it('senza asta aperta la freccia torna alla home', async () => {
+  /** Preparando un'asta l'uscita e' «Le mie aste» nella barra: niente seconda freccia. */
+  it('senza asta aperta si esce da «Le mie aste», senza una seconda freccia', async () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
-    expect(await screen.findByRole('link', { name: 'Torna alla home' }))
-      .toHaveAttribute('href', '/');
+    await screen.findByLabelText(/secondi/i);
+    expect(screen.getByRole('link', { name: 'Le mie aste' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('link', { name: 'Torna alla home' })).not.toBeInTheDocument();
   });
 
   /**
@@ -171,7 +175,11 @@ describe('SettingsRoute', () => {
     expect(alerts[0]).toHaveTextContent(/riga 2 della tabella/i);
   });
 
-  it('ad asta aperta i parametri di punteggio sono bloccati, e dice perche', async () => {
+  /**
+   * Ad asta aperta il punteggio non e' un modulo spento ma un riepilogo da leggere,
+   * con la ragione detta una volta sola.
+   */
+  it('ad asta aperta il punteggio e un riepilogo da leggere, e dice perche', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const fetchMock = vi.fn(() =>
       Promise.resolve(jsonResponse({ ...SETTINGS, auctionOpen: true })),
@@ -185,9 +193,11 @@ describe('SettingsRoute', () => {
       </QueryProvider>,
     );
 
-    const assist = await screen.findByLabelText(/assist/i);
-    expect(assist).toBeDisabled();
-    expect(assist).toHaveAccessibleDescription(/asta in corso/i);
+    const scoring = await screen.findByRole('region', { name: 'Punteggio' });
+    expect(within(scoring).getByText('Assist')).toBeInTheDocument();
+    expect(within(scoring).queryByRole('spinbutton')).not.toBeInTheDocument();
+    expect(within(scoring).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.getByText(/asta in corso: regole della lega e punteggio sono fissati/i)).toBeInTheDocument();
   });
 
   /**
@@ -209,7 +219,7 @@ describe('SettingsRoute', () => {
       return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
     });
 
-    await screen.findByDisplayValue('Team 1');
+    await screen.findByPlaceholderText('Nome della squadra 1');
     await userEvent.type(await screen.findByLabelText(/nome dell'asta/i), 'Lega');
     await userEvent.click(screen.getByRole('button', { name: /salva/i }));
 
@@ -475,7 +485,7 @@ describe('SettingsRoute', () => {
     });
 
     await userEvent.click(await screen.findByRole('button', { name: 'Dieci crediti in più' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Uno slot in meno: difensori' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Un posto in meno: difensori' }));
     await userEvent.type(screen.getByLabelText(/nome dell'asta/i), 'Serata');
     await userEvent.click(screen.getByRole('button', { name: /salva/i }));
 
@@ -493,11 +503,12 @@ describe('SettingsRoute', () => {
     await userEvent.click(screen.getByRole('button', { name: /aggiungi partecipante/i }));
     expect(screen.getByText('squadre').parentElement).toHaveTextContent('9');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Togli Team 8' }));
+    const togli = screen.getAllByRole('button', { name: /^Togli/ });
+    await userEvent.click(togli[togli.length - 1]);
     expect(screen.getByText('squadre').parentElement).toHaveTextContent('8');
   });
 
-  it('ad asta aperta regole e numero di partecipanti sono bloccati', async () => {
+  it('ad asta aperta regole e numero di partecipanti sono fissi, e le regole si leggono', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve(jsonResponse({ ...SETTINGS, auctionOpen: true }))));
@@ -509,13 +520,14 @@ describe('SettingsRoute', () => {
       </QueryProvider>,
     );
 
-    const budget = await screen.findByLabelText('Crediti per squadra');
-    expect(budget).toBeDisabled();
-    expect(budget).toHaveAccessibleDescription(/asta in corso: crediti, slot e numero di squadre/i);
+    const rules = await screen.findByRole('region', { name: 'Regole della lega' });
+    expect(within(rules).getByText('Crediti per squadra')).toBeInTheDocument();
+    expect(within(rules).getByText(String(SETTINGS.rules.budget))).toBeInTheDocument();
+    expect(within(rules).queryByRole('spinbutton')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /aggiungi partecipante/i })).not.toBeInTheDocument();
   });
 
-  it("un errore di slot compare nel riassunto con il nome del ruolo", async () => {
+  it("un errore sui posti compare nel riassunto con il nome del ruolo", async () => {
     renderSettings(() =>
       Promise.resolve(
         jsonResponse(
@@ -530,6 +542,60 @@ describe('SettingsRoute', () => {
     );
     await userEvent.type(await screen.findByLabelText(/nome dell'asta/i), 'Serata');
     await userEvent.click(screen.getByRole('button', { name: /salva/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/slot portieri/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/posti portieri/i);
+  });
+
+  /**
+   * Chi rifa' l'asta ogni stagione con la stessa lega parte dalle regole e dai nomi
+   * di quella vecchia, invece di riscriverli: il nome della nuova resta quello scritto.
+   */
+  it('«Parti da» copia regole e partecipanti di un asta precedente', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const old = {
+      ...SETTINGS,
+      participants: [
+        { id: 'luigi', name: 'Luigi', initial: 'L', me: true },
+        { id: 'diego', name: 'Diego', initial: 'D', me: false },
+      ],
+      rules: { ...SETTINGS.rules, budget: 600 },
+    };
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/settings/from/2026-09-01')) return Promise.resolve(jsonResponse(old));
+      if (href.endsWith('/settings')) return Promise.resolve(jsonResponse(SETTINGS));
+      if (href.endsWith('/auctions')) {
+        return Promise.resolve(jsonResponse([{ id: '2026-09-01', label: 'Serie A 2026', lastWritten: null,
+          purchases: 0, phase: 'P', selected: false, teams: 2, budget: 600, totalSlots: 50,
+          myName: 'Luigi', myBudgetRemaining: 600 }]));
+      }
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    }));
+    render(<QueryProvider><MemoryRouter><SettingsRoute /></MemoryRouter></QueryProvider>);
+
+    await userEvent.type(await screen.findByLabelText(/nome dell'asta/i), 'Nuova stagione');
+    const start = screen.getByLabelText('Parti da');
+    await screen.findByRole('option', { name: 'Le regole di «Serie A 2026»' });
+    await userEvent.selectOptions(start, '2026-09-01');
+
+    expect(await screen.findByDisplayValue('Diego')).toBeInTheDocument();
+    expect(screen.getByLabelText('Crediti per squadra')).toHaveValue(600);
+    expect(screen.getByLabelText(/nome dell'asta/i)).toHaveValue('Nuova stagione');
+    expect(screen.getByText(/copiati: cambia quello che serve/)).toBeInTheDocument();
+  });
+
+  /** Il salvataggio resta in vista mentre si scorre il modulo. */
+  it('il bottone di salvataggio sta in una barra fissa in fondo', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    const button = await screen.findByRole('button', { name: "Salva e comincia l'asta" });
+    expect(button.parentElement?.className).toContain('sticky');
+  });
+
+  it('un indice porta a ogni sezione del modulo', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
+    const index = await screen.findByRole('navigation', { name: 'Sezioni del modulo' });
+    for (const [label, id] of [['Regole della lega', 'sezione-regole'], ['Partecipanti', 'sezione-partecipanti'], ['Punteggio', 'sezione-punteggio']]) {
+      expect(within(index).getByRole('link', { name: label })).toHaveAttribute('href', `#${id}`);
+      expect(document.getElementById(id)).not.toBeNull();
+    }
   });
 });

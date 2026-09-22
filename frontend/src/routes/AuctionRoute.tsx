@@ -6,14 +6,20 @@ import { userMessage } from '../api/client';
 import {
   useAssign,
   useAuctionState,
+  useBoard,
   useChangePhase,
   usePhasePlayers,
   usePublicBidder,
+  useTargets,
   useUndoLast,
   useValuation,
 } from '../api/hooks';
 import type { Role } from '../api/types';
 import { AnalysisPanel } from '../domain/AnalysisPanel';
+import { AuctionRecap } from '../domain/AuctionRecap';
+import { MyTeamSummary } from '../domain/MyTeamSummary';
+import { PhaseTargets } from '../domain/PhaseTargets';
+import type { SoldPlayer } from '../domain/PlayerSearchBox';
 import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } from '../domain/AuctionAnnouncer';
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
@@ -82,6 +88,9 @@ const ICON_LINK =
 
 type TabKey = 'fase' | 'rose';
 
+/** Quanto resta in vista l'avviso di un acquisto, con il suo «Annulla». */
+const SALE_TOAST_MS = 8_000;
+
 // Due schede, non due sezioni sempre in vista: la fila di card squadra basta a
 // sapere chi ha quanto, e la griglia intera delle rose — otto colonne per
 // venticinque righe — spingerebbe la card del lotto fuori dallo schermo proprio
@@ -102,6 +111,14 @@ export function AuctionRoute() {
   const [searchActive, setSearchActive] = useState(false);
   const [pageOffset, setPageOffset] = useState(0);
   const [activeTab, setActiveTab] = useState<TabKey>('fase');
+  // L'aggiudicazione diretta e' aperta per QUESTO giocatore: cambiando giocatore
+  // si richiude, e il prossimo parte di nuovo dal conto alla rovescia.
+  const [directFor, setDirectFor] = useState<string | null>(null);
+  // «Togli dal battitore» col conto aperto chiede conferma: vero dopo il primo clic.
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  // L'ultimo acquisto confermato, mostrato in basso per qualche secondo con la
+  // possibilita' di annullarlo. null quando non c'e' niente da mostrare.
+  const [sale, setSale] = useState<{ seq: number; player: string; buyer: string; price: number } | null>(null);
   const bidderHintId = useId();
   const bidderPanelId = useId();
   // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
@@ -122,6 +139,14 @@ export function AuctionRoute() {
     tabRefs.current[next.key]?.focus();
   }
 
+  // L'avviso dell'acquisto se ne va da solo dopo qualche secondo: e' una conferma,
+  // non un messaggio da chiudere a mano mentre si chiama il giocatore successivo.
+  useEffect(() => {
+    if (!sale) return;
+    const id = setTimeout(() => setSale(null), SALE_TOAST_MS);
+    return () => clearTimeout(id);
+  }, [sale]);
+
   // Un tick al secondo: serve solo a far invecchiare il "da quanto tempo".
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1_000);
@@ -140,6 +165,23 @@ export function AuctionRoute() {
   useEffect(() => {
     setPageOffset(0);
   }, [currentPhase]);
+
+  const participants = state.data?.participants ?? [];
+  const me = participants.find((p) => p.me);
+  // Conclusa: ogni squadra ha la rosa piena. Da qui in poi non c'e' piu' niente da
+  // battere, e la schermata diventa il riepilogo invece di restare quella della
+  // serata con i tetti a zero.
+  const concluded = participants.length > 0 && participants.every((p) => p.slotsRemaining === 0);
+  const board = useBoard();
+  // I comprati, letti dal tabellone: alla ricerca servono per dire «e' di Diego, 80»
+  // invece di «Nessun giocatore trovato» quando si cerca un nome gia' preso.
+  const sold: SoldPlayer[] = (board.data?.columns ?? []).flatMap((c) =>
+    (Object.keys(c.byRole) as Role[]).flatMap((role) =>
+      c.byRole[role].map((slot) => ({
+        key: `${slot.seq}`, name: slot.playerName, role, buyer: c.participantName, price: slot.price,
+      }))),
+  );
+  const targets = useTargets(state.isSuccess && !concluded && selectedId === null);
 
   const phase = usePhasePlayers(pageOffset);
   const valuation = useValuation(selectedId);
@@ -253,12 +295,23 @@ export function AuctionRoute() {
     // errore di aggiudicazione (o al suo successo), violando "un solo alert".
     changePhase.reset();
     undoLast.reset();
-    assign.mutate({
-      playerId: valuation.data!.playerId,
-      playerName: valuation.data!.name,
-      participantId,
-      price,
-    });
+    assign.mutate(
+      {
+        playerId: valuation.data!.playerId,
+        playerName: valuation.data!.name,
+        participantId,
+        price,
+      },
+      {
+        // L'avviso visibile nasce dalla conferma del server, una volta sola per
+        // acquisto: non da un effetto che si ripete a ogni rilettura dello stato.
+        onSuccess: (done, sent) => {
+          if (!done) return;
+          const buyer = participants.find((p) => p.id === done.participantId);
+          setSale({ seq: done.seq, player: sent.playerName, buyer: buyer?.name ?? '', price: done.price });
+        },
+      },
+    );
   }
 
   // Il cambio fase e l'annullamento non hanno numeri da riportare dopo
@@ -342,6 +395,10 @@ export function AuctionRoute() {
           fondo, fuori da questa griglia, restano le due schede — fase corrente e
           rose. Sotto lg la griglia si srotola in una colonna sola, nell'ordine in
           cui e' scritta: crediti, ricerca, consigli. */}
+      {/* 39rem: misurata sullo stato piu' alto del battitore con otto squadre (il
+          conto che corre, con le squadre su due righe) a 1600px. Con piu' squadre o
+          su schermi piu' stretti il battitore scorre dentro di se' (min-h-0 sul
+          riquadro): prima cresceva oltre la griglia e copriva la tabella sotto. */}
       {/* Altezza DECISA, non derivata dal contenuto. Prima la riga era alta
           quanto la sua colonna piu' alta: scegliendo un giocatore, «Perche'
           questo prezzo» passava da due righe a cinque driver con spiegazioni e
@@ -355,8 +412,22 @@ export function AuctionRoute() {
           stessa colonna e le toglie altezza. Le altre due colonne scorrono
           dentro di se'. Solo da lg in su: in colonna sola l'altezza torna
           quella del contenuto. */}
-      <div className="grid gap-5 lg:h-[35rem] lg:grid-cols-[14rem_1fr_22rem]">
-        <ParticipantsColumn participants={state.data?.participants ?? []} />
+      {concluded ? (
+        <>
+          <AuctionRecap participants={participants} board={board.data} />
+          {/* Le rose complete, subito: e' quello che si viene a guardare ad asta
+              finita. Senza schede, perche' la fase corrente non c'e' piu'. */}
+          <div className="panel mt-4 rounded-2xl p-4">
+            <RosterGrid />
+          </div>
+        </>
+      ) : (
+      <>
+      {/* grid-cols-1 e non la colonna implicita: quella si allarga fino al
+          contenuto piu' largo (la fila delle squadre sul telefono), e la pagina
+          intera scorreva di lato. */}
+      <div className="grid grid-cols-1 gap-5 lg:h-[39rem] lg:grid-cols-[14rem_1fr_22rem]">
+        <ParticipantsColumn participants={participants} />
 
         <div className="flex min-h-0 min-w-0 flex-col gap-5">
           {/* La stessa selezione della tabella di fase, non un secondo percorso:
@@ -372,7 +443,7 @@ export function AuctionRoute() {
               riposo no — resta alto quanto la barra, ed e' il battitore qui
               sotto (flex-1) a riempire la colonna. */}
           <div className={searchActive ? 'flex min-h-0 flex-1 flex-col' : undefined}>
-            <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} />
+            <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} sold={sold} />
           </div>
 
           {/* Il battitore e' un posto fisso in pagina, non un riquadro che appare e
@@ -384,7 +455,7 @@ export function AuctionRoute() {
               ogni lettera. Nascosto, non svuotato — selectedId resta intatto, e
               uscendo dalla ricerca si ritrova il lotto com'era. */}
           {searchActive ? null : (
-          <section aria-labelledby={bidderPanelId} className="panel flex flex-1 flex-col rounded-2xl p-4">
+          <section aria-labelledby={bidderPanelId} className="panel flex min-h-0 flex-1 flex-col rounded-2xl p-4">
             <div className="flex min-h-11 items-center justify-between gap-3">
               <h2 id={bidderPanelId} className="text-sm font-bold text-muted-foreground">
                 Battitore
@@ -393,16 +464,27 @@ export function AuctionRoute() {
                 // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
                 // se e' aperto — lasciarlo acceso su un lotto che non c'e' piu'
                 // continuerebbe a suonare per nessuno.
+                // Mentre il conto corre toglierlo butta via offerta e tempo: il
+                // primo clic chiede conferma, il secondo toglie. Senza il conto
+                // aperto non c'e' niente da perdere, e basta un clic.
                 <button
                   type="button"
                   onClick={() => {
+                    if (bidderOpen && !confirmRemove) {
+                      setConfirmRemove(true);
+                      return;
+                    }
+                    setConfirmRemove(false);
                     setBidderOpen(false);
                     setSelectedId(null);
                   }}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 text-sm font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  onBlur={() => setConfirmRemove(false)}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                    confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-line-strong hover:bg-line'
+                  }`}
                 >
                   <RemoveIcon />
-                  Togli dal battitore
+                  {confirmRemove ? "Conferma: il lotto si perde" : 'Togli dal battitore'}
                 </button>
               ) : null}
             </div>
@@ -428,7 +510,7 @@ export function AuctionRoute() {
                   <BidderDialog
                     key={valuation.data.playerId}
                     valuation={valuation.data}
-                    participants={state.data?.participants ?? []}
+                    participants={participants}
                     timerSeconds={bidderSettings.data.timerSeconds}
                     beepEnabled={bidderSettings.data.beepEnabled}
                     error={assignError}
@@ -475,28 +557,42 @@ export function AuctionRoute() {
                         Le preferenze del battitore non sono disponibili.
                       </span>
                     ) : null}
-                    {/* key: un giocatore nuovo deve azzerare il campo prezzo.
-                        E' l'unico modo, ora che il campo parte sempre da uno e
-                        non insegue piu' nessuna proposta: senza il remount,
-                        cambiando giocatore il prezzo digitato per il precedente
-                        resterebbe nel campo, pronto a essere inviato per il
-                        lotto sbagliato. */}
-                    <BidPanel
-                      key={valuation.data.playerId}
-                      participants={state.data?.participants ?? []}
-                      disabled={stale}
-                      pending={assign.isPending}
-                      error={assignError}
-                      onAssign={assignPlayer}
-                    />
+                    {/* L'aggiudicazione diretta, dietro un bottone: e' la via per
+                        un giocatore che nessuno contende. Il nome non contiene
+                        «conto alla rovescia»: chi cerca quel bottone a voce o per
+                        nome ne troverebbe due. Sempre in vista, con
+                        prezzo e squadra precompilati, un clic sbagliato registrava
+                        un acquisto vero; ora si apre solo se la si chiede, e non
+                        propone niente. key: un giocatore nuovo riparte da campi
+                        vuoti. */}
+                    {directFor === valuation.data.playerId ? (
+                      <BidPanel
+                        key={valuation.data.playerId}
+                        participants={participants}
+                        role={valuation.data.role}
+                        disabled={stale}
+                        pending={assign.isPending}
+                        error={assignError}
+                        onAssign={assignPlayer}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        aria-expanded={false}
+                        onClick={() => setDirectFor(valuation.data!.playerId)}
+                        className="min-h-11 rounded-full px-1 text-sm font-bold text-muted-foreground underline decoration-line-strong underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      >
+                        Aggiudica direttamente
+                      </button>
+                    )}
                     </div>
                   </PlayerDecisionCard>
                 )
+              ) : me ? (
+                // A riposo la tua squadra in numeri: crediti, posti, media per
+                // posto. Prima era una frase sola al centro di mezza pagina.
+                <MyTeamSummary me={me} board={board.data} />
               ) : (
-                // Centrato nello spazio riservato, non appeso in alto a
-                // sinistra: il riquadro ha la sua altezza fin dall'inizio, e una
-                // riga di testo incollata all'angolo di una scatola vuota si
-                // legge come un guasto invece che come un invito.
                 <p className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
                   Nessun giocatore sul battitore. Cercalo qui sopra o scegline uno dalla tabella.
                 </p>
@@ -511,7 +607,20 @@ export function AuctionRoute() {
             no-restricted-imports in .oxlintrc.json). Senza un giocatore scelto la
             colonna non sparisce e non cambia forma: lo stesso pannello, con lo
             stesso titolo, porta l'invito a sceglierne uno. */}
-        <AnalysisPanel valuation={valuation.data ?? null} />
+        {/* Senza un giocatore scelto, le occasioni della fase: dove conviene
+            guardare, invece di una colonna vuota che invita a scegliere. */}
+        {selectedId === null ? (
+          <PhaseTargets
+            phase={currentPhase}
+            targets={targets.data ?? []}
+            loading={targets.isLoading}
+            failed={targets.isError}
+            disabled={bidderOpen}
+            onSelect={setSelectedId}
+          />
+        ) : (
+          <AnalysisPanel valuation={valuation.data ?? null} />
+        )}
       </div>
 
       <div className="panel mt-4 rounded-2xl p-4">
@@ -606,6 +715,33 @@ export function AuctionRoute() {
           {activeTab === 'rose' ? <RosterGrid /> : null}
         </div>
       </div>
+      </>
+      )}
+
+      {/* La conferma visibile di un'aggiudicazione, in basso al centro: prima il
+          riquadro tornava a riposo e basta, e l'unica conferma era l'annuncio per
+          chi ascolta. Qui chi guarda legge cosa e' stato registrato e, se era
+          sbagliato, lo annulla subito. Non e' una live region: l'annuncio c'e' gia'
+          (AuctionAnnouncer), e due voci si sovrapporrebbero. */}
+      {sale ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+          <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-positive bg-surface px-5 py-3 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
+            <p className="text-base">
+              <span className="font-bold">{sale.player}</span>
+              {` a ${sale.buyer} per `}
+              <span className="tnum font-bold text-accent">{sale.price}</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => { undo(); setSale(null); }}
+              disabled={undoLast.isPending}
+              className="min-h-11 rounded-full border border-line-strong px-4 font-bold hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      ) : null}
     </AppShell>
   );
 }

@@ -17,9 +17,15 @@
   --role-d: oklch(0.8161 0.1265 154.59);
   --role-c: oklch(0.7972 0.1095 245.56);
   --role-a: oklch(0.7752 0.1362 9.34);
+  --crest-1: oklch(0.8054 0.0819 185.81);
+  --crest-2: oklch(0.7722 0.1027 294.72);
+  --crest-3: oklch(0.8402 0.1471 124.87);
+  --crest-4: oklch(0.8476 0.0616 79.03);
+  --crest-5: oklch(0.7883 0.0903 326.39);
+  --crest-6: oklch(0.7774 0.0478 263.65);
   --line: rgba(255,255,255,0.15);
   --line-strong: rgba(255,255,255,0.25);
-  --chalk: rgba(255,255,255,0.8);
+  --chalk: rgba(255,255,255,0.4);
   --font-sans: 'Archivo Variable', system-ui, sans-serif;
 }
 
@@ -39,6 +45,12 @@
   --color-role-d: var(--role-d);
   --color-role-c: var(--role-c);
   --color-role-a: var(--role-a);
+  --color-crest-1: var(--crest-1);
+  --color-crest-2: var(--crest-2);
+  --color-crest-3: var(--crest-3);
+  --color-crest-4: var(--crest-4);
+  --color-crest-5: var(--crest-5);
+  --color-crest-6: var(--crest-6);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-chalk: var(--chalk);

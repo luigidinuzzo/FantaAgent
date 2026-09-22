@@ -6,6 +6,7 @@ import { DeleteAuctionDialog } from './DeleteAuctionDialog';
 
 const AUCTION: AuctionCard = {
   id: '2026-09-02', label: 'Lega No Name', lastWritten: null, purchases: 3, phase: 'D', selected: false,
+  teams: 8, budget: 500, totalSlots: 200, myName: null, myBudgetRemaining: null,
 };
 
 describe('DeleteAuctionDialog', () => {

@@ -49,18 +49,21 @@ export function PlayerTable({
       aria-labelledby={CAPTION_ID}
       className="relative overflow-x-auto rounded-lg border border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
     >
-      <table className="w-cond w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-sm">
         <caption id={CAPTION_ID} className="sr-only">
           Giocatori liberi nella fase corrente
         </caption>
         <thead>
           <tr className="border-b border-line-strong text-left text-muted-foreground">
+            {/* Parole intere, non sigle: «Sq», «Quot», «FM attesa» si capivano solo
+                da chi le aveva scritte. Sul telefono restano le tre colonne che
+                servono a decidere; la squadra va sotto il nome. */}
             <th scope="col" className={`${CELL_X} py-2 font-normal`}>Giocatore</th>
-            <th scope="col" className={`${CELL_X} py-2 font-normal`}>Sq</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Quot</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Tetto</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>FM attesa</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Titolarità</th>
+            <th scope="col" className={`${CELL_X} py-2 font-normal max-sm:hidden`}>Squadra</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Quotazione</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Il tuo tetto</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal max-sm:hidden`}>Fantamedia attesa</th>
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal max-sm:hidden`}>Titolarità</th>
           </tr>
         </thead>
         <tbody>
@@ -95,10 +98,13 @@ export function PlayerTable({
                     aria-describedby={disabled ? lockedHintId : undefined}
                     className={`${CELL_X} flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50`}
                   >
-                    {row.name}
+                    <span className="flex flex-col py-1">
+                      <span>{row.name}</span>
+                      <span className="text-xs text-muted-foreground sm:hidden">{row.team}</span>
+                    </span>
                   </button>
                 </td>
-                <td className={`${CELL_X} py-2 text-muted-foreground`}>{row.team}</td>
+                <td className={`${CELL_X} py-2 text-muted-foreground max-sm:hidden`}>{row.team}</td>
                 <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>{row.listPrice}</td>
                 <td
                   data-testid={`maxbid-${row.id}`}
@@ -111,10 +117,10 @@ export function PlayerTable({
                       non vede, letto insieme al numero. */}
                   {above ? <span className="sr-only">, oltre il tetto stimato</span> : null}
                 </td>
-                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>
+                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground max-sm:hidden`}>
                   {row.fantamediaAttesa.toFixed(1)}
                 </td>
-                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>
+                <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground max-sm:hidden`}>
                   {Math.round(row.titolaritaPercent)}%
                 </td>
               </tr>

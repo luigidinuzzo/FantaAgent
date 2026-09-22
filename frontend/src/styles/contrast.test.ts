@@ -60,6 +60,13 @@ describe('palette Campo', () => {
   // Nella griglia delle rose la fascia di ruolo e' PIENA e porta la lettera in
   // scuro sopra di se': e' una coppia che il ciclo qui sopra non tocca, perche'
   // li il ruolo e' il fondo e non il testo.
+  it.each(['crest-1', 'crest-2', 'crest-3', 'crest-4', 'crest-5', 'crest-6'] as const)(
+    'la lettera dello stemma si legge su %s',
+    (crest) => {
+      expect(contrastRatio(PALETTE['on-accent'], PALETTE[crest])).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
   it.each(['role-p', 'role-d', 'role-c', 'role-a'] as const)(
     'on-accent raggiunge 4.5:1 sopra %s',
     (role) => {

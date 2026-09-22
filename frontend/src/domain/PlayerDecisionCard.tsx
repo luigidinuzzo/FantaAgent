@@ -117,8 +117,11 @@ export function PlayerDecisionCard({
                 definizioni: e' anche l'ordine in cui conviene sentirli letti —
                 «il tuo tetto, quaranta». Che l'etichetta appaia SOTTO il numero
                 lo decide la griglia con row-start, non l'ordine del documento. */}
+            {/* «il tuo tetto» resta il nome breve, lo stesso della tabella e del
+                battitore; accanto, cosa vuol dire. Il limite assoluto, a destra, si
+                chiama «mai oltre»: due «tetti» non dicevano quale valesse. */}
             <dt className="col-start-1 row-start-2 mt-2 text-sm text-muted-foreground">
-              il tuo tetto
+              il tuo tetto <span className="text-muted-foreground/80">· fin qui conviene</span>
             </dt>
             <dd className="col-start-1 row-start-1 flex items-baseline gap-x-4">
               <span
@@ -142,7 +145,7 @@ export function PlayerDecisionCard({
 
             {/* La quotazione di listino: l'unico numero della valutazione che
                 non compare ne' qui ne' nel pannello dei consigli, che tiene il
-                tetto duro, la confidenza e i driver. Da' un metro a «mercato»:
+                limite «mai oltre», l'affidabilita' della stima e i driver. Da' un metro a «mercato»:
                 sapere che il tavolo pagherà 29 non dice se è caro finche' non si
                 sa da quanto si parte. */}
             <dt className="col-start-2 row-start-2 mt-2 text-sm text-muted-foreground">

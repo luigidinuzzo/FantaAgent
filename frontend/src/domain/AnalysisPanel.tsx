@@ -80,21 +80,28 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
           <span data-testid="hard-cap" className="tnum w-exp block text-3xl font-extrabold">
             {valuation.hardCap}
           </span>
-          <span className="mt-1 block text-sm text-muted-foreground">tetto duro</span>
+          {/* «Mai oltre» e non «tetto duro»: accanto a «il tuo tetto» della
+              scheda, due tetti non dicevano quale valesse. Questo e' il limite
+              oltre cui la rosa non si completa piu'; l'altro e' fin dove conviene. */}
+          <span className="mt-1 block text-sm text-muted-foreground">mai oltre</span>
         </p>
 
         {/* Le stelle sono un'immagine: il nome accessibile del contenitore
             dice la confidenza a parole, per chi non le vede. "3" letto da un
             sintetizzatore non e' una confidenza, e' un numero nudo — la
             frase qui e' cio' che rende l'informazione la stessa per tutti. */}
-        <div
-          role="img"
-          aria-label={`confidenza ${valuation.confidenceStars} su 5`}
-          className="flex items-center gap-0.5 pb-1"
-        >
-          {Array.from({ length: STARS }, (_, i) => (
-            <Star key={i} filled={i < valuation.confidenceStars} />
-          ))}
+        {/* Con la parola sotto: le stelle da sole non dicevano cosa misurassero. */}
+        <div className="flex flex-col gap-1">
+          <div
+            role="img"
+            aria-label={`affidabilità della stima: ${valuation.confidenceStars} su 5`}
+            className="flex items-center gap-0.5"
+          >
+            {Array.from({ length: STARS }, (_, i) => (
+              <Star key={i} filled={i < valuation.confidenceStars} />
+            ))}
+          </div>
+          <span aria-hidden="true" className="text-sm text-muted-foreground">affidabilità della stima</span>
         </div>
       </div>
 

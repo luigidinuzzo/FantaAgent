@@ -7,11 +7,14 @@ import { setAuctionContext } from '../api/client';
 import { HomeRoute } from './HomeRoute';
 import { SettingsRoute } from './SettingsRoute';
 
+// I dati della lega che ogni riga porta: otto squadre da 25, 500 crediti a testa.
+const LEAGUE = { teams: 8, budget: 500, totalSlots: 200, myName: 'Anna', myBudgetRemaining: 320 };
+
 const CARDS = [
   { id: '2026-09-02', label: 'Lega No Name', lastWritten: '2026-09-02T13:08:41Z',
-    purchases: 3, phase: 'D', selected: true },
+    purchases: 3, phase: 'D', selected: true, ...LEAGUE },
   { id: '2025-08-30', label: '2025-08-30', lastWritten: '2025-08-30T20:00:00Z',
-    purchases: 200, phase: 'A', selected: false },
+    purchases: 200, phase: 'A', selected: false, ...LEAGUE },
 ];
 
 // Le due carte dei test del ridisegno: una sola aperta, una sola chiusa — quanto
@@ -19,12 +22,18 @@ const CARDS = [
 // l'intero elenco CARDS sopra.
 const OPEN_AUCTION = {
   id: '2026-09-02', label: 'Lega No Name', lastWritten: '2026-09-02T13:08:41Z',
-  purchases: 3, phase: 'D', selected: true,
+  purchases: 3, phase: 'D', selected: true, ...LEAGUE,
 };
 const CLOSED_AUCTION = {
   id: '2025-08-30', label: 'Lega Passata', lastWritten: '2025-08-30T20:00:00Z',
-  purchases: 2, phase: 'A', selected: false,
+  purchases: 2, phase: 'A', selected: false, ...LEAGUE,
 };
+
+/** Apre il menu «⋯» di un'asta e sceglie una voce. */
+async function chooseFromMenu(label: string, item: string) {
+  await userEvent.click(await screen.findByRole('button', { name: `Altre azioni per ${label}` }));
+  await userEvent.click(screen.getByRole('menuitem', { name: item }));
+}
 
 const SETTINGS_CLOSED = {
   bidder: { bidTimerSeconds: 5, beepEnabled: true },
@@ -65,7 +74,7 @@ describe('HomeRoute', () => {
     renderHome();
 
     expect(await screen.findByText('Lega No Name')).toBeInTheDocument();
-    expect(screen.getByText(/3 acquisti/)).toBeInTheDocument();
+    expect(screen.getByText('3 di 200 giocatori')).toBeInTheDocument();
     expect(screen.getByText('2025-08-30')).toBeInTheDocument();
   });
 
@@ -76,9 +85,6 @@ describe('HomeRoute', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
 
-    // Con CARDS[0] selezionata, la pagina ha ANCHE il "Riprendi" della card destra
-    // — ma il suo nome accessibile e' "Riprendi l'asta aperta, ...", una frase
-    // diversa: questa query trova solo quello della riga-pillola.
     await userEvent.click(await screen.findByRole('button', { name: /riprendi lega no name/i }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -87,11 +93,18 @@ describe('HomeRoute', () => {
     );
   });
 
-  it('senza aste invita a crearne una invece di restare vuota', async () => {
+  /**
+   * Al primo accesso la home dice cos'e' FantaAgent e come si usa, invece di un
+   * elenco vuoto: e' la prima impressione del prodotto.
+   */
+  it('al primo accesso spiega come funziona e invita a creare la prima asta', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([])));
     renderHome();
 
-    expect(await screen.findByText(/nessuna asta/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Crea la tua prima asta' })).toBeInTheDocument();
+    const how = screen.getByRole('region', { name: 'Come funziona' });
+    expect(within(how).getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.queryByRole('region', { name: "Riprendi un'asta" })).not.toBeInTheDocument();
   });
 
   /**
@@ -104,7 +117,8 @@ describe('HomeRoute', () => {
     renderHome();
 
     expect(screen.getByText(/carico/i)).toBeInTheDocument();
-    expect(screen.queryByText(/nessuna asta/i)).not.toBeInTheDocument();
+    // Mentre carica non e' ancora un primo accesso: niente «Come funziona».
+    expect(screen.queryByText('Come funziona')).not.toBeInTheDocument();
   });
 
   it('un elenco che non arriva lo dice con un alert, invece di sembrare una lega senza aste', async () => {
@@ -130,22 +144,24 @@ describe('HomeRoute', () => {
     // aspettarlo.
     expect(await screen.findByRole('alert', {}, { timeout: 3000 }))
       .toHaveTextContent("L'elenco delle aste non si è caricato. Riprova.");
-    expect(screen.queryByText(/nessuna asta/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Come funziona')).not.toBeInTheDocument();
   });
 
-  it('la data dell\'ultima scrittura ha le cifre tabulari, per allinearsi in colonna', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(CARDS)));
+  it('la data dell\'ultima scrittura ha le cifre tabulari, e quella esatta a parte', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
     renderHome();
 
-    const when = await screen.findByText(/2 set 2026/i);
+    const when = (await screen.findByText('Lega No Name')).closest('li')!.querySelector('time')!;
     expect(when).toHaveClass('tnum');
+    expect(when).toHaveAttribute('datetime', OPEN_AUCTION.lastWritten);
+    expect(when.getAttribute('title')).toMatch(/2 settembre 2026/);
   });
 
   it("dice quale asta e' quella aperta adesso", async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(CARDS)));
     renderHome();
 
-    expect(await screen.findByText(/in corso/i)).toBeInTheDocument();
+    expect(await screen.findByText('Aperta ora')).toBeInTheDocument();
   });
 
   /**
@@ -257,10 +273,8 @@ describe('HomeRoute', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       renderHome();
 
-      // Come sopra: questa query trova solo il "Riprendi" della riga-pillola, non
-      // quello della card destra (nome accessibile diverso apposta).
       await user.click(await screen.findByRole('button', { name: /riprendi lega no name/i }));
-      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/riprendere l'asta/i));
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/aprire l'asta/i));
 
       // Il refetch periodico (refetchInterval 5s) fallisce a sua volta, e la
       // query riprova una volta (retry: 1) prima di arrendersi. A piccoli
@@ -335,8 +349,8 @@ describe('HomeRoute', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, CLOSED_AUCTION])));
     renderHome();
 
-    // Il pallino colorato del mockup e' decorazione. Il fatto sta nel testo.
-    expect(await screen.findByText('In corso')).toBeInTheDocument();
+    // Il pallino colorato e' decorazione. Il fatto sta nel testo.
+    expect(await screen.findByText('Aperta ora')).toBeInTheDocument();
   });
 
   // La fase si legge da RoleBadge (lettera colorata + nome per esteso in
@@ -347,78 +361,54 @@ describe('HomeRoute', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
 
-    expect(await screen.findByText(/2 acquisti/)).toBeInTheDocument();
+    expect(await screen.findByText('2 di 200 giocatori')).toBeInTheDocument();
     // CLOSED_AUCTION e' in fase 'A': il nome per esteso di RoleBadge.
     expect(screen.getByText(/attaccante/i)).toBeInTheDocument();
   });
 
   /**
-   * Difetto di accessibilita' gia' corretto piu' volte in questo progetto: con
-   * un'asta aperta la pagina ha DUE bottoni "Riprendi" (la riga-pillola e la card
-   * destra). Il testo visibile "Riprendi" puo' restare uguale nei due — chi guarda
-   * ha il contesto della card attorno — ma il nome ACCESSIBILE deve nominare
-   * l'asta in entrambi, altrimenti chi naviga per elenco di ruoli sente due voci
-   * identiche e una non dice a quale asta si riferisce. Senza questo test la
-   * regressione puo' rientrare (e' successo) senza che nulla diventi rosso.
+   * Il vecchio riquadro «Asta aperta» non c'e' piu': l'asta in corso si riprende
+   * dalla sua riga, che per questo sta in cima all'elenco anche se il server la
+   * manda dopo le altre — altrimenti con piu' di cinque aste finiva su un'altra pagina.
    */
-  it("entrambi i bottoni «Riprendi» nominano la loro asta, non solo la riga", async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+  it("l'asta in corso sta in cima all'elenco, con un solo «Riprendi»", async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION, OPEN_AUCTION])));
     renderHome();
 
-    // La riga-pillola: aria-label "Riprendi <nome>", come sempre.
-    expect(
-      await screen.findByRole('button', { name: `Riprendi ${OPEN_AUCTION.label}` }),
-    ).toBeInTheDocument();
-    // La card destra: una frase diversa (per non collidere con quella della riga
-    // in una query per nome), ma che nomina comunque l'asta.
-    expect(
-      screen.getByRole('button', { name: `Riprendi l'asta aperta, ${OPEN_AUCTION.label}` }),
-    ).toBeInTheDocument();
+    const rows = await screen.findAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent(OPEN_AUCTION.label);
+    expect(screen.getAllByRole('button', { name: `Riprendi ${OPEN_AUCTION.label}` })).toHaveLength(1);
+    expect(document.querySelector('aside')).toBeNull();
+  });
+
+  /** I due box si trovano per nome, anche da chi scorre la pagina per titoli. */
+  it('i box «Comincia una nuova asta» e «Riprendi un asta» hanno un titolo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+
+    const resume = screen.getByRole('region', { name: "Riprendi un'asta" });
+    expect(await within(resume).findByText(CLOSED_AUCTION.label)).toBeInTheDocument();
+    const start = screen.getByRole('region', { name: 'Comincia una nuova asta' });
+    expect(within(start).getByRole('button', { name: 'Crea asta' })).toBeInTheDocument();
   });
 
   /**
-   * Profilo cambia il contenuto, non la pagina: l'indirizzo resta "/" e le aste
-   * tornano con Asta. Il profilo e' finto finche' non c'e' l'accesso, e lo dice.
+   * Il profilo mostrava valori finti in attesa dell'accesso: una sezione che non fa
+   * niente e' peggio di una assente. La home ha la barra in alto delle altre pagine,
+   * con «Le mie aste» come pagina corrente.
    */
-  it('Profilo mostra il profilo al posto delle aste, senza cambiare pagina', async () => {
+  it('usa la barra in alto con «Le mie aste» corrente, e niente Profilo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
     const router = createMemoryRouter([{ path: '/', element: <HomeRoute /> }]);
     setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
     render(<QueryProvider><RouterProvider router={router} /></QueryProvider>);
 
-    const nav = screen.getByRole('navigation', { name: 'Sezioni' });
-    expect(within(nav).getByRole('button', { name: 'Asta' })).toHaveAttribute('aria-current', 'true');
     expect(await screen.findByRole('button', { name: 'Crea asta' })).toBeInTheDocument();
-
-    await userEvent.click(within(nav).getByRole('button', { name: 'Profilo' }));
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Profilo' })).toBeInTheDocument();
-    expect(screen.getByText('Allenatore')).toBeInTheDocument();
-    expect(screen.getByText(/modificabile dopo l'introduzione dell'accesso/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Crea asta' })).not.toBeInTheDocument();
-    expect(within(nav).getByRole('button', { name: 'Profilo' })).toHaveAttribute('aria-current', 'true');
-    expect(router.state.location.pathname).toBe('/');
-    // Il profilo non e' modificabile: nessuna casella che finga di salvare.
-    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
-
-    await userEvent.click(within(nav).getByRole('button', { name: 'Asta' }));
-    expect(screen.getByRole('button', { name: 'Crea asta' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Le mie aste' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByText('Profilo')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Sezioni' })).not.toBeInTheDocument();
   });
-
-  it('si apre su Profilo quando ci si arriva dalla barra di un altra schermata', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([])));
-    setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
-    render(
-      <QueryProvider>
-        <MemoryRouter initialEntries={[{ pathname: '/', state: { section: 'profilo' } }]}>
-          <HomeRoute />
-        </MemoryRouter>
-      </QueryProvider>,
-    );
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Profilo' })).toBeInTheDocument();
-  });
-  it('il cestino apre la conferma, e confermare cancella e ricarica', async () => {
+  it('«Elimina» del menu apre la conferma, e confermare cancella e ricarica', async () => {
     const fetchMock = vi.fn((_input: RequestInfo, init?: RequestInit) => {
       if (init?.method === 'DELETE') return Promise.resolve(new Response(null, { status: 204 }));
       return Promise.resolve(json([CLOSED_AUCTION]));
@@ -426,7 +416,7 @@ describe('HomeRoute', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
 
-    await userEvent.click(await screen.findByRole('button', { name: `Elimina ${CLOSED_AUCTION.label}` }));
+    await chooseFromMenu(CLOSED_AUCTION.label, 'Elimina');
     await userEvent.click(screen.getByRole('button', { name: 'Elimina' }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -441,33 +431,24 @@ describe('HomeRoute', () => {
     const fetchMock = vi.fn().mockResolvedValue(json([CLOSED_AUCTION]));
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
-    await userEvent.click(await screen.findByRole('button', { name: `Elimina ${CLOSED_AUCTION.label}` }));
+    await chooseFromMenu(CLOSED_AUCTION.label, 'Elimina');
     await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false);
   });
 
-  it('la card dell asta aperta non ha il cestino', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
-    renderHome();
-    await screen.findByRole('button', { name: `Riprendi l'asta aperta, ${OPEN_AUCTION.label}` });
-    expect(screen.getAllByRole('button', { name: /^Elimina / })).toHaveLength(1);
-  });
-
   /**
-   * Con aste presenti ma nessuna aperta la colonna destra diceva «Nessuna asta
-   * ancora» accanto a un elenco pieno. Ora non c'e' proprio.
+   * Con aste presenti ma nessuna aperta la pagina diceva «Nessuna asta ancora»
+   * accanto a un elenco pieno.
    */
-  it('senza asta aperta non dice di non avere aste, e non mostra la colonna destra', async () => {
+  it('senza asta aperta non dice di non avere aste', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
     expect(screen.queryByText(/nessuna asta/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/asta aperta/i)).not.toBeInTheDocument();
-    expect(document.querySelector('aside')).toBeNull();
   });
 
-  it('un solo acquisto si dice al singolare', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([{ ...CLOSED_AUCTION, purchases: 1 }])));
+  it('senza il totale dei posti, un solo acquisto si dice al singolare', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([{ ...CLOSED_AUCTION, purchases: 1, totalSlots: 0 }])));
     renderHome();
     expect(await screen.findByText('1 acquisto')).toBeInTheDocument();
     expect(screen.queryByText(/1 acquisti/)).not.toBeInTheDocument();
@@ -483,7 +464,7 @@ describe('HomeRoute', () => {
     expect(phase.querySelector('[aria-hidden="true"]')).toHaveTextContent('A');
   });
 
-  /** Il giallo pieno resta a «Crea asta» e all'asta in corso, non a ogni riga. */
+  /** Il giallo pieno resta a «Crea asta» e all'asta aperta, non a ogni riga. */
   it('«Riprendi» e pieno solo sull asta in corso', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, CLOSED_AUCTION])));
     renderHome();
@@ -517,6 +498,14 @@ describe('HomeRoute', () => {
     expect(screen.getByText('Asta 1')).toBeInTheDocument();
   });
 
+  /** Il pannello ha la stessa misura con una o cinque aste: la pagina non cambia proporzioni. */
+  it("l'elenco e' alto cinque righe anche con una sola asta", async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    await screen.findByText(CLOSED_AUCTION.label);
+    expect(screen.getByTestId('elenco-aste').className).toContain('min-h-[32.5rem]');
+  });
+
   it('con cinque aste o meno non mostra i bottoni delle pagine', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
@@ -524,7 +513,7 @@ describe('HomeRoute', () => {
     expect(screen.queryByRole('navigation', { name: 'Pagine delle aste' })).not.toBeInTheDocument();
   });
 
-  it('sotto il contenuto mostra il marchio e la firma, in entrambe le sezioni', async () => {
+  it('sotto il contenuto mostra il marchio e la firma', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
@@ -532,22 +521,152 @@ describe('HomeRoute', () => {
     expect(footer).not.toBeNull();
     expect(within(footer as HTMLElement).getByTestId('wordmark')).toBeInTheDocument();
     expect(footer).toHaveTextContent('2026, Luigi di Nuzzo');
-
-    await userEvent.click(screen.getByRole('button', { name: 'Profilo' }));
-    expect(document.querySelector('footer')).toHaveTextContent('2026, Luigi di Nuzzo');
   });
 
 
-  /** L'invito a cominciare non deve sembrare una riga dell'elenco. */
-  it('la card «Crea asta» si distingue dalle righe delle aste', async () => {
+  /** L'invito a cominciare non deve sembrare il pannello dell'elenco. */
+  it('il box «Crea asta» si distingue da quello delle aste', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
     renderHome();
 
-    const row = (await screen.findByRole('button', { name: `Riprendi ${CLOSED_AUCTION.label}` }))
-      .closest('li');
-    const hero = screen.getByRole('button', { name: 'Crea asta' }).closest('div');
-    expect(hero?.className).toContain('bg-surface-raised');
-    expect(hero?.className).toContain('border-accent');
-    expect(row?.className).not.toContain('bg-surface-raised');
+    const list = await screen.findByRole('region', { name: "Riprendi un'asta" });
+    const hero = screen.getByRole('region', { name: 'Comincia una nuova asta' });
+    expect(hero.className).toContain('bg-surface-raised');
+    expect(hero.className).toContain('border-accent');
+    expect(list.className).not.toContain('bg-surface-raised');
+    expect(list.className).not.toContain('border-accent');
+  });
+
+  /**
+   * Lo stato e il verbo vengono dai numeri: nessun acquisto e' «Da iniziare» con
+   * «Inizia», tutti i posti pieni e' «Conclusa» con «Apri». «Riprendi» su un'asta
+   * finita prometteva qualcosa da riprendere che non c'era.
+   */
+  it('ogni riga dice lo stato e il bottone usa il verbo giusto', async () => {
+    const nuova = { ...CLOSED_AUCTION, id: 'n', label: 'Nuova', purchases: 0 };
+    const finita = { ...CLOSED_AUCTION, id: 'f', label: 'Finita', purchases: 200 };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, nuova, finita])));
+    renderHome();
+
+    const rowOf = async (label: string) => (await screen.findByText(label)).closest('li')!;
+    expect(within(await rowOf('Nuova')).getByText('Da iniziare')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Inizia Nuova' })).toBeInTheDocument();
+    expect(within(await rowOf('Finita')).getByText('Conclusa')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Apri Finita' })).toBeInTheDocument();
+    expect(within(await rowOf('Lega No Name')).getByText('In corso')).toBeInTheDocument();
+  });
+
+  it('la riga dice squadre e crediti rimasti di chi usa l app', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    renderHome();
+
+    expect(await screen.findByText('8 squadre')).toBeInTheDocument();
+    expect(screen.getByText('ti restano 320 crediti')).toBeInTheDocument();
+  });
+
+  /** Tutta la riga apre l'asta: il bottone la copre, e non ci sono due bersagli. */
+  it('la riga ha un solo bottone principale, esteso a tutta la riga', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+
+    const button = await screen.findByRole('button', { name: `Riprendi ${CLOSED_AUCTION.label}` });
+    expect(button.className).toContain('after:inset-0');
+    expect(button.closest('li')?.className).toContain('relative');
+    // Il cestino sempre visibile non c'e' piu': Elimina sta nel menu.
+    expect(screen.queryByRole('button', { name: `Elimina ${CLOSED_AUCTION.label}` })).not.toBeInTheDocument();
+  });
+
+  it('rinominare manda il nuovo nome e chiude la finestra', async () => {
+    const fetchMock = vi.fn((_input: RequestInfo, init?: RequestInit) => {
+      if (init?.method === 'PATCH') return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.resolve(json([CLOSED_AUCTION]));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderHome();
+
+    await chooseFromMenu(CLOSED_AUCTION.label, 'Rinomina');
+    const field = screen.getByLabelText("Nome dell'asta");
+    expect(field).toHaveValue(CLOSED_AUCTION.label);
+    await userEvent.clear(field);
+    expect(screen.getByRole('button', { name: 'Salva nome' })).toBeDisabled();
+    await userEvent.type(field, 'Lega Rinata');
+    await userEvent.click(screen.getByRole('button', { name: 'Salva nome' }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/leagues/default/auctions/${CLOSED_AUCTION.id}`,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: 'Lega Rinata' }) }),
+    );
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('duplicare crea la copia e lo dice', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/duplicate')) return Promise.resolve(json({ id: 'copia' }, 201));
+      return Promise.resolve(json([CLOSED_AUCTION]));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderHome();
+
+    await chooseFromMenu(CLOSED_AUCTION.label, 'Duplica');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/leagues/default/auctions/${CLOSED_AUCTION.id}/duplicate`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(`Copia di «${CLOSED_AUCTION.label}» creata.`);
+  });
+
+  /** Il menu si usa da tastiera: frecce fra le voci, Esc chiude e torna al bottone. */
+  it('il menu si apre sulla prima voce, si percorre con le frecce e si chiude con Esc', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+
+    const trigger = await screen.findByRole('button', { name: `Altre azioni per ${CLOSED_AUCTION.label}` });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('menuitem', { name: 'Rinomina' })).toHaveFocus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(screen.getByRole('menuitem', { name: 'Elimina' })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  /** Con piu' di una pagina compare la ricerca, che filtra per nome e dice quando non trova. */
+  it('oltre cinque aste si cerca per nome', async () => {
+    const seven = Array.from({ length: 7 }, (_, i) => ({
+      ...CLOSED_AUCTION, id: `a${i}`, label: i === 6 ? 'Fantalega Ultima' : `Asta ${i + 1}`,
+    }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(seven)));
+    renderHome();
+
+    const search = await screen.findByRole('searchbox', { name: "Cerca un'asta per nome" });
+    await userEvent.type(search, 'ultima');
+    expect(screen.getByText('Fantalega Ultima')).toBeInTheDocument();
+    expect(screen.queryByText('Asta 1')).not.toBeInTheDocument();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'nessuna così');
+    expect(screen.getByText('Nessuna asta si chiama «nessuna così».')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mostra tutte le aste' }));
+    expect(screen.getByText('Asta 1')).toBeInTheDocument();
+  });
+
+  it('con cinque aste o meno non mostra la ricerca', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    renderHome();
+    await screen.findByText(CLOSED_AUCTION.label);
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+  });
+
+  /** Mentre carica, righe segnaposto nella stessa zona fissa: niente salta all'arrivo. */
+  it('mentre carica mostra righe segnaposto nascoste a chi ascolta', () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})));
+    renderHome();
+    const area = screen.getByTestId('elenco-aste');
+    const placeholder = area.querySelector('ul[aria-hidden="true"]');
+    expect(placeholder?.querySelectorAll('li')).toHaveLength(5);
   });
 });

@@ -27,6 +27,16 @@ export const PALETTE = {
   'role-d':           '#7BDB9E',
   'role-c':           '#7FC4FF',
   'role-a':           '#FF8FA3',
+  // Lo stemma di ogni asta nella home: un colore per riconoscerla a colpo d'occhio,
+  // scelto dall'identificativo. Tinte lontane dai quattro ruoli e dall'accento
+  // (niente arancio, verde prato, azzurro, rosa, giallo), perche' uno stemma «P»
+  // non deve sembrare il badge dei portieri. Lettera scura sopra (on-accent).
+  'crest-1':          '#7FD1C7',
+  'crest-2':          '#B9A8F0',
+  'crest-3':          '#B5DB6A',
+  'crest-4':          '#E3C9A0',
+  'crest-5':          '#D9A6D9',
+  'crest-6':          '#A7B7D6',
 };
 
 // Divisori dentro i pannelli (line, line-strong) e il gesso delle linee del
@@ -35,7 +45,12 @@ export const PALETTE = {
 export const LINES = {
   line:        'rgba(255,255,255,0.15)',
   'line-strong': 'rgba(255,255,255,0.25)',
-  chalk:       'rgba(255,255,255,0.8)',
+  // Il gesso tenue, uguale su ogni schermata: i pannelli coprono quasi tutto il
+  // campo, e linee piene che spuntano negli spazi stretti fra un pannello e l'altro
+  // tiravano l'occhio. Il campo resta riconoscibile, ma sta dietro. Uno solo: con
+  // due tinte (piena all'asta, tenue sulla home) il campo cambiava da una pagina
+  // all'altra.
+  chalk:       'rgba(255,255,255,0.4)',
 };
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

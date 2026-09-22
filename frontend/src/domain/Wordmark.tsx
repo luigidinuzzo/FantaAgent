@@ -8,8 +8,8 @@
  * ne' un'immagine senza nome. Quando arrivera' il logo vero, cambia solo questo
  * file.
  */
-const TEXT_SIZE = { md: 'text-2xl', lg: 'text-[1.625rem]', xl: 'text-3xl min-[400px]:text-4xl sm:text-7xl' } as const;
-const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-16 sm:w-16' } as const;
+const TEXT_SIZE = { md: 'text-2xl', lg: 'text-[1.625rem]', xl: 'text-3xl min-[400px]:text-4xl sm:text-5xl' } as const;
+const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-12 sm:w-12' } as const;
 
 /**
  * Il bordo nero: il contorno delle lettere disegnato DIETRO il riempimento
@@ -18,7 +18,7 @@ const BALL_SIZE = { md: 'h-7 w-7', lg: 'h-8 w-8', xl: 'h-10 w-10 sm:h-16 sm:w-16
  * dalle linee del campo.
  */
 const OUTLINE =
-  '[-webkit-text-stroke:2px_#000] sm:[-webkit-text-stroke:4px_#000] [paint-order:stroke_fill]'
+  '[-webkit-text-stroke:2px_#000] sm:[-webkit-text-stroke:3px_#000] [paint-order:stroke_fill]'
   + ' [filter:drop-shadow(0_3px_5px_rgb(0_0_0/0.55))]';
 
 export function Wordmark({ size, outlined = false }: {

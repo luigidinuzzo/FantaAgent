@@ -129,7 +129,7 @@ export function ScoringFieldset({
                       : undefined
                 }
                 onChange={(next) => onChange({ ...value, [key]: next })}
-                className="tnum mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="tnum mt-1 block min-h-12 w-full max-w-40 rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               />
             </label>
             <FieldErrors id={`${baseId}-${key}`} errors={errorsFor(errors, key)} />
@@ -165,7 +165,7 @@ export function ScoringFieldset({
                       goalBonus: { ...value.goalBonus, [role]: next },
                     })
                   }
-                  className="tnum mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="tnum mt-1 block min-h-12 w-full max-w-40 rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 />
               </label>
               <FieldErrors id={`${baseId}-${key}`} errors={errorsFor(errors, key)} />
@@ -213,7 +213,7 @@ export function ScoringFieldset({
                           : undefined
                     }
                     onChange={(defendersCounted) => onChange({ ...value, defendersCounted })}
-                    className="tnum mt-1 block min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="tnum mt-1 block min-h-12 w-full max-w-40 rounded-full border border-line-strong bg-transparent px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                 </label>
                 <FieldErrors

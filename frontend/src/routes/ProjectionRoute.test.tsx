@@ -48,10 +48,21 @@ function stubFetch() {
     const href = typeof input === 'string' ? input : input.toString();
     if (href.includes('/board/bidder/d1')) return Promise.resolve(jsonResponse(PLAYER));
     if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
     return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
   });
   vi.stubGlobal('fetch', fetchMock);
 }
+
+/** I posti per ruolo, dallo stato: servono a disegnare anche quelli vuoti. */
+const STATE = {
+  auctionId: 'a1', auctionName: 'Prova', currentPhase: 'D', phases: ['P', 'D', 'C', 'A'],
+  soldInPhase: 1, myParticipantId: 'anna', canUndo: true,
+  participants: [{
+    id: 'anna', name: 'Anna', initial: 'A', me: true, budgetRemaining: 300, slotsRemaining: 23,
+    filledByRole: { P: 1, D: 1, C: 0, A: 0 }, slotsByRole: { P: 3, D: 8, C: 8, A: 6 },
+  }],
+};
 
 function stubFetchBoardError() {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -160,7 +171,7 @@ describe('ProjectionRoute', () => {
     publishBid({ kind: 'bidding', playerId: 'd1', price: 41, remainingMs: 3000 });
     // Il prezzo arriva dal canale ed e' visibile subito; il nome arriva dal server.
     expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
-    expect(screen.queryByText(/non è collegata a quella dell'asta/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/il giocatore all'asta non compare su questo schermo/i)).not.toBeInTheDocument();
   });
 
   it('dice di non ricevere invece di restare ferma fingendo, quando il browser non ha il canale', () => {
@@ -168,7 +179,7 @@ describe('ProjectionRoute', () => {
     stubFetch();
     vi.stubGlobal('BroadcastChannel', undefined);
     renderProjection();
-    expect(screen.getByText(/non è collegata a quella dell'asta/i)).toBeInTheDocument();
+    expect(screen.getByText(/il giocatore all'asta non compare su questo schermo/i)).toBeInTheDocument();
   });
 
   // Bug (revisione): la versione precedente controllava solo se il BROWSER
@@ -182,7 +193,7 @@ describe('ProjectionRoute', () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();
     renderProjection();
-    expect(screen.getByText(/non è collegata a quella dell'asta/i)).toBeInTheDocument();
+    expect(screen.getByText(/il giocatore all'asta non compare su questo schermo/i)).toBeInTheDocument();
   });
 
   it('carica correttamente ma non trova nessun tabellone', async () => {
@@ -273,7 +284,7 @@ describe('ProjectionRoute', () => {
 
     expect(await screen.findByTestId('public-price')).toHaveTextContent('41');
     expect(screen.getByTestId('public-clock')).toHaveTextContent('0');
-    expect(screen.queryByText(/non è collegata a quella dell'asta/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/il giocatore all'asta non compare su questo schermo/i)).not.toBeInTheDocument();
   });
 
   // L'altra meta' della stessa correzione: idle deve restare univoco
@@ -331,10 +342,27 @@ describe('ProjectionRoute', () => {
       });
 
       // Il canale non ha mai sentito nulla: e' anche lui stantio.
-      expect(screen.getByText(/non è collegata a quella dell'asta/i)).toBeInTheDocument();
+      expect(screen.getByText(/il giocatore all'asta non compare su questo schermo/i)).toBeInTheDocument();
       expect(screen.getByTestId('connection-status')).toHaveTextContent(/connessione persa/i);
       // Nessuno dei due avvisi afferma che l'altra fonte va bene.
       expect(screen.queryByText(/tabelloni.*aggiornati/i)).not.toBeInTheDocument();
     });
+  });
+
+  /**
+   * Un proiettore non si scorre: tutte le squadre stanno in una fila sola, e ogni
+   * ruolo mostra anche i posti ancora vuoti, cosi' si vede quanto manca.
+   */
+  it('mette tutte le squadre in una fila e mostra i posti presi sul totale', async () => {
+    stubFetch();
+    renderProjection();
+
+    const anna = await screen.findByRole('region', { name: 'Anna' });
+    const fila = anna.parentElement as HTMLElement;
+    expect(fila.style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))');
+    expect(await screen.findByText('1 di 3')).toBeInTheDocument();
+    expect(screen.getByText('1 di 8')).toBeInTheDocument();
+    // 3 + 8 + 8 + 6 posti, due presi: ventitre righe vuote.
+    expect(anna.querySelectorAll('[aria-hidden="true"].border-dashed')).toHaveLength(23);
   });
 });

@@ -2,7 +2,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { PitchLines } from './PitchLines';
+import { PITCH_INSET, PitchLines } from './PitchLines';
 
 // Letto da disco e non con ?raw: in vitest l'import di un .css arriva vuoto.
 const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8');
@@ -34,27 +34,38 @@ describe('PitchLines', () => {
     );
   });
 
-  /** Il campo resta intero a ogni dimensione: con "slice" le linee venivano tagliate. */
-  it('le linee si scalano per restare intere, non tagliate', () => {
+  /**
+   * Il campo riempie lo spazio: il disegno ha le misure dello spazio stesso, non una
+   * forma fissa scalata che lascerebbe fasce d'erba vuote ai lati.
+   */
+  it('il campo ha le misure dello spazio in cui sta', () => {
     const { container } = render(<PitchLines />);
-    container.querySelectorAll('svg').forEach((svg) => {
-      expect(svg).toHaveAttribute('preserveAspectRatio', 'xMidYMid meet');
-    });
+    const svg = container.querySelector('svg');
+    expect(svg).toHaveAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+    const outer = svg?.querySelector('rect');
+    expect(Number(outer?.getAttribute('width'))).toBe(window.innerWidth - 2 * PITCH_INSET);
+    expect(Number(outer?.getAttribute('height'))).toBe(window.innerHeight - 2 * PITCH_INSET);
   });
 
-  /**
-   * Dritto sugli schermi orizzontali, ruotato su quelli verticali: uno solo dei due
-   * si vede per volta, e quello verticale e' davvero piu' alto che largo.
-   */
-  it('sugli schermi verticali mostra il campo ruotato, su quelli orizzontali quello dritto', () => {
+  /** Dritto sugli schermi orizzontali, con le porte ai lati; girato su quelli verticali. */
+  it('le porte stanno sui lati corti: ai lati se lo schermo e largo, in alto e in basso se e alto', () => {
     const { container } = render(<PitchLines />);
-    const landscape = container.querySelector('svg[data-orientation="landscape"]');
-    const portrait = container.querySelector('svg[data-orientation="portrait"]');
-    expect(landscape?.getAttribute('class')).toContain('portrait:hidden');
-    expect(portrait?.getAttribute('class')).toContain('landscape:hidden');
-    expect(landscape).toHaveAttribute('viewBox', '0 0 1200 800');
-    expect(portrait).toHaveAttribute('viewBox', '0 0 800 1200');
-    expect(portrait?.querySelector('g')).toHaveAttribute('transform', 'translate(800 0) rotate(90)');
+    const svg = container.querySelector('svg');
+    const wide = window.innerWidth >= window.innerHeight;
+    expect(svg).toHaveAttribute('data-orientation', wide ? 'landscape' : 'portrait');
+    const line = svg?.querySelector('line');
+    // La linea di meta' campo va di traverso alle porte.
+    if (wide) expect(line?.getAttribute('x1')).toBe(line?.getAttribute('x2'));
+    else expect(line?.getAttribute('y1')).toBe(line?.getAttribute('y2'));
+  });
+
+  /** Il cerchio di centrocampo resta un cerchio, non un ovale, qualunque sia la finestra. */
+  it('il cerchio di centrocampo e un cerchio, al centro del campo', () => {
+    const { container } = render(<PitchLines />);
+    const circle = container.querySelector('g[fill="none"] circle');
+    expect(circle?.tagName.toLowerCase()).toBe('circle');
+    expect(Number(circle?.getAttribute('cx'))).toBeCloseTo(window.innerWidth / 2);
+    expect(Number(circle?.getAttribute('cy'))).toBeCloseTo(window.innerHeight / 2);
   });
 
   it('chi lo monta sceglie da dove comincia', () => {
@@ -72,5 +83,28 @@ describe('PitchLines', () => {
       const value = el.getAttribute('stroke') ?? el.getAttribute('fill');
       expect(value).toMatch(/^var\(--/);
     });
+  });
+
+  /**
+   * Cambiando pagina il campo rinasce: deve ripartire dalla misura che aveva, non
+   * dalla finestra intera, o per un fotogramma si vede un campo diverso. Qui la
+   * pagina precedente aveva misurato uno spazio piu' basso della finestra.
+   */
+  it('un campo nuovo riparte dalla misura dell ultimo, non dalla finestra', () => {
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      return { width: 1000, height: 600, top: 0, left: 0, right: 1000, bottom: 600, x: 0, y: 0 } as DOMRect;
+    };
+    try {
+      const first = render(<PitchLines />);
+      expect(first.container.querySelector('svg')).toHaveAttribute('viewBox', '0 0 1000 600');
+      first.unmount();
+      HTMLElement.prototype.getBoundingClientRect = original;
+      // Il secondo non puo' misurare (jsdom da' zero): resta sulla misura condivisa.
+      const second = render(<PitchLines />);
+      expect(second.container.querySelector('svg')).toHaveAttribute('viewBox', '0 0 1000 600');
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
   });
 });

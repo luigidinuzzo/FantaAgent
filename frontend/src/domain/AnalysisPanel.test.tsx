@@ -26,18 +26,21 @@ const VALUATION: ValuationResponse = {
 };
 
 describe('AnalysisPanel', () => {
-  it('mostra il tetto duro, che nessuna schermata ha mai mostrato', () => {
+  it('mostra il limite «mai oltre», distinto dal tuo tetto', () => {
     render(<AnalysisPanel valuation={{ ...VALUATION, hardCap: 90 }} />);
     expect(screen.getByTestId('hard-cap')).toHaveTextContent('90');
+    expect(screen.getByText('mai oltre')).toBeInTheDocument();
   });
 
   /**
-   * Le stelle sono un'immagine. La confidenza deve arrivare anche a chi non le vede,
-   * e "3" letto da un sintetizzatore non e' una confidenza: serve la frase.
+   * Le stelle sono un'immagine. Cosa misurano deve arrivare anche a chi non le vede,
+   * e "3" letto da un sintetizzatore non e' un'affidabilita': serve la frase. Chi
+   * guarda legge la stessa parola sotto le stelle.
    */
-  it('dice la confidenza a parole, non solo in stelle', () => {
+  it('dice l affidabilita della stima a parole, non solo in stelle', () => {
     render(<AnalysisPanel valuation={{ ...VALUATION, confidenceStars: 3 }} />);
-    expect(screen.getByRole('img', { name: /confidenza 3 su 5/i })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /affidabilità della stima: 3 su 5/i })).toBeInTheDocument();
+    expect(screen.getByText('affidabilità della stima')).toBeVisible();
   });
 
   it('spiega i driver, saltando quelli senza spiegazione', () => {

@@ -20,12 +20,12 @@ function Harness({ disabled = false, onValue }: { disabled?: boolean; onValue?: 
 }
 
 describe('LeagueRulesFieldset', () => {
-  it('crediti a passi di 10 e slot a passi di 1', async () => {
+  it('crediti a passi di 10 e posti a passi di 1', async () => {
     let last: RulesSection | null = null;
     render(<Harness onValue={(r) => { last = r; }} />);
     await userEvent.click(screen.getByRole('button', { name: 'Dieci crediti in più' }));
     expect(screen.getByLabelText('Crediti per squadra')).toHaveValue(510);
-    await userEvent.click(screen.getByRole('button', { name: 'Uno slot in meno: difensori' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Un posto in meno: difensori' }));
     expect(last!.slots.D).toBe(7);
   });
 
@@ -41,12 +41,12 @@ describe('LeagueRulesFieldset', () => {
     const budget = screen.getByLabelText('Crediti per squadra');
     expect(budget).toBeDisabled();
     expect(budget).toHaveAccessibleDescription(
-      'Asta in corso: crediti, slot e numero di squadre sono bloccati, perché cambiarli ricalcolerebbe budget e rose già pagate.',
+      'Asta in corso: crediti, posti e numero di squadre sono bloccati, perché cambiarli ricalcolerebbe budget e rose già pagate.',
     );
     expect(screen.getByRole('button', { name: 'Dieci crediti in più' })).toBeDisabled();
   });
 
-  it('un errore di slot sta accanto al suo campo', () => {
+  it('un errore sui posti sta accanto al suo campo', () => {
     render(
       <LeagueRulesFieldset
         value={RULES}
@@ -55,9 +55,9 @@ describe('LeagueRulesFieldset', () => {
         disabled={false}
       />,
     );
-    // Per ruolo, non per nome visibile: chi ascolta sente «Slot portieri», non la
+    // Per ruolo, non per nome visibile: chi ascolta sente «Posti portieri», non la
     // lettera colorata con il singolare di RoleBadge.
-    expect(screen.getByRole('spinbutton', { name: 'Slot portieri' })).toHaveAccessibleDescription(/fra 1 e 30/);
+    expect(screen.getByRole('spinbutton', { name: 'Posti portieri' })).toHaveAccessibleDescription(/fra 1 e 30/);
   });
 
   /** Le tre sezioni del modulo si somigliano: cornice e titolo in evidenza. */

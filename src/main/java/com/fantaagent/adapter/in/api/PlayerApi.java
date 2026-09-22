@@ -89,6 +89,26 @@ public class PlayerApi {
         return Math.max(1, Math.min(limit, PlayerSearchService.PHASE_PAGE_SIZE));
     }
 
+    /**
+     * Le occasioni della fase corrente: i giocatori liberi del ruolo in corso con il
+     * margine piu' alto, dal migliore. Stesso calcolo della vecchia pagina dei
+     * bersagli, qui per il pannello dei consigli a battitore vuoto. Il limite ha un
+     * tetto per la stessa ragione della tabella di fase: ogni riga e' una
+     * valutazione completa.
+     */
+    @GetMapping("/targets")
+    public List<PlayerDtos.TargetView> targets(@PathVariable String leagueId,
+                                               @PathVariable String auctionId,
+                                               @RequestParam(defaultValue = "5") int limit) {
+        leagues.check(leagueId);
+        auctions.check(auctionId);
+        int capped = Math.max(1, Math.min(limit, MAX_TARGETS));
+        return search.targets(capped).stream().map(PlayerDtos.TargetView::from).toList();
+    }
+
+    /** Quante occasioni al massimo per richiesta. */
+    static final int MAX_TARGETS = 10;
+
     @GetMapping("/{playerId}/valuation")
     public PlayerDtos.ValuationResponse valuation(@PathVariable String leagueId,
                                                   @PathVariable String auctionId,

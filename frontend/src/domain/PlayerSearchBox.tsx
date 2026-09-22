@@ -42,12 +42,36 @@ function SearchIcon() {
  * {@code onSelect}, la STESSA selezione che produce una riga della tabella di
  * fase.
  */
+/** Un giocatore gia' comprato, come lo legge il tabellone: chi l'ha preso e a quanto. */
+export interface SoldPlayer {
+  key: string;
+  name: string;
+  role: Role;
+  buyer: string;
+  price: number;
+}
+
+/** Quanti comprati mostra al massimo, sotto i risultati. */
+const SOLD_SHOWN = 4;
+
+/** Minuscole e senza accenti: «Lukaku» si trova anche scrivendo «lukàku». */
+function fold(text: string): string {
+  return text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('it');
+}
+
 export function PlayerSearchBox({
   onSelect,
   onActiveChange,
+  sold = [],
 }: {
   onSelect: (playerId: string) => void;
   onActiveChange?: (active: boolean) => void;
+  /**
+   * I giocatori gia' comprati: la ricerca del server li esclude, giustamente, ma
+   * senza dirlo cercare «Lautaro» a meta' asta rispondeva «Nessun giocatore
+   * trovato», come se non esistesse. Qui si dice di chi e' e a quanto.
+   */
+  sold?: SoldPlayer[];
 }) {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState<Role | null>(null);
@@ -58,6 +82,13 @@ export function PlayerSearchBox({
 
   const active = query.trim() !== '' || role !== null;
   const noResults = active && !isFetching && data !== undefined && data.length === 0;
+  // Solo col testo: filtrare i comprati per il solo ruolo non risponde a nessuna
+  // domanda. Due lettere almeno, come la ricerca vera.
+  const needle = fold(query.trim());
+  const soldMatches = needle.length >= 2
+    ? sold.filter((p) => fold(p.name).includes(needle) && (role === null || p.role === role))
+      .slice(0, SOLD_SHOWN)
+    : [];
 
   useEffect(() => {
     onActiveChange?.(active);
@@ -178,9 +209,9 @@ export function PlayerSearchBox({
             </div>
           </fieldset>
 
-          {noResults ? (
+          {noResults && soldMatches.length === 0 ? (
             <EmptyState>Nessun giocatore trovato.</EmptyState>
-          ) : (
+          ) : noResults ? null : (
             // L'elenco prende tutta l'altezza che il pannello ha, e si scorre.
             //
             // Il tetto di max-h-60 serviva quando il pannello cresceva sulla
@@ -197,6 +228,19 @@ export function PlayerSearchBox({
             // La mezza riga tagliata dal bordo resta deliberata: dice che sotto
             // ce n'e' dell'altro, come non farebbe un taglio netto a filo di
             // riga.
+            <>
+            {/* Le intestazioni sopra le colonne, con le stesse larghezze delle righe:
+                senza, squadra e quotazione erano due colonne di cui si doveva
+                indovinare il senso. Nascoste a chi ascolta: ogni riga e' un
+                bottone che dice gia' nome, squadra e prezzo. */}
+            {data && data.length > 0 ? (
+              <div aria-hidden="true" className="-mb-3 flex shrink-0 items-center gap-3 border-b border-line-strong px-2 pb-2 text-xs font-bold text-muted-foreground">
+                <span className="w-6 shrink-0" />
+                <span className="min-w-0 max-w-64 flex-1">Giocatore</span>
+                <span className="w-20 shrink-0">Squadra</span>
+                <span className="w-20 shrink-0 text-right">Quotazione</span>
+              </div>
+            ) : null}
             <ul
               aria-label="Risultati della ricerca"
               className="flex max-h-60 min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain lg:max-h-none"
@@ -219,10 +263,10 @@ export function PlayerSearchBox({
                         bordo destro a un palmo di distanza dal nome a cui si
                         riferiscono. Larghezze fisse (che cedono solo in stretto)
                         incolonnano i prezzi e tengono la riga insieme. */}
-                    <RoleBadge role={player.role} />
+                    <span className="flex w-6 shrink-0 justify-center"><RoleBadge role={player.role} /></span>
                     <span className="min-w-0 max-w-64 flex-1 truncate">{player.name}</span>
                     <span className="w-20 shrink-0 truncate text-sm text-muted-foreground">{player.team}</span>
-                    <span className="tnum w-14 shrink-0 text-right text-sm text-muted-foreground">
+                    <span className="tnum w-20 shrink-0 text-right text-sm text-muted-foreground">
                       {/* Lo spazio sta DOPO il numero, nello stesso nodo di testo: un
                           nodo separato che iniziasse per spazio (o uno spazio soltanto,
                           come suo unico contenuto) verrebbe scartato dal calcolo del
@@ -236,7 +280,28 @@ export function PlayerSearchBox({
                 </li>
               ))}
             </ul>
+            </>
           )}
+
+          {soldMatches.length > 0 ? (
+            <div className="shrink-0 rounded-xl border border-line p-3">
+              <p className="text-sm font-bold text-muted-foreground">
+                {noResults ? 'Già comprato, non è più all\'asta' : 'Già comprati'}
+              </p>
+              <ul aria-label="Giocatori già comprati" className="mt-1">
+                {soldMatches.map((p) => (
+                  <li key={p.key} className="flex min-h-10 items-center gap-3 text-sm">
+                    <span aria-hidden="true"><RoleBadge role={p.role} /></span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-bold">{p.name}</span>
+                      {` è di ${p.buyer}`}
+                    </span>
+                    <span className="tnum shrink-0 text-muted-foreground">{`${p.price} crediti`}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

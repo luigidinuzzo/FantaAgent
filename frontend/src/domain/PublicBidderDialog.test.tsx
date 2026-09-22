@@ -40,4 +40,13 @@ describe('PublicBidderDialog', () => {
     render(<PublicBidderDialog bid={BID} player={undefined} />);
     expect(screen.queryByText('D')).not.toBeInTheDocument();
   });
+
+  /** Chi e' in testa, quando l'operatore l'ha segnato: la sala lo vuole vedere. */
+  it('mostra chi e in testa se c e, e non inventa nessuno se manca', () => {
+    const { unmount } = render(<PublicBidderDialog bid={{ ...BID, leaderName: 'Diego' }} player={PLAYER} />);
+    expect(screen.getByTestId('public-leader')).toHaveTextContent('Diego');
+    unmount();
+    render(<PublicBidderDialog bid={BID} player={PLAYER} />);
+    expect(screen.queryByTestId('public-leader')).not.toBeInTheDocument();
+  });
 });

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import type { ParticipantView, ValuationResponse } from '../api/types';
 import { publishBid } from './bidChannel';
+import { maxAffordable, roleFull } from './bidRules';
 import { BID_CONTROL_H, BID_RADIUS } from './controls';
 import { signed } from './PlayerDecisionCard';
 import { RoleBadge } from './RoleBadge';
+import { ROLE_NAME_PLURAL } from './roles';
 import { useBidCountdown } from './useBidCountdown';
 
 /**
@@ -186,18 +188,18 @@ export function BidderDialog({
   // un intero da 1 in su non fa nulla.
   const [customBid, setCustomBid] = useState('');
   const [expired, setExpired] = useState(false);
-  const [participantId, setParticipantId] = useState(
-    participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '',
-  );
-  // Chi ha rilanciato per ultimo da QUESTA postazione. Finche' l'asta e' una
-  // sola persona al portatile, ogni rilancio e' suo: cliccare «Rilancia» e non
-  // vedere comparire la propria squadra in testa direbbe il falso al contrario
-  // — che nessuno sta vincendo un'offerta che si e' appena fatta. La prop
-  // `leader` vince su questo stato: quando le offerte arriveranno da piu'
-  // postazioni sara' il tabellone a dire chi e' in testa, non questa card.
-  const [localLeader, setLocalLeader] = useState<string | null>(null);
-  const myTeam = participants.find((p) => p.me) ?? participants[0] ?? null;
-  const shownLeader = leader?.name ?? localLeader;
+  // Chi e' in testa: la squadra che ha fatto l'ultima offerta, segnata
+  // dall'operatore toccandola. Prima ogni rilancio premuto al portatile metteva
+  // in testa la propria squadra — ma chi batte al portatile di solito chiama i
+  // prezzi per tutto il tavolo, e allo scadere si proponeva di aggiudicare a se'
+  // un giocatore vinto da un altro. Ora parte da nessuno, e lo dice.
+  const [leaderId, setLeaderId] = useState<string | null>(null);
+  // L'acquirente allo scadere: chi e' in testa, se c'e'; altrimenti va scelto.
+  // null finche' l'operatore non lo tocca: segue il leader.
+  const [buyerChoice, setBuyerChoice] = useState<string | null>(null);
+  const localLeader = participants.find((p) => p.id === leaderId) ?? null;
+  const shownLeader = leader?.name ?? localLeader?.name ?? null;
+  const participantId = buyerChoice ?? leaderId ?? '';
 
   const hintId = useId();
   const customBidId = useId();
@@ -208,14 +210,33 @@ export function BidderDialog({
     onExpire: () => setExpired(true),
   });
 
-  // Un rilancio solo, da qualunque gesto arrivi: barra spaziatrice, i tre
-  // passi, l'offerta diretta. Tre copie di "alza, fai ripartire il conto,
-  // passa in testa" divergono alla prima modifica fatta su una sola delle tre.
+  // Un rilancio solo, da qualunque gesto arrivi: barra spaziatrice, i passi,
+  // l'offerta diretta, le squadre. Tante copie di "alza e fai ripartire il conto"
+  // divergono alla prima modifica fatta su una sola.
   const raiseTo = useCallback((next: (current: number) => number) => {
     setPrice(next);
-    setLocalLeader(myTeam?.name ?? null);
     countdown.start();
-  }, [countdown, myTeam?.name]);
+  }, [countdown]);
+
+  // Una squadra fa un'offerta. Se nessuno e' ancora in testa prende il prezzo
+  // d'apertura com'e' (la prima voce al tavolo e' «uno!»); altrimenti rilancia di
+  // uno. In entrambi i casi va in testa e il conto riparte.
+  const teamBids = useCallback((id: string) => {
+    if (leaderId === null) {
+      countdown.start();
+    } else {
+      setPrice((p) => p + PRIMARY_RAISE);
+      countdown.start();
+    }
+    setLeaderId(id);
+    setBuyerChoice(null);
+  }, [countdown, leaderId]);
+
+  // Il prezzo che una squadra dovrebbe offrire toccandola adesso.
+  const nextPriceFor = leaderId === null ? price : price + PRIMARY_RAISE;
+  function canBid(p: ParticipantView): boolean {
+    return !roleFull(p, valuation.role) && maxAffordable(p) >= nextPriceFor;
+  }
 
   // Stessa disciplina di BidPanel: un bottone disabilitato e' annunciato
   // come "non disponibile" e basta, chi ascolta non deduce il perche' dal
@@ -228,6 +249,11 @@ export function BidderDialog({
       : null;
 
   const overCeiling = valuation.maxBid > 0 && price > valuation.maxBid;
+  // Quanto manca al tuo tetto, o di quanto lo si e' passato: detto accanto
+  // all'offerta, dove si guarda mentre sale, e non in piccolo in fondo al riquadro.
+  const toCeiling = valuation.maxBid - price;
+  const buyer = participants.find((p) => p.id === participantId) ?? null;
+  const buyerCannotPay = buyer !== null && (maxAffordable(buyer) < price || roleFull(buyer, valuation.role));
 
   // Il conto parte all'apertura, non al primo rilancio. Prima il battitore si
   // apriva col numero pieno e fermo: sembrava avviato e non lo era, e il tempo
@@ -273,6 +299,22 @@ export function BidderDialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [expired, raiseTo]);
 
+  // I tasti da 1 a 9: la squadra in quella posizione fa un'offerta, senza
+  // staccare gli occhi dal tavolo. Solo le squadre che possono permettersela.
+  useEffect(() => {
+    if (expired) return;
+    function onKey(e: KeyboardEvent) {
+      if (!/^[1-9]$/.test(e.key) || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (isTypingTarget(e.target) && (e.target as HTMLElement).tagName !== 'BUTTON') return;
+      const team = participants[Number(e.key) - 1];
+      if (!team || !canBid(team)) return;
+      e.preventDefault();
+      teamBids(team.id);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   // Quello che l'altra finestra puo' mostrare e' esattamente quello che le mandiamo:
   // il tetto non e' fra questi campi e il tipo del messaggio non lo prevede.
   //
@@ -293,8 +335,9 @@ export function BidderDialog({
       playerId: valuation.playerId,
       price,
       remainingMs: countdown.remaining,
+      ...(shownLeader ? { leaderName: shownLeader } : {}),
     });
-  }, [valuation.playerId, price, countdown.remaining]);
+  }, [valuation.playerId, price, countdown.remaining, shownLeader]);
 
   // Dopo la scadenza il countdown non ripubblica piu' (countdown.remaining
   // resta fermo a 0, e l'effetto sopra non ha altro da cui ripartire), ma
@@ -318,10 +361,11 @@ export function BidderDialog({
         playerId: valuation.playerId,
         price,
         remainingMs: 0,
+        ...(shownLeader ? { leaderName: shownLeader } : {}),
       });
     }, POST_EXPIRY_REPUBLISH_MS);
     return () => clearInterval(id);
-  }, [expired, valuation.playerId, price]);
+  }, [expired, valuation.playerId, price, shownLeader]);
 
   useEffect(() => () => publishBid({ kind: 'idle' }), []);
 
@@ -338,237 +382,226 @@ export function BidderDialog({
 
   return (
     // Senza cornice propria: questa card sta dentro il riquadro «Battitore»,
-    // che porta gia' bordo, fondo e titolo. Prima ne disegnava una seconda
-    // dentro la prima — e ci rendeva dentro nome e tetto una seconda volta,
-    // perche' era montata DENTRO la card di decisione. Ora la sostituisce:
-    // mentre il conto alla rovescia corre, in pagina c'e' una card sola.
+    // che porta gia' bordo, fondo e titolo. Mentre il conto alla rovescia corre,
+    // in pagina c'e' una card sola.
     <section
       data-testid="bidder-dialog"
       data-over-ceiling={overCeiling}
       aria-labelledby="bidder-name"
-      className="flex h-full flex-col"
+      className="flex h-full flex-col gap-3"
     >
       <header className="flex items-baseline gap-3">
         <h2 id="bidder-name" className="w-exp text-xl font-extrabold">{valuation.name}</h2>
-        {/* La pillola al posto della parola: e' lo stesso segno che marca il
-            ruolo nella tabella di fase e nei risultati della ricerca, quindi il
-            giocatore sul banco si riconosce con lo stesso colpo d'occhio. Il
-            ruolo per esteso non se ne va — RoleBadge lo porta in sr-only, che
-            e' come lo riceve chi ascolta. */}
-        {/* self-center: l'intestazione allinea per la linea di base (nome e
-            squadra devono poggiare sulla stessa riga), ma una pillola tonda su
-            quella linea si appoggia con la lettera che ha dentro e il cerchio
-            finisce fuori squadra. Si centra sull'altezza del nome, e basta. */}
+        {/* La pillola del ruolo, centrata sull'altezza del nome: sulla linea di
+            base il cerchio finirebbe fuori squadra. Il ruolo per esteso resta in
+            sr-only dentro RoleBadge. */}
         <span className="flex self-center">
           <RoleBadge role={valuation.role} />
         </span>
         <p className="text-sm text-muted-foreground">{valuation.team}</p>
       </header>
 
-      {/* Il corpo respira nello spazio che ha: il riquadro del battitore e'
-          alto quanto la colonna, e con i margini fissi tutto restava appeso in
-          cima con mezza card di verde sotto. Una colonna che centra quello che
-          contiene distribuisce l'altezza invece di ammucchiare il contenuto a
-          un'estremita'. */}
-      <div className="flex flex-1 flex-col justify-center gap-6">
-      {/* Il banco: a sinistra i due numeri che si guardano — quanto tempo
-          resta e a quanto siamo — a destra i controlli che si toccano. Due
-          zone separate, perche' sono due gesti diversi: uno si legge da
-          lontano, l'altro si colpisce senza mirare. */}
-      <div className="flex flex-wrap items-start gap-x-10 gap-y-6">
-        {/* Incolonnati da una griglia: numeri nella prima riga, etichette nella
-            seconda, la barra nella terza. Con due colonne impilate a mano i due
-            numeri si disallineavano — la colonna con la barra sotto e' piu'
-            alta, e allineandole per il fondo le cifre finivano a quote diverse. */}
-        <div className="grid w-fit grid-cols-[auto_auto_auto] items-baseline gap-x-8">
-          {/* Le icone sono self-center e cosi' NON partecipano all'allineamento
-              per linea di base: la base della cella e' quella della cifra, ed
-              e' per questo che due numeri di corpo diverso poggiano sulla
-              stessa riga invece di galleggiare uno sopra l'altro. */}
-          <div className="col-start-1 row-start-1 flex items-baseline gap-3">
-            <span className="flex self-center">
-              <HourglassIcon urgent={urgent} />
-            </span>
-            <span
-              data-testid="bidder-remaining"
-              className={`tnum w-exp text-[92px] font-extrabold leading-none ${
-                urgent ? 'text-destructive' : ''
-              }`}
-            >
-              {secondsLeft}
-            </span>
-          </div>
-          <div className="col-start-2 row-start-1 flex items-baseline gap-3">
-            <span className="flex self-center">
-              <CoinIcon />
-            </span>
-            <span
-              data-testid="bidder-price"
-              className={`tnum w-exp text-[56px] font-extrabold leading-none ${
-                overCeiling ? 'text-destructive' : 'text-accent'
-              }`}
-            >
-              {price}
-            </span>
-          </div>
-
-          {/* Chi e' in testa: la TERZA lettura, nella stessa griglia delle altre
-              due e non piu' un riquadro bordato a se' stante, centrato per conto
-              suo accanto a una colonna alta il doppio. Era quello a far sembrare
-              storta l'intera riga. Qui condivide la linea di base con i numeri e
-              l'etichetta con le altre etichette. Senza offerte da altre
-              postazioni non finge una squadra: dice che non c'e' nessuno, che e'
-              la verita' finche' a battere e' una persona sola per tutto il
-              tavolo. */}
-          <div className="col-start-3 row-start-1 flex items-baseline gap-3">
-            <span className="flex self-center">
-              <LeadIcon muted={!shownLeader} />
-            </span>
-            {/* Troncato: il nome di una squadra lo scrive chi crea la lega e puo'
-                essere lungo quanto vuole. Senza un limite, le letture si
-                allargavano fino a spingere i bottoni a capo — un salto del
-                blocco dei rilanci deciso da quanto e' lungo il nome di chi ha
-                appena rilanciato. I puntini sono solo visivi: nell'albero di
-                accessibilita' il nome resta intero. */}
-            <span
-              data-testid="bidder-leader"
-              className={`w-exp max-w-[14rem] truncate text-3xl font-extrabold leading-none ${
-                shownLeader ? '' : 'text-muted-foreground'
-              }`}
-            >
-              {shownLeader ?? 'Nessuno'}
-            </span>
-          </div>
-
-          <span className="col-start-1 row-start-2 mt-2 text-sm text-muted-foreground">
-            {secondsLeft === 1 ? 'secondo' : 'secondi'}
+      {/* Le tre letture — tempo, offerta, chi e' in testa — incolonnate da una
+          griglia: numeri nella prima riga, etichette nella seconda. Le icone sono
+          self-center e non partecipano alla linea di base, cosi' due numeri di
+          corpo diverso poggiano sulla stessa riga. */}
+      <div className="grid w-fit grid-cols-[auto_auto_auto] items-baseline gap-x-8 max-sm:gap-x-5">
+        <div className="col-start-1 row-start-1 flex items-baseline gap-3">
+          <span className="flex self-center max-sm:hidden">
+            <HourglassIcon urgent={urgent} />
           </span>
-          <span className="col-start-2 row-start-2 mt-2 text-sm text-muted-foreground">offerta</span>
-          <span className="col-start-3 row-start-2 mt-2 text-sm text-muted-foreground">in testa</span>
-
-          {/* aria-hidden: e' il numero sopra a portare il dato. Una barra che si
-              svuota dieci volte al secondo, annunciata, sarebbe rumore. */}
-          <div
-            aria-hidden
-            className="col-start-1 row-start-3 mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line"
+          {/* Negli ultimi tre secondi il numero passa al rosso e pulsa: non il
+              colore da solo, che chi non distingue il rosso non vede. Con la
+              riduzione del movimento la pulsazione si spegne (regola globale),
+              e restano il colore e la parola «ultimi» qui sotto. */}
+          <span
+            data-testid="bidder-remaining"
+            className={`tnum w-exp text-[80px] font-extrabold leading-none max-sm:text-6xl ${
+              urgent ? 'animate-pulse text-destructive' : ''
+            }`}
           >
-            <div
-              data-testid="bidder-remaining-bar"
-              className={`h-full rounded-full ${urgent ? 'bg-destructive' : 'bg-accent'}`}
-              style={{ width: `${fraction * 100}%` }}
-            />
-          </div>
+            {secondsLeft}
+          </span>
+        </div>
+        <div className="col-start-2 row-start-1 flex items-baseline gap-3">
+          <span className="flex self-center max-sm:hidden">
+            <CoinIcon />
+          </span>
+          <span
+            data-testid="bidder-price"
+            className={`tnum w-exp text-[56px] font-extrabold leading-none max-sm:text-5xl ${
+              overCeiling ? 'text-destructive' : 'text-accent'
+            }`}
+          >
+            {price}
+          </span>
+        </div>
+        {/* Troncato: il nome di una squadra puo' essere lungo quanto vuole, e
+            allargandosi spingerebbe il resto. Nell'albero di accessibilita' resta
+            intero. Senza offerte segnate dice «Nessuno»: e' la verita'. */}
+        <div className="col-start-3 row-start-1 flex min-w-0 items-baseline gap-3">
+          <span className="flex self-center max-sm:hidden">
+            <LeadIcon muted={!shownLeader} />
+          </span>
+          <span
+            data-testid="bidder-leader"
+            className={`w-exp max-w-[14rem] truncate text-3xl font-extrabold leading-none max-sm:max-w-[7rem] max-sm:text-2xl ${
+              shownLeader ? '' : 'text-muted-foreground'
+            }`}
+          >
+            {shownLeader ?? 'Nessuno'}
+          </span>
         </div>
 
-        {/* I rilanci a portata di clic: la barra spaziatrice resta il gesto per
-            chi guarda il tavolo, ma alza di uno alla volta — e a un'asta si
-            rilancia anche di cinque o dieci. Bersagli grandi apposta: si
-            colpiscono di fretta, guardando il tavolo e non lo schermo. Ogni
-            rilancio fa ripartire il conto, esattamente come lo spazio. */}
-        {expired ? null : (
-          // Il rilancio di uno in cima, a tutta larghezza: e' il gesto piu'
-          // frequente della serata e va colpito senza mirare, quindi prende
-          // l'intera riga invece di contendersela con gli altri. Sotto, i due
-          // salti fissi e il prezzo gridato — varianti dello stesso gesto, e si
-          // leggono di riflesso.
-          //
-          // max-w: sugli schermi larghi la zona controlli riempiva tutto lo
-          // spazio avanzato e la barra arrivava a ~740px — un bersaglio molto
-          // piu' largo del necessario, e con lei il campo dell'offerta diretta
-          // che le sta sotto. Un terzo in meno. Il minimo resta: sotto quella
-          // soglia i quattro controlli della riga inferiore non ci starebbero
-          // piu' affiancati.
-          //
-          // ml-auto: il blocco si appoggia al bordo destro del riquadro, non
-          // resta appiccicato alle letture. Lo spazio avanzato finisce in mezzo,
-          // e le due zone — cio' che si legge e cio' che si tocca — si separano
-          // davvero. Quando la riga va a capo il blocco riempie la sua linea da
-          // solo: senza spazio libero da assorbire, il margine automatico non fa
-          // nulla e i controlli restano a sinistra, dove devono stare.
-          //
-          // Larghezza FISSA, non flex-1: i bersagli non devono spostarsi di un
-          // pixel mentre si rilancia. Con una larghezza elastica il blocco
-          // dipendeva dalle letture a sinistra, e quelle cambiano larghezza da
-          // sole — basta che «Nessuno» diventi il nome di chi ha appena
-          // rilanciato perche' i bottoni scivolino di lato proprio nel momento
-          // in cui si sta per colpirli. max-w-full lo tiene dentro il riquadro
-          // sugli schermi stretti, dove va a capo per conto suo.
-          <div className="ml-auto flex w-[31rem] max-w-full flex-none flex-col gap-3">
+        <span className={`col-start-1 row-start-2 mt-2 text-sm ${urgent ? 'font-bold text-destructive' : 'text-muted-foreground'}`}>
+          {urgent ? 'ultimi secondi' : secondsLeft === 1 ? 'secondo' : 'secondi'}
+        </span>
+        <span className="col-start-2 row-start-2 mt-2 text-sm text-muted-foreground">offerta</span>
+        <span className="col-start-3 row-start-2 mt-2 text-sm text-muted-foreground">in testa</span>
+        {/* La distanza dal tuo tetto, sotto l'offerta: prima il tetto stava in
+            piccolo in fondo al riquadro, lontano dal numero che sale. Detta come
+            distanza, non come secondo numero da confrontare a mente. */}
+        {valuation.maxBid > 0 ? (
+          <span
+            data-testid="bidder-ceiling-distance"
+            className={`col-start-2 row-start-3 text-sm font-bold ${
+              overCeiling ? 'text-destructive' : toCeiling === 0 ? 'text-accent' : 'text-positive'
+            }`}
+          >
+            {overCeiling
+              ? `${-toCeiling} oltre il tuo tetto`
+              : toCeiling === 0 ? 'al tuo tetto' : `${toCeiling} sotto il tuo tetto`}
+          </span>
+        ) : null}
+      </div>
+
+      {/* Il tempo che resta, a tutta larghezza del riquadro: si legge con la coda
+          dell'occhio guardando il tavolo. aria-hidden: il dato lo porta il numero,
+          e una barra che si svuota dieci volte al secondo, annunciata, sarebbe
+          rumore. */}
+      <div aria-hidden className={`w-full overflow-hidden rounded-full bg-line ${urgent ? 'h-3' : 'h-2'}`}>
+        <div
+          data-testid="bidder-remaining-bar"
+          className={`h-full rounded-full ${urgent ? 'bg-destructive' : 'bg-accent'}`}
+          style={{ width: `${fraction * 100}%` }}
+        />
+      </div>
+
+      {expired ? null : (
+        <>
+          {/* Chi fa l'offerta: una squadra per bottone. Toccarla la mette in testa
+              (e, se qualcuno era gia' in testa, rilancia di uno). Chi non puo'
+              permettersi l'offerta successiva — crediti meno uno per ogni altro
+              posto da riempire — o ha gia' pieni i posti del ruolo resta spento,
+              col motivo scritto: al tavolo e' la domanda su cui si litiga. */}
+          <fieldset className="m-0 border-0 p-0">
+            <legend className="mb-2 text-sm font-bold text-muted-foreground">
+              Chi fa l'offerta
+              <span className="font-normal"> — tocca la squadra, o premi il suo numero</span>
+            </legend>
+            {/* Tante colonne quante ne entrano, da 8rem: otto squadre stanno su due
+                righe anche nel riquadro stretto, e il battitore non si allunga. */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
+              {participants.map((p, i) => {
+                const able = canBid(p);
+                const isLeader = p.id === leaderId;
+                const reason = roleFull(p, valuation.role)
+                  ? `posti ${ROLE_NAME_PLURAL[valuation.role]} pieni`
+                  : `max ${Math.max(0, maxAffordable(p))}`;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={!able}
+                    aria-pressed={isLeader}
+                    onClick={() => teamBids(p.id)}
+                    className={`relative flex min-h-12 min-w-0 flex-col items-start justify-center rounded-xl border px-3 py-1 text-left disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
+                      isLeader ? 'border-accent bg-accent text-on-accent' : 'border-line-strong hover:bg-line'
+                    }`}
+                  >
+                    <span className="flex w-full items-baseline gap-2">
+                      <span className="truncate font-extrabold">{p.name}</span>
+                      {i < 9 ? (
+                        <span aria-hidden="true" className={`tnum ml-auto text-xs ${isLeader ? '' : 'text-muted-foreground'}`}>{i + 1}</span>
+                      ) : null}
+                    </span>
+                    <span className={`tnum text-xs ${isLeader ? '' : 'text-muted-foreground'}`}>
+                      {isLeader ? 'in testa' : reason}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {/* I rilanci di chi e' in testa: +1 (anche con la barra spaziatrice),
+              +5, +10, o un prezzo gridato. Bersagli grandi, a larghezza fissa: non
+              devono spostarsi di un pixel mentre si rilancia. Sul telefono il
+              campo dell'offerta va su una riga sua: accanto ai bottoni si
+              schiacciava a zero. */}
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => raiseTo((p) => p + PRIMARY_RAISE)}
-              className={`tnum w-full ${BID_CONTROL_H} ${BID_RADIUS} bg-accent text-2xl font-extrabold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+              className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} flex-1 basis-40 bg-accent px-6 text-2xl font-extrabold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
             >
               Rilancia +{PRIMARY_RAISE}
               <span className="sr-only"> crediti</span>
             </button>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {QUICK_RAISES.map((step) => (
-                <button
-                  key={step}
-                  type="button"
-                  onClick={() => raiseTo((p) => p + step)}
-                  className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} min-w-20 border border-line-strong px-6 text-2xl font-extrabold text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
-                >
-                  +{step}
-                  <span className="sr-only"> crediti</span>
-                </button>
-              ))}
-
-              {/* Al tavolo non si rilancia solo di uno, cinque o dieci: si grida
-                  un prezzo. Questo campo e' quel gesto — porta l'offerta al numero
-                  scritto, non ci somma nulla, ed e' il motivo per cui il bottone
-                  dice «Offri» e non «Rilancia». */}
-              <form
-                className="flex min-w-0 flex-1 items-center gap-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const wanted = Number(customBid);
-                  if (!Number.isInteger(wanted) || wanted < 1) return;
-                  raiseTo(() => wanted);
-                  setCustomBid('');
-                }}
+            {QUICK_RAISES.map((step) => (
+              <button
+                key={step}
+                type="button"
+                onClick={() => raiseTo((p) => p + step)}
+                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} min-w-20 border border-line-strong px-6 text-2xl font-extrabold text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
               >
-                {/* L'etichetta sta DENTRO il campo e sparisce appena si scrive.
-                    Fuori occupava larghezza in una riga che ne ha poca, e sopra
-                    alzava la scatola disallineando il gruppo dai bottoni.
-                    Resta comunque un'etichetta vera, solo non visibile: un
-                    segnaposto non e' un nome accessibile — sparendo mentre si
-                    digita lascerebbe il campo muto proprio a chi non lo vede. */}
-                <label htmlFor={customBidId} className="sr-only">
-                  Offerta diretta
-                </label>
-                <input
-                  id={customBidId}
-                  type="number"
-                  min={1}
-                  step={1}
-                  inputMode="numeric"
-                  placeholder="Offerta diretta"
-                  value={customBid}
-                  onChange={(e) => setCustomBid(e.target.value)}
-                  className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} w-full min-w-0 border border-line-strong bg-transparent px-4 text-2xl font-extrabold placeholder:text-base placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
-                />
-                <button
-                  type="submit"
-                  className={`${BID_CONTROL_H} ${BID_RADIUS} shrink-0 border border-line-strong px-6 text-2xl font-extrabold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
-                >
-                  Offri
-                </button>
-              </form>
-            </div>
+                +{step}
+                <span className="sr-only"> crediti</span>
+              </button>
+            ))}
+            {/* Al tavolo si grida anche un prezzo: questo campo porta l'offerta al
+                numero scritto, non ci somma nulla — per questo dice «Offri». */}
+            <form
+              className="flex min-w-0 basis-full items-center gap-3 sm:basis-64 sm:flex-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const wanted = Number(customBid);
+                if (!Number.isInteger(wanted) || wanted < 1) return;
+                raiseTo(() => wanted);
+                setCustomBid('');
+              }}
+            >
+              <label htmlFor={customBidId} className="sr-only">
+                Offerta diretta
+              </label>
+              <input
+                id={customBidId}
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                placeholder="Offerta diretta"
+                value={customBid}
+                onChange={(e) => setCustomBid(e.target.value)}
+                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} w-full min-w-0 border border-line-strong bg-transparent px-4 text-2xl font-extrabold placeholder:text-base placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+              />
+              <button
+                type="submit"
+                className={`${BID_CONTROL_H} ${BID_RADIUS} shrink-0 border border-line-strong px-6 text-2xl font-extrabold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+              >
+                Offri
+              </button>
+            </form>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      {/* La riga di riferimento: gli stessi numeri della scheda di decisione,
-          alla dimensione che meritano mentre si rilancia — si consultano, non
-          si guardano. */}
+      {/* La riga di riferimento: gli stessi numeri della scheda di decisione, da
+          consultare, non da guardare. */}
       <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm text-muted-foreground">
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
           <div className="flex gap-2">
-            <dt>tetto</dt>
+            <dt>il tuo tetto</dt>
             <dd data-testid="bidder-ceiling" className="tnum font-bold text-accent">
               {valuation.maxBid}
             </dd>
@@ -587,27 +620,27 @@ export function BidderDialog({
         <p className={`font-bold ${valuation.worthPursuing ? 'text-positive' : 'text-destructive'}`}>
           {valuation.worthPursuing ? 'Prendi' : 'Lascia'}
         </p>
+        {/* L'aiuto della tastiera sulla stessa riga, in fondo a destra: una riga
+            in meno nel riquadro, che ha un'altezza fissa. */}
+        {expired ? null : (
+          <p className="sm:ml-auto">
+            Spazio: +1 a chi è in testa · Esc chiude · allo scadere scegli a chi va
+          </p>
+        )}
       </div>
 
       {overCeiling ? (
-        // Statico, non una live region: la pagina ne ha una sola (AuctionAnnouncer)
-        // e una seconda competerebbe con quella. Il colore del bordo e del testo
-        // e' il segnale per chi vede; questa frase, incontrata leggendo il
-        // dialogo, e' lo stesso segnale per chi ascolta.
-        <p className="text-sm font-bold text-destructive">
-          Sei oltre il tuo tetto di {price - valuation.maxBid}.
-          <span className="sr-only"> Questa offerta supera il prezzo massimo consigliato.</span>
+        // Per chi ascolta: il colore e la riga sotto l'offerta lo dicono a chi
+        // guarda. Statico, non una live region: la pagina ne ha una sola.
+        <p className="sr-only">
+          Sei oltre il tuo tetto di {price - valuation.maxBid}. Questa offerta supera il prezzo massimo consigliato.
         </p>
       ) : null}
 
       {error ? (
-        // role="alert", non un secondo role="status": stessa disciplina
-        // dell'avviso di scadenza qui sotto e dell'errore in BidPanel — un
-        // controllo puntuale, non l'unica live region ambientale dell'app
-        // (che resta AuctionAnnouncer). Senza questo, un'aggiudicazione
-        // fallita qui (a differenza di BidPanel) non avrebbe alcun modo di
-        // arrivare a chi ascolta: il form resta in vista, il countdown e'
-        // gia' scaduto, e nulla direbbe che l'invio non e' riuscito.
+        // role="alert": un controllo puntuale, non la live region ambientale
+        // (che resta AuctionAnnouncer). Senza, un'aggiudicazione fallita non
+        // arriverebbe a chi ascolta.
         <p role="alert" className="text-sm font-bold text-destructive">
           {error}
         </p>
@@ -615,27 +648,22 @@ export function BidderDialog({
 
       {expired ? (
         <>
-          {/* role="alert", non un secondo role="status": l'unica live region
-              ambientale dell'app resta AuctionAnnouncer. Questa e' puntuale
-              e legata a questo controllo — allo scadere il form Aggiudica
-              compare ed e' ovvio a chi vede; senza questa riga chi ascolta
-              (col beep disattivato, che e' un'opzione del chiamante) non
-              saprebbe che il countdown e' finito e si puo' aggiudicare. */}
+          {/* role="alert": allo scadere il form compare ed e' ovvio a chi vede;
+              senza questa riga chi ascolta (col beep spento) non saprebbe che si
+              puo' aggiudicare. */}
           <p role="alert" className="text-base font-bold">
-            Tempo scaduto: puoi aggiudicare.
+            {shownLeader
+              ? `Tempo scaduto: ${shownLeader} è in testa a ${price}.`
+              : 'Tempo scaduto: scegli a chi va.'}
           </p>
-          {/* Allo scadere questa e' l'unica cosa da fare in pagina, e ne ha la
-              taglia: il menu e i due bottoni sono alti quanto i rilanci che
-              hanno appena lasciato il posto, non piu' un form da modulo
-              stretto in un angolo. */}
-          {/* Stessa riga, stesse misure dei rilanci che hanno appena lasciato
-              il posto: etichetta accanto e non sopra, e i tre controlli tutti
-              alla stessa altezza. Prima il menu portava l'etichetta in cima e
-              sporgeva sopra i due bottoni. */}
+          {/* L'acquirente proposto e' chi e' in testa. Senza nessuno in testa va
+              scelto: «Aggiudica» resta spento finche' non lo si sceglie, invece di
+              proporre la propria squadra per un giocatore vinto da un altro. */}
           <form
-            className="mt-3 flex flex-wrap items-center gap-3"
+            className="flex flex-wrap items-center gap-3"
             onSubmit={(e) => {
               e.preventDefault();
+              if (!participantId) return;
               onAssign({ participantId, price });
             }}
           >
@@ -645,26 +673,24 @@ export function BidderDialog({
             <select
               id={buyerId}
               value={participantId}
-              onChange={(e) => setParticipantId(e.target.value)}
-              className={`${BID_CONTROL_H} ${BID_RADIUS} border border-line-strong bg-transparent px-4 text-lg font-bold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+              onChange={(e) => setBuyerChoice(e.target.value)}
+              className={`${BID_CONTROL_H} ${BID_RADIUS} border border-line-strong bg-surface px-4 text-lg font-bold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
             >
+              {participantId === '' ? <option value="" disabled>Scegli la squadra</option> : null}
               {participants.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
             <button
               type="submit"
-              disabled={disabled || pending}
+              disabled={disabled || pending || participantId === ''}
               aria-describedby={disabledReason ? hintId : undefined}
               className={`${BID_CONTROL_H} ${BID_RADIUS} bg-accent px-8 text-lg font-extrabold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
             >
-              {pending ? 'Aggiudico…' : 'Aggiudica'}
+              {pending ? 'Aggiudico…' : `Aggiudica a ${price}`}
             </button>
-            {/* La via di ritorno: il tempo e' scaduto ma qualcuno al tavolo
-                rilancia lo stesso, e senza questo bottone l'unico modo di
-                riaprire le offerte era chiudere il battitore e riaprirlo,
-                perdendo il prezzo a cui si era arrivati. Riparte da li', non
-                da uno. type="button": sta dentro il form ma non lo invia. */}
+            {/* La via di ritorno: il tempo e' scaduto ma qualcuno rilancia lo
+                stesso. Riparte dal prezzo raggiunto, non da uno. */}
             <button
               type="button"
               onClick={() => { setExpired(false); countdown.start(); }}
@@ -674,20 +700,23 @@ export function BidderDialog({
               Riprendi le offerte
             </button>
             {disabledReason ? (
-              // Statico, non una live region: l'unica di quel tipo nella pagina
-              // resta AuctionAnnouncer.
               <span id={hintId} className="sr-only">
                 {disabledReason}
               </span>
             ) : null}
           </form>
+          {/* Il server rifiuterebbe comunque: dirlo prima evita un «Aggiudica»
+              che torna indietro con un errore. */}
+          {buyerCannotPay ? (
+            <p className="text-sm font-bold text-destructive">
+              {`${buyer!.name} non può comprarlo a ${price}: `}
+              {roleFull(buyer!, valuation.role)
+                ? `ha già tutti i posti ${ROLE_NAME_PLURAL[valuation.role]}.`
+                : `può offrire al massimo ${Math.max(0, maxAffordable(buyer!))}.`}
+            </p>
+          ) : null}
         </>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Barra spaziatrice per rilanciare. Allo scadere si aggiudica.
-        </p>
-      )}
-      </div>
+      ) : null}
     </section>
   );
 }

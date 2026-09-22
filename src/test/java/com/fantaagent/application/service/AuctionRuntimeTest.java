@@ -305,4 +305,103 @@ class AuctionRuntimeTest {
         assertThat(runtime.snapshot().auctionId()).isEqualTo(id);
         assertThat(runtime.snapshot().chain()).isNotSameAs(prima);
     }
+
+    /** Rinominare aggiunge un evento: il nome nuovo vale, il registro non si riscrive. */
+    @Test
+    void rinominareUnAstaCambiaIlNomeSenzaRiscrivereIlRegistro() throws Exception {
+        String id = runtime.createNew("Prima");
+        Path log = tmp.resolve("auctions").resolve(id).resolve("events.jsonl");
+        String primaRiga = Files.readAllLines(log).getFirst();
+
+        runtime.rename(id, "  Seconda  ");
+
+        assertThat(runtime.currentAuctionLabel()).isEqualTo("Seconda");
+        assertThat(runtime.auctions()).extracting(AuctionRuntime.AuctionSummary::label)
+                .containsExactly("Seconda");
+        assertThat(Files.readAllLines(log)).hasSize(2).first().isEqualTo(primaRiga);
+    }
+
+    /** Anche un'asta non aperta si rinomina, e l'asta aperta resta quella. */
+    @Test
+    void rinominareUnAstaChiusaNonCambiaQuellaAperta() {
+        String chiusa = runtime.createNew("Chiusa");
+        runtime.deselect();
+        String aperta = runtime.createNew("Aperta");
+
+        runtime.rename(chiusa, "Rinominata");
+
+        assertThat(runtime.snapshot().auctionId()).isEqualTo(aperta);
+        assertThat(runtime.labelOf(chiusa)).isEqualTo("Rinominata");
+    }
+
+    @Test
+    void rinominareUnAstaInesistenteVieneRifiutato() {
+        assertThatThrownBy(() -> runtime.rename("inventata", "Nome"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /** La copia ha le regole e i partecipanti dell'originale, nessun acquisto, e non si apre. */
+    @Test
+    void duplicareCopiaLeImpostazioniSenzaAcquistiESenzaAprirla() {
+        String originale = runtime.createNew("Lega");
+        runtime.snapshot().store().appendWithNextSeq(seq ->
+                new com.fantaagent.domain.auction.AuctionEvent.PlayerPurchased(
+                        seq, java.time.Instant.now(), "d1", "me", 10));
+
+        String copia = runtime.duplicate(originale, "Lega (copia)");
+
+        assertThat(copia).isNotEqualTo(originale);
+        assertThat(runtime.snapshot().auctionId()).isEqualTo(originale);
+        AuctionRuntime.AuctionSummary summary = runtime.auctions().stream()
+                .filter(a -> a.id().equals(copia)).findFirst().orElseThrow();
+        assertThat(summary.label()).isEqualTo("Lega (copia)");
+        assertThat(summary.purchases()).isZero();
+        assertThat(archive.participants(copia)).contains(PARTICIPANTS);
+        assertThat(archive.rules(copia)).isEqualTo(archive.rules(originale));
+    }
+
+    /**
+     * La riga della home dice squadre, crediti e posti totali, e i crediti rimasti di
+     * chi usa l'app: un acquisto annullato non conta, uno corretto conta col prezzo
+     * nuovo e per il nuovo acquirente.
+     */
+    @Test
+    void ilRiepilogoDiceLaLegaEICreditiRimasti() {
+        runtime.createNew("Lega");
+        var store = runtime.snapshot().store();
+        var now = java.time.Instant.now();
+        store.appendWithNextSeq(seq -> new com.fantaagent.domain.auction.AuctionEvent
+                .PlayerPurchased(seq, now, "a", "me", 10));
+        var annullato = store.appendWithNextSeq(seq -> new com.fantaagent.domain.auction
+                .AuctionEvent.PlayerPurchased(seq, now, "b", "me", 30));
+        store.appendWithNextSeq(seq -> new com.fantaagent.domain.auction.AuctionEvent
+                .PurchaseRevoked(seq, now, annullato.seq()));
+        var corretto = store.appendWithNextSeq(seq -> new com.fantaagent.domain.auction
+                .AuctionEvent.PlayerPurchased(seq, now, "c", "marco", 5));
+        store.appendWithNextSeq(seq -> new com.fantaagent.domain.auction.AuctionEvent
+                .PurchaseCorrected(seq, now, corretto.seq(), "me", 7));
+
+        AuctionRuntime.AuctionSummary summary = runtime.auctions().getFirst();
+
+        assertThat(summary.teams()).isEqualTo(2);
+        assertThat(summary.budget()).isEqualTo(template.rules.budget());
+        int slots = template.rules.slots().values().stream().mapToInt(Integer::intValue).sum();
+        assertThat(summary.totalSlots()).isEqualTo(2 * slots);
+        assertThat(summary.myName()).isEqualTo("Io");
+        assertThat(summary.myBudgetRemaining()).isEqualTo(template.rules.budget() - 17);
+    }
+
+    /** Partire da un'asta: ne legge nome e impostazioni, senza aprirla ne' toccarla. */
+    @Test
+    void setupOfLeggeLeImpostazioniDiUnAstaSenzaAprirla() {
+        String vecchia = runtime.createNew("Lega vecchia");
+        runtime.deselect();
+
+        AuctionSetup setup = runtime.setupOf(vecchia);
+
+        assertThat(setup.name()).isEqualTo("Lega vecchia");
+        assertThat(setup.participants()).isEqualTo(PARTICIPANTS);
+        assertThat(setup.rules()).isEqualTo(template.rules);
+        assertThat(runtime.hasAuction()).isFalse();
+    }
 }

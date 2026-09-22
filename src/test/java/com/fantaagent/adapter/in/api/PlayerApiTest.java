@@ -205,4 +205,29 @@ class PlayerApiTest {
         // se il limite raggiungesse il servizio intatto.
         verify(search).phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
     }
+
+    @Test
+    void leOccasioniDellaFasePortanoTettoMercatoEMargine() throws Exception {
+        when(search.targets(5)).thenReturn(List.of(
+                new PlayerSearchService.TargetRow(BASTONI, RECOMMENDATION)));
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/targets"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("d1"))
+                .andExpect(jsonPath("$[0].name").value("Bastoni"))
+                .andExpect(jsonPath("$[0].maxBid").value(47))
+                .andExpect(jsonPath("$[0].expectedPrice").value(38))
+                .andExpect(jsonPath("$[0].margin").value(9))
+                .andExpect(jsonPath("$[0].worthPursuing").value(true));
+    }
+
+    @Test
+    void leOccasioniHannoUnTettoAlNumero() throws Exception {
+        when(search.targets(anyInt())).thenReturn(List.of());
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/targets?limit=5000"))
+                .andExpect(status().isOk());
+
+        verify(search).targets(PlayerApi.MAX_TARGETS);
+    }
 }

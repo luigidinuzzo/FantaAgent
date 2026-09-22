@@ -1,27 +1,34 @@
 import { useEffect, useId, useState } from 'react';
-import type { ParticipantView } from '../api/types';
+import type { ParticipantView, Role } from '../api/types';
+import { maxAffordable, roleFull } from './bidRules';
 import { CONTROL_H, FOCUS_RING } from './controls';
+import { ROLE_NAME_PLURAL } from './roles';
 
 /**
- * Il prezzo di partenza: uno, l'offerta minima, non il tetto.
+ * L'aggiudicazione diretta: prezzo e squadra, senza conto alla rovescia. E' la via
+ * per un giocatore che nessuno contende, o per registrare un'asta fatta a voce.
  *
- * <p>Il tetto e' il punto oltre il quale NON conviene, non il prezzo a cui si
- * aggiudica: proporlo nel campo significava suggerire di pagare sempre il
- * massimo consentito, e un invio distratto registrava il tetto al posto del
- * prezzo vero — che a un'asta, per i giocatori che nessuno contende, e' quasi
- * sempre uno. Il tetto resta grande e in evidenza nella scheda, che e' il suo
- * posto: un numero da consultare, non un valore precompilato.
+ * <p><b>Niente e' precompilato.</b> Prima il prezzo partiva da uno e l'acquirente
+ * era la propria squadra: un «Aggiudica» premuto per sbaglio registrava un acquisto
+ * vero, a te, per un credito. Ora il prezzo parte vuoto, la squadra va scelta, e il
+ * bottone resta spento finche' mancano. Il tetto non si propone mai come prezzo: e'
+ * il punto oltre cui non conviene, non il prezzo a cui si aggiudica.
+ *
+ * <p>Se la squadra scelta non puo' permettersi quel prezzo — crediti meno uno per
+ * ogni altro posto da riempire — o ha gia' pieni i posti del ruolo, lo dice prima
+ * dell'invio: il server rifiuterebbe comunque.
  */
-const STARTING_PRICE = 1;
-
 export function BidPanel({
   participants,
+  role,
   disabled,
   pending,
   error,
   onAssign,
 }: {
   participants: ParticipantView[];
+  /** Il ruolo del giocatore: serve a dire se una squadra ha gia' pieni quei posti. */
+  role?: Role;
   disabled: boolean;
   pending: boolean;
   error: string | null;
@@ -32,38 +39,24 @@ export function BidPanel({
   const errorId = useId();
   const hintId = useId();
 
-  // Nessuna risincronizzazione con una proposta che cambia: il campo parte da
-  // uno e da li' si muove solo se lo muove l'utente. Cambiando giocatore e'
-  // la route a rimontare il pannello (key sul playerId), e il campo riparte da
-  // uno per il lotto nuovo.
-  const [price, setPrice] = useState(STARTING_PRICE);
+  // Una stringa, non un numero: il campo vuoto e' uno stato vero («non ancora
+  // scritto»), e un numero obbligherebbe a decidere cosa vale.
+  const [price, setPrice] = useState('');
+  const [participantId, setParticipantId] = useState('');
 
-  const [participantId, setParticipantId] = useState(
-    participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '',
-  );
-
-  // La route (Task 17) monta questo pannello con participants=[] finche' la
-  // query dei partecipanti non risolve: il calcolo qui sopra, eseguito una
-  // sola volta al mount, produce sempre ''. Senza risincronizzarlo quando la
-  // lista arriva, il <select> del browser mostrerebbe comunque la prima
-  // opzione (sembra scelto) mentre lo stato resta vuoto — e un invio senza
-  // toccare il menu, il percorso piu' comune, scriverebbe participantId: ''
-  // nel registro d'aggiudicazione. Si risincronizza solo quando la scelta
-  // attuale non e' (piu') fra i partecipanti: una scelta ancora valida
-  // dell'utente non va cancellata da un refetch che ridisegna lo stesso
-  // elenco con un nuovo riferimento d'array.
+  // Se la squadra scelta sparisce dall'elenco (un refetch che la toglie), la scelta
+  // si azzera invece di restare su un id che non esiste piu'. Un refetch con lo
+  // stesso elenco non tocca niente.
   useEffect(() => {
-    setParticipantId((current) => {
-      if (participants.some((p) => p.id === current)) return current;
-      return participants.find((p) => p.me)?.id ?? participants[0]?.id ?? '';
-    });
+    setParticipantId((current) => (participants.some((p) => p.id === current) ? current : ''));
   }, [participants]);
 
-  // Un bottone disabilitato e' annunciato come "non disponibile" e basta: chi
-  // vede lo deduce dal bordo tratteggiato della scheda o da "Connessione
-  // persa" in testata, chi ascolta no. Le due ragioni non sono la stessa
-  // situazione: l'attesa si scioglie da sola in decine di millisecondi, lo
-  // stantio no — richiede che il dato torni fresco, non che il tempo passi.
+  const amount = Number(price);
+  const validPrice = price !== '' && Number.isInteger(amount) && amount >= 1;
+  const buyer = participants.find((p) => p.id === participantId) ?? null;
+  const full = buyer !== null && role !== undefined && roleFull(buyer, role);
+  const tooMuch = buyer !== null && validPrice && maxAffordable(buyer) < amount;
+
   const disabledReason = pending
     ? 'Invio in corso: attendi la conferma.'
     : disabled
@@ -71,15 +64,12 @@ export function BidPanel({
       : null;
 
   return (
-    // Etichette ACCANTO ai campi, non sopra, e riga allineata al centro: con le
-    // etichette in cima le scatole partivano da quote diverse e, allineando per
-    // il fondo, campo e menu sporgevano sopra il bottone. Tutti i controlli
-    // condividono CONTROL_H — l'enfasi la porta il colore, mai l'altezza.
     <form
       className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        onAssign({ participantId, price });
+        if (!validPrice || !participantId) return;
+        onAssign({ participantId, price: amount });
       }}
     >
       <label htmlFor={priceId} className="text-sm text-muted-foreground">
@@ -89,11 +79,15 @@ export function BidPanel({
         id={priceId}
         type="number"
         min={1}
+        step={1}
+        inputMode="numeric"
+        required
+        placeholder="—"
         value={price}
-        onChange={(e) => setPrice(Number(e.target.value))}
+        onChange={(e) => setPrice(e.target.value)}
         aria-invalid={error !== null}
         aria-describedby={error ? errorId : undefined}
-        className={`tnum ${CONTROL_H} w-24 rounded-full border border-line-strong bg-transparent px-4 font-bold ${FOCUS_RING}`}
+        className={`tnum ${CONTROL_H} w-24 rounded-full border border-line-strong bg-transparent px-4 font-bold placeholder:text-muted-foreground ${FOCUS_RING}`}
       />
 
       <label htmlFor={buyerId} className="ml-2 text-sm text-muted-foreground">
@@ -102,9 +96,11 @@ export function BidPanel({
       <select
         id={buyerId}
         value={participantId}
+        required
         onChange={(e) => setParticipantId(e.target.value)}
-        className={`${CONTROL_H} rounded-full border border-line-strong bg-transparent px-4 font-bold ${FOCUS_RING}`}
+        className={`${CONTROL_H} min-w-0 rounded-full border border-line-strong bg-surface px-4 font-bold ${FOCUS_RING}`}
       >
+        <option value="" disabled>Scegli la squadra</option>
         {participants.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -112,27 +108,26 @@ export function BidPanel({
         ))}
       </select>
 
-      {/* Il verbo del bottone e' lo stesso dell'esito: si preme Aggiudica e
-          l'evento registrato e' un'aggiudicazione.
-
-          Di contorno, non pieno: l'oro e' passato a «Avvia il conto alla
-          rovescia», che e' il gesto con cui si batte un lotto conteso. Questa
-          resta la via diretta per un giocatore che nessuno contende — a portata
-          di mano, ma non e' lei a guidare la scheda. */}
       <button
         type="submit"
-        disabled={disabled || pending}
+        disabled={disabled || pending || !validPrice || !participantId}
         aria-describedby={disabledReason ? hintId : undefined}
         className={`${CONTROL_H} ml-2 rounded-full border border-line-strong px-6 font-bold transition-opacity duration-200 hover:bg-line disabled:opacity-50 ${FOCUS_RING}`}
       >
         {pending ? 'Aggiudico…' : 'Aggiudica'}
       </button>
       {disabledReason ? (
-        // Statico, non una live region: la pagina ne ha una sola
-        // (AuctionAnnouncer, Task 16) e una seconda competerebbe con quella.
         <span id={hintId} className="sr-only">
           {disabledReason}
         </span>
+      ) : null}
+
+      {buyer && (full || tooMuch) ? (
+        <p className="w-full text-sm font-bold text-destructive">
+          {full && role
+            ? `${buyer.name} ha già tutti i posti ${ROLE_NAME_PLURAL[role]}.`
+            : `${buyer.name} può offrire al massimo ${Math.max(0, maxAffordable(buyer))}.`}
+        </p>
       ) : null}
 
       {error ? (

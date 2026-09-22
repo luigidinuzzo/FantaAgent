@@ -21,15 +21,25 @@ export function ParticipantsColumn({ participants }: { participants: Participant
     // al proprio contenuto.
     <section
       aria-label="Crediti delle squadre"
-      className="panel flex min-h-0 flex-col rounded-2xl p-3"
+      className="panel flex min-h-0 min-w-0 flex-col rounded-2xl p-3"
     >
-      <ul className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-1">
+      {/* Cosa misura il numero, detto una volta in testa alla colonna: prima era
+          un numero nudo accanto al nome, e si capiva solo sapendolo gia'. */}
+      <div aria-hidden="true" className="mb-2 flex justify-between px-3 text-xs font-bold text-muted-foreground">
+        <span>Squadra</span>
+        <span>Crediti</span>
+      </div>
+      {/* Sul telefono una fila che scorre di lato, alta una riga: in colonna, otto
+          squadre occupavano il primo schermo intero prima della ricerca. relative:
+          i testi sr-only delle righe sono position:absolute, e senza un
+          riferimento qui dentro sfuggivano alla fila e allargavano la pagina. */}
+      <ul className="relative flex min-h-0 flex-1 gap-1.5 overflow-x-auto pb-1 max-lg:flex-row lg:flex-col lg:overflow-y-auto lg:overflow-x-visible lg:pb-0 lg:pr-1">
         {participants.map((p) => (
           <li
             key={p.id}
             data-testid={`manager-${p.id}`}
             data-me={p.me}
-            className={`flex items-baseline justify-between gap-2 rounded-xl border px-3 py-2 ${
+            className={`flex items-baseline justify-between gap-3 rounded-xl border px-3 py-2 max-lg:shrink-0 ${
               p.me ? 'border-accent bg-surface-raised' : 'border-panel-border'
             }`}
           >

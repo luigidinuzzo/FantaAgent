@@ -11,6 +11,13 @@ export interface AuctionCard {
   purchases: number;
   phase: Role;
   selected: boolean;
+  /** Squadre, crediti a testa e posti totali (squadre × rosa) dell'asta. */
+  teams: number;
+  budget: number;
+  totalSlots: number;
+  /** Il partecipante segnato come proprio e i suoi crediti; null se non c'e'. */
+  myName: string | null;
+  myBudgetRemaining: number | null;
 }
 
 export interface ParticipantView {
@@ -76,6 +83,19 @@ export interface PhaseRowView extends PlayerSummary {
   margin: number;
   fantamediaAttesa: number;
   titolaritaPercent: number;
+}
+
+/** Un'occasione della fase: specchio di {@code PlayerDtos.TargetView}. */
+export interface TargetView {
+  id: string;
+  name: string;
+  team: string;
+  role: Role;
+  listPrice: number;
+  maxBid: number;
+  expectedPrice: number;
+  margin: number;
+  worthPursuing: boolean;
 }
 
 export interface PhasePageResponse {

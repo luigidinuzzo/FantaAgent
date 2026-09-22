@@ -75,6 +75,31 @@ public class SettingsApi {
                 SettingsDtos.LeagueRulesView.from(runtime.rules()));
     }
 
+    /**
+     * Le impostazioni di un'asta gia' esistente, come punto di partenza per una nuova:
+     * stessa forma di {@link #read}, con {@code auctionOpen} falso perche' chi le
+     * chiede sta preparando un'asta, non modificando quella. Non cambia l'asta aperta
+     * e non crea niente: l'asta nuova nasce solo confermando il modulo.
+     */
+    @GetMapping("/from/{auctionId}")
+    public SettingsDtos.SettingsResponse from(@PathVariable String leagueId,
+                                              @PathVariable String auctionId) {
+        leagues.check(leagueId);
+        AuctionSetup setup;
+        try {
+            setup = runtime.setupOf(auctionId);
+        } catch (IllegalArgumentException e) {
+            throw new UnknownAuctionException(auctionId, e);
+        }
+        return new SettingsDtos.SettingsResponse(
+                new SettingsDtos.BidderSettings(setup.bidder().bidTimerSeconds(), setup.bidder().beepEnabled()),
+                setup.participants().stream().map(SettingsApi::cardOf).toList(),
+                sectionOf(setup.scoring()),
+                false,
+                new SettingsDtos.LeagueRulesView(setup.participants().size(),
+                        setup.rules().budget(), setup.rules().slots()));
+    }
+
     @PutMapping
     public SettingsDtos.SaveResult save(@PathVariable String leagueId,
                                         @RequestBody SettingsDtos.SaveRequest body) {

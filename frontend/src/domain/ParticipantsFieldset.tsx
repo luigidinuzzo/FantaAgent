@@ -70,7 +70,9 @@ export function ParticipantsFieldset({
           stesso — un group — che supporta una descrizione, non la legend. */}
       <legend className="px-2 text-base font-bold">Partecipanti</legend>
 
-      <table className="w-full table-fixed text-base">
+      {/* Largo quanto serve a un nome, non quanto la pagina: con i campi a tutta
+          larghezza «Sei tu» e la ✕ finivano a un metro dal nome a cui si riferiscono. */}
+      <table className="w-full max-w-2xl table-fixed text-base">
         <caption className="sr-only">
           Nome, iniziale e chi sei tu, per ogni partecipante alla lega
         </caption>
@@ -96,8 +98,11 @@ export function ParticipantsFieldset({
                     value={p.name}
                     aria-invalid={nameErrors.length > 0}
                     aria-describedby={nameErrors.length > 0 ? nameErrorsId : undefined}
+                    // Un segnaposto, non un nome finto: «Team 1» andava cancellato a
+                    // mano, e non si vedeva quali righe fossero ancora da scrivere.
+                    placeholder={`Nome della squadra ${i + 1}`}
                     onChange={(e) => update(i, { name: e.target.value })}
-                    className="min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    className="min-h-12 w-full rounded-full border border-line-strong bg-transparent px-3 placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                   />
                   <FieldErrors id={nameErrorsId} errors={nameErrors} />
                 </td>
@@ -134,20 +139,29 @@ export function ParticipantsFieldset({
         </tbody>
       </table>
 
-      {lockCount ? null : (
-        <button
-          type="button"
-          onClick={() =>
-            onChange([
-              ...value,
-              { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
-            ])
-          }
-          className="mt-4 min-h-12 rounded-full border border-line-strong px-5 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          Aggiungi partecipante
-        </button>
-      )}
+      {/* Il numero di squadre sta con l'elenco che lo determina, nella stessa
+          cornice: e' la lunghezza della lista, non un campo da compilare. Prima era
+          una pillola sola fuori da ogni riquadro. */}
+      <div className="mt-4 flex max-w-2xl flex-wrap items-center justify-between gap-3">
+        {lockCount ? <span /> : (
+          <button
+            type="button"
+            onClick={() =>
+              onChange([
+                ...value,
+                { id: newParticipantId(), name: '', initial: '', me: value.length === 0 },
+              ])
+            }
+            className="min-h-12 rounded-full border border-line-strong px-5 text-base hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            Aggiungi partecipante
+          </button>
+        )}
+        <span className="tnum inline-flex items-center gap-1.5 text-lg font-extrabold">
+          {value.length}
+          <span className="font-normal text-muted-foreground">squadre</span>
+        </span>
+      </div>
 
       <FieldErrors id={groupErrorsId} errors={groupErrors} />
     </fieldset>

@@ -22,6 +22,8 @@ export type BidBroadcast =
       playerId: string;
       price: number;
       remainingMs: number;
+      /** Chi e' in testa, se l'operatore l'ha segnato: la sala lo vuole vedere. */
+      leaderName?: string;
     };
 
 const NAME = 'fantaagent-bid';

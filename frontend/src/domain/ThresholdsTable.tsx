@@ -99,7 +99,7 @@ export function ThresholdsTable({
         </p>
       ) : null}
 
-      <table className="w-full table-fixed text-base">
+      <table className="w-auto table-fixed text-base">
         <caption className="mb-2 text-left text-base font-bold">
           {GROUP_LABEL}
         </caption>

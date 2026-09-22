@@ -125,9 +125,41 @@ function fullFetchMock({
       return Promise.resolve(new Response(null, { status: 204 }));
     }
     if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-    return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    return alwaysReadOrReject(href);
   });
 }
+
+/**
+ * L'aggiudicazione diretta: si apre dal suo bottone (se non e' gia' aperta), si
+ * scrivono prezzo e squadra — niente e' precompilato — e si aggiudica.
+ */
+async function assignDirect(price = '1', buyer = 'anna') {
+  const toggle = screen.queryByRole('button', { name: 'Aggiudica direttamente' });
+  if (toggle) await userEvent.click(toggle);
+  const field = screen.getByLabelText('Prezzo');
+  await userEvent.clear(field);
+  await userEvent.type(field, price);
+  await userEvent.selectOptions(screen.getByLabelText('Aggiudica a'), buyer);
+  await userEvent.click(screen.getByRole('button', { name: /^Aggiudica$/ }));
+}
+
+const BOARD_EMPTY = { auctionId: 'a1', currentPhase: 'P', columns: [] };
+
+/**
+ * Il tabellone (i comprati per la ricerca) e le occasioni della fase: la schermata
+ * li legge sempre. Vuoti se il test non dice altro. Rifiutarli non e' neutro: ogni
+ * gesto rilegge tutte le query prima di dirsi riuscito, e un rifiuto con il suo
+ * nuovo tentativo ritardava di un secondo gli annunci che i test aspettano.
+ */
+function alwaysReadOrReject(href: string): Promise<Response> {
+  if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD_EMPTY));
+  if (href.includes('/players/targets')) return Promise.resolve(jsonResponse(TARGETS));
+  return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+}
+const TARGETS = [
+  { id: 'p1', name: 'Giocatore Uno', team: 'AAA', role: 'P', listPrice: 1,
+    maxBid: 50, expectedPrice: 10, margin: 40, worthPursuing: true },
+];
 
 describe('AuctionRoute', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -145,7 +177,7 @@ describe('AuctionRoute', () => {
   // resterebbe nel campo anche per p1 — pronto a essere inviato per il lotto
   // sbagliato. Ora che il campo parte sempre da uno, il remount e' l'UNICO
   // meccanismo che lo azzera: niente insegue piu' una proposta.
-  it('tornando su un giocatore gia visto (dato in cache, nessun vuoto) il campo prezzo riparte comunque da uno', async () => {
+  it('tornando su un giocatore gia visto (dato in cache, nessun vuoto) il campo prezzo riparte comunque vuoto', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
 
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
@@ -154,7 +186,7 @@ describe('AuctionRoute', () => {
       if (href.includes('/players/p2/valuation')) return Promise.resolve(jsonResponse(valuation('p2', 80)));
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -167,24 +199,27 @@ describe('AuctionRoute', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
 
+    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica direttamente' }));
     const price = screen.getByLabelText('Prezzo');
-    await userEvent.clear(price);
     await userEvent.type(price, '99');
     expect(price).toHaveValue(99);
 
-    // p1 -> p2: passa per il vuoto, quindi non e' la prova che conta.
+    // p1 -> p2: passa per il vuoto, quindi non e' la prova che conta. Cambiando
+    // giocatore l'aggiudicazione diretta si richiude, e riaperta parte vuota.
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Due/ }));
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('80'));
+    expect(screen.queryByLabelText('Prezzo')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica direttamente' }));
     const price2 = screen.getByLabelText('Prezzo');
-    expect(price2).toHaveValue(1);
-    await userEvent.clear(price2);
+    expect(price2).toHaveValue(null);
     await userEvent.type(price2, '15');
     expect(price2).toHaveValue(15);
 
     // p2 -> p1: p1 e' gia' in cache, nessun vuoto. Questa e' la prova.
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('50'));
-    expect(screen.getByLabelText('Prezzo')).toHaveValue(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica direttamente' }));
+    expect(screen.getByLabelText('Prezzo')).toHaveValue(null);
   });
 
   // La ricerca riceve onSelect={setSelectedId}, la STESSA selezione della tabella
@@ -231,7 +266,7 @@ describe('AuctionRoute', () => {
     expect(await screen.findByRole('heading', { name: 'Giocatore Due' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('80'));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+    await assignDirect();
 
     // "Aggiudica" scrive l'identificativo del giocatore trovato dalla
     // ricerca — non quello di un'altra riga o di nessuno.
@@ -282,7 +317,7 @@ describe('AuctionRoute', () => {
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 7)));
       if (href.includes('/purchases')) return Promise.resolve(jsonResponse(PURCHASE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -300,7 +335,7 @@ describe('AuctionRoute', () => {
     const observer = new MutationObserver(() => seenTexts.push(status.textContent ?? ''));
     observer.observe(status, { childList: true, characterData: true, subtree: true });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+    await assignDirect();
 
     await waitFor(() => expect(status).toHaveTextContent(/293 crediti/), { timeout: 2000 });
     observer.disconnect();
@@ -334,7 +369,7 @@ describe('AuctionRoute', () => {
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 7)));
       if (href.includes('/purchases')) return Promise.resolve(jsonResponse(PURCHASE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -348,7 +383,7 @@ describe('AuctionRoute', () => {
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('7'));
     expect(screen.getAllByRole('status')).toHaveLength(1);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+    await assignDirect();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/aggiudicato/));
     expect(screen.getAllByRole('status')).toHaveLength(1);
   });
@@ -384,7 +419,7 @@ describe('AuctionRoute', () => {
           }),
         );
       }
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -398,11 +433,11 @@ describe('AuctionRoute', () => {
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('7'));
 
     // Primo invio: riuscito, l'annuncio compare.
-    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+    await assignDirect();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/aggiudicato/));
 
     // Secondo invio: fallisce.
-    await userEvent.click(screen.getByRole('button', { name: 'Aggiudica' }));
+    await assignDirect();
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('Anna ha solo 12 crediti di budget residuo'),
     );
@@ -464,7 +499,7 @@ describe('AuctionRoute', () => {
 
     const battitore = screen.getByRole('region', { name: 'Battitore' });
     expect(within(battitore).getAllByRole('heading', { name: 'Giocatore Uno' })).toHaveLength(1);
-    expect(within(battitore).getAllByText(/^tetto$/)).toHaveLength(1);
+    expect(within(battitore).getAllByText(/^il tuo tetto$/)).toHaveLength(1);
     // La scheda di decisione non e' piu' in scena: il battitore la sostituisce,
     // non ci si annida dentro.
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
@@ -492,9 +527,9 @@ describe('AuctionRoute', () => {
     await userEvent.keyboard('{Escape}');
 
     expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
-    // BidPanel e' di nuovo la' — non un secondo percorso di aggiudicazione,
-    // lo stesso pannello di sempre.
-    expect(screen.getByLabelText('Prezzo')).toBeInTheDocument();
+    // La scheda del giocatore e' di nuovo la', con l'aggiudicazione diretta a
+    // portata di un clic — non un secondo percorso, lo stesso pannello di sempre.
+    expect(screen.getByRole('button', { name: 'Aggiudica direttamente' })).toBeInTheDocument();
   });
 
   // Fix round 1: un lotto alla volta e' aperto sul battitore. Senza
@@ -563,6 +598,9 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
 
       // La barra spaziatrice e' il gesto che avvia il countdown (si veda
       // BidderDialog): senza, il tempo resta fermo al valore pieno e non
@@ -575,7 +613,7 @@ describe('AuctionRoute', () => {
         vi.advanceTimersByTime(12_100);
       });
 
-      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+      await user.click(screen.getByRole('button', { name: /^Aggiudica a / }));
 
       await waitFor(() => expect(purchaseBody).not.toBeNull());
       expect(purchaseBody).toMatchObject({ playerId: 'p1', participantId: 'anna' });
@@ -610,7 +648,7 @@ describe('AuctionRoute', () => {
         );
       }
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -627,12 +665,15 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(12_100);
       });
 
-      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+      await user.click(screen.getByRole('button', { name: /^Aggiudica a / }));
 
       await waitFor(() =>
         expect(screen.getByText('Anna ha solo 12 crediti di budget residuo')).toHaveAttribute(
@@ -698,6 +739,9 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
       // Solo ORA si comincia ad ascoltare: il battito emesso prima
@@ -741,6 +785,9 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard(' '); // avvia il countdown (12 s, dalle preferenze)
 
       const seen: BidBroadcast[] = [];
@@ -777,6 +824,9 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
 
       const seen: BidBroadcast[] = [];
       const unsubscribe = subscribeBid((m) => seen.push(m));
@@ -800,7 +850,7 @@ describe('AuctionRoute', () => {
         phaseBody = init?.body ? JSON.parse(String(init.body)) : null;
         return Promise.resolve(new Response(null, { status: 204 }));
       }
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -824,7 +874,7 @@ describe('AuctionRoute', () => {
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE_UNDOABLE));
       if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -855,7 +905,7 @@ describe('AuctionRoute', () => {
       const href = typeof input === 'string' ? input : input.toString();
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -877,7 +927,7 @@ describe('AuctionRoute', () => {
       const href = typeof input === 'string' ? input : input.toString();
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -918,12 +968,15 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(12_100);
       });
 
-      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+      await user.click(screen.getByRole('button', { name: /^Aggiudica a / }));
 
       await waitFor(() => expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument());
     } finally {
@@ -959,7 +1012,7 @@ describe('AuctionRoute', () => {
         );
       }
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
     vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -976,11 +1029,14 @@ describe('AuctionRoute', () => {
       let open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(12_100);
       });
-      await user.click(screen.getByRole('button', { name: 'Aggiudica' }));
+      await user.click(screen.getByRole('button', { name: /^Aggiudica a / }));
       await waitFor(() =>
         expect(screen.getByText('Anna ha solo 12 crediti di budget residuo')).toBeInTheDocument(),
       );
@@ -992,6 +1048,9 @@ describe('AuctionRoute', () => {
       open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
+      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
+      // l'acquirente va scelto e «Aggiudica» resta spento.
+      await user.click(screen.getByRole('button', { name: /^Anna/ }));
 
       expect(screen.queryByText('Anna ha solo 12 crediti di budget residuo')).not.toBeInTheDocument();
     } finally {
@@ -1022,7 +1081,7 @@ describe('AuctionRoute', () => {
           }),
         );
       }
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1049,7 +1108,7 @@ describe('AuctionRoute', () => {
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
       if (href.endsWith('/phase')) return Promise.resolve(new Response(null, { status: 204 }));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1086,7 +1145,7 @@ describe('AuctionRoute', () => {
           }),
         );
       }
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1143,7 +1202,7 @@ describe('AuctionRoute', () => {
           }),
         );
       }
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1181,7 +1240,7 @@ describe('AuctionRoute', () => {
       if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
       if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE_UNDOABLE));
       if (href.includes('/purchases/void-last')) return Promise.resolve(new Response(null, { status: 204 }));
-      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+      return alwaysReadOrReject(href);
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1227,7 +1286,7 @@ describe('AuctionRoute', () => {
         if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(pageFromHref(href)));
         if (href.includes('/players/p1/valuation')) return Promise.resolve(jsonResponse(valuation('p1', 50)));
         if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
-        return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+        return alwaysReadOrReject(href);
       });
       vi.stubGlobal('fetch', fetchMock);
 
@@ -1270,7 +1329,7 @@ describe('AuctionRoute', () => {
           phaseChanged = true;
           return Promise.resolve(new Response(null, { status: 204 }));
         }
-        return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+        return alwaysReadOrReject(href);
       });
       vi.stubGlobal('fetch', fetchMock);
 
@@ -1314,7 +1373,7 @@ describe('AuctionRoute', () => {
         if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(PHASE));
         if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
         if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
-        return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+        return alwaysReadOrReject(href);
       });
     }
 
@@ -1418,24 +1477,25 @@ describe('AuctionRoute', () => {
     );
 
     const crediti = await screen.findByRole('region', { name: 'Crediti delle squadre' });
-    const consigli = screen.getByRole('region', { name: 'Perché questo prezzo' });
+    const occasioni = screen.getByRole('region', { name: 'Occasioni della fase' });
     const griglia = crediti.parentElement;
     expect(griglia?.className).toContain('grid-cols');
     // Le tre colonne sono figlie della stessa griglia, nell'ordine dichiarato.
-    expect(consigli.parentElement).toBe(griglia);
+    expect(occasioni.parentElement).toBe(griglia);
     expect(griglia?.children).toHaveLength(3);
 
-    // Senza giocatore scelto la colonna non e' un riquadro diverso dagli altri:
-    // e' lo STESSO pannello, con lo stesso titolo, e dentro l'invito.
-    expect(consigli).toHaveTextContent(/Cerca un giocatore o scegline uno dalla tabella/);
+    // Senza giocatore scelto la colonna mostra le occasioni della fase, non una
+    // frase sola: ogni occasione mette il giocatore sul battitore.
+    expect(await within(occasioni).findByRole('button', { name: /^Giocatore Uno, AAA: mercato 10, tetto 50/ }))
+      .toBeInTheDocument();
 
-    // Scelto un giocatore, l'invito lascia il posto all'analisi nello stesso pannello.
+    // Scelto un giocatore, la colonna torna a spiegarne il prezzo, nello stesso posto.
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await screen.findByLabelText('Prezzo');
+    await screen.findByRole('button', { name: 'Aggiudica direttamente' });
     expect(screen.getByRole('region', { name: 'Crediti delle squadre' })).toBeInTheDocument();
     const dopo = screen.getByRole('region', { name: 'Perché questo prezzo' });
-    expect(dopo).not.toHaveTextContent(/Cerca un giocatore o scegline uno dalla tabella/);
-    expect(dopo).toHaveTextContent(/tetto duro/);
+    expect(dopo.parentElement).toBe(griglia);
+    expect(dopo).toHaveTextContent(/mai oltre/);
     expect(griglia?.children).toHaveLength(3);
   });
 
@@ -1455,13 +1515,14 @@ describe('AuctionRoute', () => {
     );
 
     const battitore = await screen.findByRole('region', { name: 'Battitore' });
-    expect(battitore).toHaveTextContent(/Nessun giocatore sul battitore/);
+    // Vuoto non e' muto: la tua squadra in numeri, con l'invito a scegliere.
+    expect(await within(battitore).findByText(/La tua squadra, Anna/)).toBeInTheDocument();
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await screen.findByLabelText('Prezzo');
+    await screen.findByRole('button', { name: 'Aggiudica direttamente' });
     expect(within(battitore).getByTestId('decision-card')).toBeInTheDocument();
-    expect(battitore).not.toHaveTextContent(/Nessun giocatore sul battitore/);
+    expect(battitore).not.toHaveTextContent(/La tua squadra/);
   });
 
   /**
@@ -1512,12 +1573,15 @@ describe('AuctionRoute', () => {
     await userEvent.click(open);
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
+    // Col conto che corre il primo clic chiede conferma e non toglie niente.
     await userEvent.click(screen.getByRole('button', { name: /Togli dal battitore/ }));
+    expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Conferma: il lotto si perde/ }));
 
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Battitore' }))
-      .toHaveTextContent(/Nessun giocatore sul battitore/);
+      .toHaveTextContent(/La tua squadra, Anna/);
   });
 
   /** La colonna a sinistra dice nome e crediti, e chi ascolta riconosce la propria riga. */
@@ -1535,5 +1599,108 @@ describe('AuctionRoute', () => {
     expect(within(crediti).getByText('Anna')).toBeInTheDocument();
     expect(within(crediti).getByTestId('budget-anna')).toHaveTextContent('300');
     expect(within(crediti).getByTestId('manager-anna')).toHaveTextContent(', sei tu');
+  });
+
+  /** Cercare un nome gia' comprato dice di chi e' e a quanto, non «nessun giocatore». */
+  it('la ricerca dice di chi e un giocatore gia comprato', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const board = {
+      auctionId: 'a1', currentPhase: 'P', columns: [{
+        participantId: 'anna', participantName: 'Anna', me: true, budgetRemaining: 220, slotsRemaining: 24,
+        byRole: { P: [], D: [], C: [], A: [{ seq: 4, playerName: 'Lautaro', price: 80 }] },
+      }],
+    };
+    const base = fullFetchMock();
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/board')) return Promise.resolve(jsonResponse(board));
+      if (href.includes('/players?')) return Promise.resolve(jsonResponse([]));
+      return base(input, init);
+    }));
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.type(await screen.findByRole('searchbox', { name: /cerca giocatore/i }), 'lautàro');
+    const sold = await screen.findByRole('list', { name: 'Giocatori già comprati' });
+    expect(sold).toHaveTextContent('Lautaro è di Anna');
+    expect(sold).toHaveTextContent('80 crediti');
+    expect(screen.queryByText('Nessun giocatore trovato.')).not.toBeInTheDocument();
+  });
+
+  /** Con tutte le rose piene la schermata e' il riepilogo, non la serata con i tetti a zero. */
+  it('ad asta conclusa mostra il riepilogo e le rose, non la ricerca', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const full = {
+      ...STATE,
+      participants: STATE.participants.map((p) => ({
+        ...p, budgetRemaining: 7, slotsRemaining: 0, filledByRole: p.slotsByRole,
+      })),
+    };
+    const board = {
+      auctionId: 'a1', currentPhase: 'A', columns: [{
+        participantId: 'anna', participantName: 'Anna', me: true, budgetRemaining: 7, slotsRemaining: 0,
+        byRole: { P: [{ seq: 1, playerName: 'Maignan', price: 38 }], D: [], C: [], A: [{ seq: 2, playerName: 'Kean', price: 111 }] },
+      }],
+    };
+    const base = fullFetchMock();
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(full));
+      if (href.endsWith('/board')) return Promise.resolve(jsonResponse(board));
+      return base(input, init);
+    }));
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Asta conclusa' })).toBeInTheDocument();
+    const top = screen.getByRole('region', { name: 'Gli acquisti più cari' });
+    expect(within(top).getAllByRole('listitem')[0]).toHaveTextContent('Kean');
+    expect(screen.getByRole('link', { name: 'Scarica le rose' })).toHaveAttribute('download');
+    expect(screen.queryByRole('searchbox', { name: /cerca giocatore/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Dopo un'aggiudicazione, chi guarda vede cosa e' stato registrato e puo'
+   * annullarlo subito: prima il riquadro tornava a riposo e basta.
+   */
+  it('dopo un aggiudicazione mostra cosa e stato registrato, con Annulla', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const writes: unknown[] = [];
+    const base = fullFetchMock({
+      purchase: { seq: 9, playerId: 'p1', participantId: 'anna', price: 12 },
+    });
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.includes('/purchases/void-last')) {
+        writes.push('void');
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      return base(input, init);
+    }));
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await screen.findByRole('button', { name: 'Aggiudica direttamente' });
+    await assignDirect('12');
+
+    const toast = await screen.findByText((_, el) => el?.tagName === 'P' && el.textContent === 'Giocatore Uno a Anna per 12');
+    expect(toast).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+    await waitFor(() => expect(writes).toContain('void'));
+    expect(screen.queryByText('Giocatore Uno a Anna per 12')).not.toBeInTheDocument();
   });
 });

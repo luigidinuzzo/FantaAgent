@@ -333,4 +333,26 @@ describe('RosterGrid', () => {
     expect(section.textContent).not.toMatch(/undefined/i);
     expect(document.body.textContent).not.toMatch(/undefined/i);
   });
+
+  /** «1 di 3», non una percentuale: i posti si contano. */
+  it('la fascia di ruolo dice i posti presi sul totale', async () => {
+    renderRoster();
+    const section = await screen.findByRole('button', { name: /portieri.*1 su 3/i });
+    expect(section).toHaveTextContent('1 di 3');
+    expect(section.textContent).not.toMatch(/%/);
+  });
+
+  /**
+   * La ✕ di revoca compare passando sulla riga o arrivandoci da tastiera, non
+   * accanto a ognuno dei giocatori: resta sempre visibile solo dove non si puo'
+   * passare sopra col puntatore.
+   */
+  it('la revoca compare al passaggio o al focus, non sempre', async () => {
+    renderRoster();
+    const cancel = await screen.findByRole('button', { name: "Annulla l'acquisto di Sommer" });
+    expect(cancel.className).toContain('opacity-0');
+    expect(cancel.className).toContain('group-hover:opacity-100');
+    expect(cancel.className).toContain('focus-visible:opacity-100');
+    expect(cancel.className).toContain('[@media(hover:none)]:opacity-100');
+  });
 });
