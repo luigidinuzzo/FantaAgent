@@ -18,42 +18,48 @@ export function ProfileRoute() {
 
   return (
     <AppShell chrome="top">
-      <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
-        <section aria-labelledby="profile-name" className="panel rounded-2xl p-6">
-          <h1 id="profile-name" className="w-exp text-lg font-semibold">Il tuo profilo</h1>
-          <form className="mt-4" onSubmit={(e) => { e.preventDefault(); rename.mutate(current); }}>
-            <TextField id="profile-display-name" label="Il tuo nome" autoComplete="name"
-              value={current} onChange={setName} errors={errors.displayName} />
-            <button type="submit" disabled={rename.isPending || current === me.data.displayName}
-              className={PRIMARY_BUTTON}>
-              {rename.isPending ? 'Salvo…' : 'Salva il nome'}
-            </button>
-          </form>
-        </section>
-        <section aria-labelledby="profile-access" className="panel rounded-2xl p-6">
-          <h2 id="profile-access" className="w-exp text-lg font-semibold">Accesso</h2>
-          <p className="mt-4 text-sm">{me.data.email}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {me.data.emailVerified ? 'Indirizzo confermato.' : 'Indirizzo non ancora confermato.'}
-          </p>
-          {!me.data.emailVerified ? (
-            <button type="button" disabled={resend.isPending || resend.isSuccess}
-              onClick={() => resend.mutate()}
-              className="mt-4 min-h-11 rounded-full border border-line-strong px-5 font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
-              {resend.isSuccess ? 'Email inviata' : 'Mandami di nuovo la conferma'}
-            </button>
-          ) : null}
-          <button type="button" disabled={logout.isPending}
-            onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/accedi', { replace: true }) })}
-            className="mt-6 flex min-h-11 w-full items-center justify-center rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
-            Esci
-          </button>
-          {rename.isError && !errors.displayName ? (
-            <p role="alert" className="mt-4 text-sm font-medium text-destructive">
-              {userMessage(rename.error, 'Non sono riuscito a salvare. Riprova fra poco.')}
+      {/* Due soli pannelli, corti: senza centrarli restava un vuoto enorme sotto,
+          specie sulle finestre larghe. min-h copre l'altezza reale sotto la barra
+          (100dvh meno --header-h meno il padding verticale di <main>, p-4/md:p-6),
+          cosi' i pannelli stanno in mezzo invece che appesi in alto. */}
+      <div className="flex min-h-[calc(100dvh-var(--header-h)-2rem)] items-center justify-center md:min-h-[calc(100dvh-var(--header-h)-3rem)]">
+        <div className="mx-auto grid w-full max-w-3xl gap-4 md:grid-cols-2">
+          <section aria-labelledby="profile-name" className="panel rounded-2xl p-6">
+            <h1 id="profile-name" className="w-exp text-lg font-semibold">Il tuo profilo</h1>
+            <form className="mt-4" onSubmit={(e) => { e.preventDefault(); rename.mutate(current); }}>
+              <TextField id="profile-display-name" label="Il tuo nome" autoComplete="name"
+                value={current} onChange={setName} errors={errors.displayName} />
+              <button type="submit" disabled={rename.isPending || current === me.data.displayName}
+                className={PRIMARY_BUTTON}>
+                {rename.isPending ? 'Salvo…' : 'Salva il nome'}
+              </button>
+            </form>
+          </section>
+          <section aria-labelledby="profile-access" className="panel rounded-2xl p-6">
+            <h2 id="profile-access" className="w-exp text-lg font-semibold">Accesso</h2>
+            <p className="mt-4 text-sm">{me.data.email}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {me.data.emailVerified ? 'Indirizzo confermato.' : 'Indirizzo non ancora confermato.'}
             </p>
-          ) : null}
-        </section>
+            {!me.data.emailVerified ? (
+              <button type="button" disabled={resend.isPending || resend.isSuccess}
+                onClick={() => resend.mutate()}
+                className="mt-4 min-h-11 rounded-full border border-line-strong px-5 font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                {resend.isSuccess ? 'Email inviata' : 'Mandami di nuovo la conferma'}
+              </button>
+            ) : null}
+            <button type="button" disabled={logout.isPending}
+              onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/accedi', { replace: true }) })}
+              className="mt-6 flex min-h-11 w-full items-center justify-center rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+              Esci
+            </button>
+            {rename.isError && !errors.displayName ? (
+              <p role="alert" className="mt-4 text-sm font-medium text-destructive">
+                {userMessage(rename.error, 'Non sono riuscito a salvare. Riprova fra poco.')}
+              </p>
+            ) : null}
+          </section>
+        </div>
       </div>
     </AppShell>
   );
