@@ -1,8 +1,10 @@
 package com.fantaagent.adapter.in.api.dto;
 
+import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.domain.league.LeagueRules;
 import com.fantaagent.domain.player.Role;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +36,21 @@ public final class SettingsDtos {
                                  double assist, double penaltyScored, double penaltyMissed,
                                  double penaltySaved, double yellowCard, double redCard,
                                  double goalConceded, double cleanSheet, boolean confirmed) {
+
+        public static ScoringSection of(ScoringSettings s) {
+            return new ScoringSection(s.defenceModifierEnabled(), s.defendersCounted(),
+                    s.thresholds().stream().map(t -> new ScoringStep(t.minAverage(), t.bonus())).toList(),
+                    s.goalBonus(), s.assist(), s.penaltyScored(), s.penaltyMissed(),
+                    s.penaltySaved(), s.yellowCard(), s.redCard(), s.goalConceded(),
+                    s.cleanSheet(), s.confirmed());
+        }
+
+        public ScoringSettings toSettings() {
+            return new ScoringSettings(defenceModifierEnabled, defendersCounted,
+                    thresholds.stream().map(t -> new ScoringSettings.Step(t.minAverage(), t.bonus())).toList(),
+                    goalBonus, assist, penaltyScored, penaltyMissed, penaltySaved, yellowCard, redCard,
+                    goalConceded, cleanSheet, confirmed);
+        }
     }
 
     /**
@@ -66,6 +83,15 @@ public final class SettingsDtos {
 
     /** Crediti e slot scelti per l'asta che nasce. Le squadre no: sono i partecipanti. */
     public record RulesSection(int budget, Map<Role, Integer> slots) {
+
+        /** Una mappa assente o con un ruolo mancante diventa un ruolo a zero, che il validatore nomina. */
+        public static Map<Role, Integer> rolesOf(Map<Role, Integer> slots) {
+            Map<Role, Integer> out = new EnumMap<>(Role.class);
+            for (Role role : Role.values()) {
+                out.put(role, slots == null ? 0 : slots.getOrDefault(role, 0));
+            }
+            return out;
+        }
     }
 
     public record SaveRequest(String auctionName, BidderSettings bidder,

@@ -12,7 +12,6 @@ import com.fantaagent.config.ParticipantInitials;
 import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.config.ScoringSettingsValidator;
 import com.fantaagent.domain.league.Participant;
-import com.fantaagent.domain.player.Role;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +68,7 @@ public class SettingsApi {
         return new SettingsDtos.SettingsResponse(
                 new SettingsDtos.BidderSettings(bidder.bidTimerSeconds(), bidder.beepEnabled()),
                 runtime.participants().stream().map(SettingsApi::cardOf).toList(),
-                sectionOf(runtime.scoringSettings()),
+                SettingsDtos.ScoringSection.of(runtime.scoringSettings()),
                 runtime.hasAuction(),
                 SettingsDtos.LeagueRulesView.from(runtime.rules()));
     }
@@ -94,7 +92,7 @@ public class SettingsApi {
         return new SettingsDtos.SettingsResponse(
                 new SettingsDtos.BidderSettings(setup.bidder().bidTimerSeconds(), setup.bidder().beepEnabled()),
                 setup.participants().stream().map(SettingsApi::cardOf).toList(),
-                sectionOf(setup.scoring()),
+                SettingsDtos.ScoringSection.of(setup.scoring()),
                 false,
                 new SettingsDtos.LeagueRulesView(setup.participants().size(),
                         setup.rules().budget(), setup.rules().slots()));
@@ -135,7 +133,7 @@ public class SettingsApi {
             if (body.scoring() == null) {
                 addError(errors, "scoring", "Le impostazioni del punteggio sono obbligatorie.");
             } else {
-                scoring = settingsOf(body.scoring());
+                scoring = body.scoring().toSettings();
                 mergeErrors(errors, ScoringSettingsValidator.validateByField(scoring));
             }
         }
@@ -176,7 +174,8 @@ public class SettingsApi {
             if (body.rules() == null) {
                 addError(errors, "rules", "Le regole della lega sono obbligatorie.");
             } else {
-                rules = new LeagueRulesSettings(body.rules().budget(), rolesOf(body.rules().slots()));
+                rules = new LeagueRulesSettings(body.rules().budget(),
+                        SettingsDtos.RulesSection.rolesOf(body.rules().slots()));
                 mergeErrors(errors, LeagueRulesValidator.validateByField(rules, members.size()));
             }
         } else if (!sameIds(members, runtime.participants())) {
@@ -198,15 +197,6 @@ public class SettingsApi {
         runtime.setParticipants(members);
         runtime.setBidder(bidder);
         return new SettingsDtos.SaveResult(null);
-    }
-
-    /** Una mappa assente o con un ruolo mancante diventa un ruolo a zero, che il validatore nomina. */
-    private static Map<Role, Integer> rolesOf(Map<Role, Integer> slots) {
-        Map<Role, Integer> out = new EnumMap<>(Role.class);
-        for (Role role : Role.values()) {
-            out.put(role, slots == null ? 0 : slots.getOrDefault(role, 0));
-        }
-        return out;
     }
 
     private static boolean sameIds(List<Participant> a, List<Participant> b) {
@@ -236,25 +226,5 @@ public class SettingsApi {
     private static SettingsDtos.ParticipantSettings cardOf(Participant p) {
         return new SettingsDtos.ParticipantSettings(p.id(), p.name(),
                 String.valueOf(p.initial()), p.me());
-    }
-
-    private static SettingsDtos.ScoringSection sectionOf(ScoringSettings s) {
-        return new SettingsDtos.ScoringSection(s.defenceModifierEnabled(), s.defendersCounted(),
-                s.thresholds().stream()
-                        .map(t -> new SettingsDtos.ScoringStep(t.minAverage(), t.bonus()))
-                        .toList(),
-                s.goalBonus(), s.assist(), s.penaltyScored(), s.penaltyMissed(),
-                s.penaltySaved(), s.yellowCard(), s.redCard(), s.goalConceded(),
-                s.cleanSheet(), s.confirmed());
-    }
-
-    private static ScoringSettings settingsOf(SettingsDtos.ScoringSection s) {
-        return new ScoringSettings(s.defenceModifierEnabled(), s.defendersCounted(),
-                s.thresholds().stream()
-                        .map(t -> new ScoringSettings.Step(t.minAverage(), t.bonus()))
-                        .toList(),
-                s.goalBonus(), s.assist(), s.penaltyScored(), s.penaltyMissed(),
-                s.penaltySaved(), s.yellowCard(), s.redCard(), s.goalConceded(),
-                s.cleanSheet(), s.confirmed());
     }
 }

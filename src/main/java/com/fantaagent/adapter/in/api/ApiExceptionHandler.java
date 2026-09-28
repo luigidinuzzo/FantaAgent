@@ -1,12 +1,16 @@
 package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.application.port.out.EmailTakenException;
+import com.fantaagent.application.port.out.InitialTakenException;
 import com.fantaagent.application.service.NoAuctionSelectedException;
 import com.fantaagent.application.service.PurchaseRejectedException;
 import com.fantaagent.application.service.PurchaseRevocationException;
 import com.fantaagent.application.service.account.InvalidAccountDataException;
 import com.fantaagent.application.service.account.InvalidTokenException;
 import com.fantaagent.application.service.account.TooManyAttemptsException;
+import com.fantaagent.application.service.league.AdminOnlyException;
+import com.fantaagent.application.service.league.InvalidLeagueDataException;
+import com.fantaagent.application.service.league.NotLeagueMemberException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -186,6 +190,29 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(Math.max(1, e.waitFor().toSeconds())))
                 .body(problem(HttpStatus.TOO_MANY_REQUESTS, "too-many-attempts", e.getMessage()));
+    }
+
+    @ExceptionHandler(NotLeagueMemberException.class)
+    ProblemDetail notMember(NotLeagueMemberException e) {
+        return problem(HttpStatus.NOT_FOUND, "unknown-league", "Lega non trovata.");
+    }
+
+    @ExceptionHandler(AdminOnlyException.class)
+    ProblemDetail adminOnly(AdminOnlyException e) {
+        return problem(HttpStatus.FORBIDDEN, "admin-only", e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidLeagueDataException.class)
+    ProblemDetail invalidLeague(InvalidLeagueDataException e) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-league",
+                "Alcuni dati non sono validi.");
+        problem.setProperty("errors", e.errors());
+        return problem;
+    }
+
+    @ExceptionHandler(InitialTakenException.class)
+    ProblemDetail initialTaken(InitialTakenException e) {
+        return problem(HttpStatus.CONFLICT, "initial-taken", e.getMessage());
     }
 
     /**
