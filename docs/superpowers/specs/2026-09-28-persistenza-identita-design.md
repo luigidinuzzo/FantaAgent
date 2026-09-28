@@ -28,6 +28,11 @@ viene riordinata così:
 Persistenza e identità stanno in un solo sotto-progetto perché un database senza
 proprietari non ha chiavi, e degli account senza database non hanno dove stare.
 
+**Il deploy si anticipa.** Deciso il 28 settembre: finito questo sotto-progetto si
+configura l'ambiente remoto e si mette il portale in linea, prima del tempo reale.
+Per questo tutto ciò che distingue locale e remoto — database, posta, cookie, URL
+pubblico — si legge da variabili d'ambiente fin da qui.
+
 ### 1.1 Decisioni prese
 
 | Decisione | Scelta | Conseguenza |
@@ -255,14 +260,16 @@ Ogni comando (acquisto, correzione, annullamento, cambio fase, turno di chiamata
 1. il guard verifica che l'utente sia l'amministratore;
 2. il servizio valida contro lo snapshot corrente, con le regole di oggi (budget,
    slot, giocatore già assegnato);
-3. inserisce l'evento con `seq = ultimo + 1`, in una transazione;
-4. se la PK respinge il seq perché un'altra scrittura è arrivata prima, ricarica lo
-   snapshot e **rivalida** — non ritenta alla cieca, perché il comando potrebbe non
-   essere più valido;
-5. pubblica il nuovo snapshot.
+3. dentro una transazione blocca la riga dell'asta (`SELECT … FOR UPDATE`), rilegge
+   il registro, rifà i controlli e inserisce l'evento con `seq = ultimo + 1`: due
+   scritture sulla stessa asta si mettono in fila, aste diverse no;
+4. la chiave primaria `(auction_id, seq)` e la rivalidazione (fino a tre tentativi,
+   mai alla cieca) restano come rete per chi scrivesse senza passare dal lock;
+5. la richiesta successiva legge il nuovo stato.
 
-Con una sola istanza il punto 4 non scatta quasi mai. È lì perché col
-sotto-progetto 4 scatterà, e questa parte non deve essere riscritta.
+Il lock sostituisce la ripetizione come meccanismo principale perché, con molti
+rilanci fitti (sotto-progetto 4), chi perde il numero di sequenza più volte di fila
+fallirebbe; in fila, nessuno perde.
 
 Il turno di chiamata non è un evento del registro: è `auction_seat.position`, e
 modificarlo aggiorna la riga (l'append-only vale per `auction_event`, non per i
@@ -270,8 +277,11 @@ posti).
 
 ### 4.3 Valutazione per utente
 
-`PlayerAnalysisService` riceve `(snapshot, seatId)` invece di leggere il flag `me`,
-che sparisce da `Participant`.
+Il flag `me` di `Participant` resta, ma non si salva più da nessuna parte: per ogni
+richiesta `AuctionRegistry` costruisce i partecipanti con `me` vero sul posto
+dell'utente autenticato, e i servizi di sempre (`AuctionService`,
+`PlayerAnalysisService`, `PlayerSearchService`) lavorano su quella vista. Il motore
+non cambia; il posto diventa di fatto un argomento del calcolo.
 
 **Il `seatId` non arriva mai dalla richiesta**: lo ricava il guard dall'utente
 autenticato. Nessun endpoint accetta "valuta per il posto X". È la stessa forma
@@ -400,7 +410,7 @@ preparazione: un utente autenticato, una lega, un'asta.
 - Tempo reale, presenza, aggiornamento automatico dello stato — sotto-progetto 3.
 - Banditore sul server, lotto, countdown, rilanci dai dispositivi, uso del turno di
   chiamata — sotto-progetto 4.
-- Deploy, hosting, osservabilità — sotto-progetto 4.
+- Deploy e hosting — il passo subito dopo questo sotto-progetto; osservabilità — sotto-progetto 4.
 - Accesso con Google o altri fornitori.
 - Più amministratori per lega, passaggio di amministrazione.
 - Cancellazione dell'account ed esportazione dei propri dati.
