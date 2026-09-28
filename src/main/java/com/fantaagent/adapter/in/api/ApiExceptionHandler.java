@@ -6,6 +6,7 @@ import com.fantaagent.application.service.PurchaseRejectedException;
 import com.fantaagent.application.service.PurchaseRevocationException;
 import com.fantaagent.application.service.account.InvalidAccountDataException;
 import com.fantaagent.application.service.account.InvalidTokenException;
+import com.fantaagent.application.service.account.TooManyAttemptsException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -178,6 +179,13 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         logger.error("database non raggiungibile", e);
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "service-unavailable",
                 "Il servizio non risponde in questo momento. Riprova fra poco.");
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    ResponseEntity<ProblemDetail> tooManyAttempts(TooManyAttemptsException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(Math.max(1, e.waitFor().toSeconds())))
+                .body(problem(HttpStatus.TOO_MANY_REQUESTS, "too-many-attempts", e.getMessage()));
     }
 
     /**

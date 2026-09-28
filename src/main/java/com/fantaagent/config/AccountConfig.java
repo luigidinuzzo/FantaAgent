@@ -10,6 +10,7 @@ import com.fantaagent.application.port.out.PasswordHasher;
 import com.fantaagent.application.port.out.UserRepository;
 import com.fantaagent.application.port.out.UserTokenRepository;
 import com.fantaagent.application.service.account.AccountService;
+import com.fantaagent.application.service.account.LoginThrottle;
 import com.fantaagent.application.service.account.PasswordPolicy;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,11 @@ public class AccountConfig {
     @Bean
     public Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    public LoginThrottle loginThrottle(Clock clock) {
+        return new LoginThrottle(clock);
     }
 
     @Bean

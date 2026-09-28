@@ -104,6 +104,24 @@ class AuthApiTest {
     }
 
     @Test
+    void troppiTentativiRispondono429() throws Exception {
+        ApiFixture.register(mvc, email, "Anna");
+        for (int i = 0; i < 5; i++) {
+            mvc.perform(post("/api/auth/login").with(csrf()).with(from("10.0.0.2"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"email\":\"%s\",\"password\":\"sbagliata!!\"}".formatted(email)))
+                    .andExpect(status().isUnauthorized());
+        }
+        // Anche con la password giusta e da un altro indirizzo: l'attesa vale per l'email.
+        mvc.perform(post("/api/auth/login").with(csrf()).with(from("10.0.0.3"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\",\"password\":\"%s\"}".formatted(email, ApiFixture.PASSWORD)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "too-many-attempts"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().exists("Retry-After"));
+    }
+
+    @Test
     void unaScritturaSenzaTokenCsrfERifiutata() throws Exception {
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"a@b.it\",\"password\":\"x\"}"))

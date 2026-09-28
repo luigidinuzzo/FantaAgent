@@ -3,12 +3,14 @@ package com.fantaagent.adapter.in.api.auth;
 import com.fantaagent.adapter.in.security.AppUserPrincipal;
 import com.fantaagent.application.port.out.UserAccount;
 import com.fantaagent.application.service.account.AccountService;
+import com.fantaagent.application.service.account.LoginThrottle;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -34,14 +36,17 @@ public class AuthApi {
     private final AuthenticationManager authentication;
     private final SecurityContextRepository contexts;
     private final FindByIndexNameSessionRepository<? extends Session> sessions;
+    private final LoginThrottle throttle;
 
     public AuthApi(AccountService accounts, AuthenticationManager authentication,
                    SecurityContextRepository contexts,
-                   FindByIndexNameSessionRepository<? extends Session> sessions) {
+                   FindByIndexNameSessionRepository<? extends Session> sessions,
+                   LoginThrottle throttle) {
         this.accounts = accounts;
         this.authentication = authentication;
         this.contexts = contexts;
         this.sessions = sessions;
+        this.throttle = throttle;
     }
 
     /** Non fa nulla: esiste perche' la risposta porta il cookie XSRF-TOKEN. */
@@ -62,7 +67,16 @@ public class AuthApi {
     @PostMapping("/auth/login")
     public AuthDtos.Me login(@RequestBody AuthDtos.LoginRequest body,
                              HttpServletRequest request, HttpServletResponse response) {
-        AppUserPrincipal principal = signIn(body.email(), body.password(), request, response);
+        String address = request.getRemoteAddr();
+        throttle.check(body.email(), address);
+        AppUserPrincipal principal;
+        try {
+            principal = signIn(body.email(), body.password(), request, response);
+        } catch (AuthenticationException e) {
+            throttle.failed(body.email(), address);
+            throw e;
+        }
+        throttle.succeeded(body.email());
         return AuthDtos.Me.of(accounts.byId(principal.id()));
     }
 
