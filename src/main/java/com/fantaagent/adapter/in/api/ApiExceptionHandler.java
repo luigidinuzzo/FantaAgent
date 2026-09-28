@@ -1,14 +1,19 @@
 package com.fantaagent.adapter.in.api;
 
+import com.fantaagent.application.port.out.EmailTakenException;
 import com.fantaagent.application.service.NoAuctionSelectedException;
 import com.fantaagent.application.service.PurchaseRejectedException;
 import com.fantaagent.application.service.PurchaseRevocationException;
+import com.fantaagent.application.service.account.InvalidAccountDataException;
+import com.fantaagent.application.service.account.InvalidTokenException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -119,6 +124,44 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         // Thymeleaf su /legacy che questa tappa lascia intatta.
         problem.setProperty("errors", e.errors());
         return problem;
+    }
+
+    @ExceptionHandler(InvalidAccountDataException.class)
+    ProblemDetail invalidAccount(InvalidAccountDataException e) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-account",
+                "Alcuni dati non sono validi.");
+        problem.setProperty("errors", e.errors());
+        return problem;
+    }
+
+    @ExceptionHandler(EmailTakenException.class)
+    ProblemDetail emailTaken(EmailTakenException e) {
+        return problem(HttpStatus.CONFLICT, "email-taken", e.getMessage());
+    }
+
+    /**
+     * Email sconosciuta e password sbagliata danno la stessa risposta: dirle diverse
+     * servirebbe solo a chi prova indirizzi per sapere chi e' iscritto.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    ProblemDetail badCredentials(AuthenticationException e) {
+        return problem(HttpStatus.UNAUTHORIZED, "bad-credentials", "Email o password non corretti.");
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    ProblemDetail invalidToken(InvalidTokenException e) {
+        return problem(HttpStatus.BAD_REQUEST, "invalid-token", e.getMessage());
+    }
+
+    /**
+     * Il database non risponde: niente e' stato scritto, perche' ogni comando e' una
+     * transazione o una INSERT sola. Lo si dice come un'attesa, non come un guasto.
+     */
+    @ExceptionHandler(DataAccessResourceFailureException.class)
+    ProblemDetail unavailable(DataAccessResourceFailureException e) {
+        logger.error("database non raggiungibile", e);
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "service-unavailable",
+                "Il servizio non risponde in questo momento. Riprova fra poco.");
     }
 
     /**

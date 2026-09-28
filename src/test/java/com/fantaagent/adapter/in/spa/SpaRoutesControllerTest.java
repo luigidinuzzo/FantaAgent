@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,9 +55,13 @@ class SpaRoutesControllerTest {
 
     /**
      * Il vincolo vero. Un frontend che riceve index.html al posto di un errore JSON
-     * mostra una pagina bianca e nessun messaggio.
+     * mostra una pagina bianca e nessun messaggio. {@code @WithMockUser}: la rotta è
+     * sotto {@code /api/**}, quindi da Task 4 richiede l'accesso — qui si verifica il
+     * 404 di una rotta inesistente, non l'assenza dell'accesso, che ha il suo test in
+     * {@code AuthApiTest}.
      */
     @Test
+    @WithMockUser
     void unApiInesistenteRestaUn404InProblemJson() throws Exception {
         mvc.perform(get("/api/leagues/default/auctions/corrente/inventato"))
                 .andExpect(status().isNotFound())

@@ -13,9 +13,22 @@ spring:
     password: ${FANTAAGENT_DB_PASSWORD:}
   flyway:
     locations: classpath:db/migration
+  session:
+    jdbc:
+      # Lo schema lo crea Flyway (V2__sessioni.sql), non Spring Session all'avvio.
+      initialize-schema: never
 
 server:
   port: 8080
+  servlet:
+    session:
+      # Due settimane: chi entra la settimana prima dell'asta non deve rientrare la sera.
+      timeout: 14d
+      cookie:
+        http-only: true
+        same-site: lax
+        # In locale si lavora in http; in produzione va a true.
+        secure: ${FANTAAGENT_COOKIE_SECURE:false}
 
 management:
   endpoints:
