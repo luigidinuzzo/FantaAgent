@@ -13,6 +13,14 @@ import { ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
 const ROLE_BAND_CLASS: Record<Role, string> = {
   P: 'border-role-p', D: 'border-role-d', C: 'border-role-c', A: 'border-role-a',
 };
+/**
+ * L'altezza di ogni riga della rosa, uguale che il posto sia pieno o vuoto: una
+ * riga con un giocatore porta anche il bottone di annullamento ed era piu' alta di
+ * una vuota, quindi le colonne delle squadre si sfalsavano appena una comprava.
+ * Con un'altezza decisa qui, le righe restano incolonnate fra tutte le squadre.
+ */
+const ROW_H = 'h-9';
+
 const ROLE_LETTER_CLASS: Record<Role, string> = {
   P: 'text-role-p', D: 'text-role-d', C: 'text-role-c', A: 'text-role-a',
 };
@@ -114,7 +122,7 @@ export function RosterGrid() {
           <a
             href={auctionExportUrl(board.data.auctionId)}
             download
-            className="flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             <DownloadIcon />
             Scarica il CSV delle rose
@@ -125,7 +133,7 @@ export function RosterGrid() {
       {alertMessage ? (
         // role="alert", non un secondo role="status": l'unica live region
         // ambientale della pagina resta AuctionAnnouncer.
-        <p role="alert" className="mb-4 text-sm font-bold text-destructive">
+        <p role="alert" className="mb-4 text-sm font-medium text-destructive">
           {alertMessage}
         </p>
       ) : null}
@@ -299,11 +307,11 @@ function RosterColumn({
       className={`min-w-0 rounded-xl border p-3 ${column.me ? 'border-accent' : 'border-line'}`}
     >
       <h3 id={`roster-${column.participantId}`} className="flex items-baseline justify-between gap-2">
-        <span className="truncate font-bold">{column.participantName}</span>
+        <span className="truncate font-medium">{column.participantName}</span>
         {/* I crediti con la loro parola accanto: un numero nudo accanto al nome
             si capiva solo sapendolo gia'. */}
         <span className="shrink-0 whitespace-nowrap">
-          <span className={`tnum w-exp font-bold ${column.me ? 'text-accent' : ''}`}>{column.budgetRemaining}</span>
+          <span className={`tnum w-exp font-medium ${column.me ? 'text-accent' : ''}`}>{column.budgetRemaining}</span>
           <span className="text-xs text-muted-foreground"> crediti</span>
           <span className="sr-only"> residui</span>
         </span>
@@ -353,7 +361,7 @@ function RosterColumn({
                       aria-controls={panelId}
                       onClick={() => onToggleSection(key)}
                       className={[
-                        'flex min-h-10 w-full items-center gap-2 rounded-r-lg border-l-4 bg-white/[0.04] px-2 font-bold hover:bg-white/[0.08]',
+                        'flex min-h-10 w-full items-center gap-2 rounded-r-lg border-l-4 bg-white/[0.04] px-2 font-medium hover:bg-white/[0.08]',
                         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
                         ROLE_BAND_CLASS[role],
                       ].join(' ')}
@@ -380,12 +388,12 @@ function RosterColumn({
               <tbody id={panelId}>
                 {!open ? null : slots.map((slot) => (
                   <tr key={slot.seq} className="group">
-                    <td className="py-1">{slot.playerName}</td>
-                    <td className="tnum py-1 text-right text-muted-foreground">
+                    <td className={`${ROW_H} truncate py-0`}>{slot.playerName}</td>
+                    <td className={`tnum ${ROW_H} py-0 text-right text-muted-foreground`}>
                       {slot.price}
                       <span className="sr-only"> crediti pagati</span>
                     </td>
-                    <td className="py-1 text-right">
+                    <td className={`${ROW_H} py-0 text-right`}>
                       <button
                         type="button"
                         disabled={pendingSeq === slot.seq}
@@ -408,11 +416,11 @@ function RosterColumn({
                     sr-only che dice cosa significa — non solo un buco muto. */}
                 {!open ? null : Array.from({ length: empties }, (_, i) => (
                   <tr key={`empty-${i}`}>
-                    <td className="py-1 text-muted-foreground">
+                    <td className={`${ROW_H} py-0 text-muted-foreground`}>
                       –<span className="sr-only"> posto libero</span>
                     </td>
-                    <td className="py-1 text-right text-muted-foreground">–</td>
-                    <td />
+                    <td className={`${ROW_H} py-0 text-right text-muted-foreground`}>–</td>
+                    <td className={ROW_H} />
                   </tr>
                 ))}
               </tbody>

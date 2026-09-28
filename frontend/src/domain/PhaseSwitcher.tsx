@@ -34,11 +34,13 @@ export function PhaseSwitcher({
           basta a farne una pillola sola, e la pillola resta alta quanto i suoi
           bottoni (44px). Con la cornice era 54px, e alzava la barra dell'asta
           sopra quella delle altre pagine, coprendo piu' campo. */}
-      <nav aria-label="Fase dell'asta" className="flex items-center gap-0.5 rounded-full bg-white/[0.06]">
+      {/* Senza il suo contenitore a pillola: la fase corrente si stacca da sola,
+          e una pillola attorno a quattro pastiglie ne disegnava una quinta. */}
+      <nav aria-label="Fase dell'asta" className="flex items-center gap-1">
         {/* La parola, accanto alle quattro lettere: senza, erano quattro tondi
             colorati di cui non si capiva il compito. Per chi ascolta c'e' gia' il
             nome della navigazione. */}
-        <span aria-hidden="true" className="pl-3 pr-1 text-sm font-bold text-muted-foreground max-sm:hidden">Fase</span>
+        <span aria-hidden="true" className="pl-3 pr-1 text-sm font-medium text-muted-foreground max-sm:hidden">Fase</span>
         {phases.map((role) => {
           const isCurrent = role === current;
           return (
@@ -48,11 +50,15 @@ export function PhaseSwitcher({
               disabled={pending || isCurrent}
               aria-label={isCurrent ? `${ROLE_NAME_PLURAL[role]}, fase corrente` : ROLE_NAME_PLURAL[role]}
               onClick={() => onChange(role)}
-              className={`flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                isCurrent ? 'bg-surface ring-1 ring-line-strong' : ''
-              }`}
+              // Le fasi non correnti arretrano per TAGLIA, mai per opacita'.
+              // Misurato con il metodo di contrast.test.ts: smorzate al 40% le
+              // quattro lettere scendono fra 2,1 e 2,6 contro 1 sul fondo, dove
+              // la soglia e' 4,5 — e anche al 70% gli attaccanti restano sotto.
+              // Un elemento che arretra non e' un elemento che si smette di poter
+              // leggere, e qui dentro ci sono le lettere con cui si cambia fase.
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
-              <RoleBadge role={role} filled={isCurrent} />
+              <RoleBadge role={role} filled={isCurrent} size={isCurrent ? 'lg' : 'md'} />
             </button>
           );
         })}

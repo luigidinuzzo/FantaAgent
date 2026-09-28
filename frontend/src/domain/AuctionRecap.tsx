@@ -8,7 +8,7 @@ const TOP = 5;
 
 /**
  * L'asta finita: tutte le rose sono complete. Prima la schermata restava quella
- * della serata — battitore vuoto, ricerca che non trovava nessuno, una tabella con
+ * della serata — banco vuoto, ricerca che non trovava nessuno, una tabella con
  * «tetto 0» in rosso su ogni riga — e un'asta conclusa sembrava un'asta rotta.
  *
  * <p>Qui si dice che e' finita e si mostrano i fatti della serata, tutti letti dal
@@ -34,7 +34,7 @@ export function AuctionRecap({ participants, board }: {
         className="flex flex-col justify-center gap-8 rounded-2xl border-2 border-accent bg-surface-raised p-6 sm:p-10"
       >
         <div>
-          <h2 id="recap-heading" className="w-exp text-3xl font-extrabold sm:text-5xl">
+          <h2 id="recap-heading" className="w-exp text-3xl font-semibold sm:text-5xl">
             Asta conclusa
           </h2>
           <p className="mt-3 max-w-[60ch] text-lg text-muted-foreground">
@@ -53,14 +53,14 @@ export function AuctionRecap({ participants, board }: {
             <a
               href={auctionExportUrl(board.auctionId)}
               download
-              className="flex min-h-14 items-center rounded-full bg-accent px-8 text-lg font-extrabold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+              className="flex min-h-14 items-center rounded-full bg-accent px-8 text-lg font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
             >
               Scarica le rose
             </a>
           ) : null}
           <Link
             to="/"
-            className="flex min-h-14 items-center rounded-full border border-line-strong px-8 text-lg font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex min-h-14 items-center rounded-full border border-line-strong px-8 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             Torna alle aste
           </Link>
@@ -68,21 +68,21 @@ export function AuctionRecap({ participants, board }: {
       </section>
 
       <section aria-labelledby="recap-top-heading" className="panel flex min-h-0 flex-col rounded-2xl p-5">
-        <h2 id="recap-top-heading" className="text-sm font-bold text-muted-foreground">
+        <h2 id="recap-top-heading" className="text-sm font-medium text-muted-foreground">
           Gli acquisti più cari
         </h2>
         <ol className="mt-3 flex flex-1 flex-col justify-around">
           {priciest.map((p, i) => (
             <li key={p.seq} className="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
-              <span aria-hidden="true" className="tnum w-exp w-6 text-lg font-extrabold text-muted-foreground">
+              <span aria-hidden="true" className="tnum w-exp w-6 text-lg font-semibold text-muted-foreground">
                 {i + 1}
               </span>
               <span aria-hidden="true"><RoleBadge role={p.role} /></span>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-bold">{p.playerName}</span>
+                <span className="truncate font-medium">{p.playerName}</span>
                 <span className="truncate text-xs text-muted-foreground">{p.buyer}</span>
               </span>
-              <span className="tnum w-exp shrink-0 text-xl font-extrabold text-accent">
+              <span className="tnum w-exp shrink-0 text-xl font-semibold text-accent">
                 {`${p.price} `}
                 <span className="sr-only">crediti</span>
               </span>
@@ -98,7 +98,7 @@ function Figure({ label, value, accent = false }: { label: string; value: number
   return (
     <div className="flex flex-col-reverse gap-1">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className={`tnum w-exp text-4xl font-extrabold leading-none ${accent ? 'text-accent' : ''}`}>{value}</dd>
+      <dd className={`tnum w-exp text-4xl font-semibold leading-none ${accent ? 'text-accent' : ''}`}>{value}</dd>
     </div>
   );
 }

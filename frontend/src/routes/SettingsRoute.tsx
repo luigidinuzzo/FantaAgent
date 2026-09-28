@@ -48,7 +48,7 @@ const MAX_TIMER_SECONDS = 120;
 const FIELD_LABELS: Record<string, string> = {
   auctionName: "nome dell'asta",
   bidTimerSeconds: 'secondi del conto alla rovescia',
-  bidder: 'battitore',
+  bidder: 'banditore',
   defendersCounted: 'difensori conteggiati',
   thresholds: 'tabella soglie',
   scoring: 'punteggio',
@@ -108,7 +108,7 @@ function errorsFor(errors: SettingsErrors, key: string): string[] {
 
 /**
  * Le uniche chiavi che NON appartengono al punteggio: il nome dell'asta, il
- * battitore (timer, oggetto intero mancante), e i partecipanti (l'insieme o una
+ * banditore (timer, oggetto intero mancante), e i partecipanti (l'insieme o una
  * riga precisa). Ogni altra chiave — comprese quelle non ancora note, come
  * {@code thresholds[N]} o {@code goalBonus[R]} — appartiene alla sezione punteggio.
  */
@@ -216,7 +216,7 @@ export function SettingsRoute() {
     return (
       <AppShell chrome="top">
         <h1 className="sr-only">Impostazioni</h1>
-        <p role="alert" className="panel rounded-xl p-4 text-sm font-bold text-destructive">
+        <p role="alert" className="panel rounded-xl p-4 text-sm font-medium text-destructive">
           {userMessage(settings.error, 'Le impostazioni non si sono caricate. Riprova.')}
         </p>
       </AppShell>
@@ -235,7 +235,7 @@ export function SettingsRoute() {
           {/* Lo scheletro dell'indice: stessa struttura di quello vero (titolo e
               quattro voci da 44px), cosi' ha anche la stessa altezza. */}
           <div aria-hidden="true" className="panel self-start rounded-2xl p-3 max-lg:hidden">
-            <p className="px-3 pb-2 pt-1 text-sm font-bold text-muted-foreground">&nbsp;</p>
+            <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">&nbsp;</p>
             <ol className="flex flex-col gap-1">
               {Array.from({ length: 4 }, (_, i) => (
                 <li key={i} className="flex min-h-11 items-center px-3">
@@ -269,7 +269,7 @@ export function SettingsRoute() {
 
   /**
    * Riempie il modulo con le impostazioni di un'asta esistente: regole, punteggio,
-   * battitore e i nomi dei partecipanti. Il nome della nuova asta resta quello che
+   * banditore e i nomi dei partecipanti. Il nome della nuova asta resta quello che
    * si sta scrivendo. Tornare a «Impostazioni predefinite» rimette quelle arrivate
    * all'apertura della schermata.
    */
@@ -301,7 +301,7 @@ export function SettingsRoute() {
   }
 
   const labels: Record<(typeof SECTION_IDS)[number], string> = {
-    'sezione-asta': auctionOpen ? 'Battitore' : "L'asta",
+    'sezione-asta': auctionOpen ? 'Banditore' : "L'asta",
     'sezione-regole': 'Regole della lega',
     'sezione-partecipanti': 'Partecipanti',
     'sezione-punteggio': 'Punteggio',
@@ -320,7 +320,7 @@ export function SettingsRoute() {
       <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
         <nav aria-label="Sezioni del modulo" className="self-start max-lg:hidden">
           <div className="panel rounded-2xl p-3">
-            <p className="px-3 pb-2 pt-1 text-sm font-bold text-muted-foreground">{title}</p>
+            <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">{title}</p>
             <ol className="flex flex-col gap-1">
               {sections.map((section) => (
                 <li key={section.id}>
@@ -329,7 +329,7 @@ export function SettingsRoute() {
                   <a
                     href={`#${section.id}`}
                     aria-current={activeSection === section.id ? 'location' : undefined}
-                    className={`flex min-h-11 items-center rounded-full px-3 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                    className={`flex min-h-11 items-center rounded-full px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                       activeSection === section.id ? 'bg-accent text-on-accent' : 'hover:bg-line'
                     }`}
                   >
@@ -360,7 +360,7 @@ export function SettingsRoute() {
               </svg>
             </Link>
           ) : null}
-          <h1 className="w-exp text-xl font-extrabold sm:text-2xl">{title}</h1>
+          <h1 className="w-exp text-xl font-semibold sm:text-2xl">{title}</h1>
         </div>
 
         <form
@@ -406,7 +406,7 @@ export function SettingsRoute() {
               riquadri dentro, e due regioni con lo stesso nome si confondono. */}
           <div id="sezione-asta" className="scroll-mt-[calc(var(--header-h)+1.5rem)] md:scroll-mt-6 space-y-6">
           {!auctionOpen ? (
-            // Partire da un'asta gia' fatta: regole, punteggio, battitore e nomi
+            // Partire da un'asta gia' fatta: regole, punteggio, banditore e nomi
             // copiati nel modulo, da ritoccare. Per chi rifa' l'asta ogni stagione
             // con la stessa lega, e' la differenza fra un minuto e dieci.
             <div className="flex flex-wrap items-end gap-3">
@@ -431,7 +431,7 @@ export function SettingsRoute() {
                   : startFrom.isError
                     ? 'Non è stato possibile copiare le impostazioni. Riprova.'
                     : startedFrom
-                      ? 'Regole, punteggio, battitore e partecipanti copiati: cambia quello che serve.'
+                      ? 'Regole, punteggio, banditore e partecipanti copiati: cambia quello che serve.'
                       : 'Scegli un\'asta che hai già fatto per ripartire dalle sue regole e dai suoi partecipanti.'}
               </p>
             </div>
@@ -461,7 +461,7 @@ export function SettingsRoute() {
             </div>
           ) : null}
 
-            {/* Legend nascosta: il fieldset resta un group nominato "Battitore"
+            {/* Legend nascosta: il fieldset resta un group nominato "Banditore"
                 per chi ascolta, ma visivamente e' solo la fila delle sue due
                 pillole — la cornice del fieldset non serve al disegno, che la
                 mette gia' sulle singole pillole. */}
@@ -469,7 +469,7 @@ export function SettingsRoute() {
               className="m-0 grid max-w-3xl gap-4 border-0 p-0 sm:grid-cols-2 sm:items-end"
               aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
             >
-              <legend className="sr-only">Battitore</legend>
+              <legend className="sr-only">Banditore</legend>
 
               <div>
                 <label htmlFor={bidTimerId} className="block text-base">
@@ -522,7 +522,7 @@ export function SettingsRoute() {
             <p className="rounded-xl border border-line p-4 text-base text-muted-foreground">
               Asta in corso: regole della lega e punteggio sono fissati alla creazione, perché
               cambiarli ricalcolerebbe budget e valutazioni di rose già pagate. Puoi cambiare
-              il battitore e i nomi dei partecipanti.
+              il banditore e i nomi dei partecipanti.
             </p>
           ) : null}
 
@@ -575,7 +575,7 @@ export function SettingsRoute() {
             {alertMessage ? (
               <p
                 role="alert"
-                className={`mr-auto text-sm font-bold ${summary ? 'text-destructive' : 'text-positive'}`}
+                className={`mr-auto text-sm font-medium ${summary ? 'text-destructive' : 'text-positive'}`}
               >
                 {alertMessage}
               </p>
@@ -583,7 +583,7 @@ export function SettingsRoute() {
             <button
               type="submit"
               disabled={save.isPending}
-              className="min-h-12 rounded-full bg-accent px-8 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+              className="min-h-12 rounded-full bg-accent px-8 text-lg font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
             >
               {save.isPending ? 'Salvo…' : auctionOpen ? 'Salva' : "Salva e comincia l'asta"}
             </button>

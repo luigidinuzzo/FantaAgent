@@ -53,10 +53,10 @@ export function RenameAuctionDialog({
           if (trimmed) onConfirm(auction.id, trimmed);
         }}
       >
-        <h2 id="rename-auction-title" className="w-exp text-lg font-extrabold">
+        <h2 id="rename-auction-title" className="w-exp text-lg font-semibold">
           Rinomina l'asta
         </h2>
-        <label htmlFor="rename-auction-name" className="mt-4 block text-sm font-bold">
+        <label htmlFor="rename-auction-name" className="mt-4 block text-sm font-medium">
           Nome dell'asta
         </label>
         <input
@@ -68,15 +68,15 @@ export function RenameAuctionDialog({
           className="mt-2 min-h-11 w-full rounded-xl border border-line-strong bg-surface px-4 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         />
         {error ? (
-          <p role="alert" className="mt-3 text-sm font-bold text-destructive">{error}</p>
+          <p role="alert" className="mt-3 text-sm font-medium text-destructive">{error}</p>
         ) : null}
         <div className="mt-5 flex justify-end gap-3">
           <button type="button" onClick={onCancel}
-            className="min-h-11 rounded-full border border-line-strong px-5 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+            className="min-h-11 rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
             Annulla
           </button>
           <button type="submit" disabled={pending || !trimmed}
-            className="min-h-11 rounded-full bg-accent px-5 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+            className="min-h-11 rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
             {pending ? 'Salvo…' : 'Salva nome'}
           </button>
         </div>

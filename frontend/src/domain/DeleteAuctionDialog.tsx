@@ -39,20 +39,20 @@ export function DeleteAuctionDialog({
       onCancel={(e) => { e.preventDefault(); onCancel(); }}
       className="panel m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl p-6 text-foreground backdrop:bg-black/60"
     >
-      <h2 id="delete-auction-title" className="w-exp text-lg font-extrabold">
+      <h2 id="delete-auction-title" className="w-exp text-lg font-semibold">
         Eliminare «{auction.label}»?
       </h2>
       <p className="mt-2 text-sm text-muted-foreground">Sei sicuro? L'azione è irreversibile.</p>
       {error ? (
-        <p role="alert" className="mt-3 text-sm font-bold text-destructive">{error}</p>
+        <p role="alert" className="mt-3 text-sm font-medium text-destructive">{error}</p>
       ) : null}
       <div className="mt-5 flex justify-end gap-3">
         <button ref={cancelRef} type="button" onClick={onCancel}
-          className="min-h-11 rounded-full border border-line-strong px-5 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+          className="min-h-11 rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
           Annulla
         </button>
         <button type="button" disabled={pending} onClick={() => onConfirm(auction.id)}
-          className="min-h-11 rounded-full bg-destructive px-5 font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+          className="min-h-11 rounded-full bg-destructive px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
           {pending ? 'Elimino…' : 'Elimina'}
         </button>
       </div>

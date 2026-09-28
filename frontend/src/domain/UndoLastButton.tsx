@@ -62,7 +62,7 @@ export function UndoLastButton({
         disabled={!canUndo || pending}
         aria-describedby={disabledReason ? hintId : undefined}
         onClick={onUndo}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-line-strong font-bold disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:px-4"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-line-strong font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent md:px-4"
       >
         <UndoIcon />
         {/* Detto a parole accanto all'icona da tablet in su: e' un gesto che si fa

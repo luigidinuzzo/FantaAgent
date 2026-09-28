@@ -5,7 +5,7 @@ import { RoleBadge } from './RoleBadge';
 type Bidding = Extract<BidBroadcast, { kind: 'bidding' }>;
 
 /**
- * Il battitore sullo schermo che guardano tutti.
+ * Il banco sullo schermo che guardano tutti.
  *
  * <p>Prende due cose, entrambe incapaci di portare un tetto: un {@link BidBroadcast},
  * il cui tipo non ha quel campo, e un {@code PublicBidderResponse}, che viene

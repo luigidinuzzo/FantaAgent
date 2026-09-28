@@ -12,7 +12,7 @@ import { ROLE_NAME_PLURAL, ROLES } from './roles';
 export function RulesSummary({ rules, teams }: { rules: RulesSection; teams: number }) {
   return (
     <section aria-labelledby="rules-summary" className="rounded-2xl border border-line-strong p-4">
-      <h2 id="rules-summary" className="text-base font-bold">Regole della lega</h2>
+      <h2 id="rules-summary" className="text-base font-medium">Regole della lega</h2>
       <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
         <Value label="Squadre" value={teams} />
         <Value label="Crediti per squadra" value={rules.budget} />
@@ -21,7 +21,7 @@ export function RulesSummary({ rules, teams }: { rules: RulesSection; teams: num
             <dt className="text-sm text-muted-foreground">{`Posti ${ROLE_NAME_PLURAL[role]}`}</dt>
             <dd className="flex items-center gap-2">
               <span aria-hidden="true"><RoleBadge role={role} /></span>
-              <span className="tnum w-exp text-2xl font-extrabold">{rules.slots[role]}</span>
+              <span className="tnum w-exp text-2xl font-semibold">{rules.slots[role]}</span>
             </dd>
           </div>
         ))}
@@ -52,7 +52,7 @@ function points(n: number): string {
 export function ScoringSummary({ scoring }: { scoring: ScoringSection }) {
   return (
     <section aria-labelledby="scoring-summary" className="rounded-2xl border border-line-strong p-4">
-      <h2 id="scoring-summary" className="text-base font-bold">Punteggio</h2>
+      <h2 id="scoring-summary" className="text-base font-medium">Punteggio</h2>
       <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
         {SCORING_VALUES.map(({ key, label }) => (
           <Row key={key} label={label} value={points(scoring[key] as number)} />
@@ -82,7 +82,7 @@ function Value({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex flex-col-reverse gap-1">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="tnum w-exp text-2xl font-extrabold">{value}</dd>
+      <dd className="tnum w-exp text-2xl font-semibold">{value}</dd>
     </div>
   );
 }
@@ -91,7 +91,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-line py-1.5">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="tnum font-bold">{value}</dd>
+      <dd className="tnum font-medium">{value}</dd>
     </div>
   );
 }

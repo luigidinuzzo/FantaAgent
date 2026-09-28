@@ -70,13 +70,13 @@ export function AuctionRow({
 
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="truncate text-lg font-bold">{a.label}</span>
-          <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${STATUS_CLASS[status]}`}>
+          <span className="truncate text-lg font-medium">{a.label}</span>
+          <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_CLASS[status]}`}>
             {STATUS_LABEL[status]}
           </span>
           {a.selected ? (
             // Il fatto sta nel testo: il pallino accanto e' solo decorazione.
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-accent">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-accent">
               <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent" />
               Aperta ora
             </span>
@@ -125,7 +125,7 @@ export function AuctionRow({
         // riduce a zero (il suo ::after copre comunque tutta la riga) e lascia lo
         // spazio al nome: non sr-only, che lo renderebbe position:absolute e
         // restringerebbe il ::after al bottone stesso.
-        className={`min-h-11 w-28 shrink-0 rounded-full font-bold disabled:opacity-50 focus-visible:outline-none after:absolute after:inset-0 after:content-[''] max-sm:h-0 max-sm:min-h-0 max-sm:w-0 max-sm:overflow-hidden max-sm:border-0 max-sm:p-0 ${
+        className={`min-h-11 w-28 shrink-0 rounded-full font-medium disabled:opacity-50 focus-visible:outline-none after:absolute after:inset-0 after:content-[''] max-sm:h-0 max-sm:min-h-0 max-sm:w-0 max-sm:overflow-hidden max-sm:border-0 max-sm:p-0 ${
           a.selected
             ? 'bg-accent text-on-accent'
             : 'border border-line-strong text-foreground'

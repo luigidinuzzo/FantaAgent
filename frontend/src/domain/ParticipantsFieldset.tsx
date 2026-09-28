@@ -28,7 +28,7 @@ function errorsFor(errors: Record<string, string[]>, key: string): string[] {
  * I partecipanti alla serata.
  *
  * <p>L'iniziale non si chiede piu': nella SPA non compare da nessuna parte — rose,
- * card squadra e battitore mostrano il nome per esteso — e il server la calcola dal
+ * card squadra e banco mostrano il nome per esteso — e il server la calcola dal
  * nome, tenendola unica (vedi {@code ParticipantInitials}). Serve solo al comando
  * «giocatore prezzo iniziale» delle pagine /legacy.
  *
@@ -68,7 +68,7 @@ export function ParticipantsFieldset({
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
           stesso — un group — che supporta una descrizione, non la legend. */}
-      <legend className="px-2 text-base font-bold">Partecipanti</legend>
+      <legend className="px-2 text-base font-medium">Partecipanti</legend>
 
       {/* Largo quanto serve a un nome, non quanto la pagina: con i campi a tutta
           larghezza «Sei tu» e la ✕ finivano a un metro dal nome a cui si riferiscono. */}
@@ -157,7 +157,7 @@ export function ParticipantsFieldset({
             Aggiungi partecipante
           </button>
         )}
-        <span className="tnum inline-flex items-center gap-1.5 text-lg font-extrabold">
+        <span className="tnum inline-flex items-center gap-1.5 text-lg font-semibold">
           {value.length}
           <span className="font-normal text-muted-foreground">squadre</span>
         </span>

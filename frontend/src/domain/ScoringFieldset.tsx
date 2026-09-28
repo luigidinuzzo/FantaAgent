@@ -93,7 +93,7 @@ export function ScoringFieldset({
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
           stesso — un group — che supporta una descrizione, non la legend. */}
-      <legend className="px-2 text-base font-bold">Punteggio</legend>
+      <legend className="px-2 text-base font-medium">Punteggio</legend>
 
       {disabled ? (
         <p id={lockId} className="mb-3 text-sm text-muted-foreground">
