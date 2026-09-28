@@ -25,6 +25,9 @@ management:
 
 fantaagent:
   data-dir: res
+  # L'indirizzo da cui si apre l'app: serve a comporre i link delle email.
+  public-url: ${FANTAAGENT_PUBLIC_URL:http://localhost:5173}
+  mail-from: ${FANTAAGENT_MAIL_FROM:FantaAgent <noreply@localhost>}
 
 league:
   budget: 500
