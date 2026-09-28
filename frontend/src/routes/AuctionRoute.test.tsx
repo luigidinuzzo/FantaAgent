@@ -77,7 +77,7 @@ function jsonResponse(body: unknown) {
   });
 }
 
-// timerSeconds volutamente lontano da 5: se il battitore montato dalla route
+// timerSeconds volutamente lontano da 5: se il conto alla rovescia montato dalla route
 // mostrasse "5s" invece di questo valore, sarebbe la prova che qualcuno ha
 // fissato la costante invece di leggerla dalle preferenze reali.
 const BIDDER_SETTINGS = {
@@ -87,9 +87,9 @@ const BIDDER_SETTINGS = {
 
 /**
  * Un fetchMock che copre tutte le rotte usate da AuctionRoute: stato, fase,
- * valutazione dei due giocatori fissi, preferenze del battitore, e le tre
+ * valutazione dei due giocatori fissi, preferenze del banditore, e le tre
  * scritture (acquisto, cambio fase, annullamento). Le route dei nuovi test
- * (battitore, cambio fase, annullamento) hanno tutte bisogno delle stesse
+ * (conto alla rovescia, cambio fase, annullamento) hanno tutte bisogno delle stesse
  * rotte di base: costruirlo una volta evita che ogni test ripeta l'elenco e
  * dimentichi una voce.
  */
@@ -159,6 +159,8 @@ function alwaysReadOrReject(href: string): Promise<Response> {
 const TARGETS = [
   { id: 'p1', name: 'Giocatore Uno', team: 'AAA', role: 'P', listPrice: 1,
     maxBid: 50, expectedPrice: 10, margin: 40, worthPursuing: true },
+  { id: 'p2', name: 'Giocatore Due', team: 'BBB', role: 'P', listPrice: 2,
+    maxBid: 30, expectedPrice: 12, margin: 18, worthPursuing: true },
 ];
 
 describe('AuctionRoute', () => {
@@ -224,7 +226,7 @@ describe('AuctionRoute', () => {
 
   // La ricerca riceve onSelect={setSelectedId}, la STESSA selezione della tabella
   // di fase, non un secondo percorso. Un giocatore scelto cosi' deve comportarsi
-  // in tutto come uno scelto dalla tabella: valutazione, battitore, aggiudicazione.
+  // in tutto come uno scelto dalla tabella: valutazione, banco, aggiudicazione.
   it('un giocatore scelto dalla ricerca si comporta come uno scelto dalla tabella', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     let purchaseBody: unknown = null;
@@ -244,10 +246,10 @@ describe('AuctionRoute', () => {
 
     await userEvent.type(await screen.findByRole('searchbox', { name: /cerca giocatore/i }), 'due');
 
-    // Mentre si cerca, il battitore cede il posto ai nomi: crescono sotto la
+    // Mentre si cerca, il banco cede il posto ai nomi: crescono sotto la
     // barra invece di spingere giu' mezza pagina a ogni lettera.
     await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Battitore' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('region', { name: 'La tua squadra, Anna' })).not.toBeInTheDocument(),
     );
 
     // Scelto fra i risultati della ricerca, non in pagina: la tabella di fase
@@ -255,10 +257,11 @@ describe('AuctionRoute', () => {
     const risultati = await screen.findByRole('list', { name: /risultati/i });
     await userEvent.click(await within(risultati).findByRole('button', { name: /Giocatore Due/ }));
 
-    // Scelto il giocatore, la ricerca si chiude da se' e il battitore torna al
-    // suo posto: non si resta su un elenco aperto su una scelta gia' fatta.
+    // Scelto il giocatore, la ricerca si chiude da se' e il banco torna al
+    // suo posto, col nome del lotto che ci e' appena finito sopra: non si resta
+    // su un elenco aperto su una scelta gia' fatta.
     expect(screen.getByRole('searchbox', { name: /cerca giocatore/i })).toHaveValue('');
-    expect(await screen.findByRole('region', { name: 'Battitore' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Sul banco · Giocatore Due' })).toBeInTheDocument();
 
     // La scheda di decisione mostra QUEL giocatore, non un placeholder di un
     // percorso di ricerca separato: e' la stessa valutazione che una riga di
@@ -436,6 +439,11 @@ describe('AuctionRoute', () => {
     await assignDirect();
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/aggiudicato/));
 
+    // Il lotto riuscito ha lasciato il banco: per riprovare va riscelto. E' la
+    // stessa cosa che farebbe chi si accorge di aver sbagliato prezzo.
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('7'));
+
     // Secondo invio: fallisce.
     await assignDirect();
     await waitFor(() =>
@@ -452,7 +460,7 @@ describe('AuctionRoute', () => {
   // BidderDialog da qualche parte, il componente scritto nel Task 5 e'
   // codice morto e la proiezione (che ascolta solo 'bidding'/'idle') non
   // riceverebbe mai nulla: aspetterebbe un messaggio che nessuno spedisce.
-  it('un controllo apre il battitore per il giocatore selezionato, con le preferenze vere', async () => {
+  it('un controllo avvia il conto alla rovescia per il giocatore selezionato, con le preferenze vere', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -479,10 +487,10 @@ describe('AuctionRoute', () => {
 
   /**
    * Col conto alla rovescia aperto la card e' UNA. Montato dentro la scheda di
-   * decisione, il battitore rendeva nome e tetto una seconda volta, dentro una
+   * decisione, il conto alla rovescia rendeva nome e tetto una seconda volta, dentro una
    * seconda cornice: due volte lo stesso dato a mezzo centimetro di distanza.
    */
-  it('col battitore aperto nome e tetto compaiono una volta sola', async () => {
+  it('col conto alla rovescia aperto nome e tetto compaiono una volta sola', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -497,15 +505,15 @@ describe('AuctionRoute', () => {
     await waitFor(() => expect(open).not.toBeDisabled());
     await userEvent.click(open);
 
-    const battitore = screen.getByRole('region', { name: 'Battitore' });
-    expect(within(battitore).getAllByRole('heading', { name: 'Giocatore Uno' })).toHaveLength(1);
-    expect(within(battitore).getAllByText(/^il tuo tetto$/)).toHaveLength(1);
-    // La scheda di decisione non e' piu' in scena: il battitore la sostituisce,
-    // non ci si annida dentro.
+    const banco = screen.getByRole('region', { name: 'Sul banco · Giocatore Uno' });
+    expect(within(banco).getAllByRole('heading', { name: 'Giocatore Uno' })).toHaveLength(1);
+    expect(within(banco).getAllByText(/^il tuo tetto$/)).toHaveLength(1);
+    // La scheda di decisione non e' piu' in scena: il conto alla rovescia la
+    // sostituisce, non ci si annida dentro.
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
   });
 
-  it('chiudere il battitore torna al pannello di aggiudicazione diretta', async () => {
+  it('chiudere il conto alla rovescia torna al pannello di aggiudicazione diretta', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -522,7 +530,7 @@ describe('AuctionRoute', () => {
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
     // Esc chiude il conto alla rovescia: il bottone «Chiudi» nell'intestazione
-    // se n'e' andato (accanto a «Togli dal battitore» sembrava il suo doppione)
+    // se n'e' andato (accanto a «Togli dal banco» sembrava il suo doppione)
     // e la via di ritorno e' passata alla tastiera.
     await userEvent.keyboard('{Escape}');
 
@@ -532,12 +540,12 @@ describe('AuctionRoute', () => {
     expect(screen.getByRole('button', { name: 'Aggiudica direttamente' })).toBeInTheDocument();
   });
 
-  // Fix round 1: un lotto alla volta e' aperto sul battitore. Senza
+  // Fix round 1: un lotto alla volta sta sul banco. Senza
   // bloccare la tabella, un clic su un'altra riga rimonta BidderDialog
   // (e' keyed sul playerId) per il nuovo giocatore, buttando via countdown,
   // prezzo accumulato e beep senza preavviso — e la proiezione, che ascolta
   // lo stesso canale, vedrebbe il lotto saltare a meta' asta.
-  it('un clic su un altra riga mentre il battitore e aperto non cambia il lotto', async () => {
+  it('un clic su un altra riga mentre il conto alla rovescia corre non cambia il lotto', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -553,28 +561,30 @@ describe('AuctionRoute', () => {
     await userEvent.click(open);
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
-    const otherRow = screen.getByRole('button', { name: /Giocatore Due/ });
+    // Quello della TABELLA: «Giocatore Due» compare anche fra le alternative in
+    // fondo al banco, che col conto aperto sono spente per la stessa ragione.
+    const otherRow = screen.getByRole('button', { name: /^Valuta Giocatore Due/ });
     expect(otherRow).toBeDisabled();
-    expect(otherRow).toHaveAccessibleDescription(/battitore/i);
+    expect(otherRow).toHaveAccessibleDescription(/conto alla rovescia/i);
     await userEvent.click(otherRow);
 
-    // Il lotto e' rimasto lo stesso: il battitore mostra ancora Giocatore
+    // Il lotto e' rimasto lo stesso: il banco mostra ancora Giocatore
     // Uno, il countdown non e' saltato a un altro playerId.
     const dialog = screen.getByTestId('bidder-dialog');
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText('Giocatore Uno')).toBeInTheDocument();
     expect(screen.queryByLabelText('Prezzo')).not.toBeInTheDocument();
 
-    // Chiudendo il battitore, la selezione torna deliberatamente possibile.
+    // Chiudendo il conto alla rovescia, la selezione torna deliberatamente possibile.
     // Esc chiude il conto alla rovescia: il bottone «Chiudi» nell'intestazione
-    // se n'e' andato (accanto a «Togli dal battitore» sembrava il suo doppione)
+    // se n'e' andato (accanto a «Togli dal banco» sembrava il suo doppione)
     // e la via di ritorno e' passata alla tastiera.
     await userEvent.keyboard('{Escape}');
     await userEvent.click(screen.getByRole('button', { name: /Valuta Giocatore Due/ }));
     await waitFor(() => expect(screen.getByTestId('max-bid')).toHaveTextContent('80'));
   });
 
-  it("aggiudicare dal battitore passa per la stessa mutazione di BidPanel, non per una seconda", async () => {
+  it("aggiudicare dal conto alla rovescia passa per la stessa mutazione di BidPanel, non per una seconda", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     let purchaseBody: unknown = null;
     vi.stubGlobal(
@@ -598,9 +608,8 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
 
       // La barra spaziatrice e' il gesto che avvia il countdown (si veda
       // BidderDialog): senza, il tempo resta fermo al valore pieno e non
@@ -608,7 +617,7 @@ describe('AuctionRoute', () => {
       await user.keyboard(' ');
 
       // Il countdown (12 s, dalle preferenze) deve scadere prima che il form
-      // "Aggiudica a" del battitore compaia.
+      // "Aggiudica a" del conto alla rovescia compaia.
       await act(async () => {
         vi.advanceTimersByTime(12_100);
       });
@@ -623,12 +632,12 @@ describe('AuctionRoute', () => {
   });
 
   // Fix round 1: BidderDialog non aveva un prop d'errore. Un'aggiudicazione
-  // fallita dal battitore (budget esaurito, slot pieno, fase cambiata a
+  // fallita dal conto alla rovescia (budget esaurito, slot pieno, fase cambiata a
   // meta' rilancio) non arrivava in nessuna forma: il countdown e' gia'
   // scaduto, il form resta in vista, e nulla — visivo o parlato — diceva
   // che l'invio non era riuscito. L'utente poteva reinviare alla cieca o
   // credere che fosse andata a buon fine.
-  it("un'aggiudicazione fallita dal battitore lo dice, anche a chi ascolta", async () => {
+  it("un'aggiudicazione fallita dal conto alla rovescia lo dice, anche a chi ascolta", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const PROBLEM = {
       type: 'https://fantaagent.local/problems/insufficient-budget',
@@ -665,9 +674,8 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(12_100);
@@ -681,7 +689,7 @@ describe('AuctionRoute', () => {
           'alert',
         ),
       );
-      // Il battitore resta in scena: e' cosi' che si vede l'errore, non un
+      // Il conto alla rovescia resta in scena: e' cosi' che si vede l'errore, non un
       // secondo percorso che lo sostituisce.
       expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
     } finally {
@@ -723,7 +731,7 @@ describe('AuctionRoute', () => {
       unsubscribe();
     });
 
-    it('smette di pubblicare il battito mentre il battitore privato e aperto', async () => {
+    it('smette di pubblicare il battito mentre il conto alla rovescia privato e aperto', async () => {
       setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
       vi.stubGlobal('fetch', fullFetchMock());
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -739,9 +747,8 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
       expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
       // Solo ORA si comincia ad ascoltare: il battito emesso prima
@@ -769,7 +776,7 @@ describe('AuctionRoute', () => {
     // stesso lotto dopo la scadenza — si veda BidderDialog.test.tsx), non
     // qui: questo battito resta sospeso per l'intera durata in cui il
     // dialogo e' montato, scaduto o no.
-    it('non pubblica mai idle mentre il battitore e aperto, scaduto o non', async () => {
+    it('non pubblica mai idle mentre il conto alla rovescia e aperto, scaduto o non', async () => {
       setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
       vi.stubGlobal('fetch', fullFetchMock());
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -785,16 +792,15 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
       await user.keyboard(' '); // avvia il countdown (12 s, dalle preferenze)
 
       const seen: BidBroadcast[] = [];
       const unsubscribe = subscribeBid((m) => seen.push(m));
 
       // Ben oltre la scadenza (12 s) e oltre la soglia di staleness della
-      // proiezione: il battitore resta aperto in attesa dell'acquirente.
+      // proiezione: il conto alla rovescia resta aperto in attesa dell'acquirente.
       await act(async () => {
         vi.advanceTimersByTime(STALE_AFTER_MS + 2_000);
       });
@@ -808,7 +814,7 @@ describe('AuctionRoute', () => {
       unsubscribe();
     });
 
-    it('chiudere il battitore pubblica idle', async () => {
+    it('chiudere il conto alla rovescia pubblica idle', async () => {
       setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
       vi.stubGlobal('fetch', fullFetchMock());
       vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -824,9 +830,8 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
 
       const seen: BidBroadcast[] = [];
       const unsubscribe = subscribeBid((m) => seen.push(m));
@@ -943,12 +948,12 @@ describe('AuctionRoute', () => {
   });
 
   // Fix round 2 (revisione finale, finding 4): l'aggiudicazione dal
-  // battitore non chiudeva mai il dialogo. Dopo un'aggiudicazione riuscita
+  // conto alla rovescia non chiudeva mai il dialogo. Dopo un'aggiudicazione riuscita
   // il dialogo restava in scena col prezzo vinto e un bottone Aggiudica
   // ancora attivo — l'unica conferma per un operatore che vede era
   // AuctionAnnouncer, che e' sr-only: meno riscontro di quanto ne riceve chi
   // ascolta.
-  it("un'aggiudicazione riuscita dal battitore chiude il dialogo", async () => {
+  it("un'aggiudicazione riuscita dal conto alla rovescia chiude il dialogo", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal(
       'fetch',
@@ -968,9 +973,8 @@ describe('AuctionRoute', () => {
       const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(12_100);
@@ -979,6 +983,15 @@ describe('AuctionRoute', () => {
       await user.click(screen.getByRole('button', { name: /^Aggiudica a / }));
 
       await waitFor(() => expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument());
+
+      // E il lotto lascia il banco. Il difetto che questo blocca: chiuso il conto
+      // alla rovescia, il giocatore restava sul banco come scheda di decisione —
+      // ma era gia' venduto. Il banco mostrava un lotto che non esiste piu', con
+      // «Avvia il conto alla rovescia» ancora acceso: un gesto che il server
+      // rifiuterebbe («giocatore gia' venduto»), offerto dall'interfaccia.
+      await waitFor(() =>
+        expect(screen.queryByRole('region', { name: /Sul banco · / })).not.toBeInTheDocument());
+      expect(await screen.findByRole('region', { name: /La tua squadra/ })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -986,10 +999,10 @@ describe('AuctionRoute', () => {
 
   // Fix round 2 (revisione finale, finding 4): l'errore della mutazione
   // resta in useAssign finche' un'altra mutate() non si risolve. Riaprendo
-  // il battitore per un giocatore diverso, il fallimento del precedente
+  // il conto alla rovescia per un giocatore diverso, il fallimento del precedente
   // lampeggiava per un istante prima che il nuovo invio (mai fatto) potesse
   // sovrascriverlo.
-  it("riaprire il battitore per un altro giocatore non mostra il fallimento del precedente", async () => {
+  it("riaprire il conto alla rovescia per un altro giocatore non mostra il fallimento del precedente", async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     const PROBLEM = {
       type: 'https://fantaagent.local/problems/insufficient-budget',
@@ -1029,9 +1042,8 @@ describe('AuctionRoute', () => {
       let open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(12_100);
@@ -1048,9 +1060,8 @@ describe('AuctionRoute', () => {
       open = await screen.findByRole('button', { name: /conto alla rovescia/i });
       await waitFor(() => expect(open).not.toBeDisabled());
       await user.click(open);
-      // Chi fa l'offerta si segna toccando la squadra: senza, allo scadere
-      // l'acquirente va scelto e «Aggiudica» resta spento.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Nessun bottone da toccare per dire chi offre: aprire il lotto E' la tua
+      // offerta di uno, e allo scadere il lotto e' proposto a te.
 
       expect(screen.queryByText('Anna ha solo 12 crediti di budget residuo')).not.toBeInTheDocument();
     } finally {
@@ -1485,7 +1496,7 @@ describe('AuctionRoute', () => {
     expect(griglia?.children).toHaveLength(3);
 
     // Senza giocatore scelto la colonna mostra le occasioni della fase, non una
-    // frase sola: ogni occasione mette il giocatore sul battitore.
+    // frase sola: ogni occasione mette il giocatore sul banco.
     expect(await within(occasioni).findByRole('button', { name: /^Giocatore Uno, AAA: mercato 10, tetto 50/ }))
       .toBeInTheDocument();
 
@@ -1495,16 +1506,42 @@ describe('AuctionRoute', () => {
     expect(screen.getByRole('region', { name: 'Crediti delle squadre' })).toBeInTheDocument();
     const dopo = screen.getByRole('region', { name: 'Perché questo prezzo' });
     expect(dopo.parentElement).toBe(griglia);
-    expect(dopo).toHaveTextContent(/mai oltre/);
+    // «mai oltre» non c'e' piu': era hardCap con un secondo nome, e vive nella
+    // scheda del lotto come «puoi offrire». Scelto un giocatore il pannello si
+    // popola comunque — con quanto ci si puo' fidare della stima.
+    expect(dopo).toHaveTextContent(/affidabilità della stima/);
     expect(griglia?.children).toHaveLength(3);
   });
 
   /**
-   * Il battitore e' un posto fisso: c'e' anche quando non c'e' nessun giocatore, e si
-   * popola scegliendone uno. Prima la card compariva dal nulla e spingeva giu' tutto
-   * il resto della pagina a ogni selezione.
+   * L'altezza della riga e' decisa in anticipo, non dedotta dal contenuto — ma 39rem
+   * piu' la barra piu' i margini fanno 717px, e su un portatile da 13" le schede
+   * «Fase corrente» e «Rose squadre» nascevano fuori schermo: si finiva a scorrere
+   * durante un'asta dal vivo, che e' il momento in cui non si deve scorrere. La
+   * misura resta quella sugli schermi che la reggono, e si stringe su quelli che no.
+   * Le tre colonne scorrono gia' dentro di se': sono attrezzate per riceverne meno.
    */
-  it('il riquadro del battitore resta in pagina anche vuoto, e si popola scegliendo un giocatore', async () => {
+  it('la riga dell asta non supera l altezza della finestra', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    const { container } = render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await screen.findByRole('region', { name: 'Crediti delle squadre' });
+    const riga = container.querySelector('[data-testid="auction-row"]')!;
+    expect(riga.className).toContain('lg:h-[min(39rem,calc(100dvh-13rem))]');
+  });
+
+  /**
+   * A riposo il pannello porta anche la pressione sulla fase, coi numeri veri della
+   * schermata: i liberi vengono dal totale della pagina di fase, la concorrenza
+   * dalle squadre dello stato. Nessuna chiamata in piu' di quelle che gia' partono.
+   */
+  it('a riposo il pannello dice quanti liberi restano nella fase', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -1514,22 +1551,142 @@ describe('AuctionRoute', () => {
       </QueryProvider>,
     );
 
-    const battitore = await screen.findByRole('region', { name: 'Battitore' });
+    // PHASE.total: i due giocatori liberi della fase, non il conto delle righe
+    // mostrate in pagina.
+    expect(await screen.findByTestId('free-in-phase')).toHaveTextContent('2');
+  });
+
+  /**
+   * Col lotto sul banco i tuoi numeri lasciano il pannello centrale — a riposo
+   * c'era la tua squadra, ora c'e' il giocatore — e a sinistra restano i crediti
+   * nudi. La scheda del lotto porta quindi il vincolo che decide il rilancio:
+   * quanto puoi offrire per QUESTO giocatore.
+   */
+  it('col lotto sul banco la scheda dice quanto puoi offrire', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+
+    // Il hardCap che il server manda con la valutazione di p1 — la scheda mostra
+    // quello, non un ricalcolo suo.
+    expect(await screen.findByTestId('affordable')).toHaveTextContent('60');
+  });
+
+  /**
+   * Il pannello ha UN titolo, e dice cosa c'e' dentro adesso. A riposo dentro c'e'
+   * la tua squadra, non un banco vuoto: chiamarlo «banco» annuncerebbe — a chi
+   * guarda e a chi ascolta — il nome di una cosa che non c'e', e la prima riga di
+   * contenuto lo smentirebbe subito sotto.
+   */
+  it('il pannello si chiama come il suo contenuto: la tua squadra a riposo, il lotto quando ce n’e uno', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    expect(await screen.findByRole('region', { name: 'La tua squadra, Anna' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /banco/i })).not.toBeInTheDocument();
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+
+    expect(await screen.findByRole('region', { name: 'Sul banco · Giocatore Uno' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'La tua squadra, Anna' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Il banco e' un posto fisso: c'e' anche quando non c'e' nessun giocatore, e si
+   * popola scegliendone uno. Prima la card compariva dal nulla e spingeva giu' tutto
+   * il resto della pagina a ogni selezione.
+   */
+  it('il riquadro del banco resta in pagina anche vuoto, e si popola scegliendo un giocatore', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    const banco = await screen.findByRole('region', { name: 'La tua squadra, Anna' });
     // Vuoto non e' muto: la tua squadra in numeri, con l'invito a scegliere.
-    expect(await within(battitore).findByText(/La tua squadra, Anna/)).toBeInTheDocument();
+    expect(await within(banco).findByText(/La tua squadra, Anna/)).toBeInTheDocument();
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
     await screen.findByRole('button', { name: 'Aggiudica direttamente' });
-    expect(within(battitore).getByTestId('decision-card')).toBeInTheDocument();
-    expect(battitore).not.toHaveTextContent(/La tua squadra/);
+    expect(within(banco).getByTestId('decision-card')).toBeInTheDocument();
+    expect(banco).not.toHaveTextContent(/La tua squadra/);
   });
 
   /**
-   * Cercare nasconde il battitore, non lo svuota: il giocatore sul banco resta
+   * Il vuoto piu' grande della schermata: con un giocatore sul banco, sotto i
+   * controlli restavano trecento pixel di niente — proprio nel punto in cui si
+   * decide se spingere o lasciare.
+   */
+  it('col lotto aperto il banco offre le alternative, senza riproporre il lotto stesso', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const banco = await screen.findByRole('region', { name: /Sul banco/ });
+
+    const alternative = await within(banco).findByRole('region', { name: 'Invece di lui' });
+    // Il lotto sul banco sarebbe un'alternativa a se stesso.
+    expect(within(alternative).queryByRole('button', { name: /Giocatore Uno/ })).not.toBeInTheDocument();
+    // E sceglierne una e' lo stesso gesto di una riga della tabella.
+    await userEvent.click(within(alternative).getByRole('button', { name: /^Giocatore Due/ }));
+    await waitFor(() => expect(within(banco).getByRole('heading', { level: 2, name: 'Giocatore Due' })).toBeInTheDocument());
+  });
+
+  /**
+   * Avviato il conto, le alternative non ci sono PROPRIO: non spente, non
+   * smorzate — via. Un lotto alla volta e' aperto, e un elenco di altri giocatori
+   * in scena mentre si rilancia e' un invito a un gesto che non si puo' fare,
+   * oltre che rumore nel momento di massima attenzione. Visibili e schiarite
+   * dicevano «potresti, ma no»: qui non c'e' nessun potresti.
+   */
+  it('avviato il conto le alternative spariscono, non restano schiarite', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const avvia = await screen.findByRole('button', { name: 'Avvia il conto alla rovescia' });
+    await waitFor(() => expect(avvia).not.toBeDisabled());
+    await userEvent.click(avvia);
+
+    await screen.findByRole('region', { name: /Sul banco/ });
+    expect(screen.queryByRole('region', { name: 'Invece di lui' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Cercare nasconde il banco, non lo svuota: il giocatore sul banco resta
    * scelto, e annullata la ricerca (Esc) lo si ritrova com'era — prezzo incluso.
    */
-  it('la ricerca prende il posto del battitore, e uscendo il lotto e ancora li', async () => {
+  it('la ricerca prende il posto del banco, e uscendo il lotto e ancora li', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -1545,19 +1702,19 @@ describe('AuctionRoute', () => {
     const barra = screen.getByRole('searchbox', { name: /cerca giocatore/i });
     await userEvent.type(barra, 'due');
     await waitFor(() =>
-      expect(screen.queryByRole('region', { name: 'Battitore' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('region', { name: /Sul banco/ })).not.toBeInTheDocument(),
     );
 
     await userEvent.type(barra, '{Escape}');
 
     expect(barra).toHaveValue('');
-    expect(await screen.findByRole('region', { name: 'Battitore' })).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: 'Sul banco · Giocatore Uno' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Giocatore Uno' })).toBeInTheDocument();
     expect(screen.getByTestId('max-bid')).toHaveTextContent('50');
   });
 
   /** Si toglie il giocatore dal banco, e il conto alla rovescia si spegne con lui. */
-  it('«Togli dal battitore» svuota il riquadro e chiude il conto alla rovescia', async () => {
+  it('«Togli dal banco» svuota il riquadro e chiude il conto alla rovescia', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -1574,13 +1731,13 @@ describe('AuctionRoute', () => {
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
     // Col conto che corre il primo clic chiede conferma e non toglie niente.
-    await userEvent.click(screen.getByRole('button', { name: /Togli dal battitore/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Togli dal banco/ }));
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /Conferma: il lotto si perde/ }));
 
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Battitore' }))
+    expect(screen.getByRole('region', { name: 'La tua squadra, Anna' }))
       .toHaveTextContent(/La tua squadra, Anna/);
   });
 

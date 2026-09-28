@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
-import type { ValuationResponse } from '../api/types';
+import type { ParticipantView, ValuationResponse } from '../api/types';
+import { roleFull } from './bidRules';
 import { RoleBadge } from './RoleBadge';
+import { ROLE_NAME_PLURAL } from './roles';
 
 /**
  * Il segno meno tipografico, non il trattino: e' un numero, non una parola
@@ -23,12 +25,19 @@ export function PlayerDecisionCard({
   valuation,
   stale,
   bare = false,
+  me,
   children,
 }: {
   valuation: ValuationResponse;
   stale: boolean;
   /**
-   * Senza cornice propria: la card sta gia' dentro il riquadro del battitore, che
+   * La tua squadra, per dire quanto puoi offrire PER QUESTO lotto. Opzionale: la
+   * proiezione monta la stessa scheda senza sapere chi guarda, e senza {@code me}
+   * la colonna semplicemente non c'e'.
+   */
+  me?: ParticipantView;
+  /**
+   * Senza cornice propria: la card sta gia' dentro il riquadro del banco, che
    * e' fisso in pagina e porta bordo, fondo e titolo. Due cornici concentriche
    * dello stesso colore erano solo rumore attorno al numero che conta.
    */
@@ -71,7 +80,7 @@ export function PlayerDecisionCard({
       ) : null}
 
       <header className="flex items-baseline gap-3">
-        <h2 id={nameId} className="w-exp min-w-0 truncate text-2xl font-extrabold">
+        <h2 id={nameId} className="w-exp min-w-0 truncate text-2xl font-semibold">
           {valuation.name}
         </h2>
         {/* La pillola al posto della parola: e' lo stesso segno che marca il
@@ -99,8 +108,8 @@ export function PlayerDecisionCard({
       <div className="flex flex-1 flex-col gap-6 pt-5">
         <div className={dimmed}>
           {/* Una colonna per voce, valore sopra ed etichetta sotto: la stessa
-              disciplina con cui il battitore mostra secondi e offerta mentre il
-              conto corre, cosi' le due facce dello stesso riquadro si
+              disciplina con cui il conto alla rovescia mostra secondi e offerta mentre
+              il conto corre, cosi' le due facce dello stesso riquadro si
               somigliano e passare dall'una all'altra non obbliga a rileggere
               tutto.
 
@@ -112,16 +121,16 @@ export function PlayerDecisionCard({
               I quattro numeri sono crediti sullo stesso asse, in ordine di
               racconto: dove ti fermi, quanto vale di listino, quanto lo paghera'
               il tavolo, quanto ci guadagni. */}
-          <dl className="grid w-fit grid-cols-[auto_auto_auto_auto] items-baseline gap-x-10">
+          <dl className="grid w-fit grid-cols-[auto_auto_auto_auto_auto] items-baseline gap-x-8">
             {/* dt PRIMA del suo dd nel sorgente, come vuole una lista di
                 definizioni: e' anche l'ordine in cui conviene sentirli letti —
                 «il tuo tetto, quaranta». Che l'etichetta appaia SOTTO il numero
                 lo decide la griglia con row-start, non l'ordine del documento. */}
             {/* «il tuo tetto» resta il nome breve, lo stesso della tabella e del
-                battitore; accanto, cosa vuol dire. Il limite assoluto, a destra, si
+                banco; accanto, cosa vuol dire. Il limite assoluto, a destra, si
                 chiama «mai oltre»: due «tetti» non dicevano quale valesse. */}
             <dt className="col-start-1 row-start-2 mt-2 text-sm text-muted-foreground">
-              il tuo tetto <span className="text-muted-foreground/80">· fin qui conviene</span>
+              il tuo tetto, fin qui conviene
             </dt>
             <dd className="col-start-1 row-start-1 flex items-baseline gap-x-4">
               <span
@@ -138,7 +147,7 @@ export function PlayerDecisionCard({
               </span>
               {/* Il verdetto accanto al tetto, non in una colonna sua: e' cosa
                   farne di QUEL numero, non una quarta misura. */}
-              <span className={`w-cond text-3xl font-extrabold leading-none ${verdictColor}`}>
+              <span className={`w-cond text-3xl font-semibold leading-none ${verdictColor}`}>
                 {valuation.worthPursuing ? 'Prendi' : 'Lascia'}
               </span>
             </dd>
@@ -153,7 +162,7 @@ export function PlayerDecisionCard({
             </dt>
             <dd
               data-testid="list-price"
-              className="tnum w-exp col-start-2 row-start-1 text-3xl font-extrabold leading-none text-muted-foreground"
+              className="tnum w-exp col-start-2 row-start-1 text-3xl font-semibold leading-none text-muted-foreground"
             >
               {valuation.listPrice}
             </dd>
@@ -163,7 +172,7 @@ export function PlayerDecisionCard({
             </dt>
             <dd
               data-testid="expected-price"
-              className="tnum w-exp col-start-3 row-start-1 text-3xl font-extrabold leading-none"
+              className="tnum w-exp col-start-3 row-start-1 text-3xl font-semibold leading-none"
             >
               {valuation.expectedPrice}
             </dd>
@@ -173,10 +182,49 @@ export function PlayerDecisionCard({
             </dt>
             <dd
               data-testid="margin"
-              className={`tnum w-exp col-start-4 row-start-1 text-3xl font-extrabold leading-none ${verdictColor}`}
+              className={`tnum w-exp col-start-4 row-start-1 text-3xl font-semibold leading-none ${verdictColor}`}
             >
               {signed(valuation.margin)}
             </dd>
+
+            {/* Il quinto numero non riguarda il giocatore ma te: quanto puoi
+                davvero mettere su QUESTO lotto — i crediti meno un credito per
+                ogni altro posto che ti resta da riempire. Sta qui e non fra i
+                tuoi numeri a riposo perche' col lotto sul banco quelli non sono
+                in pagina, e la colonna di sinistra porta i crediti nudi: il
+                vincolo che decide il rilancio si scopriva solo sbagliando, da un
+                errore comparso dopo aver scritto un prezzo troppo alto.
+
+                E' valuation.hardCap, non un ricalcolo locale: il server applica
+                gia' la stessa formula (Squad.maxSpendableNow), e riscriverla qui
+                significherebbe tenerne due allineate a mano. Viene cosi' dallo
+                stesso scatto degli altri quattro numeri della riga — uno fresco
+                dentro un blocco segnato come stantio discorderebbe dai vicini
+                proprio quando si guarda se fidarsene.
+
+                Coi posti del ruolo gia' pieni non c'e' cifra da mostrare: un
+                numero inviterebbe a rilanciare su un giocatore che non puoi
+                comprare. L'etichetta dice il vincolo, il posto del numero tiene
+                un trattino. */}
+            {me ? (
+              <>
+                {/* Separato con una linea dai tre che lo precedono: quotazione,
+                    mercato e margine parlano del GIOCATORE, questo parla di TE.
+                    Quattro numeri in fila allo stesso corpo si leggevano come un
+                    elenco solo, e l'occhio li sommava. */}
+                <dt className="col-start-5 row-start-2 mt-2 border-l border-line pl-8 text-sm text-muted-foreground">
+                  {roleFull(me, valuation.role)
+                    ? `${ROLE_NAME_PLURAL[valuation.role]} al completo`
+                    : 'puoi offrire'}
+                </dt>
+                <dd
+                  data-testid="affordable"
+                  className="tnum w-exp col-start-5 row-start-1 border-l border-line pl-8 text-3xl font-semibold leading-none"
+                >
+                  {roleFull(me, valuation.role) ? '—' : valuation.hardCap}
+                </dd>
+              </>
+            ) : null}
           </dl>
 
           {/* Il perche' si lascia, in testo pieno: una frase intera in rosso si

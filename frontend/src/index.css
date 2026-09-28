@@ -60,14 +60,12 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   --header-h: 4.3125rem;
 }
 
-/* Il contenuto dentro le linee del campo (la home). Il campo di PitchLines riempie
-   lo spazio sotto la barra e le sue linee stanno a PITCH_INSET (1.5rem) dal bordo:
-   la linea di fondo cade quindi 1.5rem sotto la barra, e le laterali 1.5rem dentro i
-   lati della finestra — esattamente dove comincia il contenuto di <main> (md:p-6).
-   Il contenuto sta 3rem dentro quelle linee, in alto e ai lati: stesso margine su
-   tre lati. Oltre 96rem le righe dell'elenco si allargherebbero troppo: il margine
-   laterale cresce, ma il blocco resta centrato. Solo da md: sul telefono si scorre
-   comunque. */
+/* La colonna della home. La misura nasce dalle linee in gesso che il campo
+   disegnava prima (1.5rem dal bordo, piu' 3rem di margine interno): quelle linee
+   sono spente, ma il ritmo che davano alla pagina resta buono e non c'e' ragione
+   di cambiarlo. Oltre 96rem le righe dell'elenco si allargherebbero troppo: il
+   margine laterale cresce, ma il blocco resta centrato. Solo da md: sul telefono
+   si scorre comunque. */
 @utility pitch-frame {
   max-width: 96rem;
   @media (min-width: 48rem) {
@@ -76,11 +74,9 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   }
 }
 
-/* L'erba a strisce dietro il campo (PitchLines): due token in un gradiente ripetuto,
-   12 strisce da un lato all'altro. Sta sul contenitore e non nell'SVG, perche' il
-   campo si scala per restare intero e lascerebbe ai lati bande senza erba. Le
-   strisce di taglio corrono di traverso al campo: verticali quando il campo e'
-   orizzontale, orizzontali quando sugli schermi verticali il campo ruota. */
+/* L'erba a strisce (PitchGrass): due token in un gradiente ripetuto,
+   12 strisce da un lato all'altro. Le strisce di taglio corrono di traverso:
+   verticali sugli schermi orizzontali, orizzontali su quelli verticali. */
 .pitch-grass {
   background-color: var(--background);
   background-image: linear-gradient(90deg, var(--background) 50%, var(--grass-stripe) 50%);

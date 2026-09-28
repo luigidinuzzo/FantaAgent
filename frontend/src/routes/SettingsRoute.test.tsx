@@ -54,6 +54,16 @@ function renderSettings(put: () => Promise<Response>) {
 describe('SettingsRoute', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  /**
+   * «Battitore» e' chi batte la palla; chi conduce un'asta e' il banditore, e il
+   * posto dove sta il lotto e' il banco. Queste preferenze — secondi del conto
+   * alla rovescia, avviso sonoro — sono di chi conduce.
+   */
+  it('le preferenze di chi conduce si chiamano Banditore', async () => {
+    renderSettings(() => Promise.resolve(jsonResponse(SETTINGS)));
+    expect(await screen.findByRole('group', { name: 'Banditore' })).toBeInTheDocument();
+  });
+
   it('mostra le impostazioni che arrivano dal server', async () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
     expect(await screen.findByLabelText(/secondi/i)).toHaveValue(5);
@@ -327,7 +337,7 @@ describe('SettingsRoute', () => {
 
   /**
    * Stesso idioma di ScoringFieldset (Number(e.target.value) su un controllato),
-   * qui sul timer del battitore: svuotare il campo non deve forzarlo a 0 prima
+   * qui sul timer del banditore: svuotare il campo non deve forzarlo a 0 prima
    * che l'utente abbia finito di digitare il nuovo valore.
    */
   it('svuotare il campo dei secondi non lo forza a 0 prima di finire di digitare', async () => {

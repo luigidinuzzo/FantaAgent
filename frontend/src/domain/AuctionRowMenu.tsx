@@ -96,7 +96,7 @@ export function AuctionRowMenu({ label, actions }: { label: string; actions: Men
               role="menuitem"
               tabIndex={-1}
               onClick={() => { close(true); action.onSelect(); }}
-              className={`min-h-11 rounded-lg px-3 text-left font-bold hover:bg-line focus:bg-line focus-visible:outline-none ${
+              className={`min-h-11 rounded-lg px-3 text-left font-medium hover:bg-line focus:bg-line focus-visible:outline-none ${
                 action.destructive ? 'text-destructive' : 'text-foreground'
               }`}
             >

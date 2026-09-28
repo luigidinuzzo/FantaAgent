@@ -32,4 +32,34 @@ describe('PhaseSwitcher', () => {
     );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  /**
+   * La fase e' lo stato piu' importante della serata — si stanno chiamando i
+   * portieri, non gli attaccanti — e viveva in alto a destra, piccola, fra tre
+   * pastiglie che sembravano importanti quanto quella attiva.
+   */
+  it('la fase corrente si legge piu grande delle altre', () => {
+    render(<PhaseSwitcher phases={['P', 'D', 'C', 'A']} current="D" onChange={() => {}} pending={false} />);
+
+    const corrente = screen.getByRole('button', { name: /difensori, fase corrente/i });
+    const altra = screen.getByRole('button', { name: /^attaccanti$/i });
+    expect(corrente.querySelector('span')?.className).toContain('text-2xl');
+    expect(altra.querySelector('span')?.className).toContain('text-xs');
+  });
+
+  /**
+   * Le fasi non correnti arretrano per taglia e per contorno, MAI per opacita'.
+   *
+   * <p>Misurato con lo stesso metodo di contrast.test.ts: smorzate al 40% le
+   * lettere dei ruoli scendono fra 2,1 e 2,6 contro 1 sul fondo dei pannelli,
+   * dove la soglia e' 4,5. Anche al 70% gli attaccanti restano a 3,94. Un
+   * elemento che arretra non e' un elemento che si smette di poter leggere: qui
+   * dentro ci sono le quattro lettere con cui si cambia fase.
+   */
+  it('le fasi non correnti non si smorzano: restano leggibili', () => {
+    const { container } = render(
+      <PhaseSwitcher phases={['P', 'D', 'C', 'A']} current="D" onChange={() => {}} pending={false} />,
+    );
+    expect(container.innerHTML).not.toMatch(/opacity-[0-9]/);
+  });
 });

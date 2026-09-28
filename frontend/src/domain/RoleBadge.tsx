@@ -55,7 +55,7 @@ export function RoleBadge({
   return (
     <span
       className={[
-        'inline-flex items-center justify-center rounded-full font-extrabold',
+        'inline-flex items-center justify-center rounded-full font-semibold',
         SIZE_TEXT_CLASS[size],
         filled ? `${BG_ROLE_CLASS[role]} text-on-accent` : `border ${LETTER_CLASS[role]}`,
         filled ? 'px-2 py-0.5' : SIZE_BOX_CLASS[size],

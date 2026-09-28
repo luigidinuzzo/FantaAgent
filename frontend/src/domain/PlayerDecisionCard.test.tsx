@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { ValuationResponse } from '../api/types';
+import type { ParticipantView, ValuationResponse } from '../api/types';
 import { PlayerDecisionCard } from './PlayerDecisionCard';
 
 const VALUATION: ValuationResponse = {
@@ -22,7 +22,56 @@ const VALUATION: ValuationResponse = {
   ],
 };
 
+const ME: ParticipantView = {
+  id: 'anna', name: 'Anna', initial: 'A', me: true,
+  budgetRemaining: 300, slotsRemaining: 25,
+  filledByRole: { P: 0, D: 0, C: 0, A: 0 },
+  slotsByRole: { P: 3, D: 8, C: 8, A: 6 },
+};
+
 describe('PlayerDecisionCard', () => {
+  /**
+   * Col lotto sul banco i tuoi numeri non sono in pagina: il pannello centrale li
+   * mostra solo a riposo, e la colonna di sinistra porta i crediti nudi. Quanto
+   * puoi davvero offrire PER QUESTO giocatore — crediti meno un credito per ogni
+   * altro posto da riempire — e' il vincolo che decide il rilancio, e finora si
+   * scopriva solo sbagliando: lo diceva un errore, dopo aver scritto un prezzo
+   * troppo alto.
+   */
+  it('mostra quanto puoi offrire per questo lotto, dal dato del server', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} me={ME} />);
+    // hardCap della valutazione (90), non i 276 che maxAffordable(ME) darebbe
+    // ricalcolando qui la stessa formula: la fonte e' una, ed e' il server. Il
+    // numero appartiene allo stesso scatto degli altri quattro della riga —
+    // ricalcolarlo fresco dentro un blocco segnato come stantio lo farebbe
+    // discordare proprio quando si guarda se fidarsi.
+    expect(screen.getByTestId('affordable')).toHaveTextContent('90');
+    expect(screen.getByText('puoi offrire')).toBeInTheDocument();
+  });
+
+  /**
+   * Quattro numeri in fila allo stesso corpo si leggono come un elenco solo, e
+   * non lo sono: quotazione, mercato e margine parlano del GIOCATORE, «puoi
+   * offrire» parla di TE — e' il tuo budget, non una quarta misura del lotto. La
+   * riga li separa con una linea, cosi' l'occhio non li somma.
+   */
+  it('separa il numero che riguarda te da quelli che riguardano il giocatore', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} me={ME} />);
+    expect(screen.getByTestId('affordable')).toHaveClass('border-l');
+  });
+
+  /**
+   * Coi posti di quel ruolo gia' pieni non c'e' nessuna cifra da offrire: un numero
+   * inviterebbe a rilanciare su un giocatore che non puoi comprare. Si dice il
+   * vincolo, non la cifra.
+   */
+  it('coi posti del ruolo pieni dice il vincolo invece della cifra', () => {
+    const pieno: ParticipantView = { ...ME, filledByRole: { P: 0, D: 8, C: 0, A: 0 } };
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} me={pieno} />);
+    expect(screen.getByTestId('affordable')).toHaveTextContent('—');
+    expect(screen.getByText('difensori al completo')).toBeInTheDocument();
+  });
+
   it('mostra il tetto come numero dominante', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
     const maxBid = screen.getByTestId('max-bid');
@@ -59,7 +108,7 @@ describe('PlayerDecisionCard', () => {
     const voci = [...lista.children].map((el) => el.textContent?.trim());
 
     // dt seguito dal suo dd, nell'ordine in cui si leggono ad alta voce.
-    expect(voci[0]).toBe('il tuo tetto · fin qui conviene');
+    expect(voci[0]).toBe('il tuo tetto, fin qui conviene');
     expect(voci[1]).toContain('47');
     expect(voci[2]).toBe('quotazione');
     expect(voci[3]).toBe('20');
@@ -171,7 +220,7 @@ describe('PlayerDecisionCard', () => {
   });
 
   /**
-   * Dentro il riquadro del battitore la card non porta cornice propria: due bordi
+   * Dentro il riquadro del banco la card non porta cornice propria: due bordi
    * concentrici dello stesso colore erano solo rumore attorno al numero che conta.
    * Il contenuto, invece, resta identico.
    */

@@ -195,7 +195,7 @@ export function HomeRoute() {
         <button
           type="button"
           onClick={() => setQuery('')}
-          className="min-h-11 rounded-full border border-line-strong px-5 font-bold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="min-h-11 rounded-full border border-line-strong px-5 font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           Mostra tutte le aste
         </button>
@@ -261,7 +261,7 @@ export function HomeRoute() {
             >
               <GavelIcon />
               <div className="min-w-0 flex-1 basis-64">
-                <h2 id="home-nuova" className="w-exp text-2xl font-extrabold leading-tight sm:text-4xl">
+                <h2 id="home-nuova" className="w-exp text-2xl font-semibold leading-tight sm:text-4xl">
                   {firstRun ? 'Prepara la tua prima asta' : 'Comincia una nuova asta'}
                 </h2>
                 <p className="mt-2 max-w-[60ch] text-base text-muted-foreground sm:text-lg">
@@ -276,7 +276,7 @@ export function HomeRoute() {
                 type="button"
                 onClick={startNew}
                 disabled={leave.isPending}
-                className="min-h-14 w-full shrink-0 rounded-full bg-accent px-10 text-lg font-extrabold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground sm:w-auto"
+                className="min-h-14 w-full shrink-0 rounded-full bg-accent px-10 text-lg font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground sm:w-auto"
               >
                 {firstRun ? 'Crea la tua prima asta' : 'Crea asta'}
               </button>
@@ -284,7 +284,7 @@ export function HomeRoute() {
 
             {firstRun ? (
               <section aria-labelledby="home-come" className="panel flex min-w-0 flex-col rounded-2xl">
-                <h2 id="home-come" className="px-5 pt-5 text-xl font-extrabold sm:px-6 sm:pt-6">
+                <h2 id="home-come" className="px-5 pt-5 text-xl font-semibold sm:px-6 sm:pt-6">
                   Come funziona
                 </h2>
                 <ol className={`mt-3 grid border-t border-line md:grid-cols-3 ${ROWS_AREA}`}>
@@ -298,10 +298,10 @@ export function HomeRoute() {
                       {/* Numeri grandi: sono il disegno del pannello, e con i testi
                           a misura di lettura riempiono la zona fissa invece di
                           galleggiarci in mezzo. */}
-                      <span aria-hidden="true" className="tnum w-exp text-7xl font-extrabold leading-none text-accent sm:text-8xl">
+                      <span aria-hidden="true" className="tnum w-exp text-7xl font-semibold leading-none text-accent sm:text-8xl">
                         {i + 1}
                       </span>
-                      <h3 className="w-exp mt-2 text-2xl font-extrabold">{step.title}</h3>
+                      <h3 className="w-exp mt-2 text-2xl font-semibold">{step.title}</h3>
                       <p className="max-w-[36ch] text-lg text-muted-foreground">{step.text}</p>
                     </li>
                   ))}
@@ -313,11 +313,11 @@ export function HomeRoute() {
                  una riga e sul telefono la pagina scorre di lato. */
               <section aria-labelledby="home-riprendi" className="panel flex min-w-0 flex-col rounded-2xl">
                 <div className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-2 px-5 pt-5 sm:px-6 sm:pt-6">
-                  <h2 id="home-riprendi" className="text-xl font-extrabold">
+                  <h2 id="home-riprendi" className="text-xl font-semibold">
                     Riprendi un'asta
                   </h2>
                   {notice ? (
-                    <p role="status" className="text-sm font-bold text-positive">{notice}</p>
+                    <p role="status" className="text-sm font-medium text-positive">{notice}</p>
                   ) : null}
                   {searchable ? (
                     <div className="relative ml-auto w-full sm:w-72">
@@ -360,7 +360,7 @@ export function HomeRoute() {
           {alertMessage ? (
             // role="alert", non un secondo role="status": l'unica live region
             // ambientale della pagina resta AuctionAnnouncer (dentro AuctionRoute).
-            <p role="alert" className="panel mx-auto mt-4 w-full max-w-7xl rounded-xl p-4 text-sm font-bold text-destructive">
+            <p role="alert" className="panel mx-auto mt-4 w-full max-w-7xl rounded-xl p-4 text-sm font-medium text-destructive">
               {alertMessage}
             </p>
           ) : null}
@@ -406,7 +406,7 @@ export function HomeRoute() {
         <Wordmark size="xl" outlined />
         {/* Chiaro su scuro, al contrario di tutto il resto: e' il blocchetto a dare il
             contrasto. La coppia surface/foreground e' in contrast.test.ts. */}
-        <p className="rounded-full bg-foreground px-4 py-1.5 text-sm font-bold text-surface">
+        <p className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-surface">
           2026, Luigi di Nuzzo
         </p>
       </footer>

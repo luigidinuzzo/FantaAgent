@@ -355,4 +355,22 @@ describe('RosterGrid', () => {
     expect(cancel.className).toContain('focus-visible:opacity-100');
     expect(cancel.className).toContain('[@media(hover:none)]:opacity-100');
   });
+
+  /**
+   * Una riga con un giocatore porta anche il bottone di annullamento ed era piu'
+   * alta di una vuota: bastava un acquisto perche' le colonne delle squadre si
+   * sfalsassero. L'altezza e' decisa, uguale per tutte.
+   */
+  it('le righe hanno la stessa altezza, col giocatore e senza', async () => {
+    renderRoster();
+    const player = (await screen.findByText('Sommer')).closest('td')!;
+    const empty = screen.getAllByText('posto libero')[0].closest('td')!;
+    expect(player.className).toContain('h-9');
+    expect(empty.className).toContain('h-9');
+    // Nessun riempimento verticale che rimetta la differenza dalla finestra.
+    expect(player.className).toContain('py-0');
+    expect(empty.className).toContain('py-0');
+    const row = player.closest('tr')!;
+    expect([...row.children].every((c) => c.className.includes('h-9'))).toBe(true);
+  });
 });

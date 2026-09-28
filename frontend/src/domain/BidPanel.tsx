@@ -87,7 +87,7 @@ export function BidPanel({
         onChange={(e) => setPrice(e.target.value)}
         aria-invalid={error !== null}
         aria-describedby={error ? errorId : undefined}
-        className={`tnum ${CONTROL_H} w-24 rounded-full border border-line-strong bg-transparent px-4 font-bold placeholder:text-muted-foreground ${FOCUS_RING}`}
+        className={`tnum ${CONTROL_H} w-24 rounded-full border border-line-strong bg-transparent px-4 font-medium placeholder:text-muted-foreground ${FOCUS_RING}`}
       />
 
       <label htmlFor={buyerId} className="ml-2 text-sm text-muted-foreground">
@@ -98,7 +98,7 @@ export function BidPanel({
         value={participantId}
         required
         onChange={(e) => setParticipantId(e.target.value)}
-        className={`${CONTROL_H} min-w-0 rounded-full border border-line-strong bg-surface px-4 font-bold ${FOCUS_RING}`}
+        className={`${CONTROL_H} min-w-0 rounded-full border border-line-strong bg-surface px-4 font-medium ${FOCUS_RING}`}
       >
         <option value="" disabled>Scegli la squadra</option>
         {participants.map((p) => (
@@ -112,7 +112,7 @@ export function BidPanel({
         type="submit"
         disabled={disabled || pending || !validPrice || !participantId}
         aria-describedby={disabledReason ? hintId : undefined}
-        className={`${CONTROL_H} ml-2 rounded-full border border-line-strong px-6 font-bold transition-opacity duration-200 hover:bg-line disabled:opacity-50 ${FOCUS_RING}`}
+        className={`${CONTROL_H} ml-2 rounded-full border border-line-strong px-6 font-medium transition-opacity duration-200 hover:bg-line disabled:opacity-50 ${FOCUS_RING}`}
       >
         {pending ? 'Aggiudico…' : 'Aggiudica'}
       </button>
@@ -123,7 +123,7 @@ export function BidPanel({
       ) : null}
 
       {buyer && (full || tooMuch) ? (
-        <p className="w-full text-sm font-bold text-destructive">
+        <p className="w-full text-sm font-medium text-destructive">
           {full && role
             ? `${buyer.name} ha già tutti i posti ${ROLE_NAME_PLURAL[role]}.`
             : `${buyer.name} può offrire al massimo ${Math.max(0, maxAffordable(buyer))}.`}

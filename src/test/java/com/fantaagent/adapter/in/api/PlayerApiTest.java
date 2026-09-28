@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.closeTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -165,7 +167,7 @@ class PlayerApiTest {
         //  danno una titolarita' di circa il 79%.
         PlayerProjection projection =
                 new PlayerProjection("d1", Role.D, 6.2, 0.5, 30.0, 120.0, 25.0);
-        when(search.phasePlayers(anyInt(), anyInt())).thenReturn(
+        when(search.phasePlayers(anyInt(), anyInt(), any(), anyBoolean())).thenReturn(
                 new PlayerSearchService.PhasePage(
                         List.of(new PlayerSearchService.PhaseRow(BASTONI, RECOMMENDATION, projection)),
                         0, 25, 1));
@@ -194,7 +196,7 @@ class PlayerApiTest {
 
     @Test
     void laTabellaDiFaseTagliaUnLimiteSopraIlTetto() throws Exception {
-        when(search.phasePlayers(anyInt(), anyInt())).thenReturn(
+        when(search.phasePlayers(anyInt(), anyInt(), any(), anyBoolean())).thenReturn(
                 new PlayerSearchService.PhasePage(List.of(), 0, PlayerSearchService.PHASE_PAGE_SIZE, 0));
 
         mvc.perform(get("/api/leagues/default/auctions/corrente/players/phase?offset=0&limit=100000"))
@@ -203,7 +205,43 @@ class PlayerApiTest {
         // Il tetto si verifica su cio' che il controller chiede al servizio, non solo su
         // cio' che torna: una risposta vuota supererebbe un'asserzione sul solo corpo anche
         // se il limite raggiungesse il servizio intatto.
-        verify(search).phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE);
+        verify(search).phasePlayers(0, PlayerSearchService.PHASE_PAGE_SIZE,
+                PlayerSearchService.PhaseSort.QUOTAZIONE, false);
+    }
+
+    /**
+     * L'ordinamento della tabella di fase arriva dalla richiesta. Solo tre colonne:
+     * quotazione, fantamedia attesa, titolarita'. Il tetto e il margine no — nascono
+     * da una valutazione completa per riga, e ordinarci sopra vorrebbe dire valutare
+     * l'intera fase a ogni pagina.
+     */
+    @Test
+    void laTabellaDiFaseSiOrdinaSullaColonnaChiesta() throws Exception {
+        when(search.phasePlayers(anyInt(), anyInt(), any(), anyBoolean())).thenReturn(
+                new PlayerSearchService.PhasePage(List.of(), 0, 25, 0));
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/phase"
+                        + "?offset=0&limit=25&sort=titolarita&dir=asc"))
+                .andExpect(status().isOk());
+
+        verify(search).phasePlayers(0, 25, PlayerSearchService.PhaseSort.TITOLARITA, true);
+    }
+
+    /**
+     * Una colonna che non esiste non e' un errore da mostrare a chi gioca: si torna
+     * all'ordine di sempre, come gia' fa il limite fuori scala. Vale anche per un
+     * verso scritto male.
+     */
+    @Test
+    void unaColonnaSconosciutaTornaAllOrdineDiSempre() throws Exception {
+        when(search.phasePlayers(anyInt(), anyInt(), any(), anyBoolean())).thenReturn(
+                new PlayerSearchService.PhasePage(List.of(), 0, 25, 0));
+
+        mvc.perform(get("/api/leagues/default/auctions/corrente/players/phase"
+                        + "?offset=0&limit=25&sort=tetto&dir=boh"))
+                .andExpect(status().isOk());
+
+        verify(search).phasePlayers(0, 25, PlayerSearchService.PhaseSort.QUOTAZIONE, false);
     }
 
     @Test

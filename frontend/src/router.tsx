@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { AppFrame } from './AppFrame';
 import { AuctionRoute } from './routes/AuctionRoute';
 import { HomeRoute } from './routes/HomeRoute';
 import { ProjectionRoute } from './routes/ProjectionRoute';
@@ -13,10 +14,9 @@ import { SettingsRoute } from './routes/SettingsRoute';
 // Le impostazioni hanno un indirizzo proprio perche' e' dove un'asta nasce: la home
 // (Task 9) ci porta con un link, senza creare niente da sola.
 //
-// Esportato (non solo passato a createBrowserRouter) perche' AppShell.test.tsx lo
-// scorre per verificare che OGNI rotta qui elencata sia raggiungibile da un link
-// nella barra comune — la reazione strutturale a due revisioni consecutive che
-// hanno trovato "una rotta aggiunta e nessuno che la collega".
+// Esportato (non solo passato a createBrowserRouter) perche' SpaRoutesControllerTest
+// lo legge dal sorgente e pretende che l'elenco delle rotte del client coincida con
+// quelle che il server inoltra a index.html.
 export const routeDefinitions = [
   { path: '/', element: <HomeRoute /> },
   { path: '/asta', element: <AuctionRoute /> },
@@ -34,7 +34,9 @@ export const routeDefinitions = [
   { path: '/riepilogo', element: <Navigate to="/asta" replace /> },
 ];
 
-const router = createBrowserRouter(routeDefinitions);
+// Tutte dentro AppFrame: campo e fondo restano montati fra una pagina e l'altra, e
+// a cambiare e' solo il contenuto.
+const router = createBrowserRouter([{ element: <AppFrame />, children: routeDefinitions }]);
 
 export function AppRouter() {
   return <RouterProvider router={router} />;

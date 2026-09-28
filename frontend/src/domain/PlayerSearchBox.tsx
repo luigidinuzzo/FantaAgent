@@ -29,14 +29,14 @@ function SearchIcon() {
  *
  * <p>Niente modale e niente riquadro attorno alla barra: il bordo del campo e'
  * l'unico contorno, e i risultati crescono dove si sta guardando, subito sotto
- * quello che si e' appena digitato. Il posto che occupano lo cede il battitore,
+ * quello che si e' appena digitato. Il posto che occupano lo cede il banco,
  * che chi monta questa ricerca nasconde mentre {@code onActiveChange} dice "sto
  * cercando" — cosi' la pagina sotto non balla a ogni lettera.
  *
  * <p>"Sto cercando" non e' uno stato che si apre e si chiude con un bottone: e'
  * semplicemente avere scritto qualcosa o aver scelto un ruolo. Si esce
  * cancellando, con Esc, o scegliendo un nome — e in tutti e tre i casi la barra
- * torna vuota e il battitore riprende il suo posto.
+ * torna vuota e il banco riprende il suo posto.
  *
  * <p>Non conosce il tabellone: sceglie solo un identificativo e lo passa a
  * {@code onSelect}, la STESSA selezione che produce una riga della tabella di
@@ -174,7 +174,7 @@ export function PlayerSearchBox({
             <div className="flex flex-wrap gap-2">
               <label
                 className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border px-3 text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
-                  role === null ? 'border-accent bg-accent font-bold text-on-accent' : 'border-line-strong text-muted-foreground'
+                  role === null ? 'border-accent bg-accent font-medium text-on-accent' : 'border-line-strong text-muted-foreground'
                 }`}
               >
                 <input
@@ -234,7 +234,7 @@ export function PlayerSearchBox({
                 indovinare il senso. Nascoste a chi ascolta: ogni riga e' un
                 bottone che dice gia' nome, squadra e prezzo. */}
             {data && data.length > 0 ? (
-              <div aria-hidden="true" className="-mb-3 flex shrink-0 items-center gap-3 border-b border-line-strong px-2 pb-2 text-xs font-bold text-muted-foreground">
+              <div aria-hidden="true" className="-mb-3 flex shrink-0 items-center gap-3 border-b border-line-strong px-2 pb-2 text-xs font-medium text-muted-foreground">
                 <span className="w-6 shrink-0" />
                 <span className="min-w-0 max-w-64 flex-1">Giocatore</span>
                 <span className="w-20 shrink-0">Squadra</span>
@@ -250,7 +250,7 @@ export function PlayerSearchBox({
                   <button
                     type="button"
                     // Scegliere chiude la ricerca: la barra torna vuota e il
-                    // battitore riprende il suo posto, col giocatore appena scelto.
+                    // banco riprende il suo posto, col giocatore appena scelto.
                     onClick={() => {
                       onSelect(player.id);
                       reset();
@@ -285,7 +285,7 @@ export function PlayerSearchBox({
 
           {soldMatches.length > 0 ? (
             <div className="shrink-0 rounded-xl border border-line p-3">
-              <p className="text-sm font-bold text-muted-foreground">
+              <p className="text-sm font-medium text-muted-foreground">
                 {noResults ? 'Già comprato, non è più all\'asta' : 'Già comprati'}
               </p>
               <ul aria-label="Giocatori già comprati" className="mt-1">
@@ -293,7 +293,7 @@ export function PlayerSearchBox({
                   <li key={p.key} className="flex min-h-10 items-center gap-3 text-sm">
                     <span aria-hidden="true"><RoleBadge role={p.role} /></span>
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="font-bold">{p.name}</span>
+                      <span className="font-medium">{p.name}</span>
                       {` è di ${p.buyer}`}
                     </span>
                     <span className="tnum shrink-0 text-muted-foreground">{`${p.price} crediti`}</span>

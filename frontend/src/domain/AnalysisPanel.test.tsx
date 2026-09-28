@@ -26,10 +26,28 @@ const VALUATION: ValuationResponse = {
 };
 
 describe('AnalysisPanel', () => {
-  it('mostra il limite «mai oltre», distinto dal tuo tetto', () => {
-    render(<AnalysisPanel valuation={{ ...VALUATION, hardCap: 90 }} />);
-    expect(screen.getByTestId('hard-cap')).toHaveTextContent('90');
-    expect(screen.getByText('mai oltre')).toBeInTheDocument();
+  /**
+   * «mai oltre» e «puoi offrire» erano lo STESSO campo, hardCap, con due nomi
+   * diversi e in due punti della stessa schermata. Nello scatto che ha aperto
+   * questa revisione il numero 476 compariva cinque volte con cinque significati
+   * apparenti: i crediti di una squadra, «mai oltre», «puoi offrire», e due
+   * driver. Resta dove si agisce — nella scheda del lotto — e se ne va da qui.
+   */
+  it('non ripete il limite che la scheda del lotto porta gia', () => {
+    const { container } = render(<AnalysisPanel valuation={{ ...VALUATION, hardCap: 90 }} />);
+    expect(container.querySelector('[data-testid="hard-cap"]')).toBeNull();
+    expect(screen.queryByText('mai oltre')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Il pannello spiega la decisione: non deve portare il numero piu' grande della
+   * schermata, perche' quello e' la decisione stessa — «il tuo tetto», nella
+   * scheda del lotto. Un 476 a corpo grande in cima al pannello che spiega un 18
+   * contraddiceva a colpo d'occhio cio' che spiegava.
+   */
+  it('l affidabilita apre il pannello: niente numeri a corpo grande', () => {
+    const { container } = render(<AnalysisPanel valuation={VALUATION} />);
+    expect(container.querySelector('.text-3xl, .text-4xl, .text-5xl')).toBeNull();
   });
 
   /**
@@ -79,27 +97,34 @@ describe('AnalysisPanel', () => {
   });
 
   /**
-   * Il contributo arriva dal calcolo in virgola mobile e puo' presentarsi come
-   * 0.14296393920221817. Scritto per intero mandava a capo la riga del driver e
-   * allungava la colonna, che a sua volta allungava l'intera riga della pagina.
-   * E comunque non e' un numero che si legge: sono crediti.
+   * Il campo {@code contribution} non porta contributi: porta grandezze diverse
+   * per ogni driver — il limite di budget in crediti, il prezzo di un'alternativa
+   * in crediti, un coefficiente d'inflazione (1 = il 100% dei valori teorici),
+   * una differenza di punti stagionali. Incolonnarle col segno, una sotto
+   * l'altra, le faceva leggere come addendi dello stesso totale: «+476, +16, +1,
+   * +0» su un prezzo consigliato di 18.
+   *
+   * <p>La spiegazione di ogni driver porta gia' il proprio numero, con la propria
+   * unita' detta a parole. Quella resta; la colonna se ne va.
    */
-  it('arrotonda il contributo dei driver: non stampa la virgola mobile per intero', () => {
+  it('non incolonna i contributi: sono grandezze diverse, non addendi', () => {
     render(
       <AnalysisPanel
         valuation={{
           ...VALUATION,
           drivers: [
-            { label: 'modificatori', contribution: 0.14296393920221817, explanation: 'nessun effetto rilevante' },
-            { label: 'concorrenza', contribution: 15.7, explanation: 'sette avversari cercano ancora un P' },
+            { label: 'Inflazione', contribution: 1, explanation: 'il mercato viaggia al 100% dei valori teorici' },
+            { label: 'Budget', contribution: 476, explanation: 'restano 500 crediti e 25 slot da coprire' },
           ],
         }}
       />,
     );
 
-    expect(screen.getByText('+0')).toBeInTheDocument();
-    expect(screen.getByText('+16')).toBeInTheDocument();
-    expect(screen.queryByText(/0\.14296/)).not.toBeInTheDocument();
+    expect(screen.queryByText('+1')).not.toBeInTheDocument();
+    expect(screen.queryByText('+476')).not.toBeInTheDocument();
+    // Il numero non sparisce: vive nella frase, dove ha un'unita'.
+    expect(screen.getByText(/il mercato viaggia al 100%/)).toBeInTheDocument();
+    expect(screen.getByText(/restano 500 crediti/)).toBeInTheDocument();
   });
 
   it('non e una live region: la pagina ne ha gia una sola', () => {

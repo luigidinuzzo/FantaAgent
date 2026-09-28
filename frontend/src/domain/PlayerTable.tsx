@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import type { PhaseRowView } from '../api/types';
+import type { PhaseRowView, PhaseSort, SortDir } from '../api/types';
 import { EmptyState } from './EmptyState';
 
 const CAPTION_ID = 'player-table-caption';
@@ -10,21 +10,86 @@ const CAPTION_ID = 'player-table-caption';
 // file devono restare incolonnate: cambiarlo in un punto solo le disallinea.
 const CELL_X = 'px-3';
 
+/**
+ * Il criterio dell'elenco, detto a parole. Ordinando per un'altra colonna la
+ * didascalia continuava ad annunciare la quotazione: falso, e per giunta e'
+ * l'unica riga che spiega perche' i giocatori stanno in quell'ordine.
+ *
+ * <p>La quotazione decrescente si spiega anche col PERCHE': e' l'ordine in cui i
+ * giocatori vengono chiamati in asta, quindi non e' una scelta di comodo. Le
+ * altre si spiegano da se'.
+ */
+const ORDER_PHRASE: Record<PhaseSort, Record<SortDir, string>> = {
+  quotazione: {
+    desc: 'dal più quotato: l’ordine in cui vengono chiamati',
+    asc: 'dal meno quotato',
+  },
+  fantamedia: {
+    desc: 'dalla fantamedia attesa più alta',
+    asc: 'dalla fantamedia attesa più bassa',
+  },
+  titolarita: {
+    desc: 'da chi gioca di più',
+    asc: 'da chi gioca di meno',
+  },
+};
+
+// NOTA per chi ci tornera': l'intestazione NON e' ferma allo scorrimento, e
+// renderla tale non e' una riga di CSS. Il contenitore qui sotto ha
+// `overflow-x-auto`, e questo fa calcolare anche `overflow-y` come `auto`: da
+// quel momento un `position: sticky` qui dentro si ancora a QUEL riquadro, non
+// alla finestra — e quel riquadro non scorre in verticale, quindi la classe non
+// farebbe niente. Perche' funzioni, la tabella deve diventare la propria area di
+// scorrimento, con un'altezza decisa in anticipo come le colonne dell'asta. E'
+// una scelta di impaginazione, non una rifinitura.
+
+/**
+ * La freccia del verso, accanto alla colonna ordinata. Tratto vettoriale, mai
+ * un'emoji, e decorativa: il verso lo dice {@code aria-sort} sull'intestazione.
+ */
+function SortArrow({ dir }: { dir: SortDir }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 12 12"
+      className={`h-3 w-3 shrink-0 ${dir === 'asc' ? 'rotate-180' : ''}`}
+      fill="currentColor"
+    >
+      <path d="M6 9.5 1.8 4.5h8.4z" />
+    </svg>
+  );
+}
+
 export function PlayerTable({
   rows,
   selectedId,
   onSelect,
   disabled = false,
+  sort = 'quotazione',
+  dir = 'desc',
+  onSort,
 }: {
   rows: PhaseRowView[];
   selectedId: string | null;
   onSelect: (playerId: string) => void;
+  /** La colonna su cui il SERVER ha ordinato questa pagina. */
+  sort?: PhaseSort;
+  dir?: SortDir;
   /**
-   * Un lotto alla volta e' aperto sul battitore: mentre lo e', la
+   * Chiede un altro ordine. L'ordine vero lo fa il server: riordinare qui
+   * significherebbe rimettere in fila la sola pagina che si ha in mano — venticinque
+   * righe su duecento — e dire una bugia su tutte le altre.
+   *
+   * <p>Assente, le intestazioni restano testo: e' il caso di chi monta la tabella
+   * senza saperla ordinare.
+   */
+  onSort?: (sort: PhaseSort, dir: SortDir) => void;
+  /**
+   * Un lotto alla volta e' aperto sul banco: mentre il conto alla rovescia corre, la
    * selezione resta bloccata, non solo scoraggiata. Un clic vagante su
    * un'altra riga cambierebbe il giocatore sotto un rilancio in corso —
    * countdown, prezzo e beep perduti senza preavviso. Abbandonare un lotto
-   * resta un gesto deliberato (si chiude il battitore), non un incidente
+   * resta un gesto deliberato (si chiude il conto alla rovescia), non un incidente
    * di un clic.
    */
   disabled?: boolean;
@@ -50,8 +115,22 @@ export function PlayerTable({
       className="relative overflow-x-auto rounded-lg border border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
     >
       <table className="w-full border-collapse text-sm">
-        <caption id={CAPTION_ID} className="sr-only">
-          Giocatori liberi nella fase corrente
+        {/* Visibile, non piu' sr-only: accanto, «Occasioni della fase» dichiara il
+            proprio criterio e mostra altri nomi, e senza il suo questa tabella
+            sembrava contraddirla — i consigliati non erano in cima e non si capiva
+            perche'. L'ordine non e' casuale: e' quello in cui i giocatori vengono
+            chiamati in asta e in cui l'occhio li cerca sul listone. Detto una volta
+            in testa, le due liste smettono di sembrare in disaccordo. */}
+        <caption id={CAPTION_ID} className="px-3 pb-2 pt-1 text-left text-sm text-muted-foreground">
+          {`Giocatori liberi nella fase corrente, ${ORDER_PHRASE[sort][dir]}.`}
+          {/* Cosa vogliono dire i tre stati della colonna «Il tuo tetto». Il
+              colore da solo non e' informazione, e qui non lo era nemmeno per chi
+              il rosso lo distingue: si capiva solo sapendolo gia'. */}
+          <span data-testid="player-table-legend" className="mt-1 block">
+            In <span className="font-medium text-destructive">rosso</span> i tetti che il mercato supera:
+            {' '}conviene fin lì, ma si pagherà di più. «Nessuno»: a nessun prezzo ci guadagni.
+            {' '}Per i tetti più convenienti, «Occasioni della fase».
+          </span>
         </caption>
         <thead>
           <tr className="border-b border-line-strong text-left text-muted-foreground">
@@ -60,10 +139,15 @@ export function PlayerTable({
                 servono a decidere; la squadra va sotto il nome. */}
             <th scope="col" className={`${CELL_X} py-2 font-normal`}>Giocatore</th>
             <th scope="col" className={`${CELL_X} py-2 font-normal max-sm:hidden`}>Squadra</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Quotazione</th>
+            <SortableHeader column="quotazione" label="Quotazione" sort={sort} dir={dir} onSort={onSort} />
+            {/* Non ordinabile, e non per dimenticanza: il tetto nasce da una
+                valutazione completa per riga, e metterci in fila l'intera fase
+                costerebbe secondi a ogni pagina chiesta. La stessa domanda —
+                «dove conviene guardare» — ha gia' la sua risposta in «Occasioni
+                della fase», detto nella legenda qui sopra. */}
             <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Il tuo tetto</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal max-sm:hidden`}>Fantamedia attesa</th>
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal max-sm:hidden`}>Titolarità</th>
+            <SortableHeader column="fantamedia" label="Fantamedia attesa" sort={sort} dir={dir} onSort={onSort} hideOnPhone />
+            <SortableHeader column="titolarita" label="Titolarità" sort={sort} dir={dir} onSort={onSort} hideOnPhone />
           </tr>
         </thead>
         <tbody>
@@ -108,14 +192,39 @@ export function PlayerTable({
                 <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground`}>{row.listPrice}</td>
                 <td
                   data-testid={`maxbid-${row.id}`}
-                  className={`tnum ${CELL_X} py-2 text-right ${above ? 'text-destructive' : 'text-accent'}`}
+                  // Tre stati, e solo uno colorato.
+                  //
+                  // Il rosso e' per «c'e' un tetto, ma il mercato te lo porta via»:
+                  // l'unico caso in cui si puo' ancora essere tentati, e un avviso
+                  // serve a qualcosa. Prima era colorato ANCHE il caso raggiungibile
+                  // (in oro): colorare la regola insieme all'eccezione vuol dire non
+                  // dire niente, e le due tinte calde a 14px su verde scuro si
+                  // distinguevano a fatica.
+                  //
+                  // «Nessuno» arretra invece di gridare: su una fase intera tocca
+                  // quasi meta' delle righe, e in rosso quella parola sovrastava i
+                  // numeri accanto — che sono l'unica cosa su cui si agisce. Dove
+                  // non c'e' niente da fare, non c'e' nessuno da avvisare.
+                  className={`tnum ${CELL_X} py-2 text-right ${
+                    row.maxBid === 0 ? 'text-muted-foreground' : above ? 'text-destructive' : ''
+                  }`}
                 >
-                  {row.maxBid}
+                  {/* Tetto zero non e' un prezzo basso: e' l'assenza di un prezzo —
+                      il motore lo restituisce quando NESSUNA cifra, nemmeno uno,
+                      lascia un guadagno. In colonna con 23 e 22 lo zero si leggeva
+                      come una cifra, e per giunta come la piu' conveniente della
+                      tabella. La parola risponde all'intestazione: il tuo tetto,
+                      nessuno. E si porta dietro il proprio significato, quindi non
+                      serve l'avviso di superamento qui sotto: sarebbe «nessuno,
+                      oltre il tetto stimato», due volte la stessa cosa. */}
+                  {row.maxBid === 0 ? 'nessuno' : row.maxBid}
                   {/* Il colore da solo non e' informazione, e data-above-threshold
                       non entra nell'albero di accessibilita': e' un data-*, non
                       un'attributo ARIA. Questo testo e' l'equivalente per chi
                       non vede, letto insieme al numero. */}
-                  {above ? <span className="sr-only">, oltre il tetto stimato</span> : null}
+                  {above && row.maxBid > 0 ? (
+                    <span className="sr-only">, oltre il tetto stimato</span>
+                  ) : null}
                 </td>
                 <td className={`tnum ${CELL_X} py-2 text-right text-muted-foreground max-sm:hidden`}>
                   {row.fantamediaAttesa.toFixed(1)}
@@ -130,9 +239,52 @@ export function PlayerTable({
       </table>
       {disabled ? (
         <span id={lockedHintId} className="sr-only">
-          Selezione bloccata: chiudi il battitore per scegliere un altro giocatore.
+          Selezione bloccata: chiudi il conto alla rovescia per scegliere un altro giocatore.
         </span>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Un'intestazione che si puo' richiamare per ordinare. Il verso lo porta
+ * {@code aria-sort} sulla cella, che e' il modo in cui una tabella dice a chi
+ * ascolta su cosa e' ordinata; la freccia e' la stessa cosa per chi guarda.
+ *
+ * <p>Richiamare la colonna gia' in uso ne rovescia il verso; una colonna nuova
+ * parte dal suo verso naturale, il decrescente — la quotazione piu' alta, la
+ * fantamedia migliore, chi gioca di piu'.
+ */
+function SortableHeader({ column, label, sort, dir, onSort, hideOnPhone = false }: {
+  column: PhaseSort;
+  label: string;
+  sort: PhaseSort;
+  dir: SortDir;
+  onSort?: (sort: PhaseSort, dir: SortDir) => void;
+  hideOnPhone?: boolean;
+}) {
+  const active = sort === column;
+  const cell = `${CELL_X} py-2 text-right font-normal ${hideOnPhone ? 'max-sm:hidden' : ''}`;
+
+  if (!onSort) {
+    return <th scope="col" className={cell}>{label}</th>;
+  }
+  return (
+    <th
+      scope="col"
+      aria-sort={active ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+      className={cell}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column, active && dir === 'desc' ? 'asc' : 'desc')}
+        className={`-mx-1 flex min-h-11 w-full items-center justify-end gap-1.5 rounded px-1 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+          active ? 'font-medium text-foreground' : ''
+        }`}
+      >
+        {label}
+        {active ? <SortArrow dir={dir} /> : null}
+      </button>
+    </th>
   );
 }
