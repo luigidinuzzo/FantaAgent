@@ -1,6 +1,24 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { ProblemError } from './client';
+
+/** Le pagine dove un 401 e' la normalita', non una sessione scaduta. */
+const PUBLIC_PATHS = ['/accedi', '/registrati', '/password-dimenticata', '/nuova-password',
+  '/verifica-email', '/invito/'];
+
+/**
+ * Sessione scaduta a meta' serata: si va all'accesso e poi si torna esattamente dove
+ * si era. La domanda {@code me} e' esclusa perche' la gestisce {@code RequireAuth},
+ * che fa lo stesso senza ricaricare la pagina.
+ */
+function onUnauthenticated(error: unknown, queryKey?: readonly unknown[]) {
+  if (!(error instanceof ProblemError) || error.slug !== 'unauthenticated') return;
+  if (queryKey && queryKey[0] === 'me') return;
+  const { pathname, search } = window.location;
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) return;
+  window.location.assign(`/accedi?dopo=${encodeURIComponent(pathname + search)}`);
+}
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -25,6 +43,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
           // acquisto vero, non uno deduplicato.
           mutations: { retry: 0 },
         },
+        queryCache: new QueryCache({ onError: (error, query) => onUnauthenticated(error, query.queryKey) }),
+        mutationCache: new MutationCache({ onError: (error) => onUnauthenticated(error) }),
       }),
   );
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;

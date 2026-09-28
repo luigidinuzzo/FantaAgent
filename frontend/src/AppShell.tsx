@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useMe } from './api/auth';
 import { Wordmark } from './domain/Wordmark';
 
 /**
@@ -43,7 +44,9 @@ export function AppShell({
   // Un pulsante nascosto alla vista resta comunque raggiungibile da tastiera e dai
   // lettori di schermo, su una schermata che non lo prevede.
   const actions = chrome === 'top' ? slotActions : null;
-  const onHome = useLocation().pathname === '/';
+  const location = useLocation();
+  const onHome = location.pathname === '/';
+  const me = useMe();
 
   return (
     <>
@@ -86,6 +89,15 @@ export function AppShell({
             sulla seconda, a tutta larghezza. Da sm in su tutto in fila, con lo
             stato in fondo a destra. */}
         <div className="ml-auto sm:order-last sm:ml-0">{slotStatus}</div>
+        {chrome === 'top' && me.data ? (
+          <Link
+            to="/profilo"
+            aria-current={location.pathname === '/profilo' ? 'page' : undefined}
+            className="flex min-h-11 items-center rounded-full border border-line-strong px-4 font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:order-last"
+          >
+            {me.data.displayName}
+          </Link>
+        ) : null}
         {actions ? (
           <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-between sm:ml-auto sm:gap-4">
             {actions}

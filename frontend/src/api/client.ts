@@ -47,6 +47,20 @@ const USER_FACING_PROBLEMS = new Set([
   'insufficient-budget',
   'role-slots-exhausted',
   'purchase-already-revoked',
+  'email-taken',
+  'bad-credentials',
+  'too-many-attempts',
+  'invalid-token',
+  'service-unavailable',
+  'admin-only',
+  'initial-taken',
+  'invite-unavailable',
+  'admin-cannot-leave',
+  'not-enough-members',
+  'no-seat',
+  'seats-locked',
+  'concurrent-write',
+  'import-mismatch',
 ]);
 
 /**
@@ -105,8 +119,33 @@ async function toProblem(response: Response): Promise<ProblemError> {
   }
 }
 
+/**
+ * Il token CSRF: il backend lo scrive nel cookie XSRF-TOKEN, leggibile apposta, e
+ * pretende di ritrovarlo nell'header di ogni scrittura. Un sito estraneo puo' far
+ * partire una richiesta verso di noi col cookie di sessione, ma non puo' leggere
+ * questo cookie per copiarlo nell'header.
+ */
+function readCsrfCookie(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/);
+  return match && match[1] ? decodeURIComponent(match[1]) : null;
+}
+
+async function csrfHeader(method: string): Promise<Record<string, string>> {
+  if (method === 'GET' || method === 'HEAD') return {};
+  let token = readCsrfCookie();
+  if (!token) {
+    // La prima scrittura di una pagina aperta a freddo (l'accesso, per esempio):
+    // nessuna risposta ha ancora portato il cookie, e lo si chiede apposta.
+    await fetch('/api/auth/csrf', { headers: { accept: 'application/json' } });
+    token = readCsrfCookie();
+  }
+  return token ? { 'X-XSRF-TOKEN': token } : {};
+}
+
 async function request<T>(resolvedUrl: string, init: RequestInit): Promise<T | null> {
-  const response = await fetch(resolvedUrl, init);
+  const method = (init.method ?? 'GET').toUpperCase();
+  const headers = { ...(init.headers as Record<string, string> | undefined), ...(await csrfHeader(method)) };
+  const response = await fetch(resolvedUrl, { ...init, headers });
   if (!response.ok) {
     throw await toProblem(response);
   }
@@ -219,4 +258,32 @@ export async function apiLeaguePatch<T>(path: string, body: unknown): Promise<T 
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify(body),
   });
+}
+
+/**
+ * Una chiamata a un percorso assoluto dell'API, per le rotte che non stanno sotto una
+ * lega o un'asta del {@link context}: accesso, profilo, elenco delle leghe, inviti.
+ */
+export async function api<T>(
+  path: string,
+  options: { method?: string; body?: unknown } = {},
+): Promise<T> {
+  const method = options.method ?? 'GET';
+  const init: RequestInit = options.body === undefined
+    ? { method, headers: { accept: 'application/json' } }
+    : {
+        method,
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify(options.body),
+      };
+  return (await request<T>(path, init)) as T;
+}
+
+/** Gli errori per campo di un problema 422, o nessuno. */
+export function fieldErrors(error: unknown): Record<string, string[]> {
+  if (error instanceof ProblemError && error.body && typeof error.body === 'object'
+      && 'errors' in error.body) {
+    return ((error.body as { errors?: Record<string, string[]> }).errors) ?? {};
+  }
+  return {};
 }

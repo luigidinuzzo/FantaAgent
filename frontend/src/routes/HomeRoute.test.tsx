@@ -55,6 +55,30 @@ function json(body: unknown, status = 200) {
   });
 }
 
+/**
+ * Da questo task la barra (AppShell) chiede anche /api/me, per il nome verso il
+ * profilo: questi test parlano solo dell'elenco delle aste, e quella chiamata non
+ * gli interessa. Deviarla qui, con una risposta fissa (401, non c'e' accesso in
+ * questi test), tiene chi chiama fuori da due problemi che il resto del file non
+ * deve conoscere: il corpo di una Response letto due volte (mockResolvedValue
+ * riusa la stessa istanza) e l'ordine dei mock con mockResolvedValueOnce, che il
+ * fetch della barra — partito prima di quello della lista, essendo un componente
+ * piu' interno — altrimenti consumerebbe al posto della lista.
+ */
+function meUnauthorized() {
+  return new Response(JSON.stringify({
+    type: 'https://fantaagent.local/problems/unauthenticated', detail: 'Serve l\'accesso.',
+  }), { status: 401, headers: { 'content-type': 'application/problem+json' } });
+}
+
+function withMe(inner: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
+  return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const href = typeof input === 'string' ? input : input.toString();
+    if (href === '/api/me') return Promise.resolve(meUnauthorized());
+    return inner(input, init);
+  });
+}
+
 function renderHome() {
   setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
   render(
@@ -70,7 +94,7 @@ describe('HomeRoute', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('elenca le aste con quanto serve a riconoscerle', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(CARDS)));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json(CARDS))));
     renderHome();
 
     expect(await screen.findByText('Lega No Name')).toBeInTheDocument();
@@ -79,9 +103,9 @@ describe('HomeRoute', () => {
   });
 
   it('riprende un asta e chiede al server di selezionarla', async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = withMe(vi.fn()
       .mockResolvedValueOnce(json(CARDS))
-      .mockResolvedValue(new Response(null, { status: 204 }));
+      .mockResolvedValue(new Response(null, { status: 204 })));
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
 
@@ -98,7 +122,7 @@ describe('HomeRoute', () => {
    * elenco vuoto: e' la prima impressione del prodotto.
    */
   it('al primo accesso spiega come funziona e invita a creare la prima asta', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([]))));
     renderHome();
 
     expect(await screen.findByRole('button', { name: 'Crea la tua prima asta' })).toBeInTheDocument();
@@ -148,7 +172,7 @@ describe('HomeRoute', () => {
   });
 
   it('la data dell\'ultima scrittura ha le cifre tabulari, e quella esatta a parte', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION]))));
     renderHome();
 
     const when = (await screen.findByText('Lega No Name')).closest('li')!.querySelector('time')!;
@@ -158,7 +182,7 @@ describe('HomeRoute', () => {
   });
 
   it("dice quale asta e' quella aperta adesso", async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(CARDS)));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json(CARDS))));
     renderHome();
 
     expect(await screen.findByText('Aperta ora')).toBeInTheDocument();
@@ -346,7 +370,7 @@ describe('HomeRoute', () => {
   });
 
   it("l'asta aperta si riconosce anche senza vedere il pallino", async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION, CLOSED_AUCTION]))));
     renderHome();
 
     // Il pallino colorato e' decorazione. Il fatto sta nel testo.
@@ -358,7 +382,7 @@ describe('HomeRoute', () => {
   // era una lettera nuda ripetuta, il difetto che RoleBadge esiste per
   // evitare (revisione finale, finding F) — vedi il commento su HomeRoute.
   it('ogni riga dice fase e acquisti, non solo il nome', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
 
     expect(await screen.findByText('2 di 200 giocatori')).toBeInTheDocument();
@@ -372,7 +396,7 @@ describe('HomeRoute', () => {
    * manda dopo le altre — altrimenti con piu' di cinque aste finiva su un'altra pagina.
    */
   it("l'asta in corso sta in cima all'elenco, con un solo «Riprendi»", async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION, OPEN_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION, OPEN_AUCTION]))));
     renderHome();
 
     const rows = await screen.findAllByRole('listitem');
@@ -383,7 +407,7 @@ describe('HomeRoute', () => {
 
   /** I due box si trovano per nome, anche da chi scorre la pagina per titoli. */
   it('i box «Comincia una nuova asta» e «Riprendi un asta» hanno un titolo', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
 
     const resume = screen.getByRole('region', { name: "Riprendi un'asta" });
@@ -398,7 +422,7 @@ describe('HomeRoute', () => {
    * con «Le mie aste» come pagina corrente.
    */
   it('usa la barra in alto con «Le mie aste» corrente, e niente Profilo', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION]))));
     const router = createMemoryRouter([{ path: '/', element: <HomeRoute /> }]);
     setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
     render(<QueryProvider><RouterProvider router={router} /></QueryProvider>);
@@ -428,7 +452,7 @@ describe('HomeRoute', () => {
   });
 
   it('annullare non chiama il server', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(json([CLOSED_AUCTION]));
+    const fetchMock = withMe(() => Promise.resolve(json([CLOSED_AUCTION])));
     vi.stubGlobal('fetch', fetchMock);
     renderHome();
     await chooseFromMenu(CLOSED_AUCTION.label, 'Elimina');
@@ -441,14 +465,14 @@ describe('HomeRoute', () => {
    * accanto a un elenco pieno.
    */
   it('senza asta aperta non dice di non avere aste', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
     expect(screen.queryByText(/nessuna asta/i)).not.toBeInTheDocument();
   });
 
   it('senza il totale dei posti, un solo acquisto si dice al singolare', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([{ ...CLOSED_AUCTION, purchases: 1, totalSlots: 0 }])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([{ ...CLOSED_AUCTION, purchases: 1, totalSlots: 0 }]))));
     renderHome();
     expect(await screen.findByText('1 acquisto')).toBeInTheDocument();
     expect(screen.queryByText(/1 acquisti/)).not.toBeInTheDocument();
@@ -456,7 +480,7 @@ describe('HomeRoute', () => {
 
   /** Una «A» in un cerchio da sola non dice che e' la fase in cui l'asta e' rimasta. */
   it('la fase si legge per esteso, una volta sola per chi ascolta', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
     const phase = await screen.findByText('Fase attaccanti');
     expect(phase).toBeVisible();
@@ -466,7 +490,7 @@ describe('HomeRoute', () => {
 
   /** Il giallo pieno resta a «Crea asta» e all'asta aperta, non a ogni riga. */
   it('«Riprendi» e pieno solo sull asta in corso', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION, CLOSED_AUCTION]))));
     renderHome();
     const open = await screen.findByRole('button', { name: `Riprendi ${OPEN_AUCTION.label}` });
     const closed = screen.getByRole('button', { name: `Riprendi ${CLOSED_AUCTION.label}` });
@@ -479,7 +503,7 @@ describe('HomeRoute', () => {
     const seven = Array.from({ length: 7 }, (_, i) => ({
       ...CLOSED_AUCTION, id: `a${i}`, label: `Asta ${i + 1}`,
     }));
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(seven)));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json(seven))));
     renderHome();
 
     expect(await screen.findByText('Asta 1')).toBeInTheDocument();
@@ -500,21 +524,21 @@ describe('HomeRoute', () => {
 
   /** Il pannello ha la stessa misura con una o cinque aste: la pagina non cambia proporzioni. */
   it("l'elenco e' alto cinque righe anche con una sola asta", async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
     expect(screen.getByTestId('elenco-aste').className).toContain('min-h-[32.5rem]');
   });
 
   it('con cinque aste o meno non mostra i bottoni delle pagine', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
     expect(screen.queryByRole('navigation', { name: 'Pagine delle aste' })).not.toBeInTheDocument();
   });
 
   it('sotto il contenuto mostra il marchio e la firma', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
     const footer = document.querySelector('footer');
@@ -526,7 +550,7 @@ describe('HomeRoute', () => {
 
   /** L'invito a cominciare non deve sembrare il pannello dell'elenco. */
   it('il box «Crea asta» si distingue da quello delle aste', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
 
     const list = await screen.findByRole('region', { name: "Riprendi un'asta" });
@@ -545,7 +569,7 @@ describe('HomeRoute', () => {
   it('ogni riga dice lo stato e il bottone usa il verbo giusto', async () => {
     const nuova = { ...CLOSED_AUCTION, id: 'n', label: 'Nuova', purchases: 0 };
     const finita = { ...CLOSED_AUCTION, id: 'f', label: 'Finita', purchases: 200 };
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION, nuova, finita])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION, nuova, finita]))));
     renderHome();
 
     const rowOf = async (label: string) => (await screen.findByText(label)).closest('li')!;
@@ -557,7 +581,7 @@ describe('HomeRoute', () => {
   });
 
   it('la riga dice squadre e crediti rimasti di chi usa l app', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([OPEN_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION]))));
     renderHome();
 
     expect(await screen.findByText('8 squadre')).toBeInTheDocument();
@@ -566,7 +590,7 @@ describe('HomeRoute', () => {
 
   /** Tutta la riga apre l'asta: il bottone la copre, e non ci sono due bersagli. */
   it('la riga ha un solo bottone principale, esteso a tutta la riga', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
 
     const button = await screen.findByRole('button', { name: `Riprendi ${CLOSED_AUCTION.label}` });
@@ -619,7 +643,7 @@ describe('HomeRoute', () => {
 
   /** Il menu si usa da tastiera: frecce fra le voci, Esc chiude e torna al bottone. */
   it('il menu si apre sulla prima voce, si percorre con le frecce e si chiude con Esc', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
 
     const trigger = await screen.findByRole('button', { name: `Altre azioni per ${CLOSED_AUCTION.label}` });
@@ -639,7 +663,7 @@ describe('HomeRoute', () => {
     const seven = Array.from({ length: 7 }, (_, i) => ({
       ...CLOSED_AUCTION, id: `a${i}`, label: i === 6 ? 'Fantalega Ultima' : `Asta ${i + 1}`,
     }));
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(seven)));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json(seven))));
     renderHome();
 
     const search = await screen.findByRole('searchbox', { name: "Cerca un'asta per nome" });
@@ -655,7 +679,7 @@ describe('HomeRoute', () => {
   });
 
   it('con cinque aste o meno non mostra la ricerca', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([CLOSED_AUCTION])));
+    vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([CLOSED_AUCTION]))));
     renderHome();
     await screen.findByText(CLOSED_AUCTION.label);
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();

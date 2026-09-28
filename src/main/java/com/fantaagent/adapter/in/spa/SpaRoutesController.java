@@ -27,6 +27,12 @@ public class SpaRoutesController {
     static final String PROIEZIONE = "/proiezione";
     static final String IMPOSTAZIONI = "/impostazioni";
     static final String RIEPILOGO = "/riepilogo";
+    static final String PROFILO = "/profilo";
+    static final String ACCEDI = "/accedi";
+    static final String REGISTRATI = "/registrati";
+    static final String PASSWORD_DIMENTICATA = "/password-dimenticata";
+    static final String NUOVA_PASSWORD = "/nuova-password";
+    static final String VERIFICA_EMAIL = "/verifica-email";
 
     /**
      * Le stesse di {@code frontend/src/router.tsx}, verificate da un test.
@@ -38,14 +44,16 @@ public class SpaRoutesController {
      * qualcuno ne aggiunga una a un elenco scordandosi dell'altro — per quello serve il
      * test di reflection su {@link #spa()}, non le costanti.
      */
-    static final List<String> ROUTES = List.of(ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO);
+    static final List<String> ROUTES = List.of(ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO,
+            PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL);
 
     /**
      * Inoltra, non redirige: l'indirizzo nella barra deve restare quello che l'utente
      * ha chiesto, altrimenti un ricaricamento profondo lo riporterebbe alla home e
      * perderebbe il punto in cui era.
      */
-    @GetMapping({ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO})
+    @GetMapping({ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO,
+            PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL})
     public String spa() {
         return "forward:/index.html";
     }

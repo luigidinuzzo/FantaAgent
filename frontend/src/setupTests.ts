@@ -12,3 +12,11 @@ if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.sho
     this.dispatchEvent(new Event('close'));
   };
 }
+
+// Il cookie che il backend scrive a ogni risposta: con questo le scritture dei test
+// non devono prima chiederlo, e le chiamate a fetch che i test contano restano quelle.
+// Dietro il typeof: contrast.test.ts e weights.test.ts leggono i sorgenti da disco
+// in un ambiente node, senza document.
+if (typeof document !== 'undefined') {
+  document.cookie = 'XSRF-TOKEN=token-di-prova; path=/';
+}

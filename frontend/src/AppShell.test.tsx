@@ -1,13 +1,28 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AppShell } from './AppShell';
+import { QueryProvider } from './api/QueryProvider';
 
 function withRouter(node: React.ReactNode, path = '/asta') {
-  return <MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>;
+  return (
+    <QueryProvider>
+      <MemoryRouter initialEntries={[path]}>{node}</MemoryRouter>
+    </QueryProvider>
+  );
 }
 
 describe('AppShell', () => {
+  // Senza accesso, come tutte queste pagine se non arriva prima chi ha fatto
+  // l'accesso: il test del nome-link (sotto) sostituisce lo stub con un 200.
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      type: 'https://fantaagent.local/problems/unauthenticated', detail: 'Serve l\'accesso.',
+    }), { status: 401, headers: { 'content-type': 'application/problem+json' } })));
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
   it('mostra il contenuto dentro un landmark main', () => {
     render(withRouter(<AppShell chrome="top"><p>contenuto</p></AppShell>));
     expect(screen.getByRole('main')).toHaveTextContent('contenuto');
@@ -115,5 +130,13 @@ describe('AppShell', () => {
       </AppShell>,
     ));
     expect(screen.queryByRole('button', { name: 'Annulla' })).not.toBeInTheDocument();
+  });
+
+  it('mostra il nome di chi ha fatto l\'accesso, verso il profilo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      id: 'u1', email: 'a@b.it', displayName: 'Anna', emailVerified: true,
+    }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    expect(await screen.findByRole('link', { name: 'Anna' })).toHaveAttribute('href', '/profilo');
   });
 });

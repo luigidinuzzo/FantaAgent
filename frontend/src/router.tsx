@@ -1,9 +1,16 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AppFrame } from './AppFrame';
 import { AuctionRoute } from './routes/AuctionRoute';
+import { ForgotPasswordRoute } from './routes/ForgotPasswordRoute';
 import { HomeRoute } from './routes/HomeRoute';
+import { LoginRoute } from './routes/LoginRoute';
+import { ProfileRoute } from './routes/ProfileRoute';
 import { ProjectionRoute } from './routes/ProjectionRoute';
+import { RegisterRoute } from './routes/RegisterRoute';
+import { RequireAuth } from './routes/RequireAuth';
+import { ResetPasswordRoute } from './routes/ResetPasswordRoute';
 import { SettingsRoute } from './routes/SettingsRoute';
+import { VerifyEmailRoute } from './routes/VerifyEmailRoute';
 
 // La proiezione ha una URL propria perche' va aperta in una seconda finestra, sul
 // secondo schermo: senza un indirizzo non c'e' niente da trascinare sul proiettore.
@@ -18,10 +25,17 @@ import { SettingsRoute } from './routes/SettingsRoute';
 // lo legge dal sorgente e pretende che l'elenco delle rotte del client coincida con
 // quelle che il server inoltra a index.html.
 export const routeDefinitions = [
-  { path: '/', element: <HomeRoute /> },
-  { path: '/asta', element: <AuctionRoute /> },
-  { path: '/proiezione', element: <ProjectionRoute /> },
-  { path: '/impostazioni', element: <SettingsRoute /> },
+  { path: '/', element: <RequireAuth><HomeRoute /></RequireAuth> },
+  { path: '/asta', element: <RequireAuth><AuctionRoute /></RequireAuth> },
+  { path: '/proiezione', element: <RequireAuth><ProjectionRoute /></RequireAuth> },
+  { path: '/impostazioni', element: <RequireAuth><SettingsRoute /></RequireAuth> },
+  { path: '/profilo', element: <RequireAuth><ProfileRoute /></RequireAuth> },
+  // Le pagine d'ingresso: pubbliche, senza la barra delle altre.
+  { path: '/accedi', element: <LoginRoute /> },
+  { path: '/registrati', element: <RegisterRoute /> },
+  { path: '/password-dimenticata', element: <ForgotPasswordRoute /> },
+  { path: '/nuova-password', element: <ResetPasswordRoute /> },
+  { path: '/verifica-email', element: <VerifyEmailRoute /> },
   // Non una destinazione: un indirizzo che ha funzionato, e che deve continuare a
   // portare da qualche parte. Il riepilogo ora vive DENTRO /asta, nella scheda
   // "Rose squadre".

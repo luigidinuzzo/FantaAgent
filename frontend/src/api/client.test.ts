@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ProblemError,
+  api,
   apiGet,
   apiLeaguePut,
   apiPost,
   apiPostToAuction,
+  fieldErrors,
   setAuctionContext,
 } from './client';
 
@@ -132,5 +134,44 @@ describe('client API', () => {
     expect((error as ProblemError).body).toMatchObject({
       errors: { participants: ['errore'] },
     });
+  });
+
+  it('manda il token CSRF nelle scritture e non nelle letture', async () => {
+    const fetchMock = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api('/api/auth/logout', { method: 'POST' });
+    await api('/api/me').catch(() => {});
+
+    const [, postInit] = fetchMock.mock.calls[0];
+    expect(postInit.headers['X-XSRF-TOKEN']).toBe('token-di-prova');
+    const [, getInit] = fetchMock.mock.calls[1];
+    expect(getInit.headers['X-XSRF-TOKEN']).toBeUndefined();
+  });
+
+  it('senza cookie chiede il token prima di scrivere', async () => {
+    document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/auth/csrf') {
+        document.cookie = 'XSRF-TOKEN=appena-arrivato; path=/';
+      }
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api('/api/auth/login', { method: 'POST', body: { email: 'a', password: 'b' } });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/auth/csrf');
+    expect(fetchMock.mock.calls[1][1].headers['X-XSRF-TOKEN']).toBe('appena-arrivato');
+    document.cookie = 'XSRF-TOKEN=token-di-prova; path=/';
+  });
+
+  it('legge gli errori per campo di un problema', () => {
+    const error = new ProblemError('https://fantaagent.local/problems/invalid-account', 'x', 422,
+      { errors: { email: ['Scrivi un indirizzo email valido.'] } });
+    expect(fieldErrors(error)).toEqual({ email: ['Scrivi un indirizzo email valido.'] });
+    expect(fieldErrors(new Error('altro'))).toEqual({});
   });
 });
