@@ -3,6 +3,16 @@ spring:
     name: fanta-agent
   thymeleaf:
     cache: false
+  # Il database arriva dall'ambiente. In locale e nei test lo fornisce il Postgres
+  # incorporato (EmbeddedPostgresConfig, solo nel classpath dei test): se qui l'URL
+  # resta vuoto e nessun bean DataSource e' stato dichiarato, l'avvio fallisce
+  # subito — che e' quello che deve succedere in produzione senza database.
+  datasource:
+    url: ${FANTAAGENT_DB_URL:}
+    username: ${FANTAAGENT_DB_USER:}
+    password: ${FANTAAGENT_DB_PASSWORD:}
+  flyway:
+    locations: classpath:db/migration
 
 server:
   port: 8080

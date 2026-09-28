@@ -63,6 +63,9 @@ img/
 *.bak
 _backup/
 
+# Postgres incorporato dell'avvio locale
+data/pg/
+
 # ---- Strumenti, IDE, sistema operativo ------------------------------------
 .superpowers/
 .idea/
