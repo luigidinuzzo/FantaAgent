@@ -1,5 +1,4 @@
 import type { ValuationResponse } from '../api/types';
-import { signed } from './PlayerDecisionCard';
 
 const HEADING_ID = 'analysis-panel-heading';
 const STARS = 5;
@@ -42,7 +41,7 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
   if (!valuation) {
     return (
       <section aria-labelledby={HEADING_ID} className="panel flex flex-col rounded-2xl p-5">
-        <h2 id={HEADING_ID} className="text-sm font-bold text-muted-foreground">
+        <h2 id={HEADING_ID} className="text-sm font-medium text-muted-foreground">
           Perché questo prezzo
         </h2>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -59,7 +58,7 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
   const shownDrivers = valuation.drivers.filter((d) => d.explanation.trim().length > 0);
 
   return (
-    // Nessun self-start: i tre pannelli della riga — crediti, battitore,
+    // Nessun self-start: i tre pannelli della riga — crediti, banco,
     // consigli — finiscono sulla stessa linea, ed e' la griglia a stirarli
     // perche' lo facciano. Alto quanto il suo testo, questo si fermava a meta'
     // colonna e la riga si leggeva come sbilenca.
@@ -71,21 +70,23 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
       aria-labelledby={HEADING_ID}
       className="panel flex min-h-0 flex-col rounded-2xl p-5"
     >
-      <h2 id={HEADING_ID} className="shrink-0 text-sm font-bold text-muted-foreground">
+      <h2 id={HEADING_ID} className="shrink-0 text-sm font-medium text-muted-foreground">
         Perché questo prezzo
       </h2>
 
-      <div className="mt-3 flex shrink-0 flex-wrap items-end gap-6">
-        <p>
-          <span data-testid="hard-cap" className="tnum w-exp block text-3xl font-extrabold">
-            {valuation.hardCap}
-          </span>
-          {/* «Mai oltre» e non «tetto duro»: accanto a «il tuo tetto» della
-              scheda, due tetti non dicevano quale valesse. Questo e' il limite
-              oltre cui la rosa non si completa piu'; l'altro e' fin dove conviene. */}
-          <span className="mt-1 block text-sm text-muted-foreground">mai oltre</span>
-        </p>
+      {/* Il limite di budget non e' piu' qui.
 
+          «Mai oltre» e «puoi offrire» erano lo STESSO campo — hardCap — con due
+          nomi diversi, in due punti della stessa schermata: nello scatto che ha
+          aperto questa revisione il numero 476 compariva cinque volte con cinque
+          significati apparenti. Resta dove si agisce, nella scheda del lotto,
+          accanto agli altri numeri del rilancio.
+          
+          E se ne va anche perche' era il numero piu' grande del pannello: un 476
+          a corpo grande in cima a cio' che spiega un 18 contraddiceva a colpo
+          d'occhio la decisione che stava spiegando. Ora il pannello si apre con
+          quanto ci si puo' fidare della stima, che e' la sua prima domanda. */}
+      <div className="mt-3 flex shrink-0 flex-wrap items-end gap-6">
         {/* Le stelle sono un'immagine: il nome accessibile del contenitore
             dice la confidenza a parole, per chi non le vede. "3" letto da un
             sintetizzatore non e' una confidenza, e' un numero nudo — la
@@ -107,17 +108,22 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
 
       {/* I driver scorrono dentro il pannello: sono da uno a cinque, con
           spiegazioni lunghe quanto capita, ed erano loro a decidere l'altezza
-          dell'intera riga — scegliendo un giocatore il riquadro del battitore e
+          dell'intera riga — scegliendo un giocatore il riquadro del banco e
           la colonna delle squadre si allungavano di conseguenza. Qui dentro il
           contenuto varia e la cornice no. */}
       {shownDrivers.length > 0 ? (
         <dl className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-2 text-sm">
           {shownDrivers.map((driver) => (
             <div key={driver.label}>
-              <div className="flex items-baseline gap-2">
-                <dt className="font-bold">{driver.label}</dt>
-                <dd className="tnum text-muted-foreground">{signed(driver.contribution)}</dd>
-              </div>
+              {/* Solo l'etichetta: il campo `contribution` non porta contributi.
+                  Porta grandezze diverse per ogni driver — il limite di budget in
+                  crediti, il prezzo di un'alternativa in crediti, un coefficiente
+                  d'inflazione (1 = il 100% dei valori teorici), una differenza di
+                  punti stagionali. Incolonnate col segno si leggevano come addendi
+                  dello stesso totale: «+476, +16, +1, +0» su un prezzo consigliato
+                  di 18. Il numero non sparisce — vive nella spiegazione qui sotto,
+                  dove ha un'unita' detta a parole. */}
+              <dt className="font-medium">{driver.label}</dt>
               <dd className="mt-0.5 text-muted-foreground">{driver.explanation}</dd>
             </div>
           ))}
