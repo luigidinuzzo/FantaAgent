@@ -73,7 +73,7 @@ describe('BidderDialog', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     open();
 
-    // Il difetto che questo blocca: il battitore si apriva col numero pieno e
+    // Il difetto che questo blocca: il conto alla rovescia si apriva col numero pieno e
     // fermo — sembrava avviato e non lo era. Su un lotto che nessuno contende
     // (nessun rilancio) il tempo non sarebbe mai partito.
     expect(screen.getByTestId('bidder-remaining')).toHaveTextContent('5');
@@ -102,77 +102,142 @@ describe('BidderDialog', () => {
     vi.useRealTimers();
   });
 
-  it('la riga «in testa» dice chi sta vincendo, e non finge nessuno quando non c\'e\'', () => {
-    open({ leader: { name: 'Anna' } });
-    expect(screen.getByText('in testa')).toBeInTheDocument();
+  /**
+   * Il modello dell'asta dal vivo: ogni squadra sta alla propria postazione e
+   * rilancia per se'. Da questa schermata si offre per la PROPRIA squadra e
+   * basta, quindi i bottoni delle altre squadre non ci sono mentre il conto
+   * corre — erano il modo di battere per tutto il tavolo da un portatile solo.
+   */
+  it('aprendo il lotto sei tu in testa, a uno', () => {
+    open({ participants: TEAMS });
+    // Mettere un giocatore sul banco E' chiamarlo a uno: se nessun altro
+    // rilancia, se lo prende chi l'ha chiamato. Prima qui diceva «Nessuno», e a
+    // tempo scaduto non proponeva nessun acquirente per un lotto che era tuo.
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('1');
     expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Anna');
   });
 
-  it('senza offerte da altre postazioni la riga «in testa» dice Nessuno', () => {
-    open();
-    // Finche' a battere e' una persona sola per tutto il tavolo nessuno "sta
-    // vincendo": si sta chiamando un prezzo. Mostrare li' una squadra sarebbe
-    // inventare un dato che non c'e'.
-    expect(screen.getByText('Nessuno')).toBeInTheDocument();
+  it('un offerta da un altra postazione passa la testa a quella squadra', () => {
+    open({ participants: TEAMS, leader: { name: 'Diego' } });
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Diego');
   });
 
   /**
-   * Chi batte al portatile chiama i prezzi per tutto il tavolo: un rilancio premuto
-   * non dice chi l'ha fatto. Prima metteva in testa la propria squadra, e allo
-   * scadere si proponeva di aggiudicare a se' un giocatore vinto da un altro.
+   * Chi e' in testa e' LA domanda del rilancio dal vivo — sto vincendo io o no —
+   * e viveva in una riga di 14px grigi accanto alla barra. Ora e' una pillola:
+   * piena quando sei tu, col contorno quando e' un altro. Il colore non basta da
+   * solo, quindi chi ascolta lo sente a parole.
    */
-  it('rilanciare non inventa chi e in testa: lo dice la squadra toccata', async () => {
+  it('chi e in testa si legge a colpo d occhio, e dice se sei tu', () => {
     open({ participants: TEAMS });
-    await userEvent.click(screen.getByRole('button', { name: /Rilancia \+1/ }));
-    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Nessuno');
-
-    await userEvent.click(screen.getByRole('button', { name: /^Diego/ }));
-    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Diego');
-    expect(screen.getByRole('button', { name: /^Diego/ })).toHaveAttribute('aria-pressed', 'true');
+    const testa = screen.getByTestId('bidder-leader');
+    expect(testa).toHaveTextContent('Anna');
+    expect(testa.className).toContain('bg-accent');
+    // La cella ha spazio per dirlo a parole: il colore non resta l'unico segnale.
+    expect(testa).toHaveTextContent('sei tu');
   });
 
-  /** La prima squadra prende il prezzo d'apertura; le successive rilanciano di uno. */
-  it('la prima squadra prende il prezzo d apertura, le altre rilanciano di uno', async () => {
+  it('quando e un altro in testa la pillola non si accende', () => {
+    open({ participants: TEAMS, leader: { name: 'Diego' } });
+    const testa = screen.getByTestId('bidder-leader');
+    expect(testa).toHaveTextContent('Diego');
+    expect(testa.className).not.toContain('bg-accent');
+    expect(testa).not.toHaveTextContent('sei tu');
+  });
+
+  /**
+   * Il perche' lasciare spariva proprio quando parte il conto, cioe' nel momento
+   * in cui la tentazione di sforare il tetto e' massima. A tempo scaduto invece
+   * non serve piu': li' si registra un esito, non si decide se spingere.
+   */
+  it('mentre il conto corre dice anche perche lasciare', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    open({ valuation: { ...VALUATION, worthPursuing: false } });
+
+    expect(screen.getByText(/oltre 47 il completamento perde/)).toBeInTheDocument();
+
+    await user.keyboard(' ');
+    await act(async () => { vi.advanceTimersByTime(5100); });
+    expect(screen.queryByText(/oltre 47 il completamento perde/)).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  /**
+   * «Se lo prendi»: la domanda che il rilancio fa nascere e che l'applicazione non
+   * rispondeva — quanto mi resta se lo pago questo. Sono i numeri della colonna di
+   * sinistra proiettati dopo l'acquisto, non una stima nuova.
+   */
+  it('dice cosa ti resterebbe se lo prendi a quel prezzo', () => {
+    open();
+    const dopo = screen.getByTestId('bidder-after');
+    // Anna: 312 crediti, 17 posti. A 1 credito restano 311 su 16 posti, 19 a posto.
+    expect(dopo).toHaveTextContent('311');
+    expect(dopo).toHaveTextContent('16');
+    expect(dopo).toHaveTextContent('19');
+  });
+
+  it('a tempo scaduto «se lo prendi» non serve piu: il prezzo non cambia', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    open();
+    await user.keyboard(' ');
+    await act(async () => { vi.advanceTimersByTime(5100); });
+    expect(screen.queryByTestId('bidder-after')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('mentre il conto corre non ci sono i bottoni delle altre squadre', () => {
     open({ participants: TEAMS });
-    await userEvent.click(screen.getByRole('button', { name: /^Diego/ }));
+
+    // Offrire al posto di un altro non e' un gesto che esiste: ognuno rilancia
+    // dalla propria postazione. E otto bottoni in piu' riempivano il riquadro
+    // proprio nel momento in cui serve leggere tre numeri e basta.
+    expect(screen.queryByRole('button', { name: /^Diego/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Anna/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Rilancia \+1/ })).toBeInTheDocument();
+  });
+
+  it('i tasti da 1 a 9 non offrono per altri mentre il conto corre', async () => {
+    open({ participants: TEAMS });
+    await userEvent.keyboard('2');
     expect(screen.getByTestId('bidder-price')).toHaveTextContent('1');
-    await userEvent.click(screen.getByRole('button', { name: /^Anna/ }));
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Anna');
+  });
+
+  it('rilanciando resti tu in testa', async () => {
+    open({ participants: TEAMS });
+    await userEvent.click(screen.getByRole('button', { name: /Rilancia \+1/ }));
     expect(screen.getByTestId('bidder-price')).toHaveTextContent('2');
     expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Anna');
   });
 
-  /** I tasti numerici: la squadra in quella posizione fa l'offerta. */
-  it('il tasto con il numero della squadra la mette in testa', async () => {
+  it('le scorciatoie sono scritte come tasti, non come una riga di prosa', () => {
     open({ participants: TEAMS });
-    await userEvent.keyboard('2');
-    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Diego');
+
+    // Sono il vantaggio di questo riquadro su chi batte l'asta a mano, ed erano
+    // scritte nel corpo meno leggibile dello schermo: una riga grigia di 14px
+    // unita dai punti medi, in fondo a destra. Rese come tasti si trovano senza
+    // leggerle.
+    const keys = screen
+      .getByTestId('bidder-shortcuts')
+      .querySelectorAll('kbd');
+    // Solo i gesti che esistono qui: rilanciare per te, e chiudere. I tasti
+    // delle squadre compaiono a tempo scaduto, dove servono a dire a chi va.
+    expect(Array.from(keys, (k) => k.textContent)).toEqual(['Spazio', 'Esc']);
   });
 
-  /**
-   * Chi non puo' permettersi l'offerta successiva — crediti meno uno per ogni altro
-   * posto da riempire — o ha gia' pieni i posti del ruolo non si puo' toccare, e
-   * dice perche'.
-   */
-  it('le squadre che non possono permettersi l offerta restano spente, col motivo', async () => {
-    open({ participants: TEAMS });
-    // Bruno: 20 crediti, 10 posti liberi -> al massimo 11.
-    const bruno = screen.getByRole('button', { name: /^Bruno/ });
-    expect(bruno).toHaveTextContent('max 11');
-    expect(bruno).not.toBeDisabled();
-    await userEvent.click(screen.getByRole('button', { name: /^Diego/ }));
-    const offer = screen.getByLabelText('Offerta diretta');
-    await userEvent.type(offer, '11');
-    await userEvent.click(screen.getByRole('button', { name: 'Offri' }));
-    // Alla prossima offerta servirebbero 12: Bruno non puo'.
-    expect(screen.getByRole('button', { name: /^Bruno/ })).toBeDisabled();
-    // Carla ha gia' tutti i difensori.
-    expect(screen.getByRole('button', { name: /^Carla/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /^Carla/ })).toHaveTextContent('posti difensori pieni');
-  });
-
-  it('accanto all offerta dice quanto manca al tuo tetto', async () => {
+  it('sotto il tetto dice quanto ne manca', async () => {
     open();
-    expect(screen.getByTestId('bidder-ceiling-distance')).toHaveTextContent('46 sotto il tuo tetto');
+    // La distanza sta sotto il numero che nomina, non sotto l'offerta: «il tuo
+    // tetto 47, 46 sotto» si legge di seguito, senza rimbalzare fra due colonne.
+    // Nella stessa cella del tetto: «il tuo tetto 47, 46 sotto» si legge di
+    // seguito, senza rimbalzare da una colonna all'altra.
+    const distance = screen.getByTestId('bidder-ceiling-distance');
+    expect(distance).toHaveTextContent('46 sotto');
+    expect(screen.getByTestId('bidder-ceiling').closest('[data-cell]'))
+      .toContainElement(distance);
   });
 
   it('Esc chiude il conto alla rovescia', async () => {
@@ -180,7 +245,7 @@ describe('BidderDialog', () => {
     open({ onClose });
 
     // Il bottone «Chiudi» nell'intestazione se n'e' andato: accanto a «Togli
-    // dal battitore» sembrava il suo doppione. La via di ritorno resta, sulla
+    // dal banco» sembrava il suo doppione. La via di ritorno resta, sulla
     // tastiera — senza, per tornare all'aggiudicazione diretta bisognerebbe
     // togliere il giocatore dal banco e riselezionarlo.
     await userEvent.keyboard('{Escape}');
@@ -218,20 +283,124 @@ describe('BidderDialog', () => {
     vi.useRealTimers();
   });
 
-  it('secondi e offerta stanno sulla stessa riga della griglia, incolonnati', () => {
+  it('i tre numeri hanno lo stesso corpo: nessuno e piu importante per la taglia', () => {
     open();
 
-    // Il difetto che questo blocca: impilando le due colonne a mano, quella col
-    // countdown e' piu' alta (ha la barra sotto) e le due cifre finivano a
-    // quote diverse. Stessa riga di griglia, stesso corpo: sono incolonnate.
-    expect(screen.getByTestId('bidder-remaining').parentElement).toHaveClass('row-start-1');
-    expect(screen.getByTestId('bidder-price').parentElement).toHaveClass('row-start-1');
+    // In un tabellone le celle si leggono come un insieme: tre corpi diversi le
+    // farebbero sembrare tre cose scollegate. L'urgenza la porta il colore, non
+    // una taglia maggiore.
+    const corpo = (id: string) => screen.getByTestId(id).className.match(/text-\[\d+px\]/)?.[0];
+    expect(corpo('bidder-remaining')).toBe(corpo('bidder-price'));
+    expect(corpo('bidder-price')).toBe(corpo('bidder-ceiling'));
   });
 
   it('mostra il giocatore e il tetto: e la versione privata', () => {
     open();
     expect(screen.getByText('Bastoni')).toBeInTheDocument();
     expect(screen.getByTestId('bidder-ceiling')).toHaveTextContent('47');
+  });
+
+  it('il tetto e una delle letture del tabellone, non una nota in fondo', () => {
+    open();
+
+    // Il difetto che questo blocca: il tetto viveva in fondo al riquadro, a 14px
+    // grigi, mentre l'offerta saliva a 56px in cima. E' il numero per cui questa
+    // applicazione esiste, e stava nel corpo meno leggibile dello schermo proprio
+    // nei secondi in cui serve.
+    expect(screen.getByTestId('bidder-cells')).toContainElement(screen.getByTestId('bidder-ceiling'));
+  });
+
+  it('il tetto si dice una volta sola: in cima, non anche in fondo', () => {
+    open();
+
+    // Due volte lo stesso numero, a due corpi diversi, e' due numeri per chi
+    // legge di fretta. Salito in cima, quello in fondo se ne va.
+    const labels = screen.getAllByText('il tuo tetto');
+    expect(labels).toHaveLength(1);
+    expect(screen.getByTestId('bidder-cells')).toContainElement(labels[0]);
+  });
+
+  it('senza nessun prezzo conveniente il tetto dice «nessuno», non zero', () => {
+    open({ valuation: { ...VALUATION, maxBid: 0, worthPursuing: false } });
+
+    // Lo stesso della tabella di fase: tetto zero non e' un prezzo basso, e' la
+    // mancanza di un prezzo. In colonna con i secondi e l'offerta, uno zero si
+    // legge come una cifra — e per giunta come la piu' conveniente della serata.
+    expect(screen.getByTestId('bidder-ceiling')).toHaveTextContent('nessuno');
+  });
+
+  /**
+   * Chi e' in testa sta sulla stessa linea di secondi, offerta e tetto, ma
+   * allineato a destra e dentro un riquadro: e' la quarta lettura della riga, non
+   * il quarto numero. Sotto la barra si perdeva; incolonnato con i numeri
+   * fingerebbe di essere una misura.
+   */
+  /**
+   * Le quattro letture sono celle della STESSA riga, e questo e' il punto: due
+   * altezze diverse non possono nascere da celle di una riga sola. Prima chi era
+   * in testa stava in un riquadro accanto alla griglia, con un'alineazione tutta
+   * sua: partiva con le cifre e finiva a meta' delle etichette.
+   */
+  it('le quattro letture sono celle della stessa riga: stessa altezza per costruzione', () => {
+    open({ leader: { name: 'Diego' }, participants: TEAMS });
+    const riga = screen.getByTestId('bidder-cells');
+
+    for (const id of ['bidder-remaining', 'bidder-price', 'bidder-ceiling', 'bidder-leader']) {
+      expect(riga).toContainElement(screen.getByTestId(id));
+    }
+    expect(riga.children).toHaveLength(4);
+  });
+
+  /** La barra e' la base del tabellone, non una linea che gli galleggia sotto. */
+  it('la barra del tempo e la base del tabellone', () => {
+    open();
+    expect(screen.getByTestId('bidder-scoreboard')).toContainElement(
+      screen.getByTestId('bidder-remaining-bar'),
+    );
+  });
+
+  /**
+   * La barra non e' oro. Nel tabellone l'oro dice gia' due cose — l'offerta che
+   * sale e la cella accesa di chi e' in testa — e la barra ci passa sotto: piena,
+   * si fondeva contro la cella accesa e non si capiva dove finisse l'una e
+   * cominciasse l'altra. Il tempo non e' una cosa su cui si agisce, e' una
+   * condizione: prende il colore delle strutture.
+   */
+  it('la barra del tempo non e oro: non si confonde con la cella accesa', () => {
+    open({ participants: TEAMS });
+    expect(screen.getByTestId('bidder-leader').className).toContain('bg-accent');
+    expect(screen.getByTestId('bidder-remaining-bar').className).not.toContain('bg-accent');
+  });
+
+  /**
+   * Il conto non pulsa. La pulsazione faceva oscillare l'opacita' fra 1 e 0,5, e
+   * misurata col metodo di contrast.test.ts portava il numero da 5,21:1 a
+   * 2,25:1 — sotto la soglia di 4,5 per meta' del tempo, sul dato che in quel
+   * momento conta di piu'. E' la stessa ragione per cui le fasi non correnti non
+   * si smorzano.
+   *
+   * <p>L'urgenza resta detta quattro volte: il numero rosso, l'etichetta «ultimi
+   * secondi», la barra rossa e il numero che scende. La pulsazione era il quinto
+   * segnale, ed era l'unico che costava leggibilita'.
+   */
+  it('negli ultimi secondi il conto non pulsa: resta leggibile', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    open();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_500); });
+
+    const conto = screen.getByTestId('bidder-remaining');
+    expect(conto.className).toContain('text-destructive');
+    expect(conto.className).not.toContain('animate-pulse');
+    expect(screen.getByText('ultimi secondi')).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('negli ultimi secondi la barra passa al rosso', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    open();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_500); });
+    expect(screen.getByTestId('bidder-remaining-bar').className).toContain('bg-destructive');
+    vi.useRealTimers();
   });
 
   it('la barra spaziatrice rilancia di uno', async () => {
@@ -244,7 +413,9 @@ describe('BidderDialog', () => {
     open({ valuation: { ...VALUATION, maxBid: 2 } });
     await userEvent.keyboard('   ');
     expect(screen.getByTestId('bidder-dialog')).toHaveAttribute('data-over-ceiling', 'true');
-    expect(screen.getByTestId('bidder-ceiling-distance')).toHaveTextContent('2 oltre il tuo tetto');
+    // Breve, perche' sta sotto l'etichetta che lo nomina: «il tuo tetto 2, 2
+    // oltre». La frase intera resta per chi ascolta, qui sotto.
+    expect(screen.getByTestId('bidder-ceiling-distance')).toHaveTextContent('2 oltre');
     // E per chi ascolta, una frase intera.
     expect(screen.getByText(/Sei oltre il tuo tetto di 2/)).toHaveClass('sr-only');
   });
@@ -306,7 +477,7 @@ describe('BidderDialog', () => {
 
       // Il tempo e' scaduto ma al tavolo qualcuno rilancia lo stesso. Senza
       // questa via di ritorno l'unico modo di riaprire le offerte era chiudere
-      // il battitore e riaprirlo, perdendo il prezzo a cui si era arrivati.
+      // il conto alla rovescia e riaprirlo, perdendo il prezzo a cui si era arrivati.
       await user.click(screen.getByRole('button', { name: /Riprendi le offerte/ }));
 
       expect(screen.getByTestId('bidder-price')).toHaveTextContent('3');
@@ -325,8 +496,8 @@ describe('BidderDialog', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onAssign = open();
 
-      // Anna apre a 1 e poi rilancia due volte con la barra.
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
+      // Il lotto si apre a 1 — ed e' gia' la tua offerta — poi due rilanci con
+      // la barra spaziatrice.
       await user.keyboard('  ');
       expect(screen.getByTestId('bidder-price')).toHaveTextContent('3');
 
@@ -338,46 +509,123 @@ describe('BidderDialog', () => {
         vi.advanceTimersByTime(5100);
       });
 
-      await user.click(screen.getByRole('button', { name: 'Aggiudica a 3' }));
+      await user.click(screen.getByRole('button', { name: 'Aggiudica a Anna per 3' }));
       expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 3 });
     });
 
-    /** Senza nessuno in testa l'acquirente va scelto: non si propone la propria squadra. */
-    it('senza nessuno in testa l acquirente va scelto prima di aggiudicare', async () => {
+    it('a chi va si sceglie con gli stessi bottoni squadra, non con un menu', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      // Il difetto che questo blocca: un secondo prima si toccavano otto bottoni
+      // squadra, e allo scadere la STESSA scelta passava a un menu a tendina di
+      // sistema. Stesso compito, due modi di farlo — e il menu rompeva anche il
+      // linguaggio a pillole del resto del riquadro.
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Diego/ })).toBeInTheDocument();
+    });
+
+    it('scegliere a chi va non rilancia e non fa ripartire il conto', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      await user.click(screen.getByRole('button', { name: /^Diego/ }));
+
+      // I bottoni squadra esistono solo qui, e dicono «se l'e' preso lui»: non
+      // sono un'offerta. Indicare il vincitore non deve fargli pagare un credito
+      // in piu' ne' far ripartire un conto gia' scaduto.
+      expect(screen.getByTestId('bidder-price')).toHaveTextContent('2');
+      expect(screen.getByRole('button', { name: 'Aggiudica a Diego per 2' })).toBeInTheDocument();
+    });
+
+    it('a tempo scaduto la barra spaziatrice non e piu una scorciatoia, e non lo dice', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      // Scaduto il tempo, lo spazio non rilancia piu' (l'ascolto si spegne):
+      // continuare a offrirlo fra le scorciatoie e' istruire a un gesto che non
+      // fa niente. I tasti delle squadre restano, e cambiano significato.
+      const keys = screen.getByTestId('bidder-shortcuts').querySelectorAll('kbd');
+      expect(Array.from(keys, (k) => k.textContent)).toEqual(['1–4', 'Esc']);
+      // E il tasto fa quello che dice: sceglie a chi va.
+      await user.keyboard('2');
+      expect(screen.getByRole('button', { name: 'Aggiudica a Diego per 2' })).toBeInTheDocument();
+    });
+
+    it('a tempo scaduto il conto se ne va, invece di restare a zero', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open();
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      // Uno zero gigante e' informazione morta nel posto piu' in vista del
+      // riquadro, proprio dove serve l'esito. Restano le due letture che ancora
+      // dicono qualcosa: a quanto siamo, e dove ti fermavi.
+      expect(screen.queryByTestId('bidder-remaining')).not.toBeInTheDocument();
+      expect(screen.getByTestId('bidder-price')).toBeInTheDocument();
+      expect(screen.getByTestId('bidder-ceiling')).toBeInTheDocument();
+    });
+
+    /**
+     * Nessun altro ha rilanciato: il lotto e' tuo, al prezzo a cui l'hai portato.
+     * Proporre «scegli la squadra» avrebbe chiesto di dichiarare l'ovvio.
+     */
+    it('senza offerte altrui il lotto e proposto a te, al prezzo raggiunto', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onAssign = open({ participants: TEAMS });
       await user.keyboard('  ');
       await act(async () => { vi.advanceTimersByTime(5100); });
 
-      expect(screen.getByRole('alert')).toHaveTextContent('Tempo scaduto: scegli a chi va.');
-      const assign = screen.getByRole('button', { name: 'Aggiudica a 3' });
-      expect(assign).toBeDisabled();
-      await user.selectOptions(screen.getByLabelText('Aggiudica a'), 'diego');
+      // Resta per chi ascolta, non per chi guarda: a schermo «Anna» lo dicono
+      // gia' il riquadro di chi e' in testa, il bottone squadra acceso e il
+      // bottone «Aggiudica a Anna per 3» — quattro volte lo stesso nome nello
+      // stesso riquadro.
+      const avviso = screen.getByRole('alert');
+      expect(avviso).toHaveTextContent('Tempo scaduto: Anna è in testa a 3.');
+      expect(avviso).toHaveClass('sr-only');
+      const assign = screen.getByRole('button', { name: 'Aggiudica a Anna per 3' });
       expect(assign).not.toBeDisabled();
       await user.click(assign);
+      expect(onAssign).toHaveBeenCalledWith({ participantId: 'anna', price: 3 });
+    });
+
+    /** Se al tavolo ha vinto un altro, lo si corregge con i bottoni squadra. */
+    it('se se l e preso un altro, lo si corregge toccando la sua squadra', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onAssign = open({ participants: TEAMS });
+      await user.keyboard('  ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      await user.click(screen.getByRole('button', { name: /^Diego/ }));
+      await user.click(screen.getByRole('button', { name: 'Aggiudica a Diego per 3' }));
       expect(onAssign).toHaveBeenCalledWith({ participantId: 'diego', price: 3 });
     });
 
-    /** Chi e' in testa e' proposto come acquirente, e l'avviso lo dice. */
-    it('allo scadere propone chi e in testa', async () => {
+    /** Chi e' in testa secondo il server e' proposto come acquirente. */
+    it('allo scadere propone la squadra in testa secondo il server', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      open({ participants: TEAMS });
-      await user.click(screen.getByRole('button', { name: /^Diego/ }));
+      open({ participants: TEAMS, leader: { name: 'Diego' } });
+      await user.keyboard(' ');
       await act(async () => { vi.advanceTimersByTime(5100); });
-      expect(screen.getByRole('alert')).toHaveTextContent('Tempo scaduto: Diego è in testa a 1.');
-      expect(screen.getByLabelText('Aggiudica a')).toHaveValue('diego');
+      expect(screen.getByRole('alert')).toHaveTextContent('Tempo scaduto: Diego è in testa a 2.');
+      expect(screen.getByRole('button', { name: /^Diego/ })).toHaveAttribute('aria-pressed', 'true');
     });
 
     /** Il server rifiuterebbe: dirlo prima evita un «Aggiudica» che torna indietro. */
     it('avvisa se l acquirente scelto non puo pagare quel prezzo', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       open({ participants: TEAMS });
-      await user.click(screen.getByRole('button', { name: /^Diego/ }));
       const offer = screen.getByLabelText('Offerta diretta');
       await user.type(offer, '30');
       await user.click(screen.getByRole('button', { name: 'Offri' }));
       await act(async () => { vi.advanceTimersByTime(5100); });
-      await user.selectOptions(screen.getByLabelText('Aggiudica a'), 'bruno');
+      await user.click(screen.getByRole('button', { name: /^Bruno/ }));
       expect(screen.getByText(/Bruno non può comprarlo a 30: può offrire al massimo 11/)).toBeInTheDocument();
     });
   });
@@ -535,7 +783,6 @@ describe('BidderDialog', () => {
     async function openExpired(overrides = {}) {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onAssign = open(overrides);
-      await user.click(screen.getByRole('button', { name: /^Anna/ }));
       await user.keyboard(' ');
       await act(async () => {
         vi.advanceTimersByTime(5100);
@@ -551,14 +798,14 @@ describe('BidderDialog', () => {
 
     it('disabled (dati stantii) disabilita il bottone Aggiudica, e lo dice a chi ascolta', async () => {
       await openExpired({ disabled: true });
-      const button = screen.getByRole('button', { name: 'Aggiudica a 2' });
+      const button = screen.getByRole('button', { name: 'Aggiudica a Anna per 2' });
       expect(button).toBeDisabled();
       expect(button).toHaveAccessibleDescription(/non sono aggiornat/i);
     });
 
     it('ne pending ne disabled: il bottone resta attivo', async () => {
       await openExpired({ pending: false, disabled: false });
-      expect(screen.getByRole('button', { name: 'Aggiudica a 2' })).not.toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Aggiudica a Anna per 2' })).not.toBeDisabled();
     });
   });
 });
