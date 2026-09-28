@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { PitchLines } from './domain/PitchLines';
 import { Wordmark } from './domain/Wordmark';
 
 /**
@@ -18,7 +17,9 @@ import { Wordmark } from './domain/Wordmark';
  * ({@code slotActions}: all'asta proiezione, annulla, impostazioni) e lo stato.
  *
  * <p><b>Pannelli pieni.</b> La barra e' un pannello: nessun testo poggia
- * direttamente sulle linee del campo.
+ * direttamente sulle linee del campo. Il campo e il fondo non stanno qui ma in
+ * {@code AppFrame}, la rotta che avvolge tutte le altre: cosi' restano montati fra
+ * una pagina e l'altra invece di rifarsi a ogni cambio.
  *
  * <p><b>La proiezione resta senza chrome.</b> E' una seconda schermata pensata per
  * un proiettore: il suo vincolo permanente e' zero pulsanti e zero caselle di
@@ -45,15 +46,7 @@ export function AppShell({
   const onHome = useLocation().pathname === '/';
 
   return (
-    <div className="min-h-dvh bg-background text-foreground font-sans">
-      {/* Il campo e' uno solo per tutte le schermate, proiezione compresa: il
-          testo sta nei pannelli, quindi le linee non devono farsi discrete in un
-          posto e visibili in un altro. Comincia sotto la barra: dietro, la linea
-          di fondo sarebbe coperta. Identico su ogni pagina: stessa tinta, e la
-          barra ha su tutte la stessa altezza minima (--header-h), cosi' il campo
-          parte sempre dalla stessa quota. */}
-      <PitchLines className="inset-x-0 bottom-0 top-[var(--header-h)]" />
-
+    <>
       {/* Ferma in cima mentre la pagina scorre: su una pagina lunga (le
           impostazioni, le rose) marchio, «Le mie aste» e i pulsanti dell'asta non
           devono uscire dallo schermo. z-30: sopra i pannelli e i menu che le
@@ -77,7 +70,7 @@ export function AppShell({
             <Link
               to="/"
               aria-current={onHome ? 'page' : undefined}
-              className={`flex min-h-11 items-center rounded-full px-4 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent max-sm:hidden ${
+              className={`flex min-h-11 items-center rounded-full px-4 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent max-sm:hidden ${
                 onHome ? 'bg-accent text-on-accent' : 'border border-line-strong hover:bg-line'
               }`}
             >
@@ -102,6 +95,6 @@ export function AppShell({
       <main role="main" className="relative z-10 p-4 md:p-6">
         {children}
       </main>
-    </div>
+    </>
   );
 }

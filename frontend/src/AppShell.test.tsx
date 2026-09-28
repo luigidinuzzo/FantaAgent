@@ -27,14 +27,13 @@ describe('AppShell', () => {
   });
 
   /**
-   * Il campo parte sotto la barra, a --header-h: la barra ha quell'altezza minima su
-   * ogni pagina, cosi' il campo e' identico ovunque e nessuna barra piu' alta ne
-   * copre un pezzo in piu'.
+   * Il campo (in AppFrame) parte sotto la barra, a --header-h: la barra ha
+   * quell'altezza minima su ogni pagina, cosi' il campo e' identico ovunque e
+   * nessuna barra piu' alta ne copre un pezzo in piu'.
    */
   it('la barra ha la stessa altezza minima su ogni pagina, quella da cui parte il campo', () => {
     render(withRouter(<AppShell chrome="none"><p>x</p></AppShell>));
     expect(screen.getByRole('banner').className).toContain('min-h-[var(--header-h)]');
-    expect(screen.getByTestId('pitch').className).toContain('top-[var(--header-h)]');
   });
 
   it('ospita lo slot di stato nella barra', () => {
@@ -94,21 +93,6 @@ describe('AppShell', () => {
 
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByRole('banner')).toHaveTextContent('FantaAgent');
-  });
-
-  /**
-   * Il campo e' uno solo per ogni schermata, proiezione compresa, e occupa tutta la
-   * finestra sotto la barra: due copie sovrapposte raddoppierebbero le strisce e le
-   * linee, e dietro la barra la linea di fondo sarebbe coperta.
-   */
-  it.each(['top', 'none'] as const)('con chrome=%s disegna il campo una volta sola, sotto la barra', (chrome) => {
-    const { container, getByTestId } = render(withRouter(<AppShell chrome={chrome}><p>x</p></AppShell>));
-
-    expect(container.querySelectorAll('[data-testid="pitch"]')).toHaveLength(1);
-    const pitch = getByTestId('pitch').className;
-    expect(pitch).toContain('inset-x-0');
-    expect(pitch).toContain('bottom-0');
-    expect(pitch).toContain('top-[var(--header-h)]');
   });
 
   /**
