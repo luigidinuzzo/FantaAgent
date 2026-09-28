@@ -49,6 +49,26 @@ public class PlayerSearchService {
         }
     }
 
+    /**
+     * Le colonne su cui la tabella di fase si puo' ordinare.
+     *
+     * <p>Sono tutte e sole le grandezze che la proiezione porta gia' con se', quindi
+     * ordinarci sopra costa il tempo di un confronto. Il tetto e il margine NON sono
+     * qui, e non e' una dimenticanza: nascono da {@link PlayerAnalysisService#analyze},
+     * circa 12 ms a giocatore (si veda {@link #PHASE_PAGE_SIZE}), e per ordinare
+     * l'intera fase bisognerebbe valutarla tutta — sui 192 difensori del fixture
+     * realistico sono circa 2,3 secondi, per ogni pagina chiesta, durante un'asta dal
+     * vivo. Alla domanda «dove conviene guardare» risponde gia' {@link #targets},
+     * che e' una classifica per margine e valuta una manciata di candidati invece di
+     * tutti.
+     */
+    public enum PhaseSort {
+        /** La quotazione di listino: l'ordine in cui i giocatori vengono chiamati. */
+        QUOTAZIONE,
+        FANTAMEDIA,
+        TITOLARITA
+    }
+
     public record PhaseRow(Player player, PriceRecommendation recommendation,
                            PlayerProjection projection) {
 
@@ -306,6 +326,22 @@ public class PlayerSearchService {
      * il log da capo).
      */
     public PhasePage phasePlayers(int offset, int limit) {
+        return phasePlayers(offset, limit, PhaseSort.QUOTAZIONE, false);
+    }
+
+    /**
+     * Come sopra, ordinata su una colonna a scelta. {@code ascending} rovescia il
+     * verso naturale, che per tutte e tre e' il decrescente: la quotazione piu' alta,
+     * la fantamedia migliore, chi gioca di piu'.
+     *
+     * <p>I criteri di spareggio non cambiano mai con la colonna scelta — punti attesi
+     * decrescenti, poi identificativo — e non sono decorativi: le parita' sono
+     * frequentissime (decine di giocatori alla stessa quotazione, e la titolarita' va
+     * a pari ogni volta che non ci sono statistiche), e senza un ordine TOTALE due
+     * richieste della stessa pagina potrebbero disporre gli stessi giocatori in ordine
+     * diverso — uno finirebbe su due pagine e un altro su nessuna.
+     */
+    public PhasePage phasePlayers(int offset, int limit, PhaseSort sort, boolean ascending) {
         ValuationChain current = chain.get();
         ProjectionRegistry projections = current.projections();
         AuctionState state = auction.state();
@@ -315,23 +351,33 @@ public class PlayerSearchService {
         }
 
         /*
-         * Ordinati per quotazione Fantacalcio.it decrescente: e' l'ordine in cui i
-         * giocatori vengono chiamati in asta e in cui l'occhio li cerca sul listone,
-         * quindi i piu' rilevanti stanno in cima. I due criteri successivi non sono
-         * decorativi: le quotazioni pari sono frequentissime (decine di giocatori a 1),
-         * e senza un ordine totale due richieste della stessa pagina potrebbero
-         * disporre gli stessi giocatori in ordine diverso — uno finirebbe su due pagine
-         * e un altro su nessuna. I punti attesi decidono fra pari quotazione, l'id
-         * decide fra pari punti, e a quel punto l'ordine e' riproducibile.
+         * Il verso naturale di tutte e tre le colonne e' il decrescente: la quotazione
+         * piu' alta (l'ordine in cui i giocatori vengono chiamati in asta, e in cui
+         * l'occhio li cerca sul listone), la fantamedia migliore, chi gioca di piu'.
+         * `ascending` lo rovescia.
+         *
+         * Dopo la colonna scelta vengono SEMPRE gli stessi due spareggi — punti attesi
+         * decrescenti, poi identificativo — e non sono decorativi: le parita' sono
+         * frequentissime, e senza un ordine totale due richieste della stessa pagina
+         * potrebbero disporre gli stessi giocatori in ordine diverso, con uno su due
+         * pagine e un altro su nessuna.
          */
+        Comparator<Candidate> primary = switch (sort) {
+            case QUOTAZIONE -> Comparator.comparingInt(c -> c.player().listPrice());
+            case FANTAMEDIA -> Comparator.comparingDouble(
+                    c -> c.projection().expectedRating() + c.projection().bonusPerAppearance());
+            case TITOLARITA -> Comparator.comparingDouble(c -> c.projection().startingProbability());
+        };
+        Comparator<Candidate> order = (ascending ? primary : primary.reversed())
+                .thenComparing(Comparator.comparingDouble(
+                        (Candidate c) -> c.projection().basePoints()).reversed())
+                .thenComparing(c -> c.player().id());
+
         List<Candidate> ofPhase = projections.all().stream()
                 .filter(p -> p.role() == state.currentPhase())
                 .filter(p -> !sold.contains(p.playerId()))
                 .map(p -> new Candidate(p, catalog.byId(p.playerId()).orElseThrow()))
-                .sorted(Comparator.comparingInt((Candidate c) -> c.player().listPrice()).reversed()
-                        .thenComparing(Comparator.comparingDouble(
-                                (Candidate c) -> c.projection().basePoints()).reversed())
-                        .thenComparing(c -> c.player().id()))
+                .sorted(order)
                 .toList();
 
         int total = ofPhase.size();

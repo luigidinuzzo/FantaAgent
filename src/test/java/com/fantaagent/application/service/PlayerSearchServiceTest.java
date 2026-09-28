@@ -11,6 +11,7 @@ import com.fantaagent.domain.league.Participant;
 import com.fantaagent.domain.league.ScoringRules;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
+import com.fantaagent.domain.player.SeasonStats;
 import com.fantaagent.domain.strategy.ModifierCalculator;
 import com.fantaagent.domain.strategy.RosterCompleter;
 import com.fantaagent.domain.strategy.ValuationEngine;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -160,6 +162,108 @@ class PlayerSearchServiceTest {
         assertThat(search.phasePlayers(secondPage.previousOffset(), 3).rows())
                 .extracting(r -> r.player().id())
                 .isEqualTo(firstPage.rows().stream().map(r -> r.player().id()).toList());
+    }
+
+    /**
+     * L'ordinamento della tabella di fase.
+     *
+     * <p>Solo su grandezze che la proiezione porta gia' con se' — quotazione,
+     * fantamedia attesa, titolarita'. Il tetto e il margine no: nascono da
+     * {@code analyze()}, circa 12 ms a giocatore, e ordinarci sopra una fase intera
+     * (192 difensori sul fixture realistico) costerebbe ~2,3 s per ogni pagina
+     * chiesta. A quella domanda risponde gia' {@code targets()}, che valuta una
+     * manciata di candidati invece di tutti.
+     *
+     * <p>Il fixture e' costruito perche' i tre ordini NON coincidano: il piu' caro
+     * e' quello che gioca meno.
+     */
+    private PlayerCatalog anticorrelatedCatalog() {
+        List<Player> players = List.of(
+                new Player("caro", "Caro", "Squadra", Role.D, 30),
+                new Player("medio", "Medio", "Squadra", Role.D, 20),
+                new Player("basso", "Basso", "Squadra", Role.D, 10));
+        List<SeasonStats> stats = List.of(
+                new SeasonStats("caro", "2025-26", 5, 6.5, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                new SeasonStats("medio", "2025-26", 38, 5.5, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+                new SeasonStats("basso", "2025-26", 20, 6.0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+        return new InMemoryPlayerCatalog(players, stats);
+    }
+
+    private PlayerSearchService anticorrelatedSearch() {
+        PlayerCatalog catalog = anticorrelatedCatalog();
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        return serviceFor(catalog, auction);
+    }
+
+    /** Chi non chiede niente riceve esattamente l'ordine di prima: la quotazione. */
+    @Test
+    void phasePlayersKeepsListPriceAsTheDefaultOrder() {
+        PlayerSearchService search = anticorrelatedSearch();
+
+        assertThat(search.phasePlayers(0, 10).rows())
+                .extracting(r -> r.player().id())
+                .isEqualTo(search.phasePlayers(0, 10, PlayerSearchService.PhaseSort.QUOTAZIONE, false)
+                        .rows().stream().map(r -> r.player().id()).toList());
+    }
+
+    @Test
+    void phasePlayersSortsByTitolarita() {
+        PlayerSearchService search = anticorrelatedSearch();
+
+        List<String> byTitolarita = search
+                .phasePlayers(0, 10, PlayerSearchService.PhaseSort.TITOLARITA, false)
+                .rows().stream().map(r -> r.player().id()).toList();
+
+        // Chi gioca di piu' per primo, e non e' l'ordine della quotazione: il piu'
+        // caro e' quello che gioca meno.
+        assertThat(byTitolarita).containsExactly("medio", "basso", "caro");
+    }
+
+    @Test
+    void phasePlayersSortsByFantamediaAttesa() {
+        PlayerSearchService search = anticorrelatedSearch();
+
+        assertThat(search.phasePlayers(0, 10, PlayerSearchService.PhaseSort.FANTAMEDIA, false).rows())
+                .extracting(PlayerSearchService.PhaseRow::fantamediaAttesa)
+                .isSortedAccordingTo(Comparator.reverseOrder());
+    }
+
+    @Test
+    void phasePlayersCanSortAscending() {
+        PlayerSearchService search = anticorrelatedSearch();
+
+        assertThat(search.phasePlayers(0, 10, PlayerSearchService.PhaseSort.TITOLARITA, true).rows())
+                .extracting(r -> r.player().id())
+                .containsExactly("caro", "basso", "medio");
+    }
+
+    /**
+     * L'ordine deve restare totale anche ordinando per una grandezza che va a pari:
+     * senza i criteri di spareggio, due richieste della stessa pagina potrebbero
+     * disporre gli stessi giocatori in ordine diverso — uno finirebbe su due pagine e
+     * un altro su nessuna.
+     */
+    @Test
+    void phasePlayersStayDeterministicWhenTheSortedValueTies() {
+        List<Player> players = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            players.add(new Player("d" + i, "Difensore " + i, "Squadra", Role.D, 7));
+        }
+        PlayerCatalog catalog = new InMemoryPlayerCatalog(players, List.of());
+        AuctionService auction = new AuctionService(RULES, PARTICIPANTS, catalog,
+                new JsonlAuctionEventStore(tmp.resolve("events.jsonl")));
+        PlayerSearchService search = serviceFor(catalog, auction);
+
+        PlayerSearchService.PhaseSort sort = PlayerSearchService.PhaseSort.TITOLARITA;
+        List<String> pageOne = search.phasePlayers(0, 3, sort, false)
+                .rows().stream().map(r -> r.player().id()).toList();
+        List<String> pageTwo = search.phasePlayers(3, 3, sort, false)
+                .rows().stream().map(r -> r.player().id()).toList();
+
+        assertThat(pageOne).doesNotContainAnyElementsOf(pageTwo);
+        assertThat(pageOne).isEqualTo(search.phasePlayers(0, 3, sort, false)
+                .rows().stream().map(r -> r.player().id()).toList());
     }
 
     /**

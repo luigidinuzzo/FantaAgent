@@ -77,6 +77,16 @@ export interface ValuationResponse {
   drivers: DriverView[];
 }
 
+/**
+ * Le colonne su cui la tabella di fase si puo' ordinare, con i nomi che viaggiano
+ * nell'indirizzo. Sono tutte e sole quelle che il server sa mettere in fila senza
+ * valutare l'intera fase: il tetto e il margine nascono da un calcolo completo per
+ * riga, e ordinarci sopra costerebbe secondi a ogni pagina.
+ */
+export type PhaseSort = 'quotazione' | 'fantamedia' | 'titolarita';
+
+export type SortDir = 'asc' | 'desc';
+
 export interface PhaseRowView extends PlayerSummary {
   maxBid: number;
   expectedPrice: number;

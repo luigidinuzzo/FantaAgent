@@ -66,11 +66,36 @@ public class PlayerApi {
             @PathVariable String leagueId,
             @PathVariable String auctionId,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "25") int limit) {
+            @RequestParam(defaultValue = "25") int limit,
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String dir) {
         leagues.check(leagueId);
         auctions.check(auctionId);
-        return PlayerDtos.PhasePageResponse.from(
-                search.phasePlayers(Math.max(0, offset), clampLimit(limit)));
+        return PlayerDtos.PhasePageResponse.from(search.phasePlayers(
+                Math.max(0, offset), clampLimit(limit), parseSort(sort), "asc".equalsIgnoreCase(dir)));
+    }
+
+    /**
+     * La colonna su cui ordinare, dal nome che usa l'interfaccia. Un nome che non
+     * esiste — un indirizzo scritto a mano, un vecchio segnalibro, una colonna tolta —
+     * torna all'ordine di sempre invece di diventare un errore: e' la stessa scelta di
+     * {@link #clampLimit}, e per la stessa ragione. Chi gioca non ha niente da
+     * correggere davanti a una tabella che si e' ordinata da sola come sempre.
+     *
+     * <p>I nomi sono quelli delle intestazioni, in italiano, perche' e' cio' che
+     * l'interfaccia mostra e cio' che finisce nell'indirizzo: «titolarita» e non
+     * «startingProbability». Non ci sono «tetto» ne' «margine» — si veda
+     * {@link PlayerSearchService.PhaseSort} per il perche'.
+     */
+    private static PlayerSearchService.PhaseSort parseSort(String sort) {
+        if (sort == null) {
+            return PlayerSearchService.PhaseSort.QUOTAZIONE;
+        }
+        return switch (sort.toLowerCase(java.util.Locale.ROOT)) {
+            case "fantamedia" -> PlayerSearchService.PhaseSort.FANTAMEDIA;
+            case "titolarita" -> PlayerSearchService.PhaseSort.TITOLARITA;
+            default -> PlayerSearchService.PhaseSort.QUOTAZIONE;
+        };
     }
 
     /**

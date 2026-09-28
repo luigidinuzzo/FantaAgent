@@ -16,17 +16,19 @@ import type {
   PhasePageResponse,
   PublicBidderResponse,
   PurchaseResponse,
+  PhaseSort,
   Role,
   SaveSettingsRequest,
   SaveSettingsResult,
   SettingsResponse,
+  SortDir,
   TargetView,
   ValuationResponse,
 } from './types';
 
 const KEYS = {
   state: ['state'] as const,
-  phase: (offset: number) => ['phase', offset] as const,
+  phase: (offset: number, sort: string, dir: string) => ['phase', offset, sort, dir] as const,
   valuation: (playerId: string) => ['valuation', playerId] as const,
   board: ['board'] as const,
   publicBidder: (playerId: string) => ['public-bidder', playerId] as const,
@@ -111,16 +113,26 @@ export function useAuctionState() {
   });
 }
 
-export function usePhasePlayers(offset: number) {
+/**
+ * Una pagina della tabella di fase, nell'ordine chiesto.
+ *
+ * <p>L'ordine lo fa il SERVER: la pagina e' di venticinque righe su una fase che
+ * ne ha centinaia, e rimetterle in fila qui vorrebbe dire ordinare quelle
+ * venticinque e dire una bugia su tutte le altre. Per questo colonna e verso
+ * entrano nella chiave della query: sono due pagine diverse, non la stessa
+ * guardata da un'altra angolazione.
+ */
+export function usePhasePlayers(offset: number, sort: PhaseSort = 'quotazione', dir: SortDir = 'desc') {
   return useQuery({
-    queryKey: KEYS.phase(offset),
-    queryFn: () => apiGet<PhasePageResponse>(`/players/phase?offset=${offset}&limit=25`),
+    queryKey: KEYS.phase(offset, sort, dir),
+    queryFn: () => apiGet<PhasePageResponse>(
+      `/players/phase?offset=${offset}&limit=25&sort=${sort}&dir=${dir}`),
   });
 }
 
 /**
  * Le occasioni della fase corrente, dalla migliore: riempiono il pannello dei
- * consigli finche' nessun giocatore e' sul battitore. Ogni acquisto e cambio di
+ * consigli finche' nessun giocatore e' sul banco. Ogni acquisto e cambio di
  * fase invalida tutte le query, quindi si rileggono da sole.
  */
 export function useTargets(enabled: boolean) {
@@ -261,7 +273,7 @@ export function useVoidPurchase() {
 }
 
 /**
- * Le impostazioni della lega — battitore, partecipanti, punteggio — non dell'asta
+ * Le impostazioni della lega — banditore, partecipanti, punteggio — non dell'asta
  * corrente, quindi {@link apiLeagueGet} e non {@link apiGet}.
  */
 export function useSettings() {
