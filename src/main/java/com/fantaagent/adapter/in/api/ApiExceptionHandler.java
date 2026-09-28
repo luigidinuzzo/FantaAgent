@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -146,6 +147,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     ProblemDetail badCredentials(AuthenticationException e) {
         return problem(HttpStatus.UNAUTHORIZED, "bad-credentials", "Email o password non corretti.");
+    }
+
+    /**
+     * {@code DaoAuthenticationProvider} incapsula qui ogni fallimento di
+     * {@code UserDetailsService} che NON sia "utente sconosciuto" — un database
+     * irraggiungibile durante il login, per esempio. E' comunque una
+     * {@link AuthenticationException}: senza questo gestore piu' specifico finirebbe
+     * in {@link #badCredentials}, e un guasto del database si presenterebbe come
+     * "password sbagliata" invece che come attesa.
+     */
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    ProblemDetail authenticationServiceUnavailable(InternalAuthenticationServiceException e) {
+        return e.getCause() instanceof DataAccessResourceFailureException cause
+                ? unavailable(cause)
+                : unexpected(e);
     }
 
     @ExceptionHandler(InvalidTokenException.class)

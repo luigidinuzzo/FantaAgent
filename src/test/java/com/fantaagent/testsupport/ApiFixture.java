@@ -13,9 +13,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,23 +24,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>Senza {@link SessionRepositoryFilter}, MockMvc userebbe le sue sessioni in
  * memoria e un test sulla chiusura delle sessioni passerebbe senza aver chiuso niente.
+ *
+ * <p>{@link #mvc} ripristina anche il {@code CsrfTokenRepository} del filtro di
+ * sicurezza da quello esposto come bean da {@code SecurityConfig}: il post-processor
+ * {@code csrf()} di spring-security-test, alla prima chiamata in un contesto Spring
+ * condiviso, lo sostituisce per riflessione — e per sempre, sul bean singleton del
+ * filtro — con uno che non scrive piu' il cookie {@code XSRF-TOKEN} (lo tiene in
+ * sessione). Il contesto e' condiviso da tutti i test della classe: senza questo
+ * ripristino, un test che non chiama {@code csrf()} vedrebbe o no il cookie a seconda
+ * di quali test sono girati prima di lui.
  */
 public final class ApiFixture {
 
     public static final String PASSWORD = "una password lunga";
-
-    /**
-     * Il post-processor {@code csrf()} di spring-security-test, alla prima chiamata in
-     * un contesto Spring condiviso, sostituisce per riflessione — e per sempre, sul
-     * bean singleton del filtro — il {@code CsrfTokenRepository} con uno che non
-     * scrive piu' il cookie {@code XSRF-TOKEN} (lo tiene in sessione). Il contesto e'
-     * condiviso da tutti i test della classe: senza questo ripristino, un test che non
-     * chiama {@code csrf()} vedrebbe o no il cookie a seconda di quali test sono girati
-     * prima di lui. Si salva il repository originale alla prima richiesta e lo si
-     * rimette ogni volta, cosi' l'ordine di esecuzione non conta piu'.
-     */
-    private static final Map<WebApplicationContext, CsrfTokenRepository> ORIGINAL_CSRF_REPOSITORY =
-            new WeakHashMap<>();
 
     private ApiFixture() {
     }
@@ -62,8 +55,7 @@ public final class ApiFixture {
         if (csrfFilter == null) {
             return;
         }
-        CsrfTokenRepository original = ORIGINAL_CSRF_REPOSITORY.computeIfAbsent(context,
-                c -> (CsrfTokenRepository) ReflectionTestUtils.getField(csrfFilter, "tokenRepository"));
+        CsrfTokenRepository original = context.getBean(CsrfTokenRepository.class);
         ReflectionTestUtils.setField(csrfFilter, "tokenRepository", original);
     }
 

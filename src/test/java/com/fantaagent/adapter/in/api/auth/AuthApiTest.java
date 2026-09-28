@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -120,6 +121,47 @@ class AuthApiTest {
                         throw new AssertionError("serve un cookie XSRF-TOKEN leggibile dal client");
                     }
                 });
+    }
+
+    /**
+     * Il vero giro di CSRF della SPA, senza lo scorciatoio {@code .with(csrf())} di
+     * spring-security-test — che qui non si usa nemmeno per la registrazione: quello
+     * scorciatoio sostituisce per riflessione il repository del filtro condiviso
+     * dalla classe (vedi {@code ApiFixture}), e userlo anche una sola volta in questo
+     * test guasterebbe la chiamata a {@code /api/auth/csrf} successiva. Si prende il
+     * cookie da {@code /api/auth/csrf} e lo si rimanda nell'header {@code X-XSRF-TOKEN}
+     * cosi' com'e', per registrarsi e poi accedere: esercita davvero
+     * {@code CookieCsrfTokenRepository} e il ramo "valore semplice nell'header" di
+     * {@code SpaCsrfTokenRequestHandler}, non solo la sua controparte finta nei test.
+     */
+    @Test
+    void ilGiroDiCsrfDellaSpaFunzionaDavveroConCookieEHeader() throws Exception {
+        Cookie xsrf = csrfCookie();
+
+        mvc.perform(post("/api/auth/register")
+                        .cookie(xsrf)
+                        .header("X-XSRF-TOKEN", xsrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"%s","password":"%s","displayName":"Anna"}"""
+                                .formatted(email, ApiFixture.PASSWORD)))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/auth/login")
+                        .cookie(xsrf)
+                        .header("X-XSRF-TOKEN", xsrf.getValue())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\",\"password\":\"%s\"}".formatted(email, ApiFixture.PASSWORD)))
+                .andExpect(status().isOk());
+    }
+
+    private Cookie csrfCookie() throws Exception {
+        MvcResult result = mvc.perform(get("/api/auth/csrf")).andExpect(status().isNoContent()).andReturn();
+        Cookie xsrf = result.getResponse().getCookie("XSRF-TOKEN");
+        if (xsrf == null) {
+            throw new AssertionError("nessun cookie XSRF-TOKEN nella risposta");
+        }
+        return xsrf;
     }
 
     @Test
