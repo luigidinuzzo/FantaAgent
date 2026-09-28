@@ -14,7 +14,7 @@ import {
   useUndoLast,
   useValuation,
 } from '../api/hooks';
-import type { Role } from '../api/types';
+import type { PhaseSort, Role, SortDir } from '../api/types';
 import { AnalysisPanel } from '../domain/AnalysisPanel';
 import { AuctionRecap } from '../domain/AuctionRecap';
 import { MyTeamSummary } from '../domain/MyTeamSummary';
@@ -107,14 +107,19 @@ export function AuctionRoute() {
   const [bidderOpen, setBidderOpen] = useState(false);
   // "Si sta cercando": lo dichiara PlayerSearchBox (c'e' del testo nel campo, o
   // un ruolo scelto) e serve qui per una cosa sola — cedere ai risultati il
-  // posto del battitore, invece di spingerlo giu' a ogni lettera digitata.
+  // posto del banco, invece di spingerlo giu' a ogni lettera digitata.
   const [searchActive, setSearchActive] = useState(false);
   const [pageOffset, setPageOffset] = useState(0);
+  // L'ordine della tabella di fase. Lo esegue il server: colonna e verso viaggiano
+  // nella richiesta, perche' una pagina e' venticinque righe su una fase che ne ha
+  // centinaia, e rimetterle in fila qui direbbe una bugia su tutte le altre.
+  const [sort, setSort] = useState<PhaseSort>('quotazione');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [activeTab, setActiveTab] = useState<TabKey>('fase');
   // L'aggiudicazione diretta e' aperta per QUESTO giocatore: cambiando giocatore
   // si richiude, e il prossimo parte di nuovo dal conto alla rovescia.
   const [directFor, setDirectFor] = useState<string | null>(null);
-  // «Togli dal battitore» col conto aperto chiede conferma: vero dopo il primo clic.
+  // «Togli dal banco» col conto aperto chiede conferma: vero dopo il primo clic.
   const [confirmRemove, setConfirmRemove] = useState(false);
   // L'ultimo acquisto confermato, mostrato in basso per qualche secondo con la
   // possibilita' di annullarlo. null quando non c'e' niente da mostrare.
@@ -160,7 +165,7 @@ export function AuctionRoute() {
   // pagina profonda (es. offset 75 nei portieri) resterebbe impostato entrando
   // nei difensori, che magari non arrivano nemmeno a 75 giocatori — la tabella
   // apparirebbe vuota senza che nulla lo spieghi. Non tocca selectedId: la
-  // selezione (e il battitore) sono un'altra fase concettualmente, e restano
+  // selezione (e il banco) sono un'altra fase concettualmente, e restano
   // intatti finche' non e' l'utente a chiuderli.
   useEffect(() => {
     setPageOffset(0);
@@ -181,10 +186,21 @@ export function AuctionRoute() {
         key: `${slot.seq}`, name: slot.playerName, role, buyer: c.participantName, price: slot.price,
       }))),
   );
-  const targets = useTargets(state.isSuccess && !concluded && selectedId === null);
+  // Non piu' solo a banco vuoto: con un lotto aperto le stesse occasioni sono la
+  // via d'uscita — «invece di lui, questi» — e stanno dentro il banco, sotto i
+  // controlli. Spente solo ad asta finita, dove non c'e' piu' niente da scegliere.
+  const targets = useTargets(state.isSuccess && !concluded);
 
-  const phase = usePhasePlayers(pageOffset);
+  const phase = usePhasePlayers(pageOffset, sort, sortDir);
   const valuation = useValuation(selectedId);
+  // Il nome del pannello centrale, che cambia con quello che ci sta dentro: il
+  // lotto se c'e', altrimenti la tua squadra. Senza ne' l'uno ne' l'altra resta il
+  // nome del posto, perche' un titolo il pannello deve sempre averlo.
+  const panelTitle = valuation.data
+    ? `Sul banco · ${valuation.data.name}`
+    : me
+      ? `La tua squadra, ${me.name}`
+      : 'Sul banco';
   const assign = useAssign();
   const changePhase = useChangePhase();
   const undoLast = useUndoLast();
@@ -196,7 +212,7 @@ export function AuctionRoute() {
   const bidderSettings = usePublicBidder(selectedId);
 
   // Battito di vita per la proiezione (si veda useIdleHeartbeat per il
-  // perche' e il come). Si ferma per tutta la durata in cui il battitore
+  // perche' e il come). Si ferma per tutta la durata in cui il conto alla rovescia
   // e' aperto, scaduto o non: BidderDialog pubblica da conto suo per
   // l'intera durata del dialogo — 'bidding' dieci volte al secondo mentre
   // il countdown corre, poi lo stesso lotto congelato a un ritmo piu' basso
@@ -259,18 +275,18 @@ export function AuctionRoute() {
         mySlotsRemaining: me.slotsRemaining,
       }),
     );
-    // Un'aggiudicazione riuscita chiude il battitore: senza, il dialogo
-    // resta in scena col prezzo vinto e un bottone Aggiudica ancora attivo,
-    // e l'unica conferma per chi vede sarebbe AuctionAnnouncer — sr-only,
-    // meno riscontro di quanto ne riceve chi ascolta. No-op se si stava
-    // aggiudicando da BidPanel (bidderOpen e' gia' false).
-    setBidderOpen(false);
+    // Cosa succede DOPO un'aggiudicazione riuscita non sta qui ma nel callback
+    // della mutazione (si veda assignPlayer): questo effetto gira anche a ogni
+    // rilettura dello stato, e chiudere il banco da qui significherebbe
+    // richiuderlo sotto le mani di chi nel frattempo ha gia' scelto il lotto
+    // successivo. Qui si compone solo l'annuncio, che dipende dallo stato appena
+    // riletto.
   }, [assign.data, assign.variables?.playerName, state.data]);
 
   // Azzera l'errore (e il risultato) della mutazione condivisa quando cambia
-  // il giocatore selezionato o si apre il battitore: senza, l'errore di
+  // il giocatore selezionato o si avvia il conto alla rovescia: senza, l'errore di
   // un'aggiudicazione fallita per UN giocatore resta appeso in useAssign()
-  // finche' un'altra mutate() non si risolve, e riaprendo il battitore per
+  // finche' un'altra mutate() non si risolve, e riavviando il conto alla rovescia per
   // un giocatore diverso lampeggia per un istante il fallimento del
   // precedente — un difetto preesistente in BidPanel, non nuovo qui.
   useEffect(() => {
@@ -279,7 +295,7 @@ export function AuctionRoute() {
     // deliberatamente FUORI dalle dipendenze: e' un riferimento nuovo a ogni
     // render di useMutation, e includerlo farebbe girare questo effetto a
     // ogni render invece che solo al cambio di giocatore o all'apertura del
-    // battitore, che e' l'unico momento in cui deve azzerare l'errore.
+    // conto alla rovescia, che e' l'unico momento in cui deve azzerare l'errore.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, bidderOpen]);
 
@@ -309,6 +325,20 @@ export function AuctionRoute() {
           if (!done) return;
           const buyer = participants.find((p) => p.id === done.participantId);
           setSale({ seq: done.seq, player: sent.playerName, buyer: buyer?.name ?? '', price: done.price });
+          // Il lotto e' chiuso: lascia il banco. Senza questo il giocatore
+          // restava in scena come scheda di decisione anche dopo essere stato
+          // venduto, con «Avvia il conto alla rovescia» ancora acceso — un gesto
+          // che il server rifiuterebbe («giocatore gia' venduto»), offerto
+          // dall'interfaccia. Il banco torna al suo stato a riposo, che e' dove
+          // si guarda per chiamare il prossimo.
+          //
+          // Qui e non in un effetto: questo succede UNA volta, alla conferma del
+          // server. Un effetto legato ad assign.data gira anche a ogni rilettura
+          // dello stato, e azzererebbe la selezione di un lotto scelto nel
+          // frattempo.
+          setBidderOpen(false);
+          setSelectedId(null);
+          setDirectFor(null);
         },
       },
     );
@@ -386,7 +416,7 @@ export function AuctionRoute() {
         // sopra): al massimo un role="alert" da queste due fonti, non uno
         // per bottone. role="alert", non un secondo role="status": l'unica
         // live region ambientale della pagina resta AuctionAnnouncer.
-        <p role="alert" className="panel mb-4 rounded-xl p-4 text-sm font-bold text-destructive">
+        <p role="alert" className="panel mb-4 rounded-xl p-4 text-sm font-medium text-destructive">
           {barAlertMessage}
         </p>
       ) : null}
@@ -395,18 +425,18 @@ export function AuctionRoute() {
           fondo, fuori da questa griglia, restano le due schede — fase corrente e
           rose. Sotto lg la griglia si srotola in una colonna sola, nell'ordine in
           cui e' scritta: crediti, ricerca, consigli. */}
-      {/* 39rem: misurata sullo stato piu' alto del battitore con otto squadre (il
+      {/* 39rem: misurata sullo stato piu' alto del banco con otto squadre (il
           conto che corre, con le squadre su due righe) a 1600px. Con piu' squadre o
-          su schermi piu' stretti il battitore scorre dentro di se' (min-h-0 sul
+          su schermi piu' stretti il banco scorre dentro di se' (min-h-0 sul
           riquadro): prima cresceva oltre la griglia e copriva la tabella sotto. */}
       {/* Altezza DECISA, non derivata dal contenuto. Prima la riga era alta
           quanto la sua colonna piu' alta: scegliendo un giocatore, «Perche'
           questo prezzo» passava da due righe a cinque driver con spiegazioni e
-          si trascinava dietro il battitore e le squadre, che crescevano insieme
+          si trascinava dietro il banco e le squadre, che crescevano insieme
           a lui. La misura e' tagliata sullo stato piu' alto del BATTITORE (il
           conto alla rovescia scaduto, con il suo modulo di aggiudicazione), cosi'
           quella colonna non ha mai bisogno di scorrere: misurato sullo stato
-          piu' alto che il battitore puo' assumere — conto alla rovescia
+          piu' alto che il banco puo' assumere — conto alla rovescia
           scaduto, con l'avviso di offerta oltre il tetto E un errore di
           aggiudicazione insieme — piu' la barra di ricerca, che vive in quella
           stessa colonna e le toglie altezza. Le altre due colonne scorrono
@@ -426,13 +456,22 @@ export function AuctionRoute() {
       {/* grid-cols-1 e non la colonna implicita: quella si allarga fino al
           contenuto piu' largo (la fila delle squadre sul telefono), e la pagina
           intera scorreva di lato. */}
-      <div className="grid grid-cols-1 gap-5 lg:h-[39rem] lg:grid-cols-[14rem_1fr_22rem]">
-        <ParticipantsColumn participants={participants} />
+      {/* min(): 39rem resta la misura decisa in anticipo, ma non oltre quello che
+          la finestra ha davvero. 39rem + la barra + i margini fanno 717px, e su un
+          portatile da 13" le schede qui sotto nascevano fuori schermo — si finiva a
+          scorrere durante un'asta dal vivo, che e' il momento in cui non si deve
+          scorrere. Le 13rem sottratte sono barra, margini e la fila delle schede.
+          Le tre colonne scorrono gia' dentro di se': sanno riceverne meno. */}
+      <div
+        data-testid="auction-row"
+        className="grid grid-cols-1 gap-5 lg:h-[min(39rem,calc(100dvh-13rem))] lg:grid-cols-[14rem_1fr_22rem]"
+      >
+        <ParticipantsColumn participants={participants} phase={state.data?.currentPhase} />
 
         <div className="flex min-h-0 min-w-0 flex-col gap-5">
           {/* La stessa selezione della tabella di fase, non un secondo percorso:
               un giocatore scelto qui passa per setSelectedId esattamente come una
-              riga cliccata, quindi valutazione, battitore e aggiudicazione si
+              riga cliccata, quindi valutazione, banco e aggiudicazione si
               comportano in tutto allo stesso modo.
 
               Nessun riquadro attorno alla barra: il bordo del campo e' gia' un
@@ -440,13 +479,13 @@ export function AuctionRoute() {
           {/* Mentre si cerca il pannello e' l'unica cosa in questa colonna, e
               prende tutta l'altezza della riga: cosi' il suo bordo inferiore
               cade sulla stessa linea di quelli dei crediti e dei consigli. A
-              riposo no — resta alto quanto la barra, ed e' il battitore qui
+              riposo no — resta alto quanto la barra, ed e' il banco qui
               sotto (flex-1) a riempire la colonna. */}
           <div className={searchActive ? 'flex min-h-0 flex-1 flex-col' : undefined}>
             <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} sold={sold} />
           </div>
 
-          {/* Il battitore e' un posto fisso in pagina, non un riquadro che appare e
+          {/* Il banco e' un posto fisso in pagina, non un riquadro che appare e
               scompare: sta sempre sotto la ricerca, vuoto finche' nessuno e' sul
               banco e pieno appena si sceglie un giocatore.
 
@@ -457,8 +496,21 @@ export function AuctionRoute() {
           {searchActive ? null : (
           <section aria-labelledby={bidderPanelId} className="panel flex min-h-0 flex-1 flex-col rounded-2xl p-4">
             <div className="flex min-h-11 items-center justify-between gap-3">
-              <h2 id={bidderPanelId} className="text-sm font-bold text-muted-foreground">
-                Battitore
+              {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
+                  c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
+                  annuncerebbe — anche a chi ascolta, via aria-labelledby — una cosa
+                  che non c'e', e la prima riga di contenuto lo smentirebbe subito.
+                  Col lotto sul banco il titolo lo nomina, piccolo e quieto: il nome
+                  grande lo porta la scheda qui sotto. */}
+              <h2
+                id={bidderPanelId}
+                className={
+                  valuation.data
+                    ? 'text-sm font-medium text-muted-foreground'
+                    : 'text-lg font-medium'
+                }
+              >
+                {panelTitle}
               </h2>
               {valuation.data ? (
                 // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
@@ -479,12 +531,12 @@ export function AuctionRoute() {
                     setSelectedId(null);
                   }}
                   onBlur={() => setConfirmRemove(false)}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                     confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-line-strong hover:bg-line'
                   }`}
                 >
                   <RemoveIcon />
-                  {confirmRemove ? "Conferma: il lotto si perde" : 'Togli dal battitore'}
+                  {confirmRemove ? "Conferma: il lotto si perde" : 'Togli dal banco'}
                 </button>
               ) : null}
             </div>
@@ -499,8 +551,14 @@ export function AuctionRoute() {
                 del browser al 150%, un carattere di sistema piu' grande. */}
             <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
               {valuation.data ? (
-                bidderOpen && bidderSettings.data ? (
-                  // Il battitore SOSTITUISCE la scheda di decisione, non ci sta
+                // shrink-0: il lotto prende l'altezza che gli serve e non di
+                // piu'. Prima il conto alla rovescia era alto quanto il riquadro
+                // (h-full) e la scheda lo riempiva con flex-1: l'elenco delle
+                // alternative qui sotto restava senza un pixel, e di lui si
+                // vedeva solo la linea di separazione appoggiata al fondo.
+                <div className="shrink-0">
+                {bidderOpen && bidderSettings.data ? (
+                  // Il conto alla rovescia SOSTITUISCE la scheda di decisione, non ci sta
                   // dentro: montato come suo figlio, rendeva nome e tetto una
                   // seconda volta, dentro una seconda cornice. Mentre il conto
                   // alla rovescia corre la card e' una sola, e porta i due
@@ -520,14 +578,14 @@ export function AuctionRoute() {
                     onClose={() => setBidderOpen(false)}
                   />
                 ) : (
-                  <PlayerDecisionCard valuation={valuation.data} stale={stale} bare>
+                  <PlayerDecisionCard valuation={valuation.data} stale={stale} bare me={me}>
                     {/* Impilati, nell'ordine in cui le cose succedono: prima
                         si fa correre il conto alla rovescia, poi si registra a
                         quanto e a chi e' andato. Affiancati, i due gesti si
                         leggevano come alternative pari; incolonnati si leggono
                         come una sequenza. */}
                     <div className="flex flex-col items-start gap-4">
-                    {/* Apre il battitore per il lotto conteso: BidPanel resta
+                    {/* Avvia il conto alla rovescia per il lotto conteso: BidPanel resta
                         la via diretta per un giocatore che nessuno contende,
                         questo e' l'altra via alla STESSA mutazione (assignPlayer),
                         non una seconda. Disabilitato finche' le preferenze vere
@@ -548,13 +606,13 @@ export function AuctionRoute() {
                       // rilancio (BID_CONTROL_H, 64px): e' l'azione principale
                       // del lotto, e ora ha la larghezza della barra «Rilancia
                       // +1» che prendera' il suo posto appena il conto parte.
-                      className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-full bg-accent px-8 text-lg font-extrabold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+                      className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-full bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
                     >
                       Avvia il conto alla rovescia
                     </button>
                     {!bidderSettings.data ? (
                       <span id={bidderHintId} className="sr-only">
-                        Le preferenze del battitore non sono disponibili.
+                        Le preferenze del banditore non sono disponibili.
                       </span>
                     ) : null}
                     {/* L'aggiudicazione diretta, dietro un bottone: e' la via per
@@ -580,23 +638,77 @@ export function AuctionRoute() {
                         type="button"
                         aria-expanded={false}
                         onClick={() => setDirectFor(valuation.data!.playerId)}
-                        className="min-h-11 rounded-full px-1 text-sm font-bold text-muted-foreground underline decoration-line-strong underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                        // Una pillola col contorno, non un testo sottolineato:
+                        // tutto cio' che si preme in questa applicazione e' una
+                        // pillola, e un link sottolineato in mezzo ai bottoni si
+                        // leggeva come un corpo estraneo.
+                        className="min-h-11 rounded-full border border-line-strong px-5 text-sm font-medium text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                       >
                         Aggiudica direttamente
                       </button>
                     )}
                     </div>
+
                   </PlayerDecisionCard>
-                )
+                )}
+                </div>
               ) : me ? (
                 // A riposo la tua squadra in numeri: crediti, posti, media per
                 // posto. Prima era una frase sola al centro di mezza pagina.
-                <MyTeamSummary me={me} board={board.data} />
+                <MyTeamSummary
+                  me={me}
+                  participants={participants}
+                  phase={currentPhase}
+                  freeInPhase={phase.data?.total}
+                  board={board.data}
+                />
               ) : (
                 <p className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                  Nessun giocatore sul battitore. Cercalo qui sopra o scegline uno dalla tabella.
+                  Nessuno sul banco. Cercalo qui sopra o scegline uno dalla tabella.
                 </p>
               )}
+
+              {/* Le alternative, in fondo al banco: e' il punto in cui si decide
+                  se spingere o lasciare.
+
+                  Sta FUORI dallo scambio fra conto alla rovescia e scheda, e vale
+                  per entrambi: il banco ha la stessa forma nei due stati, e con il
+                  conto avviato — dove i bottoni delle altre squadre non ci sono
+                  piu' — restavano centocinquanta pixel di vuoto proprio mentre si
+                  decide se continuare a rilanciare. Col conto aperto sono da
+                  leggere e non da scegliere (disabled): un lotto alla volta e'
+                  aperto, e cambiare giocatore sotto un rilancio in corso
+                  butterebbe via offerta e tempo.
+
+                  Le stesse occasioni della colonna dei consigli, che col lotto
+                  aperto cede il posto a «Perche' questo prezzo»: non sono mai in
+                  scena due volte insieme. Senza il lotto stesso, che sarebbe
+                  un'alternativa a se'. Senza cornice propria, perche' il banco ne
+                  porta gia' una.
+
+                  min-h-0: l'elenco scorre dentro lo spazio che avanza, non allunga
+                  il riquadro. L'altezza del banco resta quella decisa in anticipo. */}
+              {/* Solo a conto FERMO. Avviato il conto — corra o sia scaduto — le
+                  alternative non ci sono proprio: non spente, non smorzate, via.
+                  Un lotto alla volta e' aperto, e un elenco di altri giocatori in
+                  scena mentre si rilancia e' l'invito a un gesto che non si puo'
+                  fare, oltre che rumore nel momento di massima attenzione.
+                  Schiarite dicevano «potresti, ma no»; qui non c'e' nessun
+                  potresti. */}
+              {valuation.data && !bidderOpen ? (
+                <div className="mt-6 flex shrink-0 flex-col border-t border-line pt-4">
+                  <PhaseTargets
+                    bare
+                    excludeId={valuation.data.playerId}
+                    phase={state.data?.currentPhase}
+                    targets={targets.data ?? []}
+                    loading={targets.isLoading}
+                    failed={targets.isError}
+                    disabled={false}
+                    onSelect={setSelectedId}
+                  />
+                </div>
+              ) : null}
             </div>
           </section>
           )}
@@ -644,7 +756,7 @@ export function AuctionRoute() {
               tabIndex={activeTab === tab.key ? 0 : -1}
               onClick={() => setActiveTab(tab.key)}
               onKeyDown={(e) => handleTabKeyDown(e, tab.key)}
-              className={`min-h-11 border-b-2 px-3 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+              className={`min-h-11 border-b-2 px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                 activeTab === tab.key
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted-foreground'
@@ -664,20 +776,25 @@ export function AuctionRoute() {
         >
           {activeTab === 'fase' ? (
             <>
-              {/* Bloccata mentre il battitore e' aperto: un lotto alla volta.
+              {/* Bloccata mentre il conto alla rovescia corre: un lotto alla volta.
                   Cambiare selezione con un rilancio in corso rimonterebbe
                   BidderDialog (keyed sul playerId) su un altro giocatore,
                   buttando via countdown, prezzo e beep senza preavviso.
                   Abbandonare un lotto resta un gesto deliberato — si chiude
-                  il battitore, che e' il controllo che gia' esiste per farlo. */}
+                  il conto alla rovescia, che e' il controllo che gia' esiste per farlo. */}
               <PlayerTable
+                sort={sort}
+                dir={sortDir}
+                // Cambiando ordine si torna alla prima pagina: restare alla terza
+                // pagina di un ordine che non esiste piu' non vuol dire niente.
+                onSort={(next, dir) => { setSort(next); setSortDir(dir); setPageOffset(0); }}
                 rows={phase.data?.rows ?? []}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 disabled={bidderOpen}
               />
               {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
-                  una pagina precedente resta scelto (valutazione e battitore
+                  una pagina precedente resta scelto (valutazione e banco
                   intatti, se aperto) anche se la sua riga scorre fuori vista
                   sfogliando. */}
               {phase.data ? (
@@ -727,15 +844,15 @@ export function AuctionRoute() {
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
           <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-positive bg-surface px-5 py-3 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             <p className="text-base">
-              <span className="font-bold">{sale.player}</span>
+              <span className="font-medium">{sale.player}</span>
               {` a ${sale.buyer} per `}
-              <span className="tnum font-bold text-accent">{sale.price}</span>
+              <span className="tnum font-medium text-accent">{sale.price}</span>
             </p>
             <button
               type="button"
               onClick={() => { undo(); setSale(null); }}
               disabled={undoLast.isPending}
-              className="min-h-11 rounded-full border border-line-strong px-4 font-bold hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="min-h-11 rounded-full border border-line-strong px-4 font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               Annulla
             </button>
