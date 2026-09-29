@@ -53,6 +53,13 @@ class SpaRoutesControllerTest {
                 .andExpect(forwardedUrl("/index.html"));
     }
 
+    @Test
+    void unaRottaConParametroRicaricataInoltraAllaSpa() throws Exception {
+        mvc.perform(get("/invito/abc"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/index.html"));
+    }
+
     /**
      * Il vincolo vero. Un frontend che riceve index.html al posto di un errore JSON
      * mostra una pagina bianca e nessun messaggio. {@code @WithMockUser}: la rotta è
@@ -97,7 +104,8 @@ class SpaRoutesControllerTest {
         Matcher m = Pattern.compile("path:\\s*'([^']+)'").matcher(router);
         Set<String> client = new LinkedHashSet<>();
         while (m.find()) {
-            client.add(m.group(1));
+            // React Router scrive i parametri ":nome", Spring "{nome}": stessa rotta.
+            client.add(m.group(1).replaceAll(":([A-Za-z]+)", "{$1}"));
         }
 
         assertThat(client)

@@ -33,6 +33,9 @@ public class SpaRoutesController {
     static final String PASSWORD_DIMENTICATA = "/password-dimenticata";
     static final String NUOVA_PASSWORD = "/nuova-password";
     static final String VERIFICA_EMAIL = "/verifica-email";
+    static final String LEGHE = "/leghe";
+    static final String LEGA = "/leghe/{leagueId}";
+    static final String INVITO = "/invito/{token}";
 
     /**
      * Le stesse di {@code frontend/src/router.tsx}, verificate da un test.
@@ -45,7 +48,8 @@ public class SpaRoutesController {
      * test di reflection su {@link #spa()}, non le costanti.
      */
     static final List<String> ROUTES = List.of(ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO,
-            PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL);
+            PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL,
+            LEGHE, LEGA, INVITO);
 
     /**
      * Inoltra, non redirige: l'indirizzo nella barra deve restare quello che l'utente
@@ -53,7 +57,8 @@ public class SpaRoutesController {
      * perderebbe il punto in cui era.
      */
     @GetMapping({ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO,
-            PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL})
+            PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL,
+            LEGHE, LEGA, INVITO})
     public String spa() {
         return "forward:/index.html";
     }

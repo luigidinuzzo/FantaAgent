@@ -3,6 +3,9 @@ import { AppFrame } from './AppFrame';
 import { AuctionRoute } from './routes/AuctionRoute';
 import { ForgotPasswordRoute } from './routes/ForgotPasswordRoute';
 import { HomeRoute } from './routes/HomeRoute';
+import { InviteRoute } from './routes/InviteRoute';
+import { LeagueRoute } from './routes/LeagueRoute';
+import { LeaguesRoute } from './routes/LeaguesRoute';
 import { LoginRoute } from './routes/LoginRoute';
 import { ProfileRoute } from './routes/ProfileRoute';
 import { ProjectionRoute } from './routes/ProjectionRoute';
@@ -30,6 +33,10 @@ export const routeDefinitions = [
   { path: '/proiezione', element: <RequireAuth><ProjectionRoute /></RequireAuth> },
   { path: '/impostazioni', element: <RequireAuth><SettingsRoute /></RequireAuth> },
   { path: '/profilo', element: <RequireAuth><ProfileRoute /></RequireAuth> },
+  { path: '/leghe', element: <RequireAuth><LeaguesRoute /></RequireAuth> },
+  { path: '/leghe/:leagueId', element: <RequireAuth><LeagueRoute /></RequireAuth> },
+  // Pubblica: chi apre l'invito spesso non ha ancora un account.
+  { path: '/invito/:token', element: <InviteRoute /> },
   // Le pagine d'ingresso: pubbliche, senza la barra delle altre.
   { path: '/accedi', element: <LoginRoute /> },
   { path: '/registrati', element: <RegisterRoute /> },

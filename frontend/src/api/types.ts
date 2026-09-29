@@ -249,3 +249,49 @@ export interface SaveSettingsResult {
  * possono elencare tutti in anticipo come le quattro sezioni fisse di prima.
  */
 export type SettingsErrors = Record<string, string[]>;
+
+/** Una lega fra le mie. Specchio di {@code LeagueDtos.LeagueCard}. */
+export interface LeagueCard {
+  id: string;
+  name: string;
+  admin: boolean;
+  teamName: string;
+  initial: string;
+}
+
+export interface MemberView {
+  userId: string;
+  displayName: string;
+  teamName: string;
+  initial: string;
+  role: 'ADMIN' | 'MEMBER';
+  me: boolean;
+}
+
+export interface LeagueDetail {
+  id: string;
+  name: string;
+  admin: boolean;
+  members: MemberView[];
+}
+
+export interface InviteView {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/** Il link si vede solo qui, nella risposta alla creazione. */
+export interface CreatedInvite {
+  id: string;
+  link: string;
+  expiresAt: string;
+}
+
+export interface InvitePreview {
+  leagueId: string;
+  leagueName: string;
+  invitedBy: string;
+  alreadyMember: boolean;
+  takenInitials: string[];
+}
