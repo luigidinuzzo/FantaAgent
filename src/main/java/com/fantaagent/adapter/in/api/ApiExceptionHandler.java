@@ -13,6 +13,8 @@ import com.fantaagent.application.service.auction.AuctionNotFoundException;
 import com.fantaagent.application.service.auction.NoSeatException;
 import com.fantaagent.application.service.auction.NotEnoughMembersException;
 import com.fantaagent.application.service.auction.SeatsLockedException;
+import com.fantaagent.application.service.importing.ImportMismatchException;
+import com.fantaagent.application.service.importing.InvalidImportException;
 import com.fantaagent.application.service.league.AdminCannotLeaveException;
 import com.fantaagent.application.service.league.AdminOnlyException;
 import com.fantaagent.application.service.league.InvalidLeagueDataException;
@@ -246,6 +248,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(AdminCannotLeaveException.class)
     ProblemDetail adminCannotLeave(AdminCannotLeaveException e) {
         return problem(HttpStatus.CONFLICT, "admin-cannot-leave", e.getMessage());
+    }
+
+    @ExceptionHandler(InvalidImportException.class)
+    ProblemDetail invalidImport(InvalidImportException e) {
+        ProblemDetail problem = problem(HttpStatus.UNPROCESSABLE_ENTITY, "invalid-import",
+                "L'asta non si può importare così.");
+        problem.setProperty("errors", e.errors());
+        return problem;
+    }
+
+    @ExceptionHandler(ImportMismatchException.class)
+    ProblemDetail importMismatch(ImportMismatchException e) {
+        logger.warn("importazione annullata: " + e.getMessage());
+        return problem(HttpStatus.CONFLICT, "import-mismatch",
+                "Le rose ricostruite non coincidono con quelle dell'asta originale: l'importazione è stata annullata.");
     }
 
     /**

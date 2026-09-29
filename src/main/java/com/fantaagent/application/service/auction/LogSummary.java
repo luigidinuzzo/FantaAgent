@@ -90,4 +90,37 @@ public final class LogSummary {
     public static Instant lastWritten(List<AuctionEvent> events) {
         return events.isEmpty() ? null : events.getLast().at();
     }
+
+    /** I giocatori in rosa di un partecipante, dopo annullamenti e correzioni. */
+    public static Set<String> playersOf(List<AuctionEvent> events, String participantId) {
+        Map<Long, String> player = new HashMap<>();
+        Map<Long, String> buyer = new HashMap<>();
+        for (AuctionEvent event : events) {
+            switch (event) {
+                case AuctionEvent.PlayerPurchased p -> {
+                    player.put(p.seq(), p.playerId());
+                    buyer.put(p.seq(), p.participantId());
+                }
+                case AuctionEvent.PurchaseRevoked r -> {
+                    player.remove(r.targetSeq());
+                    buyer.remove(r.targetSeq());
+                }
+                case AuctionEvent.PurchaseCorrected c -> {
+                    if (buyer.containsKey(c.targetSeq())) {
+                        buyer.put(c.targetSeq(), c.newParticipantId());
+                    }
+                }
+                default -> {
+                    // nome e fasi non spostano giocatori
+                }
+            }
+        }
+        Set<String> mine = new HashSet<>();
+        buyer.forEach((seq, who) -> {
+            if (participantId.equals(who)) {
+                mine.add(player.get(seq));
+            }
+        });
+        return mine;
+    }
 }

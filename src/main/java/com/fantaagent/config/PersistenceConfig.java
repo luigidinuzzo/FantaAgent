@@ -1,5 +1,6 @@
 package com.fantaagent.config;
 
+import com.fantaagent.adapter.out.importing.FileImportReader;
 import com.fantaagent.adapter.out.jdbc.JdbcAuctionEventStores;
 import com.fantaagent.adapter.out.jdbc.JdbcAuctionRepository;
 import com.fantaagent.adapter.out.jdbc.JdbcInviteRepository;
@@ -14,6 +15,7 @@ import com.fantaagent.application.port.out.Transactions;
 import com.fantaagent.application.port.out.UserRepository;
 import com.fantaagent.application.service.auction.AuctionRegistry;
 import com.fantaagent.application.service.auction.LeagueAuctionService;
+import com.fantaagent.application.service.importing.AuctionImportService;
 import com.fantaagent.application.service.league.InviteService;
 import com.fantaagent.application.service.league.LeagueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,6 +70,13 @@ public class PersistenceConfig {
                                            Transactions tx) {
         return new AuctionRegistry(auctions, repository, stores, catalog, template,
                 props.scoring().seasonWeights(), props.phases(), tx);
+    }
+
+    @Bean
+    public AuctionImportService auctionImportService(ConfigAuctionTemplate template, AuctionRepository auctions,
+                                                     AuctionEventStores stores, LeagueRepository leagues,
+                                                     Transactions tx) {
+        return new AuctionImportService(new FileImportReader(template), auctions, stores, leagues, tx);
     }
 
     @Bean
