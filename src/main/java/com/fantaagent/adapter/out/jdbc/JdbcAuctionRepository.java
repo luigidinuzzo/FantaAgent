@@ -108,6 +108,7 @@ public class JdbcAuctionRepository implements AuctionRepository {
         return jdbc.sql("""
                         SELECT s.auction_id FROM auction_seat s JOIN auction a ON a.id = s.auction_id
                         WHERE a.league_id = :league AND s.user_id = :user AND a.deleted_at IS NULL
+                        ORDER BY s.auction_id
                         """)
                 .param("league", leagueId).param("user", userId).query(UUID.class).list();
     }

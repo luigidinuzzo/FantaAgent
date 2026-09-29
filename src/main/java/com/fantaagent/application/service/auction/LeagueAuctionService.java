@@ -188,6 +188,10 @@ public class LeagueAuctionService {
             access.requireAdmin();
         }
         tx.run(() -> {
+            // auctionsWithSeat torna le aste in un ordine fisso (per identificativo): con
+            // piu' aste da bloccare in sequenza, due removeMember concorrenti su aste in
+            // comune devono prenderle sempre nello stesso ordine, altrimenti l'una
+            // aspetterebbe la riga che l'altra ha gia' bloccato e viceversa — un deadlock.
             for (UUID auctionId : auctions.auctionsWithSeat(access.leagueId(), userId)) {
                 // Stesso motivo di replaceSeats: il lock impedisce che questa rimozione e un
                 // acquisto sulla stessa asta si scavalchino.

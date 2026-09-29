@@ -31,7 +31,13 @@ public interface AuctionRepository {
 
     void removeSeat(UUID auctionId, UUID userId);
 
-    /** Le aste non cancellate della lega in cui l'utente ha un posto. */
+    /**
+     * Le aste non cancellate della lega in cui l'utente ha un posto, ordinate per
+     * identificativo dell'asta: un ordine fisso e indipendente da chi chiama, cosi'
+     * chi blocca piu' righe in sequenza (es. {@code removeMember}) le prende sempre
+     * nello stesso ordine e due chiamate concorrenti su aste in comune non si
+     * deadlockano bloccandole in ordine opposto.
+     */
     List<UUID> auctionsWithSeat(UUID leagueId, UUID userId);
 
     /**
