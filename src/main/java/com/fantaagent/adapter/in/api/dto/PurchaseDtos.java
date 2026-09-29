@@ -21,4 +21,7 @@ public final class PurchaseDtos {
 
     public record PurchaseResponse(long seq, String playerId, String participantId, int price) {
     }
+
+    public record CorrectionRequest(@NotBlank String participantId, @Min(1) int price) {
+    }
 }

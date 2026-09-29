@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.api;
 
+import com.fantaagent.application.port.out.ConcurrentAppendException;
 import com.fantaagent.application.port.out.EmailTakenException;
 import com.fantaagent.application.port.out.InitialTakenException;
 import com.fantaagent.application.service.NoAuctionSelectedException;
@@ -231,6 +232,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(NoSeatException.class)
     ProblemDetail noSeat(NoSeatException e) {
         return problem(HttpStatus.FORBIDDEN, "no-seat", e.getMessage());
+    }
+
+    @ExceptionHandler(ConcurrentAppendException.class)
+    ProblemDetail concurrentWrite(ConcurrentAppendException e) {
+        return problem(HttpStatus.CONFLICT, "concurrent-write",
+                "Qualcun altro ha scritto nello stesso istante: riprova.");
     }
 
     /**
