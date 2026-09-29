@@ -53,11 +53,14 @@ public final class AuctionProjector {
             squads.put(participant.id(), new Squad(participant.id(), owned, rules));
         }
 
+        // Chi guarda puo' non avere un posto: un membro entrato nella lega dopo il primo
+        // acquisto vede l'asta ma non ci gioca. Lo stato si proietta lo stesso; e'
+        // mySquad() a rifiutarsi, cioe' solo chi chiede i consigli di un posto che non c'e'.
         String me = participants.stream()
                 .filter(Participant::me)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("no participant flagged as me"))
-                .id();
+                .map(Participant::id)
+                .orElse(null);
 
         return new AuctionState(rules, currentPhase, me, squads, holdings);
     }

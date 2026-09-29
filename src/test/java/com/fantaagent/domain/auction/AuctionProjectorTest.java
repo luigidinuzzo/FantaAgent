@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AuctionProjectorTest {
 
@@ -135,5 +136,18 @@ class AuctionProjectorTest {
         assertThat(completa.isPhaseComplete(Role.P)).isTrue();
         // La completezza e' per ruolo, non globale: gli altri restano aperti.
         assertThat(completa.isPhaseComplete(Role.D)).isFalse();
+    }
+
+    @Test
+    void senzaUnPostoPerChiGuardaLoStatoSiProiettaLoStesso() {
+        List<Participant> nobodyIsMe = PARTICIPANTS.stream()
+                .map(p -> new Participant(p.id(), p.name(), p.initial(), false))
+                .toList();
+
+        AuctionState state = AuctionProjector.project(RULES, nobodyIsMe, LOOKUP, List.of());
+
+        assertThat(state.myParticipantId()).isNull();
+        assertThat(state.squadOf(nobodyIsMe.getFirst().id()).budgetRemaining()).isEqualTo(RULES.budget());
+        assertThatThrownBy(state::mySquad).isInstanceOf(IllegalStateException.class);
     }
 }

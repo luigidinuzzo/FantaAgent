@@ -29,6 +29,9 @@ public record AuctionState(
     }
 
     public Squad mySquad() {
+        if (myParticipantId == null) {
+            throw new IllegalStateException("nessun posto per chi guarda");
+        }
         return squadOf(myParticipantId);
     }
 

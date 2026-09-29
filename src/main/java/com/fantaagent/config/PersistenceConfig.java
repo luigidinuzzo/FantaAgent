@@ -9,8 +9,10 @@ import com.fantaagent.application.port.out.AuctionEventStores;
 import com.fantaagent.application.port.out.AuctionRepository;
 import com.fantaagent.application.port.out.InviteRepository;
 import com.fantaagent.application.port.out.LeagueRepository;
+import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.port.out.Transactions;
 import com.fantaagent.application.port.out.UserRepository;
+import com.fantaagent.application.service.auction.AuctionRegistry;
 import com.fantaagent.application.service.auction.LeagueAuctionService;
 import com.fantaagent.application.service.league.InviteService;
 import com.fantaagent.application.service.league.LeagueService;
@@ -57,6 +59,15 @@ public class PersistenceConfig {
                                                      AuctionEventStores stores, Transactions tx,
                                                      Clock clock, LeagueProperties props) {
         return new LeagueAuctionService(auctions, leagues, stores, tx, clock, props.phases());
+    }
+
+    @Bean
+    public AuctionRegistry auctionRegistry(LeagueAuctionService auctions, AuctionRepository repository,
+                                           AuctionEventStores stores, PlayerCatalog catalog,
+                                           ConfigAuctionTemplate template, LeagueProperties props,
+                                           Transactions tx) {
+        return new AuctionRegistry(auctions, repository, stores, catalog, template,
+                props.scoring().seasonWeights(), props.phases(), tx);
     }
 
     @Bean
