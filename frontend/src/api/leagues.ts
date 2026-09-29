@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from './client';
+import { api, apiUpload } from './client';
 import type {
-  BidderSettings, CreatedInvite, InvitePreview, InviteView, LeagueAuctionCard, LeagueCard, LeagueDetail,
-  LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
+  BidderSettings, CreatedInvite, ImportPreview, ImportResult, InvitePreview, InviteView, LeagueAuctionCard,
+  LeagueCard, LeagueDetail, LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
 } from './types';
 
 const path = (id: string) => `/api/leagues/${encodeURIComponent(id)}`;
@@ -178,5 +178,33 @@ export function useSaveLeagueRules(leagueId: string) {
     mutationFn: (body: SaveLeagueRulesRequest) =>
       api<LeagueRulesResponse>(`${path(leagueId)}/rules`, { method: 'PUT', body }),
     onSuccess: (saved) => client.setQueryData(LEAGUE_KEYS.rules(leagueId), saved),
+  });
+}
+
+/** I soli documenti che servono: il resto della cartella non parte nemmeno. */
+export const IMPORT_FILES = ['events.jsonl', 'league-members.yml', 'league-rules.yml',
+  'league-settings.yml', 'auction-settings.yml'];
+
+function importForm(files: File[]): FormData {
+  const form = new FormData();
+  files.filter((f) => IMPORT_FILES.includes(f.name)).forEach((f) => form.append('files', f, f.name));
+  return form;
+}
+
+export function useImportPreview(leagueId: string) {
+  return useMutation({
+    mutationFn: (files: File[]) => apiUpload<ImportPreview>(`${path(leagueId)}/imports/preview`, importForm(files)),
+  });
+}
+
+export function useImportAuction(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ files, mapping }: { files: File[]; mapping: Record<string, string> }) => {
+      const form = importForm(files);
+      form.append('mapping', new Blob([JSON.stringify(mapping)], { type: 'application/json' }));
+      return apiUpload<ImportResult>(`${path(leagueId)}/imports`, form);
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
   });
 }

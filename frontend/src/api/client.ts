@@ -156,6 +156,11 @@ async function request<T>(resolvedUrl: string, init: RequestInit): Promise<T | n
   return (await response.json()) as T;
 }
 
+/** Un invio di documenti: il browser mette da se' l'intestazione del modulo, col suo separatore. */
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  return (await request<T>(path, { method: 'POST', headers: { accept: 'application/json' }, body: form })) as T;
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   return (await request<T>(url(path), { headers: { accept: 'application/json' } })) as T;
 }

@@ -136,6 +136,9 @@ function AuctionsPanel({ leagueId, admin, create }: {
             className="min-h-11 rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
             Crea l'asta
           </button>
+          <Link to={`/leghe/${leagueId}/importa`} className={`inline-flex items-center ${SECONDARY_BUTTON}`}>
+            Importa un'asta
+          </Link>
         </form>
       ) : null}
       <RenameAuctionDialog auction={renaming} pending={update.isPending}

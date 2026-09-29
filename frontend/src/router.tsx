@@ -3,6 +3,7 @@ import { AppFrame } from './AppFrame';
 import { AuctionRoute } from './routes/AuctionRoute';
 import { AuctionSettingsRoute } from './routes/AuctionSettingsRoute';
 import { ForgotPasswordRoute } from './routes/ForgotPasswordRoute';
+import { ImportRoute } from './routes/ImportRoute';
 import { InviteRoute } from './routes/InviteRoute';
 import { LeagueRoute } from './routes/LeagueRoute';
 import { LeagueRulesRoute } from './routes/LeagueRulesRoute';
@@ -32,6 +33,9 @@ export const routeDefinitions = [
   { path: '/leghe/:leagueId', element: <RequireAuth><LeagueRoute /></RequireAuth> },
   // Le regole con cui nasceranno le prossime aste: della lega, non di un'asta.
   { path: '/leghe/:leagueId/regole', element: <RequireAuth><LeagueRulesRoute /></RequireAuth> },
+  // Solo l'amministratore vi arriva (il link sta nella pagina della lega), ma la
+  // guardia vera e' lato server: un membro che forzi l'indirizzo vede il 403.
+  { path: '/leghe/:leagueId/importa', element: <RequireAuth><ImportRoute /></RequireAuth> },
   // Lega e asta nell'indirizzo: e' quello che si manda nel gruppo, ed e' quello che
   // un ricaricamento deve ritrovare.
   {

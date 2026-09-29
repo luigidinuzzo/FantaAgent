@@ -290,3 +290,13 @@ export interface SeatInput {
   teamName: string;
   initial: string;
 }
+
+export interface ImportPreview {
+  name: string;
+  purchases: number;
+  participants: { id: string; name: string; initial: string }[];
+}
+
+export interface ImportResult {
+  auctionId: string;
+}
