@@ -160,11 +160,18 @@ public class LeagueAuctionService {
         if (wanted.size() < 2) {
             throw new NotEnoughMembersException();
         }
-        if (seatsLocked(access, auctionId) && !sameSeatsIgnoringOrder(auctions.seats(auctionId), wanted)) {
-            throw new SeatsLockedException();
-        }
-        tx.run(() -> auctions.replaceSeats(auctionId, wanted));
-        return auctions.seats(auctionId);
+        // Il controllo "posti bloccati" e la scrittura vanno dietro lo stesso lock di riga
+        // che AuctionWriteLock usa per gli acquisti: senza, un acquisto in corso potrebbe
+        // leggere posti che stanno per sparire, o questo cambio posti ignorare un acquisto
+        // appena registrato che li avrebbe bloccati.
+        return tx.inTransaction(() -> {
+            auctions.lockForWrite(auctionId);
+            if (seatsLocked(access, auctionId) && !sameSeatsIgnoringOrder(auctions.seats(auctionId), wanted)) {
+                throw new SeatsLockedException();
+            }
+            auctions.replaceSeats(auctionId, wanted);
+            return auctions.seats(auctionId);
+        });
     }
 
     /**
@@ -182,6 +189,9 @@ public class LeagueAuctionService {
         }
         tx.run(() -> {
             for (UUID auctionId : auctions.auctionsWithSeat(access.leagueId(), userId)) {
+                // Stesso motivo di replaceSeats: il lock impedisce che questa rimozione e un
+                // acquisto sulla stessa asta si scavalchino.
+                auctions.lockForWrite(auctionId);
                 if (!LogSummary.anyPurchase(stores.open(auctionId, access.userId()).load())) {
                     auctions.removeSeat(auctionId, userId);
                 }

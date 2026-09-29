@@ -99,7 +99,7 @@ public class AuctionRegistry {
         PlayerAnalysisService analysis = new PlayerAnalysisService(catalog, () -> chain, service);
         PlayerSearchService search = new PlayerSearchService(catalog, () -> chain, service, analysis);
         return new AuctionView(auction, access, participants, rules, chain, mySeat, service, analysis, search,
-                new AuctionWriteLock(tx, repository, auctionId));
+                new AuctionWriteLock(tx, repository, auctionId, seats));
     }
 
     private synchronized ValuationChain chainFor(AuctionRecord auction, LeagueRules rules) {

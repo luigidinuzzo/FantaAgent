@@ -1,6 +1,7 @@
 package com.fantaagent.application.service.auction;
 
 import com.fantaagent.application.port.out.AuctionRecord;
+import com.fantaagent.application.port.out.ConcurrentAppendException;
 import com.fantaagent.application.service.league.LeagueAccess;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.league.Participant;
@@ -102,6 +103,37 @@ class AuctionRegistryTest {
         LeagueAccess other = world.league("enzo", "fabio");
         assertThatThrownBy(() -> registry.view(other, auction.id()))
                 .isInstanceOf(AuctionNotFoundException.class);
+    }
+
+    @Test
+    void unaScritturaSuPostiCambiatiDaReplaceSeatsVieneRifiutata() {
+        AuctionView view = registry.view(admin, auction.id());
+        UUID carla = world.userId(admin, "carla FC");
+
+        // Cambio solo l'ordine: valido prima del primo acquisto, ma i posti non sono
+        // piu' quelli con cui la vista era stata costruita.
+        world.auctions.replaceSeats(admin, auction.id(), List.of(
+                new SeatRequest(bruno, "bruno FC", "B"),
+                new SeatRequest(admin.userId(), "anna FC", "A"),
+                new SeatRequest(carla, "carla FC", "C")));
+
+        assertThatThrownBy(() -> view.write(
+                () -> view.service().recordPurchase("P1", bruno.toString(), 30, "r-1")))
+                .isInstanceOf(ConcurrentAppendException.class);
+        assertThat(view.service().state().holdings()).isEmpty();
+    }
+
+    @Test
+    void unaScritturaSuPostiCambiatiDaRemoveMemberVieneRifiutata() {
+        UUID carla = world.userId(admin, "carla FC");
+        AuctionView view = registry.view(admin, auction.id());
+
+        world.auctions.removeMember(admin, carla);
+
+        assertThatThrownBy(() -> view.write(
+                () -> view.service().recordPurchase("P1", bruno.toString(), 30, "r-1")))
+                .isInstanceOf(ConcurrentAppendException.class);
+        assertThat(view.service().state().holdings()).isEmpty();
     }
 
     @Test
