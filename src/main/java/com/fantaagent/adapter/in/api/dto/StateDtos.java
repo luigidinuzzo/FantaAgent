@@ -33,18 +33,19 @@ public final class StateDtos {
                                        Role currentPhase, List<Role> phases,
                                        int soldInPhase, String myParticipantId,
                                        boolean canUndo,
-                                       List<ParticipantView> participants) {
+                                       List<ParticipantView> participants,
+                                       long version, boolean admin) {
     }
 
     public static AuctionStateResponse from(String auctionId, String auctionName,
                                             AuctionState state, List<Participant> participants,
-                                            int soldInPhase) {
+                                            int soldInPhase, long version, boolean admin) {
         List<ParticipantView> views = participants.stream()
                 .map(p -> view(p, state.squadOf(p.id()), state))
                 .toList();
         return new AuctionStateResponse(auctionId, auctionName, state.currentPhase(),
                 state.rules().phases(), soldInPhase, state.myParticipantId(),
-                !state.holdings().isEmpty(), views);
+                !state.holdings().isEmpty(), views, version, admin);
     }
 
     private static ParticipantView view(Participant p, Squad squad, AuctionState state) {

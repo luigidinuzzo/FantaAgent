@@ -1,11 +1,13 @@
 package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.adapter.in.api.dto.PlayerDtos;
+import com.fantaagent.adapter.in.security.AppUserPrincipal;
 import com.fantaagent.application.port.out.PlayerCatalog;
-import com.fantaagent.application.service.PlayerAnalysisService;
 import com.fantaagent.application.service.PlayerSearchService;
+import com.fantaagent.application.service.auction.AuctionView;
 import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,18 +20,11 @@ import java.util.List;
 @RequestMapping("/api/leagues/{leagueId}/auctions/{auctionId}/players")
 public class PlayerApi {
 
-    private final LeagueGuard leagues;
-    private final AuctionGuard auctions;
-    private final PlayerSearchService search;
-    private final PlayerAnalysisService analysis;
+    private final ApiAccess access;
     private final PlayerCatalog catalog;
 
-    public PlayerApi(LeagueGuard leagues, AuctionGuard auctions, PlayerSearchService search,
-                     PlayerAnalysisService analysis, PlayerCatalog catalog) {
-        this.leagues = leagues;
-        this.auctions = auctions;
-        this.search = search;
-        this.analysis = analysis;
+    public PlayerApi(ApiAccess access, PlayerCatalog catalog) {
+        this.access = access;
         this.catalog = catalog;
     }
 
@@ -43,10 +38,10 @@ public class PlayerApi {
                                                  @PathVariable String auctionId,
                                                  @RequestParam(defaultValue = "") String q,
                                                  @RequestParam(required = false) Role role,
-                                                 @RequestParam(required = false) String team) {
-        leagues.check(leagueId);
-        auctions.check(auctionId);
-        return search.browse(q, role, team).stream().map(PlayerDtos.PlayerSummary::from).toList();
+                                                 @RequestParam(required = false) String team,
+                                                 @AuthenticationPrincipal AppUserPrincipal me) {
+        AuctionView view = access.auction(leagueId, auctionId, me);
+        return view.search().browse(q, role, team).stream().map(PlayerDtos.PlayerSummary::from).toList();
     }
 
     /**
@@ -55,10 +50,9 @@ public class PlayerApi {
      * risultati cambiano a ogni tasto premuto.
      */
     @GetMapping("/teams")
-    public List<String> teams(@PathVariable String leagueId, @PathVariable String auctionId) {
-        leagues.check(leagueId);
-        auctions.check(auctionId);
-        return search.teams();
+    public List<String> teams(@PathVariable String leagueId, @PathVariable String auctionId,
+                              @AuthenticationPrincipal AppUserPrincipal me) {
+        return access.auction(leagueId, auctionId, me).search().teams();
     }
 
     @GetMapping("/phase")
@@ -68,10 +62,11 @@ public class PlayerApi {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "25") int limit,
             @RequestParam(required = false) String sort,
-            @RequestParam(required = false) String dir) {
-        leagues.check(leagueId);
-        auctions.check(auctionId);
-        return PlayerDtos.PhasePageResponse.from(search.phasePlayers(
+            @RequestParam(required = false) String dir,
+            @AuthenticationPrincipal AppUserPrincipal me) {
+        AuctionView view = access.auction(leagueId, auctionId, me);
+        view.requireSeat();
+        return PlayerDtos.PhasePageResponse.from(view.search().phasePlayers(
                 Math.max(0, offset), clampLimit(limit), parseSort(sort), "asc".equalsIgnoreCase(dir)));
     }
 
@@ -124,11 +119,12 @@ public class PlayerApi {
     @GetMapping("/targets")
     public List<PlayerDtos.TargetView> targets(@PathVariable String leagueId,
                                                @PathVariable String auctionId,
-                                               @RequestParam(defaultValue = "5") int limit) {
-        leagues.check(leagueId);
-        auctions.check(auctionId);
+                                               @RequestParam(defaultValue = "5") int limit,
+                                               @AuthenticationPrincipal AppUserPrincipal me) {
+        AuctionView view = access.auction(leagueId, auctionId, me);
+        view.requireSeat();
         int capped = Math.max(1, Math.min(limit, MAX_TARGETS));
-        return search.targets(capped).stream().map(PlayerDtos.TargetView::from).toList();
+        return view.search().targets(capped).stream().map(PlayerDtos.TargetView::from).toList();
     }
 
     /** Quante occasioni al massimo per richiesta. */
@@ -137,11 +133,11 @@ public class PlayerApi {
     @GetMapping("/{playerId}/valuation")
     public PlayerDtos.ValuationResponse valuation(@PathVariable String leagueId,
                                                   @PathVariable String auctionId,
-                                                  @PathVariable String playerId) {
-        leagues.check(leagueId);
-        auctions.check(auctionId);
-        Player player = catalog.byId(playerId)
-                .orElseThrow(() -> new UnknownPlayerException(playerId));
-        return PlayerDtos.ValuationResponse.from(player, analysis.analyze(playerId));
+                                                  @PathVariable String playerId,
+                                                  @AuthenticationPrincipal AppUserPrincipal me) {
+        AuctionView view = access.auction(leagueId, auctionId, me);
+        view.requireSeat();
+        Player player = catalog.byId(playerId).orElseThrow(() -> new UnknownPlayerException(playerId));
+        return PlayerDtos.ValuationResponse.from(player, view.analysis().analyze(playerId));
     }
 }

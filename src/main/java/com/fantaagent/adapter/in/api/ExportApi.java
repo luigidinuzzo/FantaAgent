@@ -1,14 +1,13 @@
 package com.fantaagent.adapter.in.api;
 
-import com.fantaagent.application.port.out.AuctionArchive;
-import com.fantaagent.application.service.AuctionService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.fantaagent.adapter.in.security.AppUserPrincipal;
 import com.fantaagent.application.service.RosterCsvExporter;
+import com.fantaagent.application.service.auction.AuctionView;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,41 +30,24 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/leagues/{leagueId}/auctions/{auctionId}")
 public class ExportApi {
 
-    private static final Logger log = LoggerFactory.getLogger(ExportApi.class);
+    private final ApiAccess access;
 
-    private final LeagueGuard leagues;
-    private final AuctionGuard auctions;
-    private final AuctionService auction;
-    private final AuctionArchive archive;
-
-    public ExportApi(LeagueGuard leagues, AuctionGuard auctions, AuctionService auction,
-                     AuctionArchive archive) {
-        this.leagues = leagues;
-        this.auctions = auctions;
-        this.auction = auction;
-        this.archive = archive;
+    public ExportApi(ApiAccess access) {
+        this.access = access;
     }
 
     @GetMapping(value = "/export.csv", produces = "text/csv")
     public ResponseEntity<byte[]> export(@PathVariable String leagueId,
-                                         @PathVariable String auctionId) {
-        leagues.check(leagueId);
-        auctions.check(auctionId);
-        String csvText = RosterCsvExporter.toCsv(auction);
-        byte[] csv = csvText.getBytes(StandardCharsets.UTF_8);
-        try {
-            archive.saveExport(auction.auctionId(), csvText);
-        } catch (RuntimeException e) {
-            // Scaricare e' cio' che l'utente ha chiesto; il file su disco e' una copia.
-            log.warn("export dell'asta {} non salvato su disco: {}",
-                    auction.auctionId(), e.getMessage(), e);
-        }
-        String fileName = "rose-" + auction.auctionId() + ".csv";
+                                         @PathVariable String auctionId,
+                                         @AuthenticationPrincipal AppUserPrincipal me) {
+        AuctionView view = access.auction(leagueId, auctionId, me);
+        byte[] csv = RosterCsvExporter.toCsv(view.service()).getBytes(StandardCharsets.UTF_8);
+        String fileName = "rose-" + view.auction().name() + ".csv";
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
-                // Il costruttore di Spring, non la concatenazione a mano: gli id di oggi
-                // sono date, ma AuctionGuard promette che un sotto-progetto futuro rendera'
-                // le aste indirizzabili per nome scelto da chi le crea. Una virgoletta in
+                // Il costruttore di Spring, non la concatenazione a mano: il nome dell'asta
+                // e' quello scelto da chi la crea, con qualunque carattere ci abbia messo —
+                // esattamente il caso che questo costruttore copre. Una virgoletta in
                 // quel nome romperebbe una stringa quotata scritta a mano; un nome accentato
                 // finirebbe scritto senza dichiarare una codifica. Questo costruttore applica
                 // RFC 6266/5987 (escaping e parametro esteso filename*) a prescindere da cosa

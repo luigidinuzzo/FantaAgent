@@ -1,6 +1,9 @@
 package com.fantaagent.adapter.in.api;
 
 import com.fantaagent.adapter.in.security.AppUserPrincipal;
+import com.fantaagent.application.service.auction.AuctionNotFoundException;
+import com.fantaagent.application.service.auction.AuctionRegistry;
+import com.fantaagent.application.service.auction.AuctionView;
 import com.fantaagent.application.service.league.LeagueAccess;
 import com.fantaagent.application.service.league.LeagueService;
 import com.fantaagent.application.service.league.NotLeagueMemberException;
@@ -18,9 +21,11 @@ import java.util.function.Supplier;
 public class ApiAccess {
 
     private final LeagueService leagues;
+    private final AuctionRegistry registry;
 
-    public ApiAccess(LeagueService leagues) {
+    public ApiAccess(LeagueService leagues, AuctionRegistry registry) {
         this.leagues = leagues;
+        this.registry = registry;
     }
 
     public LeagueAccess league(String leagueId, AppUserPrincipal me) {
@@ -29,6 +34,17 @@ public class ApiAccess {
 
     public LeagueAccess admin(String leagueId, AppUserPrincipal me) {
         return league(leagueId, me).requireAdmin();
+    }
+
+    public AuctionView auction(String leagueId, String auctionId, AppUserPrincipal me) {
+        LeagueAccess league = league(leagueId, me);
+        return registry.view(league, parseOr404(auctionId, () -> new AuctionNotFoundException(null)));
+    }
+
+    /** Solo l'amministratore scrive nel registro: gli altri membri guardano. */
+    public AuctionView adminAuction(String leagueId, String auctionId, AppUserPrincipal me) {
+        LeagueAccess league = admin(leagueId, me);
+        return registry.view(league, parseOr404(auctionId, () -> new AuctionNotFoundException(null)));
     }
 
     /** Un id che non e' nemmeno un UUID e' un indirizzo che non porta da nessuna parte: 404. */

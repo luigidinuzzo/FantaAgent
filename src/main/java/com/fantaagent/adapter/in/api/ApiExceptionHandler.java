@@ -8,6 +8,8 @@ import com.fantaagent.application.service.PurchaseRevocationException;
 import com.fantaagent.application.service.account.InvalidAccountDataException;
 import com.fantaagent.application.service.account.InvalidTokenException;
 import com.fantaagent.application.service.account.TooManyAttemptsException;
+import com.fantaagent.application.service.auction.AuctionNotFoundException;
+import com.fantaagent.application.service.auction.NoSeatException;
 import com.fantaagent.application.service.league.AdminOnlyException;
 import com.fantaagent.application.service.league.InvalidLeagueDataException;
 import com.fantaagent.application.service.league.InviteUnavailableException;
@@ -219,6 +221,16 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InviteUnavailableException.class)
     ProblemDetail inviteUnavailable(InviteUnavailableException e) {
         return problem(HttpStatus.GONE, "invite-unavailable", e.getMessage());
+    }
+
+    @ExceptionHandler(AuctionNotFoundException.class)
+    ProblemDetail auctionNotFound(AuctionNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "unknown-auction", "Asta non trovata.");
+    }
+
+    @ExceptionHandler(NoSeatException.class)
+    ProblemDetail noSeat(NoSeatException e) {
+        return problem(HttpStatus.FORBIDDEN, "no-seat", e.getMessage());
     }
 
     /**
