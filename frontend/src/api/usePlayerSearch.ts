@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiGet } from './client';
+import { apiGet, auctionContext } from './client';
 import type { PlayerSummary, Role } from './types';
 
 /**
@@ -46,8 +46,11 @@ function useDebounced(value: string, delayMs: number): string {
  */
 export function usePlayerSearch(query: string, role: Role | null) {
   const settled = useDebounced(query.trim(), SEARCH_DEBOUNCE_MS);
+  const { leagueId, auctionId } = auctionContext();
   return useQuery({
-    queryKey: ['player-search', settled, role] as const,
+    // Con lega e asta, come le chiavi di hooks.ts: la domanda va all'elenco di
+    // QUEST'asta, e la risposta di un'altra non deve comparire nemmeno per un istante.
+    queryKey: ['auction', leagueId, auctionId, 'player-search', settled, role] as const,
     queryFn: () => {
       const params = new URLSearchParams({ q: settled });
       if (role) params.set('role', role);

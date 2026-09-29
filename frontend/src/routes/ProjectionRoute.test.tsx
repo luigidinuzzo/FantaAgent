@@ -57,7 +57,7 @@ function stubFetch() {
 /** I posti per ruolo, dallo stato: servono a disegnare anche quelli vuoti. */
 const STATE = {
   auctionId: 'a1', auctionName: 'Prova', currentPhase: 'D', phases: ['P', 'D', 'C', 'A'],
-  soldInPhase: 1, myParticipantId: 'anna', canUndo: true,
+  soldInPhase: 1, myParticipantId: 'anna', canUndo: true, version: 2, admin: true,
   participants: [{
     id: 'anna', name: 'Anna', initial: 'A', me: true, budgetRemaining: 300, slotsRemaining: 23,
     filledByRole: { P: 1, D: 1, C: 0, A: 0 }, slotsByRole: { P: 3, D: 8, C: 8, A: 6 },

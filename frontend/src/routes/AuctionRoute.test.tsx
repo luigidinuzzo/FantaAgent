@@ -24,6 +24,10 @@ const STATE = {
   soldInPhase: 0,
   myParticipantId: 'anna',
   canUndo: false,
+  version: 1,
+  // I test qui sotto verificano i gesti dell'amministratore: il banco, la fase,
+  // l'annullamento. Chi non lo e' ha i suoi casi, in fondo.
+  admin: true,
   participants: [
     {
       id: 'anna', name: 'Anna', initial: 'A', me: true,
@@ -96,9 +100,11 @@ const BIDDER_SETTINGS = {
 function fullFetchMock({
   purchase,
   onWriteCall,
+  state = STATE,
 }: {
   purchase?: unknown;
   onWriteCall?: (body: unknown) => void;
+  state?: Record<string, unknown>;
 } = {}) {
   return vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const href = typeof input === 'string' ? input : input.toString();
@@ -124,9 +130,24 @@ function fullFetchMock({
       onWriteCall?.(init?.body ? JSON.parse(String(init.body)) : null);
       return Promise.resolve(new Response(null, { status: 204 }));
     }
-    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(state));
     return alwaysReadOrReject(href);
   });
+}
+
+/** Lo stub di fetch completo, con uno stato scelto dal test. */
+function stubApi({ state }: { state: Record<string, unknown> }) {
+  const fetchMock = fullFetchMock({ state });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+function renderAuction() {
+  render(
+    <QueryProvider>
+      <MemoryRouter><AuctionRoute /></MemoryRouter>
+    </QueryProvider>,
+  );
 }
 
 /**
@@ -943,8 +964,9 @@ describe('AuctionRoute', () => {
     );
 
     const link = await screen.findByRole('link', { name: /proiezione/i });
-    expect(link).toHaveAttribute('href', '/proiezione');
+    expect(link).toHaveAttribute('href', '/leghe/default/aste/a1/proiezione');
     expect(link).toHaveAttribute('target', '_blank');
+    expect(screen.getByRole('link', { name: 'Vai alla lega' })).toHaveAttribute('href', '/leghe/default');
   });
 
   // Fix round 2 (revisione finale, finding 4): l'aggiudicazione dal
@@ -1859,5 +1881,46 @@ describe('AuctionRoute', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
     await waitFor(() => expect(writes).toContain('void'));
     expect(screen.queryByText('Giocatore Uno a Anna per 12')).not.toBeInTheDocument();
+  });
+
+  describe("per chi non e' amministratore", () => {
+    it('non mostra i comandi del banco ma mostra la fase', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      stubApi({ state: { ...STATE, admin: false } });
+      renderAuction();
+
+      expect(await screen.findByText(/Fase:/)).toHaveTextContent('Fase: portieri');
+      expect(screen.queryByRole('button', { name: /Annulla ultimo acquisto/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name: /Fase dell'asta/ })).not.toBeInTheDocument();
+    });
+
+    it('con un posto vede la scheda e i consigli del giocatore, ma non il modo di aggiudicarlo', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      stubApi({ state: { ...STATE, admin: false } });
+      renderAuction();
+
+      await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      expect(await screen.findByRole('region', { name: /Sul banco · Giocatore Uno/ })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /conto alla rovescia/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Aggiudica direttamente' })).not.toBeInTheDocument();
+    });
+
+    it('senza posto non chiede i consigli e lo dice', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      const fetchMock = stubApi({
+        state: {
+          ...STATE,
+          admin: false,
+          myParticipantId: null,
+          participants: STATE.participants.map((p) => ({ ...p, me: false })),
+        },
+      });
+      renderAuction();
+
+      expect(await screen.findByText(/Non hai un posto in quest'asta/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Non hai un posto in quest'asta/)).toHaveLength(1);
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/players/phase'))).toBe(false);
+      expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/players/targets'))).toBe(false);
+    });
   });
 });

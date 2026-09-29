@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { userMessage } from '../api/client';
+import { auctionContext, userMessage } from '../api/client';
 import {
   useAssign,
   useAuctionState,
@@ -33,6 +33,7 @@ import { ParticipantsColumn } from '../domain/ParticipantsColumn';
 import { PlayerTable } from '../domain/PlayerTable';
 import { RemoveIcon } from '../domain/RemoveIcon';
 import { RosterGrid } from '../domain/RosterGrid';
+import { ROLE_NAME_PLURAL } from '../domain/roles';
 import { UndoLastButton } from '../domain/UndoLastButton';
 import { useIdleHeartbeat } from './useIdleHeartbeat';
 
@@ -102,6 +103,9 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 ];
 
 export function AuctionRoute() {
+  // Lega e asta dell'indirizzo: le ha appena fissate WithAuctionContext, nello
+  // stesso render, dai parametri della rotta.
+  const { leagueId, auctionId } = auctionContext();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [bidderOpen, setBidderOpen] = useState(false);
@@ -159,6 +163,15 @@ export function AuctionRoute() {
   }, []);
 
   const state = useAuctionState();
+  // Solo l'amministratore scrive nel registro; gli altri seguono l'asta e vedono i
+  // propri consigli. Finche' lo stato non e' arrivato, niente comandi: meglio un
+  // istante senza pulsanti che un pulsante che risponde "non puoi".
+  const admin = state.data?.admin ?? false;
+  // Tre valori, non due: finche' lo stato non e' arrivato il posto non e' noto, e
+  // i consigli aspettano — chiederli prima vorrebbe dire farsi rispondere no-seat
+  // da chi un posto non ce l'ha. La frase per chi non ce l'ha aspetta anche lei.
+  const seated = state.data ? state.data.myParticipantId !== null : null;
+  const advised = seated === true;
   const currentPhase = state.data?.currentPhase;
   // Un cambio fase riparte da pagina 1: l'offset della fase precedente non ha
   // alcun significato in quella nuova, e senza questo effetto un salto a una
@@ -189,10 +202,12 @@ export function AuctionRoute() {
   // Non piu' solo a banco vuoto: con un lotto aperto le stesse occasioni sono la
   // via d'uscita — «invece di lui, questi» — e stanno dentro il banco, sotto i
   // controlli. Spente solo ad asta finita, dove non c'e' piu' niente da scegliere.
-  const targets = useTargets(state.isSuccess && !concluded);
+  const targets = useTargets(!concluded && advised);
 
-  const phase = usePhasePlayers(pageOffset, sort, sortDir);
-  const valuation = useValuation(selectedId);
+  // Senza un posto i consigli non esistono: il server risponderebbe no-seat, e
+  // la schermata lo dice gia' a parole invece di chiederli.
+  const phase = usePhasePlayers(pageOffset, sort, sortDir, advised);
+  const valuation = useValuation(selectedId, advised);
   // Il nome del pannello centrale, che cambia con quello che ci sta dentro: il
   // lotto se c'e', altrimenti la tua squadra. Senza ne' l'uno ne' l'altra resta il
   // nome del posto, perche' un titolo il pannello deve sempre averlo.
@@ -209,7 +224,8 @@ export function AuctionRoute() {
   // (Task 3), costruito per la proiezione. E' un prestito, non la sede
   // definitiva — quando la tappa 5 porta l'endpoint delle impostazioni,
   // questa lettura deve spostarsi li'.
-  const bidderSettings = usePublicBidder(selectedId);
+  // Servono solo al conto alla rovescia, che e' dell'amministratore.
+  const bidderSettings = usePublicBidder(admin ? selectedId : null);
 
   // Battito di vita per la proiezione (si veda useIdleHeartbeat per il
   // perche' e il come). Si ferma per tutta la durata in cui il conto alla rovescia
@@ -373,28 +389,42 @@ export function AuctionRoute() {
       chrome="top"
       slotActions={
         <>
-          <PhaseSwitcher
-            phases={state.data?.phases ?? []}
-            current={state.data?.currentPhase ?? 'P'}
-            onChange={changePhaseTo}
-            pending={changePhase.isPending}
-          />
+          {admin ? (
+            <PhaseSwitcher
+              phases={state.data?.phases ?? []}
+              current={state.data?.currentPhase ?? 'P'}
+              onChange={changePhaseTo}
+              pending={changePhase.isPending}
+            />
+          ) : (
+            // La fase si legge, non si cambia: la cambia chi batte l'asta.
+            <span className="flex min-h-11 items-center rounded-full border border-line-strong px-4 font-medium">
+              Fase: {ROLE_NAME_PLURAL[state.data?.currentPhase ?? 'P']}
+            </span>
+          )}
           {/* Product gap (revisione finale): non esisteva nessun modo di
               raggiungere /proiezione dall'applicazione — bisognava digitare
               l'indirizzo a mano. target="_blank": va aperta in una seconda
               finestra, sul secondo schermo, non al posto di questa. */}
-          <a href="/proiezione" target="_blank" rel="noopener noreferrer" className={ICON_LINK}>
+          <a
+            href={`/leghe/${leagueId}/aste/${auctionId}/proiezione`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={ICON_LINK}
+          >
             <ProjectionIcon />
             <span className="sr-only">Apri la proiezione sul secondo schermo</span>
           </a>
-          <UndoLastButton
-            canUndo={state.data?.canUndo ?? false}
-            onUndo={undo}
-            pending={undoLast.isPending}
-          />
-          <Link to="/impostazioni" className={ICON_LINK}>
+          {admin ? (
+            <UndoLastButton
+              canUndo={state.data?.canUndo ?? false}
+              onUndo={undo}
+              pending={undoLast.isPending}
+            />
+          ) : null}
+          <Link to={`/leghe/${leagueId}`} className={ICON_LINK}>
             <SettingsIcon />
-            <span className="sr-only">Vai alle impostazioni</span>
+            <span className="sr-only">Vai alla lega</span>
           </Link>
         </>
       }
@@ -448,6 +478,22 @@ export function AuctionRoute() {
           {/* Le rose complete, subito: e' quello che si viene a guardare ad asta
               finita. Senza schede, perche' la fase corrente non c'e' piu'. */}
           <div className="panel mt-4 rounded-2xl p-4">
+            <RosterGrid />
+          </div>
+        </>
+      ) : seated === false ? (
+        // Senza un posto non c'e' niente da consigliare ne' da scegliere: la
+        // ricerca, il banco e la tabella di fase portano tutti ai consigli. Resta
+        // cio' che serve a seguire l'asta — le rose, con i crediti di ognuno in
+        // testa alla colonna — e la frase che dice perche', una volta sola, nel
+        // posto della tabella. Senza la colonna delle squadre: accanto alle rose,
+        // alte quanto venticinque posti, restava vuota per due terzi, e i crediti
+        // li dicono gia' le intestazioni delle rose.
+        <>
+          <p className="panel mb-4 rounded-2xl p-4 text-sm">
+            Non hai un posto in quest'asta: puoi seguirla, ma i consigli non sono disponibili.
+          </p>
+          <div className="panel min-w-0 rounded-2xl p-4">
             <RosterGrid />
           </div>
         </>
@@ -557,7 +603,7 @@ export function AuctionRoute() {
                 // alternative qui sotto restava senza un pixel, e di lui si
                 // vedeva solo la linea di separazione appoggiata al fondo.
                 <div className="shrink-0">
-                {bidderOpen && bidderSettings.data ? (
+                {admin && bidderOpen && bidderSettings.data ? (
                   // Il conto alla rovescia SOSTITUISCE la scheda di decisione, non ci sta
                   // dentro: montato come suo figlio, rendeva nome e tetto una
                   // seconda volta, dentro una seconda cornice. Mentre il conto
@@ -579,11 +625,14 @@ export function AuctionRoute() {
                   />
                 ) : (
                   <PlayerDecisionCard valuation={valuation.data} stale={stale} bare me={me}>
+                    {/* Il modo di aggiudicarlo e' dell'amministratore: gli altri
+                        vedono la scheda, non i gesti del banco. */}
                     {/* Impilati, nell'ordine in cui le cose succedono: prima
                         si fa correre il conto alla rovescia, poi si registra a
                         quanto e a chi e' andato. Affiancati, i due gesti si
                         leggevano come alternative pari; incolonnati si leggono
                         come una sequenza. */}
+                    {admin ? (
                     <div className="flex flex-col items-start gap-4">
                     {/* Avvia il conto alla rovescia per il lotto conteso: BidPanel resta
                         la via diretta per un giocatore che nessuno contende,
@@ -648,7 +697,7 @@ export function AuctionRoute() {
                       </button>
                     )}
                     </div>
-
+                    ) : null}
                   </PlayerDecisionCard>
                 )}
                 </div>
@@ -699,6 +748,7 @@ export function AuctionRoute() {
                 <div className="mt-6 flex shrink-0 flex-col border-t border-line pt-4">
                   <PhaseTargets
                     bare
+                    stacked={!admin}
                     excludeId={valuation.data.playerId}
                     phase={state.data?.currentPhase}
                     targets={targets.data ?? []}

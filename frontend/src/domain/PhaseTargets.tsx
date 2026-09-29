@@ -18,7 +18,9 @@ const HEADING_ID = 'phase-targets-heading';
  * <p>Stessa cornice e stesso titolo in tutti gli stati — carica, vuoto, pieno — cosi'
  * la colonna non cambia forma mentre i dati arrivano.
  */
-export function PhaseTargets({ phase, targets, loading, failed = false, disabled, onSelect, bare = false, excludeId }: {
+export function PhaseTargets({
+  phase, targets, loading, failed = false, disabled, onSelect, bare = false, stacked = false, excludeId,
+}: {
   phase: Role | undefined;
   targets: TargetView[];
   loading: boolean;
@@ -38,6 +40,13 @@ export function PhaseTargets({ phase, targets, loading, failed = false, disabled
    * proprio nel punto in cui si decide se spingere o lasciare.
    */
   bare?: boolean;
+  /**
+   * Nel banco, una sotto l'altra invece che affiancate, ognuna con squadra e
+   * mercato. Per chi non batte l'asta: sotto la scheda non ci sono il conto alla
+   * rovescia e l'aggiudicazione, e una sola fila di pillole lasciava vuoto un
+   * terzo del banco. Restano pillole col contorno, non righe di elenco.
+   */
+  stacked?: boolean;
   /**
    * Il giocatore gia' sul banco: sarebbe un'alternativa a se stesso, e
    * prenderebbe il posto di una vera.
@@ -112,7 +121,9 @@ export function PhaseTargets({ phase, targets, loading, failed = false, disabled
           // li' lo spazio e' stretto e alto, ed e' l'unica cosa in scena.
           className={`mt-3 ${
             bare
-              ? 'grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]'
+              ? stacked
+                ? 'grid grid-cols-1 gap-2'
+                : 'grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]'
               : 'grid min-h-0 flex-1 auto-rows-min overflow-y-auto'
           }`}
         >
@@ -129,12 +140,27 @@ export function PhaseTargets({ phase, targets, loading, failed = false, disabled
                 // conto alla rovescia: prima erano righe separate da un filetto, e si
                 // leggevano come testo invece che come qualcosa da premere.
                 className={
-                  bare
+                  bare && stacked
+                    ? 'flex min-h-11 w-full min-w-0 items-baseline gap-3 rounded-xl border border-line-strong px-3 py-2 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
+                    : bare
                     ? 'flex min-h-14 w-full min-w-0 flex-col justify-center rounded-xl border border-line-strong px-3 py-1.5 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
                     : 'flex min-h-14 w-full items-center gap-3 px-1 py-2 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
                 }
               >
-                {bare ? (
+                {bare && stacked ? (
+                  // Su una riga sola: quattro alternative devono stare tutte nel
+                  // banco senza scorrere, e la riga e' larga abbastanza per dire
+                  // anche squadra e mercato.
+                  <>
+                    <span className="shrink-0 font-semibold">{t.name}</span>
+                    <span className="tnum min-w-0 truncate text-xs text-muted-foreground">
+                      {`${t.team} · mercato ${t.expectedPrice} · tetto ${t.maxBid}`}
+                    </span>
+                    <span className={`tnum ml-auto shrink-0 font-semibold ${t.margin >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                      {signed(t.margin)}
+                    </span>
+                  </>
+                ) : bare ? (
                   <>
                     <span className="flex w-full items-baseline gap-2">
                       <span className="truncate font-semibold">{t.name}</span>

@@ -46,7 +46,7 @@ class SpaRoutesControllerTest {
 
     @Test
     void unaRottaProfondaRicaricataInoltraAllaSpa() throws Exception {
-        mvc.perform(get("/riepilogo"))
+        mvc.perform(get("/leghe/l1/aste/a1"))
                 .andExpect(status().isOk())
                 .andExpect(forwardedUrl("/index.html"));
     }

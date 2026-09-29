@@ -37,9 +37,14 @@ export interface AuctionStateResponse {
   currentPhase: Role;
   phases: Role[];
   soldInPhase: number;
-  myParticipantId: string;
+  /** Null per chi e' membro della lega ma non ha un posto in quest'asta. */
+  myParticipantId: string | null;
   canUndo: boolean;
   participants: ParticipantView[];
+  /** Il numero dell'ultimo evento del registro. */
+  version: number;
+  /** Se chi guarda e' l'amministratore della lega: solo lui scrive. */
+  admin: boolean;
 }
 
 export interface PlayerSummary {

@@ -8,6 +8,7 @@ import {
   apiLeaguePut,
   apiPost,
   apiPostToAuction,
+  auctionContext,
 } from './client';
 import type {
   AuctionCard,
@@ -26,12 +27,22 @@ import type {
   ValuationResponse,
 } from './types';
 
+/**
+ * Ogni chiave porta lega e asta: passando da un'asta all'altra nella stessa scheda,
+ * la cache non deve restituire per un istante i dati della precedente.
+ */
+function scoped(...parts: readonly unknown[]) {
+  const { leagueId, auctionId } = auctionContext();
+  return ['auction', leagueId, auctionId, ...parts] as const;
+}
+
 const KEYS = {
-  state: ['state'] as const,
-  phase: (offset: number, sort: string, dir: string) => ['phase', offset, sort, dir] as const,
-  valuation: (playerId: string) => ['valuation', playerId] as const,
-  board: ['board'] as const,
-  publicBidder: (playerId: string) => ['public-bidder', playerId] as const,
+  state: () => scoped('state'),
+  phase: (offset: number, sort: string, dir: string) => scoped('phase', offset, sort, dir),
+  valuation: (playerId: string) => scoped('valuation', playerId),
+  board: () => scoped('board'),
+  publicBidder: (playerId: string) => scoped('public-bidder', playerId),
+  targets: () => scoped('targets'),
   auctions: ['auctions'] as const,
 };
 
@@ -108,7 +119,7 @@ export function useSettingsFrom() {
 
 export function useAuctionState() {
   return useQuery({
-    queryKey: KEYS.state,
+    queryKey: KEYS.state(),
     queryFn: () => apiGet<AuctionStateResponse>('/state'),
   });
 }
@@ -122,11 +133,13 @@ export function useAuctionState() {
  * entrano nella chiave della query: sono due pagine diverse, non la stessa
  * guardata da un'altra angolazione.
  */
-export function usePhasePlayers(offset: number, sort: PhaseSort = 'quotazione', dir: SortDir = 'desc') {
+export function usePhasePlayers(offset: number, sort: PhaseSort = 'quotazione', dir: SortDir = 'desc',
+  enabled = true) {
   return useQuery({
     queryKey: KEYS.phase(offset, sort, dir),
     queryFn: () => apiGet<PhasePageResponse>(
       `/players/phase?offset=${offset}&limit=25&sort=${sort}&dir=${dir}`),
+    enabled,
   });
 }
 
@@ -137,23 +150,27 @@ export function usePhasePlayers(offset: number, sort: PhaseSort = 'quotazione', 
  */
 export function useTargets(enabled: boolean) {
   return useQuery({
-    queryKey: ['targets'] as const,
+    queryKey: KEYS.targets(),
     queryFn: () => apiGet<TargetView[]>('/players/targets?limit=5'),
     enabled,
   });
 }
 
-export function useValuation(playerId: string | null) {
+/**
+ * {@code enabled} falso per chi non ha un posto in quest'asta: il server
+ * risponderebbe {@code no-seat}, e la schermata lo dice gia' a parole.
+ */
+export function useValuation(playerId: string | null, enabled = true) {
   return useQuery({
     queryKey: KEYS.valuation(playerId ?? ''),
     queryFn: () => apiGet<ValuationResponse>(`/players/${playerId}/valuation`),
-    enabled: playerId !== null,
+    enabled: enabled && playerId !== null,
   });
 }
 
 export function useBoard() {
   return useQuery({
-    queryKey: KEYS.board,
+    queryKey: KEYS.board(),
     queryFn: () => apiGet<BoardResponse>('/board'),
   });
 }
@@ -248,7 +265,7 @@ export function useUndoLast() {
 export interface VoidPurchaseInput {
   /**
    * L'asta a cui appartiene {@code seq}, NON quella del contesto della finestra
-   * (pinnato a {@link AuctionGuard#CURRENT} da main.tsx): {@code seq} e' un numero
+   * (fissato dall'indirizzo da WithAuctionContext): {@code seq} e' un numero
    * per registro, e un tab di riepilogo lasciato aperto su un'asta mentre altrove
    * si passa a un'altra manderebbe altrimenti quel numero al registro sbagliato,
    * dove puo' coincidere con l'acquisto di un giocatore diverso. Va letto dalla
@@ -268,6 +285,28 @@ export function useVoidPurchase() {
   return useMutation({
     mutationFn: (input: VoidPurchaseInput) =>
       apiPostToAuction(input.auctionId, `/purchases/${input.seq}/void`),
+    onSuccess: () => client.invalidateQueries(),
+  });
+}
+
+export interface CorrectPurchaseInput {
+  /** Come per la revoca: l'asta della board che si sta guardando, non quella del contesto. */
+  auctionId: string;
+  seq: number;
+  participantId: string;
+  price: number;
+}
+
+/**
+ * Corregge squadra o prezzo di un acquisto gia' registrato, senza annullarlo e
+ * rifarlo: il registro aggiunge la correzione, non riscrive l'acquisto.
+ */
+export function useCorrectPurchase() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CorrectPurchaseInput) =>
+      apiPostToAuction(input.auctionId, `/purchases/${input.seq}/correct`,
+        { participantId: input.participantId, price: input.price }),
     onSuccess: () => client.invalidateQueries(),
   });
 }

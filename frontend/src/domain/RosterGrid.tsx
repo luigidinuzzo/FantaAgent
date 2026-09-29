@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { auctionExportUrl, ProblemError, userMessage } from '../api/client';
-import { useAuctionState, useBoard, useVoidPurchase } from '../api/hooks';
+import { useAuctionState, useBoard, useCorrectPurchase, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
+import { CorrectPurchaseDialog } from './CorrectPurchaseDialog';
+import type { CorrectablePurchase } from './CorrectPurchaseDialog';
 import { ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
 
 /**
@@ -69,7 +71,13 @@ function useMoreToTheRight<T extends HTMLElement>() {
 export function RosterGrid() {
   const board = useBoard();
   const state = useAuctionState();
+  // Revoca e correzione sono dell'amministratore: gli altri vedono le rose e basta.
+  // Finche' lo stato non e' arrivato, nessun gesto.
+  const admin = state.data?.admin ?? false;
   const voidPurchase = useVoidPurchase();
+  const correctPurchase = useCorrectPurchase();
+  // L'acquisto aperto nella modale di correzione, o nessuno.
+  const [correcting, setCorrecting] = useState<CorrectablePurchase | null>(null);
   // Solo la riga in volo si disabilita: `voidPurchase.isPending` da solo e' un
   // booleano UNICO condiviso da ogni riga di ogni colonna, e disabiliterebbe anche
   // il bottone di un acquisto diverso da quello che si sta annullando.
@@ -91,6 +99,9 @@ export function RosterGrid() {
 
   function handleVoid(seq: number) {
     if (!board.data) return;
+    // Un gesto alla volta, e un solo alert: l'errore di una correzione
+    // precedente non resta appeso accanto all'esito di questa revoca.
+    correctPurchase.reset();
     setPendingSeq(seq);
     voidPurchase.mutate(
       // L'asta a cui appartiene questo seq e' quella che LA BOARD ha appena letto,
@@ -99,6 +110,21 @@ export function RosterGrid() {
       // altrimenti il seq al registro sbagliato — vedi useVoidPurchase.
       { auctionId: board.data.auctionId, seq },
       { onSettled: () => setPendingSeq(null) },
+    );
+  }
+
+  function openCorrection(purchase: CorrectablePurchase) {
+    voidPurchase.reset();
+    correctPurchase.reset();
+    setCorrecting(purchase);
+  }
+
+  function handleCorrect(seq: number, participantId: string, price: number) {
+    if (!board.data) return;
+    correctPurchase.mutate(
+      // Stesso motivo della revoca: il seq e' del registro che LA BOARD ha letto.
+      { auctionId: board.data.auctionId, seq, participantId, price },
+      { onSuccess: () => setCorrecting(null) },
     );
   }
 
@@ -175,7 +201,9 @@ export function RosterGrid() {
                   state.data?.participants.find((p) => p.id === column.participantId)
                     ?.slotsByRole
                 }
+                admin={admin}
                 onVoid={handleVoid}
+                onCorrect={openCorrection}
                 pendingSeq={pendingSeq}
                 collapsed={collapsed}
                 onToggleSection={toggleSection}
@@ -191,6 +219,17 @@ export function RosterGrid() {
           ) : null}
         </div>
       )}
+
+      <CorrectPurchaseDialog
+        purchase={correcting}
+        participants={(state.data?.participants ?? []).map((p) => ({ id: p.id, name: p.name }))}
+        pending={correctPurchase.isPending}
+        error={correctPurchase.error
+          ? userMessage(correctPurchase.error, 'La correzione non è riuscita. Riprova.')
+          : null}
+        onConfirm={handleCorrect}
+        onCancel={() => { setCorrecting(null); correctPurchase.reset(); }}
+      />
     </div>
   );
 }
@@ -283,7 +322,9 @@ function ChevronIcon({ open }: { open: boolean }) {
 function RosterColumn({
   column,
   capacity,
+  admin,
   onVoid,
+  onCorrect,
   pendingSeq,
   collapsed,
   onToggleSection,
@@ -293,7 +334,10 @@ function RosterColumn({
    *  finche' quella richiesta non e' ancora tornata: la sezione allora si apre
    *  senza denominatore invece di dividere per zero o mostrare NaN. */
   capacity: Record<Role, number> | undefined;
+  /** Solo l'amministratore revoca e corregge: per gli altri la riga e' da leggere. */
+  admin: boolean;
   onVoid: (seq: number) => void;
+  onCorrect: (purchase: CorrectablePurchase) => void;
   pendingSeq: number | null;
   collapsed: Record<string, boolean>;
   onToggleSection: (key: string) => void;
@@ -317,14 +361,18 @@ function RosterColumn({
         </span>
       </h3>
 
-      <table className="mt-3 w-full text-sm">
+      {/* Larghezze fisse: al nome va tutto cio' che prezzo e ✕ non usano, e un
+          nome lungo si tronca invece di allargare la tabella oltre la colonna. */}
+      <table className="mt-3 w-full table-fixed text-sm">
         <caption className="sr-only">Rosa di {column.participantName}</caption>
         <thead>
           <tr className="text-left text-xs text-muted-foreground">
             <th scope="col">Giocatore</th>
-            <th scope="col" className="text-right">Prezzo</th>
-            <th scope="col">
-              <span className="sr-only">Azione</span>
+            <th scope="col" className="w-9 text-right">Prezzo</th>
+            {/* Senza gesti per chi non e' amministratore: la colonna della ✕ non
+                toglie spazio ai nomi. */}
+            <th scope="col" className={admin ? 'w-9' : 'w-0'}>
+              <span className="sr-only">Azioni</span>
             </th>
           </tr>
         </thead>
@@ -388,12 +436,35 @@ function RosterColumn({
               <tbody id={panelId}>
                 {!open ? null : slots.map((slot) => (
                   <tr key={slot.seq} className="group">
-                    <td className={`${ROW_H} truncate py-0`}>{slot.playerName}</td>
+                    <td className={`${ROW_H} truncate py-0`}>
+                      {admin ? (
+                        // Per l'amministratore il nome e' il gesto di correzione: un
+                        // secondo bottone accanto alla ✕ toglieva alla colonna la
+                        // larghezza del nome, e in otto colonne le intestazioni si
+                        // accavallavano. Il nome c'e' gia', e dice su chi si corregge.
+                        <button
+                          type="button"
+                          disabled={pendingSeq === slot.seq}
+                          onClick={() => onCorrect({
+                            seq: slot.seq,
+                            playerName: slot.playerName,
+                            participantId: column.participantId,
+                            price: slot.price,
+                          })}
+                          aria-label={`Correggi l'acquisto di ${slot.playerName}`}
+                          title="Correggi squadra o prezzo"
+                          className="block h-full w-full truncate rounded-md text-left underline-offset-4 hover:underline disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                        >
+                          {slot.playerName}
+                        </button>
+                      ) : slot.playerName}
+                    </td>
                     <td className={`tnum ${ROW_H} py-0 text-right text-muted-foreground`}>
                       {slot.price}
                       <span className="sr-only"> crediti pagati</span>
                     </td>
                     <td className={`${ROW_H} py-0 text-right`}>
+                      {admin ? (
                       <button
                         type="button"
                         disabled={pendingSeq === slot.seq}
@@ -409,6 +480,7 @@ function RosterColumn({
                       >
                         <CancelIcon />
                       </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

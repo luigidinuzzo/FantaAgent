@@ -23,10 +23,7 @@ import java.util.List;
 public class SpaRoutesController {
 
     static final String ROOT = "/";
-    static final String ASTA = "/asta";
-    static final String PROIEZIONE = "/proiezione";
     static final String IMPOSTAZIONI = "/impostazioni";
-    static final String RIEPILOGO = "/riepilogo";
     static final String PROFILO = "/profilo";
     static final String ACCEDI = "/accedi";
     static final String REGISTRATI = "/registrati";
@@ -35,6 +32,8 @@ public class SpaRoutesController {
     static final String VERIFICA_EMAIL = "/verifica-email";
     static final String LEGHE = "/leghe";
     static final String LEGA = "/leghe/{leagueId}";
+    static final String ASTA_DI_LEGA = "/leghe/{leagueId}/aste/{auctionId}";
+    static final String PROIEZIONE_DI_LEGA = "/leghe/{leagueId}/aste/{auctionId}/proiezione";
     static final String INVITO = "/invito/{token}";
 
     /**
@@ -47,18 +46,18 @@ public class SpaRoutesController {
      * qualcuno ne aggiunga una a un elenco scordandosi dell'altro — per quello serve il
      * test di reflection su {@link #spa()}, non le costanti.
      */
-    static final List<String> ROUTES = List.of(ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO,
+    static final List<String> ROUTES = List.of(ROOT, IMPOSTAZIONI,
             PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL,
-            LEGHE, LEGA, INVITO);
+            LEGHE, LEGA, ASTA_DI_LEGA, PROIEZIONE_DI_LEGA, INVITO);
 
     /**
      * Inoltra, non redirige: l'indirizzo nella barra deve restare quello che l'utente
      * ha chiesto, altrimenti un ricaricamento profondo lo riporterebbe alla home e
      * perderebbe il punto in cui era.
      */
-    @GetMapping({ROOT, ASTA, PROIEZIONE, IMPOSTAZIONI, RIEPILOGO,
+    @GetMapping({ROOT, IMPOSTAZIONI,
             PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL,
-            LEGHE, LEGA, INVITO})
+            LEGHE, LEGA, ASTA_DI_LEGA, PROIEZIONE_DI_LEGA, INVITO})
     public String spa() {
         return "forward:/index.html";
     }

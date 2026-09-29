@@ -1,3 +1,5 @@
+import { auctionContext } from '../api/client';
+
 /**
  * Cio' che la schermata privata dice a quella proiettata.
  *
@@ -26,15 +28,18 @@ export type BidBroadcast =
       leaderName?: string;
     };
 
-const NAME = 'fantaagent-bid';
+const PREFIX = 'fantaagent-bid';
 
 /**
- * Un canale per chiamata invece di uno condiviso: aprirlo e chiuderlo subito costa
+ * Un canale per asta: due schede su due aste diverse (lo stesso amministratore che ne
+ * prepara una mentre ne batte un'altra) non devono proiettare l'una il lotto dell'altra.
+ *
+ * <p>Un canale per chiamata invece di uno condiviso: aprirlo e chiuderlo subito costa
  * niente ed evita di tenere una risorsa viva in una scheda che nessuno guarda.
  */
 function channel(): BroadcastChannel | null {
   if (typeof BroadcastChannel === 'undefined') return null;
-  return new BroadcastChannel(NAME);
+  return new BroadcastChannel(`${PREFIX}:${auctionContext().auctionId}`);
 }
 
 export function publishBid(message: BidBroadcast): void {

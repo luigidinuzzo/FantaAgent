@@ -75,10 +75,15 @@ export function userMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-let context = { leagueId: 'default', auctionId: '' };
+let context = { leagueId: '', auctionId: '' };
 
 export function setAuctionContext(next: { leagueId: string; auctionId: string }) {
   context = next;
+}
+
+/** La lega e l'asta dell'indirizzo corrente: le fissa {@link WithAuctionContext}. */
+export function auctionContext(): { leagueId: string; auctionId: string } {
+  return context;
 }
 
 function url(path: string): string {
@@ -169,9 +174,9 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T | null
 
 /**
  * Gemello di {@link apiPost} che indirizza un'asta precisa invece di quella del
- * {@link context} — pinnato per l'intera sessione dalla finestra (vedi
- * {@code main.tsx}), non necessariamente quella a cui appartiene il dato che si
- * sta scrivendo.
+ * {@link context} — quella dell'indirizzo della finestra, fissata da
+ * {@code WithAuctionContext}, non necessariamente quella a cui appartiene il dato
+ * che si sta scrivendo.
  *
  * <p>Esiste per la revoca di un acquisto dal riepilogo (task 13): {@code seq} e'
  * un numero PER REGISTRO, e la risposta del tabellone porta gia' l'{@code

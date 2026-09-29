@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setAuctionContext } from '../api/client';
@@ -37,6 +37,9 @@ const STATE = {
   soldInPhase: 2,
   myParticipantId: 'anna',
   canUndo: false,
+  version: 2,
+  // I test della revoca sono gesti dell'amministratore: gli altri non li vedono.
+  admin: true,
   participants: [
     {
       id: 'anna', name: 'Anna', initial: 'A', me: true,
@@ -60,7 +63,10 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function renderRoster(onVoid?: (href: string) => Promise<Response>) {
+function renderRoster(
+  onVoid?: (href: string) => Promise<Response>,
+  state: Record<string, unknown> = STATE,
+) {
   // Deliberatamente diverso da BOARD.auctionId ('a1'): e' esattamente lo scenario
   // del tab stantio — la finestra e' altrove, la board di QUESTA schermata resta
   // 'a1' — e prova che la revoca usa l'id della board letto dalla risposta, non
@@ -71,8 +77,9 @@ function renderRoster(onVoid?: (href: string) => Promise<Response>) {
     if (href.includes('/void')) {
       return (onVoid ?? (() => Promise.resolve(new Response(null, { status: 204 }))))(href);
     }
+    if (href.endsWith('/correct')) return Promise.resolve(new Response(null, { status: 204 }));
     if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
-    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+    if (href.endsWith('/state')) return Promise.resolve(jsonResponse(state));
     return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -372,5 +379,52 @@ describe('RosterGrid', () => {
     expect(empty.className).toContain('py-0');
     const row = player.closest('tr')!;
     expect([...row.children].every((c) => c.className.includes('h-9'))).toBe(true);
+  });
+
+  it("un membro non amministratore non vede la ✕ ne' la correzione", async () => {
+    renderRoster(undefined, { ...STATE, admin: false });
+    await screen.findByText('Sommer');
+    expect(screen.queryByRole('button', { name: /Annulla l'acquisto/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Correggi/ })).not.toBeInTheDocument();
+  });
+
+  it("l'amministratore corregge prezzo e squadra", async () => {
+    const fetchMock = renderRoster();
+    await userEvent.click(await screen.findByRole('button', { name: /Correggi.*Sommer/ }));
+    const dialog = screen.getByRole('dialog', { name: "Correggi l'acquisto" });
+    expect(within(dialog).getByLabelText('Squadra')).toHaveValue('anna');
+    await userEvent.selectOptions(within(dialog).getByLabelText('Squadra'), 'bruno');
+    await userEvent.clear(within(dialog).getByLabelText('Prezzo'));
+    await userEvent.type(within(dialog).getByLabelText('Prezzo'), '33');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salva la correzione' }));
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/correct'))).toBe(true));
+    const call = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/correct'))!;
+    // Come la revoca: l'asta della board, non quella del contesto della finestra.
+    expect(String(call[0])).toBe('/api/leagues/default/auctions/a1/purchases/1/correct');
+    const init = (call as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(String(init.body))).toEqual({ participantId: 'bruno', price: 33 });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('una correzione rifiutata resta nella modale, con la frase per chi gioca', async () => {
+    const fetchMock = renderRoster();
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href.endsWith('/correct')) {
+        return Promise.resolve(jsonResponse({
+          type: 'https://fantaagent.local/problems/insufficient-budget',
+          detail: 'Bruno ha solo 12 crediti di budget residuo',
+        }, 409));
+      }
+      if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+      if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+      return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
+    });
+    await userEvent.click(await screen.findByRole('button', { name: /Correggi.*Sommer/ }));
+    const dialog = screen.getByRole('dialog', { name: "Correggi l'acquisto" });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Salva la correzione' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Bruno ha solo 12 crediti');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 });

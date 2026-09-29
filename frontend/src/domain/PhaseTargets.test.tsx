@@ -121,4 +121,15 @@ describe('PhaseTargets', () => {
     render(<PhaseTargets phase="P" targets={[T]} loading={false} disabled onSelect={() => {}} />);
     expect(screen.getByRole('button', { name: /^Falcone/ })).toBeDisabled();
   });
+
+  it("impilate nel banco restano pillole, e dicono anche squadra e mercato", () => {
+    render(
+      <PhaseTargets phase="P" targets={[T]} loading={false} disabled={false} onSelect={() => {}} bare stacked />,
+    );
+    const bottone = screen.getByRole('button', { name: /^Falcone/ });
+    expect(bottone.className).toContain('rounded-xl');
+    expect(bottone).toHaveTextContent('Lecce · mercato 16 · tetto 34');
+    expect(screen.getByRole('list').className).toContain('grid-cols-1');
+    expect(screen.getByRole('list').className).not.toContain('overflow-y-auto');
+  });
 });
