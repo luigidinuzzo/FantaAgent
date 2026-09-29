@@ -57,12 +57,20 @@ public class ImportApi {
         return new ImportResult(id.toString());
     }
 
-    /** Il nome senza cartella: il browser puo' mandare "asta/events.jsonl". */
+    /**
+     * Il nome senza cartella: il browser puo' mandare "asta/events.jsonl". Due file
+     * con lo stesso nome (due cartelle scelte insieme, per esempio) si scriverebbero
+     * uno sull'altro senza dirlo: meglio rifiutarli subito.
+     */
     private static Map<String, byte[]> contents(List<MultipartFile> files) {
         Map<String, byte[]> out = new LinkedHashMap<>();
         for (MultipartFile f : files) {
             String name = f.getOriginalFilename() == null ? "" : f.getOriginalFilename();
             String base = name.substring(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1);
+            if (out.containsKey(base)) {
+                throw new InvalidImportException(Map.of("files", List.of(
+                        "Hai scelto due volte lo stesso documento: scegli la cartella di una sola asta.")));
+            }
             try {
                 out.put(base, f.getBytes());
             } catch (IOException e) {
@@ -77,7 +85,12 @@ public class ImportApi {
             Map<String, String> raw = json.readValue(mapping, new TypeReference<>() {
             });
             Map<String, UUID> out = new LinkedHashMap<>();
-            raw.forEach((k, v) -> out.put(k, UUID.fromString(v)));
+            for (Map.Entry<String, String> e : raw.entrySet()) {
+                if (e.getValue() == null) {
+                    throw new IllegalArgumentException("valore mancante per " + e.getKey());
+                }
+                out.put(e.getKey(), UUID.fromString(e.getValue()));
+            }
             return out;
         } catch (IOException | IllegalArgumentException e) {
             throw new InvalidImportException(Map.of("mapping", List.of("Abbina ogni partecipante a un membro della lega.")));

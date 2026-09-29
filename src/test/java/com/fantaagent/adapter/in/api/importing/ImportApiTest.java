@@ -88,6 +88,15 @@ class ImportApiTest {
     }
 
     @Test
+    void unMembroNonImportaScrivendo() throws Exception {
+        MockMultipartFile mapping = new MockMultipartFile("mapping", "", MediaType.APPLICATION_JSON_VALUE,
+                "{\"me\":\"%s\",\"p2\":\"%s\"}".formatted(f.annaId, f.brunoId).getBytes(StandardCharsets.UTF_8));
+        f.mvc.perform(upload("/imports").file(mapping).with(csrf()).cookie(f.bruno))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "admin-only"));
+    }
+
+    @Test
     void unAbbinamentoIncompletoEDettoPerCampo() throws Exception {
         MockMultipartFile mapping = new MockMultipartFile("mapping", "", MediaType.APPLICATION_JSON_VALUE,
                 "{\"me\":\"%s\"}".formatted(f.annaId).getBytes(StandardCharsets.UTF_8));
@@ -95,5 +104,28 @@ class ImportApiTest {
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-import"))
                 .andExpect(jsonPath("$.errors.mapping").isArray());
+    }
+
+    @Test
+    void unAbbinamentoConValoreMancanteEDetto() throws Exception {
+        MockMultipartFile mapping = new MockMultipartFile("mapping", "", MediaType.APPLICATION_JSON_VALUE,
+                "{\"me\":\"%s\",\"p2\":null}".formatted(f.annaId).getBytes(StandardCharsets.UTF_8));
+        f.mvc.perform(upload("/imports").file(mapping).with(csrf()).cookie(f.anna))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-import"))
+                .andExpect(jsonPath("$.errors.mapping").isArray());
+    }
+
+    @Test
+    void dueFileConLoStessoNomeSonoRifiutati() throws Exception {
+        MockMultipartFile primo = new MockMultipartFile("files", "events.jsonl", "application/octet-stream",
+                "primo".getBytes(StandardCharsets.UTF_8));
+        MockMultipartFile secondo = new MockMultipartFile("files", "events.jsonl", "application/octet-stream",
+                "secondo".getBytes(StandardCharsets.UTF_8));
+        f.mvc.perform(multipart("/api/leagues/" + f.leagueId + "/imports/preview")
+                        .file(primo).file(secondo).with(csrf()).cookie(f.anna))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-import"))
+                .andExpect(jsonPath("$.errors.files").isArray());
     }
 }

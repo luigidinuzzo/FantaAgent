@@ -107,6 +107,28 @@ class AuctionImportServiceTest {
     }
 
     @Test
+    void soloLAmministratoreImportaScrivendo() {
+        assertThatThrownBy(() -> imports.importAuction(world.as(admin, bruno), files,
+                Map.of("me", admin.userId(), "p2", bruno)))
+                .isInstanceOf(AdminOnlyException.class);
+        assertThat(world.auctions.list(admin)).isEmpty();
+    }
+
+    @Test
+    void unaChiaveDiAbbinamentoFuoriDallAstaSiVede() {
+        UUID carla = world.user("carla");
+        world.join(admin, carla, "carla");
+        Map<String, UUID> mapping = new HashMap<>();
+        mapping.put("me", admin.userId());
+        mapping.put("p2", bruno);
+        mapping.put("fantasma", carla);
+        assertThatThrownBy(() -> imports.importAuction(admin, files, mapping))
+                .isInstanceOfSatisfying(InvalidImportException.class,
+                        e -> assertThat(e.errors()).containsKey("mapping"));
+        assertThat(world.auctions.list(admin)).isEmpty();
+    }
+
+    @Test
     void unRegistroIllegibileLoDice() {
         Map<String, byte[]> broken = new HashMap<>(files);
         broken.put("events.jsonl", "non e' json".getBytes(StandardCharsets.UTF_8));

@@ -111,6 +111,11 @@ public class AuctionImportService {
                 problems.add("Due partecipanti non possono andare allo stesso membro.");
             }
         }
+        for (String key : mapping.keySet()) {
+            if (!known.contains(key)) {
+                problems.add("Il partecipante indicato non è fra quelli dell'asta.");
+            }
+        }
         if (!problems.isEmpty()) {
             errors.put("mapping", List.copyOf(new java.util.LinkedHashSet<>(problems)));
         }

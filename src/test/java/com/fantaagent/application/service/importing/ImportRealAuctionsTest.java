@@ -4,7 +4,6 @@ import com.fantaagent.application.port.out.LeagueMember;
 import com.fantaagent.application.port.out.LeagueRepository;
 import com.fantaagent.application.port.out.MemberRole;
 import com.fantaagent.application.service.auction.LeagueAuctionService;
-import com.fantaagent.application.service.auction.LogSummary;
 import com.fantaagent.application.service.league.LeagueAccess;
 import com.fantaagent.application.service.league.LeagueService;
 import com.fantaagent.testsupport.OldAuctionFiles;
