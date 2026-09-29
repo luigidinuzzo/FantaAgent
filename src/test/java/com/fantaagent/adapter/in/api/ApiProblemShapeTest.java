@@ -67,7 +67,9 @@ class ApiProblemShapeTest {
     void ilMetodoSbagliatoEsceInProblemJson() throws Exception {
         f.mvc.perform(get(f.url("/purchases")).cookie(f.anna))
                 .andExpect(status().isMethodNotAllowed())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+                .andExpect(jsonPath("$.type")
+                        .value("https://fantaagent.local/problems/method-not-allowed"));
     }
 
     @Test

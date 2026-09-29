@@ -63,12 +63,25 @@ public class LeagueAuctionsApi {
                 .map(LeagueDtos.AuctionCardView::of).orElseThrow();
     }
 
+    /**
+     * Il nome, se cambia, va scritto PRIMA del battitore: {@code rename} valida e
+     * scrive nella stessa chiamata, quindi un nome vuoto o troppo lungo fallisce
+     * senza aver ancora toccato il battitore. Un corpo vuoto ({@code {}}) non salta
+     * comunque il controllo: {@code find} e {@code requireAdmin} girano sempre, cosi'
+     * un'asta sconosciuta o un chiamante non amministratore restano 404/403 e non un
+     * 204 silenzioso.
+     */
     @PatchMapping("/{auctionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void update(@AuthenticationPrincipal AppUserPrincipal me, @PathVariable String leagueId,
                        @PathVariable String auctionId, @RequestBody LeagueDtos.UpdateAuctionRequest body) {
         LeagueAccess league = access.league(leagueId, me);
         UUID id = auctionIdOf(auctionId);
+        league.requireAdmin();
+        auctions.find(league, id);
+        if (body.name() != null) {
+            auctions.rename(league, id, body.name());
+        }
         if (body.bidder() != null) {
             AuctionSettings bidder = new AuctionSettings(body.bidder().bidTimerSeconds(), body.bidder().beepEnabled());
             Map<String, List<String>> errors = AuctionSettingsValidator.validateByField(bidder);
@@ -76,9 +89,6 @@ public class LeagueAuctionsApi {
                 throw new InvalidSettingsException(errors);
             }
             auctions.updateBidder(league, id, bidder);
-        }
-        if (body.name() != null) {
-            auctions.rename(league, id, body.name());
         }
     }
 

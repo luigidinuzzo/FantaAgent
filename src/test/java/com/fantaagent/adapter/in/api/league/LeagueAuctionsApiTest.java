@@ -14,8 +14,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -81,6 +83,74 @@ class LeagueAuctionsApiTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Mia\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.type").value(PROBLEMS + "admin-only"));
+    }
+
+    /** Il battitore letto dal tabellone pubblico: come si vede se una scrittura e' passata. */
+    private int timerSeconds() throws Exception {
+        String body = f.mvc.perform(get(f.url("/board/bidder/" + f.player(Role.P, 0))).cookie(f.anna))
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.timerSeconds");
+    }
+
+    @Test
+    void unTimerFuoriIntervalloNonSiSalvaEIlTimerRestaComeEra() throws Exception {
+        int prima = timerSeconds();
+
+        f.mvc.perform(patch(auctions + "/" + f.auctionId).with(csrf()).cookie(f.anna)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"bidder\":{\"bidTimerSeconds\":0,\"beepEnabled\":true}}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-settings"));
+
+        assertThat(timerSeconds()).isEqualTo(prima);
+    }
+
+    /**
+     * Il nome si valuta e si scrive prima del battitore: un nome vuoto deve far
+     * fallire tutta la richiesta, senza che il battitore — valido di suo — venga
+     * comunque salvato.
+     */
+    @Test
+    void unNomeVuotoConBattitoreValidoNonSalvaNulla() throws Exception {
+        int prima = timerSeconds();
+
+        f.mvc.perform(patch(auctions + "/" + f.auctionId).with(csrf()).cookie(f.anna)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\",\"bidder\":{\"bidTimerSeconds\":9,\"beepEnabled\":false}}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        assertThat(timerSeconds()).isEqualTo(prima);
+    }
+
+    @Test
+    void soloLAmministratoreModificaAstaEPosti() throws Exception {
+        f.mvc.perform(patch(auctions + "/" + f.auctionId).with(csrf()).cookie(f.bruno)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"Nuovo nome\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "admin-only"));
+
+        f.mvc.perform(delete(auctions + "/" + f.auctionId).with(csrf()).cookie(f.bruno))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "admin-only"));
+
+        f.mvc.perform(put(f.url("/seats")).with(csrf()).cookie(f.bruno).contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "admin-only"));
+    }
+
+    @Test
+    void unAstaSconosciutaDa404SuPatchEDelete() throws Exception {
+        for (String id : List.of(UUID.randomUUID().toString(), "non-un-uuid")) {
+            f.mvc.perform(patch(auctions + "/" + id).with(csrf()).cookie(f.anna)
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.type").value(PROBLEMS + "unknown-auction"));
+
+            f.mvc.perform(delete(auctions + "/" + id).with(csrf()).cookie(f.anna))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.type").value(PROBLEMS + "unknown-auction"));
+        }
     }
 
     @Test
