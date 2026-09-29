@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.web;
 
 import com.fantaagent.adapter.in.web.dto.ViewModels;
 import com.fantaagent.application.service.AuctionRuntime;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ import java.util.Locale;
  */
 @Controller
 @RequestMapping("/legacy")
+@Profile("legacy")
 public class HomeController {
 
     private static final DateTimeFormatter WHEN =

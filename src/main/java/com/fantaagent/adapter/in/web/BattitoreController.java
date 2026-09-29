@@ -11,6 +11,7 @@ import com.fantaagent.config.AuctionSettingsHolder;
 import com.fantaagent.config.AuctionSettingsStore;
 import com.fantaagent.config.AuctionSettingsValidator;
 import com.fantaagent.domain.player.Player;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -49,6 +50,7 @@ import java.util.Optional;
  */
 @Controller
 @RequestMapping("/legacy")
+@Profile("legacy")
 public class BattitoreController {
 
     /** Poche righe: la lista sta su uno schermo condiviso, non e' un catalogo da sfogliare. */

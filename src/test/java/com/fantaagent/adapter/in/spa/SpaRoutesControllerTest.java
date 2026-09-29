@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,7 +20,6 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,14 +75,12 @@ class SpaRoutesControllerTest {
     }
 
     /**
-     * Le pagine vecchie non sono toccate dall'elenco della SPA: rispondono ancora,
-     * e come pagine HTML rese da Thymeleaf, non come inoltri a index.html.
+     * Fuori dal profilo legacy le pagine vecchie non esistono: il portale non le serve,
+     * e un indirizzo /legacy da' 404 come ogni altro indirizzo sconosciuto.
      */
     @Test
-    void lePagineVecchieRestanoHtml() throws Exception {
-        mvc.perform(get("/legacy"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML));
+    void lePagineVecchieNonEsistonoFuoriDalProfiloLegacy() throws Exception {
+        mvc.perform(get("/legacy")).andExpect(status().isNotFound());
     }
 
     @Test

@@ -116,6 +116,62 @@ class LeagueApiTest {
                 .andExpect(jsonPath("$.errors.budget").exists());
     }
 
+    /**
+     * Un corpo senza la chiave "bidder" (un client rotto, un proxy che la perde per
+     * strada) e' un errore del chiamante, non del server: deve cadere nel 422
+     * tipizzato che questo endpoint costruisce, non in un errore interno per un
+     * accesso a un campo assente.
+     */
+    @Test
+    void senzaBattitoreTornaUn422SottoLaSuaChiave() throws Exception {
+        String id = createLeague(anna);
+        String rules = mvc.perform(get("/api/leagues/" + id + "/rules").cookie(anna))
+                .andReturn().getResponse().getContentAsString();
+        String scoring = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(rules).get("scoring").toString();
+
+        mvc.perform(put("/api/leagues/" + id + "/rules").with(csrf()).cookie(anna)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"scoring":%s,
+                                 "rules":{"budget":300,"slots":{"P":2,"D":6,"C":6,"A":4}}}""".formatted(scoring)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-settings"))
+                .andExpect(jsonPath("$.errors.bidder[0]").isString());
+    }
+
+    @Test
+    void senzaPunteggioTornaUn422SottoLaSuaChiave() throws Exception {
+        String id = createLeague(anna);
+
+        mvc.perform(put("/api/leagues/" + id + "/rules").with(csrf()).cookie(anna)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bidder":{"bidTimerSeconds":8,"beepEnabled":false},
+                                 "rules":{"budget":300,"slots":{"P":2,"D":6,"C":6,"A":4}}}"""))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-settings"))
+                .andExpect(jsonPath("$.errors.scoring[0]").isString());
+    }
+
+    @Test
+    void senzaRegoleTornaUn422SottoLaSuaChiave() throws Exception {
+        String id = createLeague(anna);
+        String rules = mvc.perform(get("/api/leagues/" + id + "/rules").cookie(anna))
+                .andReturn().getResponse().getContentAsString();
+        String scoring = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(rules).get("scoring").toString();
+
+        mvc.perform(put("/api/leagues/" + id + "/rules").with(csrf()).cookie(anna)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"bidder":{"bidTimerSeconds":8,"beepEnabled":false},
+                                 "scoring":%s}""".formatted(scoring)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "invalid-settings"))
+                .andExpect(jsonPath("$.errors.rules[0]").value("Le regole della lega sono obbligatorie."));
+    }
+
     @Test
     void datiDellaLegaNonValidi() throws Exception {
         mvc.perform(post("/api/leagues").with(csrf()).cookie(anna).contentType(MediaType.APPLICATION_JSON)

@@ -11,6 +11,9 @@ import com.fantaagent.application.service.account.InvalidTokenException;
 import com.fantaagent.application.service.account.TooManyAttemptsException;
 import com.fantaagent.application.service.auction.AuctionNotFoundException;
 import com.fantaagent.application.service.auction.NoSeatException;
+import com.fantaagent.application.service.auction.NotEnoughMembersException;
+import com.fantaagent.application.service.auction.SeatsLockedException;
+import com.fantaagent.application.service.league.AdminCannotLeaveException;
 import com.fantaagent.application.service.league.AdminOnlyException;
 import com.fantaagent.application.service.league.InvalidLeagueDataException;
 import com.fantaagent.application.service.league.InviteUnavailableException;
@@ -57,16 +60,6 @@ import java.net.URI;
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 
     static final String TYPE_BASE = "https://fantaagent.local/problems/";
-
-    @ExceptionHandler(UnknownLeagueException.class)
-    ProblemDetail unknownLeague(UnknownLeagueException e) {
-        return problem(HttpStatus.NOT_FOUND, "unknown-league", e.getMessage());
-    }
-
-    @ExceptionHandler(UnknownAuctionException.class)
-    ProblemDetail unknownAuction(UnknownAuctionException e) {
-        return problem(HttpStatus.NOT_FOUND, "unknown-auction", e.getMessage());
-    }
 
     @ExceptionHandler(NoAuctionSelectedException.class)
     ProblemDetail noAuction(NoAuctionSelectedException e) {
@@ -238,6 +231,21 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     ProblemDetail concurrentWrite(ConcurrentAppendException e) {
         return problem(HttpStatus.CONFLICT, "concurrent-write",
                 "Qualcun altro ha scritto nello stesso istante: riprova.");
+    }
+
+    @ExceptionHandler(SeatsLockedException.class)
+    ProblemDetail seatsLocked(SeatsLockedException e) {
+        return problem(HttpStatus.CONFLICT, "seats-locked", e.getMessage());
+    }
+
+    @ExceptionHandler(NotEnoughMembersException.class)
+    ProblemDetail notEnoughMembers(NotEnoughMembersException e) {
+        return problem(HttpStatus.CONFLICT, "not-enough-members", e.getMessage());
+    }
+
+    @ExceptionHandler(AdminCannotLeaveException.class)
+    ProblemDetail adminCannotLeave(AdminCannotLeaveException e) {
+        return problem(HttpStatus.CONFLICT, "admin-cannot-leave", e.getMessage());
     }
 
     /**

@@ -2,10 +2,13 @@ package com.fantaagent.adapter.in.api.league;
 
 import com.fantaagent.adapter.in.api.ApiAccess;
 import com.fantaagent.adapter.in.security.AppUserPrincipal;
+import com.fantaagent.application.service.auction.LeagueAuctionService;
 import com.fantaagent.application.service.league.LeagueAccess;
 import com.fantaagent.application.service.league.LeagueService;
+import com.fantaagent.application.service.league.NotLeagueMemberException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,10 +26,12 @@ public class LeagueApi {
 
     private final ApiAccess access;
     private final LeagueService leagues;
+    private final LeagueAuctionService auctions;
 
-    public LeagueApi(ApiAccess access, LeagueService leagues) {
+    public LeagueApi(ApiAccess access, LeagueService leagues, LeagueAuctionService auctions) {
         this.access = access;
         this.leagues = leagues;
+        this.auctions = auctions;
     }
 
     @GetMapping
@@ -65,5 +70,14 @@ public class LeagueApi {
         LeagueAccess league = access.league(leagueId, me);
         return leagues.members(league).stream()
                 .map(m -> LeagueDtos.MemberView.of(m, me.id())).toList();
+    }
+
+    /** Lasciare la lega, o toglierne qualcuno se si e' l'amministratore. */
+    @DeleteMapping("/{leagueId}/members/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removeMember(@AuthenticationPrincipal AppUserPrincipal me, @PathVariable String leagueId,
+                             @PathVariable String userId) {
+        LeagueAccess league = access.league(leagueId, me);
+        auctions.removeMember(league, ApiAccess.parseOr404(userId, () -> new NotLeagueMemberException(null)));
     }
 }

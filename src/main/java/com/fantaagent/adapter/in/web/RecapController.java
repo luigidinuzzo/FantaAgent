@@ -3,6 +3,7 @@ package com.fantaagent.adapter.in.web;
 import com.fantaagent.adapter.in.web.dto.ViewModels;
 import com.fantaagent.application.service.AuctionRuntime;
 import com.fantaagent.application.service.AuctionService;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
  */
 @Controller
 @RequestMapping("/legacy")
+@Profile("legacy")
 public class RecapController {
 
     private final AuctionService auction;

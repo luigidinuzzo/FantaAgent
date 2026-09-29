@@ -43,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * da li' non esce nessuna informazione strategica.
  */
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles({"dev", "legacy"})
 class BattitoreControllerTest {
 
     private static final LeagueRules RULES = new LeagueRules(2, 100,

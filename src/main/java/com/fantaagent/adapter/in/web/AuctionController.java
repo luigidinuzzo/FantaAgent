@@ -16,6 +16,7 @@ import com.fantaagent.domain.player.Role;
 import com.fantaagent.domain.search.CommandParser;
 import com.fantaagent.domain.search.ParsedCommand;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +30,7 @@ import java.util.Optional;
 
 @Controller
 @RequestMapping("/legacy")
+@Profile("legacy")
 public class AuctionController {
 
     private static final int TARGET_ROWS = 10;

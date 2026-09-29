@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * testo, l'unico modo di verificare cosa risponde davvero il browser.
  */
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles({"dev", "legacy"})
 class NoAuctionAdviceTest {
 
     @Autowired

@@ -13,6 +13,7 @@ import com.fantaagent.config.ScoringSettingsValidator;
 import com.fantaagent.domain.league.Participant;
 import com.fantaagent.domain.league.ScoringRules;
 import com.fantaagent.domain.player.Role;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,6 +49,7 @@ import java.util.Map;
  */
 @Controller
 @RequestMapping("/legacy")
+@Profile("legacy")
 public class SettingsController {
 
     /** Oltre non e' piu' un nome ma un appunto, e non entra in nessuna intestazione. */

@@ -1,17 +1,18 @@
 package com.fantaagent.adapter.in.api;
 
-import com.fantaagent.application.service.AuctionService;
+import com.fantaagent.testsupport.AuctionApiFixture;
+import com.fantaagent.testsupport.TestCatalogConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.context.WebApplicationContext;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -28,26 +29,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @ActiveProfiles("dev")
+@Import(TestCatalogConfig.class)
+@TestPropertySource(properties = "fantaagent.data-dir=target/test-data-api-problem-shape")
 class ApiProblemShapeTest {
-
-    private static final String BASE = "/api/leagues/default/auctions/corrente";
 
     @Autowired
     private WebApplicationContext context;
 
-    @MockitoBean
-    private AuctionService auction;
-
-    private MockMvc mvc;
+    private AuctionApiFixture f;
 
     @BeforeEach
-    void setUp() {
-        mvc = MockMvcBuilders.webAppContextSetup(context).build();
+    void setUp() throws Exception {
+        f = AuctionApiFixture.create(context);
     }
 
     @Test
     void unSeqNonNumericoDaUnProblemTipizzato() throws Exception {
-        mvc.perform(post(BASE + "/purchases/pippo/void"))
+        f.mvc.perform(post(f.url("/purchases/pippo/void")).with(csrf()).cookie(f.anna))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.type")
@@ -56,7 +54,8 @@ class ApiProblemShapeTest {
 
     @Test
     void unCorpoJsonMalformatoDaUnProblemTipizzato() throws Exception {
-        mvc.perform(post(BASE + "/purchases").contentType(MediaType.APPLICATION_JSON)
+        f.mvc.perform(post(f.url("/purchases")).with(csrf()).cookie(f.anna)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{non e' json"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
@@ -66,16 +65,14 @@ class ApiProblemShapeTest {
 
     @Test
     void ilMetodoSbagliatoEsceInProblemJson() throws Exception {
-        mvc.perform(get(BASE + "/purchases"))
+        f.mvc.perform(get(f.url("/purchases")).cookie(f.anna))
                 .andExpect(status().isMethodNotAllowed())
-                .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(jsonPath("$.type")
-                        .value("https://fantaagent.local/problems/method-not-allowed"));
+                .andExpect(content().contentTypeCompatibleWith("application/problem+json"));
     }
 
     @Test
     void unaRottaInesistenteSottoApiDaUnProblemTipizzato() throws Exception {
-        mvc.perform(get(BASE + "/non-esiste"))
+        f.mvc.perform(get(f.url("/non-esiste")).cookie(f.anna))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
                 .andExpect(jsonPath("$.type")

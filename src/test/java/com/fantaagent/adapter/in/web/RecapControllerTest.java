@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles({"dev", "legacy"})
 class RecapControllerTest {
 
     private static final LeagueRules RULES = new LeagueRules(2, 100,

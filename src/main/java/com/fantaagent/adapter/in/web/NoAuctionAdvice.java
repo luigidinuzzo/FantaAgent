@@ -3,6 +3,7 @@ package com.fantaagent.adapter.in.web;
 import com.fantaagent.application.service.NoAuctionSelectedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
@@ -24,6 +25,7 @@ import org.springframework.web.servlet.ModelAndView;
  * pareggio impossibile, non solo vinto per ora.
  */
 @ControllerAdvice(basePackages = "com.fantaagent.adapter.in.web")
+@Profile("legacy")
 public class NoAuctionAdvice {
 
     @ExceptionHandler(NoAuctionSelectedException.class)

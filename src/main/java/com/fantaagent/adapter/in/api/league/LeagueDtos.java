@@ -71,4 +71,30 @@ public final class LeagueDtos {
 
     public record AcceptInviteRequest(String teamName, String initial) {
     }
+
+    public record AuctionCardView(String id, String name, java.time.Instant createdAt,
+                                  java.time.Instant lastWritten, int purchases,
+                                  com.fantaagent.domain.player.Role phase, int teams, int budget,
+                                  int totalSlots, Integer myBudgetRemaining) {
+
+        public static AuctionCardView of(com.fantaagent.application.service.auction.AuctionCard c) {
+            return new AuctionCardView(c.id().toString(), c.name(), c.createdAt(), c.lastWritten(),
+                    c.purchases(), c.phase(), c.teams(), c.budget(), c.totalSlots(), c.myBudgetRemaining());
+        }
+    }
+
+    public record CreateAuctionRequest(String name) {
+    }
+
+    public record UpdateAuctionRequest(String name, SettingsDtos.BidderSettings bidder) {
+    }
+
+    public record SeatView(String userId, String displayName, String teamName, String initial, int position) {
+    }
+
+    public record SeatsView(boolean locked, List<SeatView> seats) {
+    }
+
+    public record SeatInput(String userId, String teamName, String initial) {
+    }
 }

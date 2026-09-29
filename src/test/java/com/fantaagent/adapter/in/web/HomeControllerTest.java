@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** La home che chiede quale asta aprire. */
 @SpringBootTest
-@ActiveProfiles("dev")
+@ActiveProfiles({"dev", "legacy"})
 class HomeControllerTest {
 
     @Autowired

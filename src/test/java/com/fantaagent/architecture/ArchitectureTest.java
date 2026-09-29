@@ -126,6 +126,19 @@ class ArchitectureTest {
                 .check(classes);
     }
 
+    /**
+     * Chi fa la richiesta arriva ai servizi come argomento — un LeagueAccess, un
+     * AuctionView — e non lo si ripesca dal contesto di sicurezza. E' cio' che rende
+     * impossibile, e non solo improbabile, un consiglio calcolato per la persona sbagliata.
+     */
+    @Test
+    void dominioEServiziNonLeggonoIlContestoDiSicurezza() {
+        noClasses().that().resideInAnyPackage("com.fantaagent.domain..", "com.fantaagent.application..")
+                .should().dependOnClassesThat().resideInAnyPackage("org.springframework.security..")
+                .because("chi chiede arriva come argomento, non si legge dal contesto")
+                .check(classes);
+    }
+
     private static ArchCondition<JavaClass> portareIlPrefissoLegacy() {
         return new ArchCondition<>("essere annotate con @RequestMapping(\"/legacy\")") {
             @Override
