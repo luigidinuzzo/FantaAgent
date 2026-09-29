@@ -25,7 +25,7 @@ export function InitialField({
         value={upper}
         maxLength={1}
         autoComplete="off"
-        onChange={(e) => onChange(e.target.value.slice(-1))}
+        onChange={(e) => onChange(e.target.value.slice(-1).toUpperCase())}
         aria-invalid={all.length > 0 ? 'true' : undefined}
         aria-describedby={`${id}-hint${all.length > 0 ? ` ${id}-errors` : ''}`}
         className="mt-2 min-h-11 w-16 rounded-xl border border-line-strong bg-surface px-4 text-center text-base font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"

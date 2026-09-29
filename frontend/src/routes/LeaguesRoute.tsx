@@ -15,14 +15,28 @@ export function LeaguesRoute() {
   const [initial, setInitial] = useState('');
   const errors = fieldErrors(create.error);
 
+  const createErrorMessage = create.isError && Object.keys(errors).length === 0
+    ? userMessage(create.error, 'Non sono riuscito a creare la lega. Riprova fra poco.')
+    : null;
+  // Un solo alert, mai due insieme: l'errore di creazione ha la precedenza perche'
+  // e' il gesto piu' recente dell'utente (stessa disciplina di RosterGrid). Se
+  // anche l'elenco non si carica, il suo messaggio resta visibile ma senza
+  // role="alert" — lo ha gia' annunciato l'altro.
+  const listErrorMessage = leagues.isError
+    ? userMessage(leagues.error, 'Non riesco a caricare le tue leghe. Riprova fra poco.')
+    : null;
+
   return (
     <AppShell chrome="top">
       <div className="mx-auto grid max-w-5xl items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section aria-labelledby="leagues-title" className="panel rounded-2xl p-6">
           <h1 id="leagues-title" className="w-exp text-lg font-semibold">Le mie leghe</h1>
-          {leagues.isError ? (
-            <p role="alert" className="mt-4 text-sm font-medium text-destructive">
-              {userMessage(leagues.error, 'Non riesco a caricare le tue leghe. Riprova fra poco.')}
+          {listErrorMessage ? (
+            <p
+              role={createErrorMessage ? undefined : 'alert'}
+              className="mt-4 text-sm font-medium text-destructive"
+            >
+              {listErrorMessage}
             </p>
           ) : null}
           {leagues.data && leagues.data.length === 0 ? (
@@ -64,9 +78,9 @@ export function LeaguesRoute() {
               errors={errors.teamName} />
             <InitialField id="league-initial" value={initial} onChange={setInitial}
               errors={errors.initial} />
-            {create.isError && Object.keys(errors).length === 0 ? (
+            {createErrorMessage ? (
               <p role="alert" className="mt-4 text-sm font-medium text-destructive">
-                {userMessage(create.error, 'Non sono riuscito a creare la lega. Riprova fra poco.')}
+                {createErrorMessage}
               </p>
             ) : null}
             <button type="submit" disabled={create.isPending} className={PRIMARY_BUTTON}>
