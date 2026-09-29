@@ -966,7 +966,9 @@ describe('AuctionRoute', () => {
     const link = await screen.findByRole('link', { name: /proiezione/i });
     expect(link).toHaveAttribute('href', '/leghe/default/aste/a1/proiezione');
     expect(link).toHaveAttribute('target', '_blank');
-    expect(screen.getByRole('link', { name: 'Vai alla lega' })).toHaveAttribute('href', '/leghe/default');
+    // STATE e' dell'amministratore: l'ingranaggio porta alle impostazioni dell'asta.
+    expect(screen.getByRole('link', { name: 'Impostazioni dell\'asta' }))
+      .toHaveAttribute('href', '/leghe/default/aste/a1/impostazioni');
   });
 
   // Fix round 2 (revisione finale, finding 4): l'aggiudicazione dal
@@ -1892,6 +1894,15 @@ describe('AuctionRoute', () => {
       expect(await screen.findByText(/Fase:/)).toHaveTextContent('Fase: portieri');
       expect(screen.queryByRole('button', { name: /Annulla ultimo acquisto/ })).not.toBeInTheDocument();
       expect(screen.queryByRole('navigation', { name: /Fase dell'asta/ })).not.toBeInTheDocument();
+    });
+
+    it('l\'ingranaggio porta alla lega, non alle impostazioni dell\'asta', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      stubApi({ state: { ...STATE, admin: false } });
+      renderAuction();
+
+      expect(await screen.findByRole('link', { name: 'Vai alla lega' })).toHaveAttribute('href', '/leghe/default');
+      expect(screen.queryByRole('link', { name: 'Impostazioni dell\'asta' })).not.toBeInTheDocument();
     });
 
     it('con un posto vede la scheda e i consigli del giocatore, ma non il modo di aggiudicarlo', async () => {

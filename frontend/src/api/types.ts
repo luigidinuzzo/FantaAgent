@@ -300,3 +300,39 @@ export interface InvitePreview {
   alreadyMember: boolean;
   takenInitials: string[];
 }
+
+/** Un'asta nella pagina della lega. Specchio di {@code LeagueDtos.AuctionCardView}. */
+export interface LeagueAuctionCard {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastWritten: string | null;
+  purchases: number;
+  phase: Role;
+  teams: number;
+  budget: number;
+  totalSlots: number;
+  /** Null per chi non ha un posto in quest'asta. */
+  myBudgetRemaining: number | null;
+  bidder: BidderSettings;
+}
+
+export interface SeatView {
+  userId: string;
+  displayName: string;
+  teamName: string;
+  initial: string;
+  position: number;
+}
+
+export interface SeatsView {
+  /** Vero dal primo acquisto: da li' si cambia solo l'ordine. */
+  locked: boolean;
+  seats: SeatView[];
+}
+
+export interface SeatInput {
+  userId: string;
+  teamName: string;
+  initial: string;
+}

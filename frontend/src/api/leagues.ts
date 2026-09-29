@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
-  CreatedInvite, InvitePreview, InviteView, LeagueCard, LeagueDetail,
+  BidderSettings, CreatedInvite, InvitePreview, InviteView, LeagueAuctionCard, LeagueCard, LeagueDetail,
+  SeatInput, SeatsView,
 } from './types';
 
 const path = (id: string) => `/api/leagues/${encodeURIComponent(id)}`;
@@ -10,6 +11,8 @@ export const LEAGUE_KEYS = {
   all: ['leagues'] as const,
   one: (id: string) => ['leagues', id] as const,
   invites: (id: string) => ['leagues', id, 'invites'] as const,
+  auctions: (id: string) => ['leagues', id, 'auctions'] as const,
+  seats: (id: string, auctionId: string) => ['leagues', id, 'auctions', auctionId, 'seats'] as const,
   invite: (token: string) => ['invite', token] as const,
 };
 
@@ -85,5 +88,72 @@ export function useAcceptInvite(token: string) {
     mutationFn: (body: { teamName: string; initial: string }) =>
       api<LeagueCard>(`/api/invites/${encodeURIComponent(token)}/accept`, { method: 'POST', body }),
     onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
+  });
+}
+
+export function useLeagueAuctions(leagueId: string) {
+  return useQuery({
+    queryKey: LEAGUE_KEYS.auctions(leagueId),
+    queryFn: () => api<LeagueAuctionCard[]>(`${path(leagueId)}/auctions`),
+  });
+}
+
+export function useCreateAuction(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      api<LeagueAuctionCard>(`${path(leagueId)}/auctions`, { method: 'POST', body: { name } }),
+    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+  });
+}
+
+export function useUpdateAuction(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ auctionId, ...body }: { auctionId: string; name?: string; bidder?: BidderSettings }) =>
+      api<null>(`${path(leagueId)}/auctions/${encodeURIComponent(auctionId)}`, { method: 'PATCH', body }),
+    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+  });
+}
+
+export function useDeleteAuction(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (auctionId: string) =>
+      api<null>(`${path(leagueId)}/auctions/${encodeURIComponent(auctionId)}`, { method: 'DELETE' }),
+    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+  });
+}
+
+export function useSeats(leagueId: string, auctionId: string) {
+  return useQuery({
+    queryKey: LEAGUE_KEYS.seats(leagueId, auctionId),
+    queryFn: () => api<SeatsView>(`${path(leagueId)}/auctions/${encodeURIComponent(auctionId)}/seats`),
+    ...STILL,
+  });
+}
+
+export function useSaveSeats(leagueId: string, auctionId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (seats: SeatInput[]) =>
+      api<SeatsView>(`${path(leagueId)}/auctions/${encodeURIComponent(auctionId)}/seats`,
+        { method: 'PUT', body: seats }),
+    onSuccess: (view) => {
+      client.setQueryData(LEAGUE_KEYS.seats(leagueId, auctionId), view);
+      return client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) });
+    },
+  });
+}
+
+export function useRemoveMember(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      api<null>(`${path(leagueId)}/members/${encodeURIComponent(userId)}`, { method: 'DELETE' }),
+    // Non si aspetta il ricaricamento: chi ha appena lasciato la lega non puo' piu'
+    // rileggerla (404, piu' un tentativo), e aspettarlo lo terrebbe su una pagina
+    // d'errore per un secondo prima di portarlo all'elenco delle leghe.
+    onSuccess: () => { void client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }); },
   });
 }

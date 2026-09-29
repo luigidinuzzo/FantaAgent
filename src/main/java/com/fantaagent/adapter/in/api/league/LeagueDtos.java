@@ -75,11 +75,13 @@ public final class LeagueDtos {
     public record AuctionCardView(String id, String name, java.time.Instant createdAt,
                                   java.time.Instant lastWritten, int purchases,
                                   com.fantaagent.domain.player.Role phase, int teams, int budget,
-                                  int totalSlots, Integer myBudgetRemaining) {
+                                  int totalSlots, Integer myBudgetRemaining,
+                                  SettingsDtos.BidderSettings bidder) {
 
         public static AuctionCardView of(com.fantaagent.application.service.auction.AuctionCard c) {
             return new AuctionCardView(c.id().toString(), c.name(), c.createdAt(), c.lastWritten(),
-                    c.purchases(), c.phase(), c.teams(), c.budget(), c.totalSlots(), c.myBudgetRemaining());
+                    c.purchases(), c.phase(), c.teams(), c.budget(), c.totalSlots(), c.myBudgetRemaining(),
+                    new SettingsDtos.BidderSettings(c.bidder().bidTimerSeconds(), c.bidder().beepEnabled()));
         }
     }
 

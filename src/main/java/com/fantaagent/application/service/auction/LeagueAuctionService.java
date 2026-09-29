@@ -92,7 +92,7 @@ public class LeagueAuctionService {
             cards.add(new AuctionCard(a.id(), a.name(), a.createdAt(), LogSummary.lastWritten(events),
                     LogSummary.purchases(events), LogSummary.phase(events, phases.getFirst()),
                     seats.size(), a.rules().budget(), seats.size() * slotsPerTeam,
-                    seated ? a.rules().budget() - LogSummary.spentBy(events, me) : null));
+                    seated ? a.rules().budget() - LogSummary.spentBy(events, me) : null, a.bidder()));
         }
         return List.copyOf(cards);
     }

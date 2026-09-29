@@ -134,11 +134,11 @@ describe('SettingsRoute', () => {
     expect(screen.getByRole('link', { name: 'FantaAgent' })).toHaveAttribute('href', '/');
   });
 
-  /** Preparando un'asta l'uscita e' «Le mie aste» nella barra: niente seconda freccia. */
-  it('senza asta aperta si esce da «Le mie aste», senza una seconda freccia', async () => {
+  /** Preparando un'asta l'uscita e' «Le mie leghe» nella barra: niente seconda freccia. */
+  it('senza asta aperta si esce da «Le mie leghe», senza una seconda freccia', async () => {
     renderSettings(() => Promise.resolve(jsonResponse({ auctionId: null })));
     await screen.findByLabelText(/secondi/i);
-    expect(screen.getByRole('link', { name: 'Le mie aste' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Le mie leghe' })).toHaveAttribute('href', '/');
     expect(screen.queryByRole('link', { name: 'Torna alla home' })).not.toBeInTheDocument();
   });
 

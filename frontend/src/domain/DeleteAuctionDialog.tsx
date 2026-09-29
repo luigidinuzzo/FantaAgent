@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import type { AuctionCard } from '../api/types';
 
 /**
  * La conferma prima di cancellare un'asta.
@@ -11,7 +10,7 @@ import type { AuctionCard } from '../api/types';
 export function DeleteAuctionDialog({
   auction, pending, error, onConfirm, onCancel,
 }: {
-  auction: AuctionCard | null;
+  auction: { id: string; label: string } | null;
   pending: boolean;
   error: string | null;
   onConfirm: (auctionId: string) => void;

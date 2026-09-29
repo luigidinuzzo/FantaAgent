@@ -1,13 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { AuctionCard } from '../api/types';
 import { DeleteAuctionDialog } from './DeleteAuctionDialog';
 
-const AUCTION: AuctionCard = {
-  id: '2026-09-02', label: 'Lega No Name', lastWritten: null, purchases: 3, phase: 'D', selected: false,
-  teams: 8, budget: 500, totalSlots: 200, myName: null, myBudgetRemaining: null,
-};
+const AUCTION = { id: 'a1', label: 'Lega No Name' };
 
 describe('DeleteAuctionDialog', () => {
   /**
@@ -34,7 +30,7 @@ describe('DeleteAuctionDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: 'Elimina' }));
-    expect(onConfirm).toHaveBeenCalledWith('2026-09-02');
+    expect(onConfirm).toHaveBeenCalledWith('a1');
   });
 
   it('in corso dice Elimino… e non si ripreme', () => {

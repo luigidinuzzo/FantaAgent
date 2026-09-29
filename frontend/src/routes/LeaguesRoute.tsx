@@ -28,7 +28,10 @@ export function LeaguesRoute() {
 
   return (
     <AppShell chrome="top">
-      <div className="mx-auto grid max-w-5xl items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      {/* Uno sotto l'altro, non affiancati: con poche leghe la colonna dell'elenco
+          restava mezza vuota accanto al modulo, piu' alto di lei. Il modulo sotto
+          mette i tre campi su una riga e la pagina resta compatta. */}
+      <div className="mx-auto grid max-w-5xl gap-4">
         <section aria-labelledby="leagues-title" className="panel rounded-2xl p-6">
           <h1 id="leagues-title" className="w-exp text-lg font-semibold">Le mie leghe</h1>
           {listErrorMessage ? (
@@ -41,7 +44,7 @@ export function LeaguesRoute() {
           ) : null}
           {leagues.data && leagues.data.length === 0 ? (
             <p className="mt-4 text-sm">
-              Non fai ancora parte di nessuna lega. Creane una qui accanto, oppure apri il link
+              Non fai ancora parte di nessuna lega. Creane una qui sotto, oppure apri il link
               d'invito che ti hanno mandato.
             </p>
           ) : null}
@@ -72,18 +75,20 @@ export function LeaguesRoute() {
                 { onSuccess: (league) => navigate(`/leghe/${league.id}`) });
             }}
           >
-            <TextField id="league-name" label="Nome della lega" value={name} onChange={setName}
-              errors={errors.name} />
-            <TextField id="league-team" label="La tua squadra" value={teamName} onChange={setTeamName}
-              errors={errors.teamName} />
-            <InitialField id="league-initial" value={initial} onChange={setInitial}
-              errors={errors.initial} />
+            <div className="grid gap-x-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:[&>*]:mt-0">
+              <TextField id="league-name" label="Nome della lega" value={name} onChange={setName}
+                errors={errors.name} />
+              <TextField id="league-team" label="La tua squadra" value={teamName} onChange={setTeamName}
+                errors={errors.teamName} />
+              <InitialField id="league-initial" value={initial} onChange={setInitial}
+                errors={errors.initial} />
+            </div>
             {createErrorMessage ? (
               <p role="alert" className="mt-4 text-sm font-medium text-destructive">
                 {createErrorMessage}
               </p>
             ) : null}
-            <button type="submit" disabled={create.isPending} className={PRIMARY_BUTTON}>
+            <button type="submit" disabled={create.isPending} className={`${PRIMARY_BUTTON} md:w-auto`}>
               {create.isPending ? 'Creo…' : 'Crea la lega'}
             </button>
           </form>

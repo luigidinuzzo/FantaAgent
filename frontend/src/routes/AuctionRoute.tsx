@@ -202,6 +202,9 @@ export function AuctionRoute() {
   // propri consigli. Finche' lo stato non e' arrivato, niente comandi: meglio un
   // istante senza pulsanti che un pulsante che risponde "non puoi".
   const admin = state.data?.admin ?? false;
+  const gear = admin
+    ? { to: `/leghe/${leagueId}/aste/${auctionId}/impostazioni`, label: 'Impostazioni dell\'asta' }
+    : { to: `/leghe/${leagueId}`, label: 'Vai alla lega' };
   // Tre valori, non due: finche' lo stato non e' arrivato il posto non e' noto, e
   // i consigli aspettano — chiederli prima vorrebbe dire farsi rispondere no-seat
   // da chi un posto non ce l'ha. La frase per chi non ce l'ha aspetta anche lei.
@@ -537,9 +540,11 @@ export function AuctionRoute() {
               pending={undoLast.isPending}
             />
           ) : null}
-          <Link to={`/leghe/${leagueId}`} className={ICON_LINK}>
+          {/* L'ingranaggio porta dove si cambia qualcosa: per l'amministratore le
+              impostazioni di quest'asta, per gli altri la lega. */}
+          <Link to={gear.to} className={ICON_LINK}>
             <SettingsIcon />
-            <span className="sr-only">Vai alla lega</span>
+            <span className="sr-only">{gear.label}</span>
           </Link>
         </>
       }

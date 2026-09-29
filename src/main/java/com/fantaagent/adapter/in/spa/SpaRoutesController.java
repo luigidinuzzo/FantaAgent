@@ -34,6 +34,7 @@ public class SpaRoutesController {
     static final String LEGA = "/leghe/{leagueId}";
     static final String ASTA_DI_LEGA = "/leghe/{leagueId}/aste/{auctionId}";
     static final String PROIEZIONE_DI_LEGA = "/leghe/{leagueId}/aste/{auctionId}/proiezione";
+    static final String IMPOSTAZIONI_ASTA = "/leghe/{leagueId}/aste/{auctionId}/impostazioni";
     static final String INVITO = "/invito/{token}";
 
     /**
@@ -48,7 +49,7 @@ public class SpaRoutesController {
      */
     static final List<String> ROUTES = List.of(ROOT, IMPOSTAZIONI,
             PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL,
-            LEGHE, LEGA, ASTA_DI_LEGA, PROIEZIONE_DI_LEGA, INVITO);
+            LEGHE, LEGA, ASTA_DI_LEGA, PROIEZIONE_DI_LEGA, IMPOSTAZIONI_ASTA, INVITO);
 
     /**
      * Inoltra, non redirige: l'indirizzo nella barra deve restare quello che l'utente
@@ -57,7 +58,7 @@ public class SpaRoutesController {
      */
     @GetMapping({ROOT, IMPOSTAZIONI,
             PROFILO, ACCEDI, REGISTRATI, PASSWORD_DIMENTICATA, NUOVA_PASSWORD, VERIFICA_EMAIL,
-            LEGHE, LEGA, ASTA_DI_LEGA, PROIEZIONE_DI_LEGA, INVITO})
+            LEGHE, LEGA, ASTA_DI_LEGA, PROIEZIONE_DI_LEGA, IMPOSTAZIONI_ASTA, INVITO})
     public String spa() {
         return "forward:/index.html";
     }

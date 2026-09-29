@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AuctionCard } from '../api/types';
 
 /** Lo stesso limite del nome dato alla creazione. */
 const MAX_NAME = 60;
@@ -15,7 +14,7 @@ const MAX_NAME = 60;
 export function RenameAuctionDialog({
   auction, pending, error, onConfirm, onCancel,
 }: {
-  auction: AuctionCard | null;
+  auction: { id: string; label: string } | null;
   pending: boolean;
   error: string | null;
   onConfirm: (auctionId: string, name: string) => void;

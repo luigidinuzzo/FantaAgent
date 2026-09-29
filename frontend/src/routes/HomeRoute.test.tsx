@@ -419,16 +419,16 @@ describe('HomeRoute', () => {
   /**
    * Il profilo mostrava valori finti in attesa dell'accesso: una sezione che non fa
    * niente e' peggio di una assente. La home ha la barra in alto delle altre pagine,
-   * con «Le mie aste» come pagina corrente.
+   * con «Le mie leghe» come pagina corrente.
    */
-  it('usa la barra in alto con «Le mie aste» corrente, e niente Profilo', async () => {
+  it('usa la barra in alto con «Le mie leghe» corrente, e niente Profilo', async () => {
     vi.stubGlobal('fetch', withMe(() => Promise.resolve(json([OPEN_AUCTION]))));
     const router = createMemoryRouter([{ path: '/', element: <HomeRoute /> }]);
     setAuctionContext({ leagueId: 'default', auctionId: 'corrente' });
     render(<QueryProvider><RouterProvider router={router} /></QueryProvider>);
 
     expect(await screen.findByRole('button', { name: 'Crea asta' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Le mie aste' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Le mie leghe' })).toHaveAttribute('aria-current', 'page');
     expect(screen.queryByText('Profilo')).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Sezioni' })).not.toBeInTheDocument();
   });

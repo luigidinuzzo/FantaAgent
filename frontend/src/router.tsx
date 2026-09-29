@@ -1,8 +1,8 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { AppFrame } from './AppFrame';
 import { AuctionRoute } from './routes/AuctionRoute';
+import { AuctionSettingsRoute } from './routes/AuctionSettingsRoute';
 import { ForgotPasswordRoute } from './routes/ForgotPasswordRoute';
-import { HomeRoute } from './routes/HomeRoute';
 import { InviteRoute } from './routes/InviteRoute';
 import { LeagueRoute } from './routes/LeagueRoute';
 import { LeaguesRoute } from './routes/LeaguesRoute';
@@ -19,19 +19,17 @@ import { WithAuctionContext } from './routes/WithAuctionContext';
 // La proiezione ha una URL propria perche' va aperta in una seconda finestra, sul
 // secondo schermo: senza un indirizzo non c'e' niente da trascinare sul proiettore.
 //
-// La home prende la radice perche' e' da li' che si comincia.
-//
-// Le impostazioni hanno un indirizzo proprio perche' e' dove un'asta nasce: la home
-// (Task 9) ci porta con un link, senza creare niente da sola.
+// La radice e' l'elenco delle mie leghe: e' da li' che si comincia, e ogni asta sta
+// dentro la sua lega. /leghe resta come sinonimo per i link gia' mandati in giro.
 //
 // Esportato (non solo passato a createBrowserRouter) perche' SpaRoutesControllerTest
 // lo legge dal sorgente e pretende che l'elenco delle rotte del client coincida con
 // quelle che il server inoltra a index.html.
 export const routeDefinitions = [
-  { path: '/', element: <RequireAuth><HomeRoute /></RequireAuth> },
+  { path: '/', element: <RequireAuth><LeaguesRoute /></RequireAuth> },
   { path: '/impostazioni', element: <RequireAuth><SettingsRoute /></RequireAuth> },
   { path: '/profilo', element: <RequireAuth><ProfileRoute /></RequireAuth> },
-  { path: '/leghe', element: <RequireAuth><LeaguesRoute /></RequireAuth> },
+  { path: '/leghe', element: <Navigate to="/" replace /> },
   { path: '/leghe/:leagueId', element: <RequireAuth><LeagueRoute /></RequireAuth> },
   // Lega e asta nell'indirizzo: e' quello che si manda nel gruppo, ed e' quello che
   // un ricaricamento deve ritrovare.
@@ -42,6 +40,10 @@ export const routeDefinitions = [
   {
     path: '/leghe/:leagueId/aste/:auctionId/proiezione',
     element: <RequireAuth><WithAuctionContext><ProjectionRoute /></WithAuctionContext></RequireAuth>,
+  },
+  {
+    path: '/leghe/:leagueId/aste/:auctionId/impostazioni',
+    element: <RequireAuth><AuctionSettingsRoute /></RequireAuth>,
   },
   // Pubblica: chi apre l'invito spesso non ha ancora un account.
   { path: '/invito/:token', element: <InviteRoute /> },

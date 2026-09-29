@@ -59,28 +59,28 @@ describe('AppShell', () => {
   });
 
   /**
-   * Una barra sola su tutte le pagine: marchio e «Le mie aste», entrambi verso la
+   * Una barra sola su tutte le pagine: marchio e «Le mie leghe», entrambi verso la
    * home, e niente elenco di sezioni. Le altre destinazioni hanno la loro porta
    * altrove — /impostazioni dall'ingranaggio, /proiezione dal suo pulsante.
    */
-  it('porta il marchio e «Le mie aste», entrambi verso la home, e nient altro', () => {
+  it('porta il marchio e «Le mie leghe», entrambi verso la home, e nient altro', () => {
     render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
 
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(2);
     links.forEach((l) => expect(l).toHaveAttribute('href', '/'));
     expect(within(links[0]).getByTestId('wordmark')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Le mie aste' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Le mie leghe' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
-  it('sulla home «Le mie aste» dice di essere la pagina corrente', () => {
+  it('sulla home «Le mie leghe» dice di essere la pagina corrente', () => {
     const { unmount } = render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>, '/'));
-    expect(screen.getByRole('link', { name: 'Le mie aste' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Le mie leghe' })).toHaveAttribute('aria-current', 'page');
     unmount();
 
-    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>, '/asta'));
-    expect(screen.getByRole('link', { name: 'Le mie aste' })).not.toHaveAttribute('aria-current');
+    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>, '/leghe/l1'));
+    expect(screen.getByRole('link', { name: 'Le mie leghe' })).not.toHaveAttribute('aria-current');
   });
 
   it('il nome e\' il logo, porta alla home e resta una parola sola per chi ascolta', () => {

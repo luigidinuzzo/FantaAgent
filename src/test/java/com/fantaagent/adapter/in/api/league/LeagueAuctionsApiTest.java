@@ -60,7 +60,8 @@ class LeagueAuctionsApiTest {
                 .andExpect(jsonPath("$[0].id").value(f.auctionId))
                 .andExpect(jsonPath("$[0].purchases").value(1))
                 .andExpect(jsonPath("$[0].teams").value(3))
-                .andExpect(jsonPath("$[0].myBudgetRemaining").value(490));
+                .andExpect(jsonPath("$[0].myBudgetRemaining").value(490))
+                .andExpect(jsonPath("$[0].bidder.bidTimerSeconds").isNumber());
     }
 
     @Test

@@ -12,7 +12,7 @@ import { Wordmark } from './domain/Wordmark';
  * prodotto. In alto e non di lato perche' all'asta la larghezza serve alle tre
  * colonne e alle rose, e una colonna fissa di navigazione gliela toglieva.
  *
- * <p>A sinistra il marchio e «Le mie aste», entrambi verso la home — il marchio solo
+ * <p>A sinistra il marchio e «Le mie leghe», entrambi verso la home — il marchio solo
  * per chi sa che i loghi si cliccano, la voce per tutti gli altri. Sulla home la voce
  * dice di essere la pagina corrente. A destra i pulsanti della schermata
  * ({@code slotActions}: all'asta proiezione, annulla, impostazioni) e lo stato.
@@ -51,7 +51,7 @@ export function AppShell({
   return (
     <>
       {/* Ferma in cima mentre la pagina scorre: su una pagina lunga (le
-          impostazioni, le rose) marchio, «Le mie aste» e i pulsanti dell'asta non
+          impostazioni, le rose) marchio, «Le mie leghe» e i pulsanti dell'asta non
           devono uscire dallo schermo. z-30: sopra i pannelli e i menu che le
           scorrono sotto. */}
       <header
@@ -77,7 +77,7 @@ export function AppShell({
                 onHome ? 'bg-accent text-on-accent' : 'border border-line-strong hover:bg-line'
               }`}
             >
-              Le mie aste
+              Le mie leghe
             </Link>
           </>
         ) : (
