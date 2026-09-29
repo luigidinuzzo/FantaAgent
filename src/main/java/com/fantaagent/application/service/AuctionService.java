@@ -1,6 +1,8 @@
 package com.fantaagent.application.service;
 
 import com.fantaagent.application.port.out.AuctionEventStore;
+import com.fantaagent.application.port.out.ConcurrentAppendException;
+import com.fantaagent.application.port.out.DuplicateRequestException;
 import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.domain.auction.AuctionProjector;
@@ -78,6 +80,26 @@ public class AuctionService {
         return () -> fixed;
     }
 
+    /**
+     * Quante volte rifare un comando quando un'altra richiesta ha preso il numero di
+     * sequenza per prima. Ogni tentativo rilegge il registro e rifa' tutti i
+     * controlli: il giocatore potrebbe essere appena stato venduto, il budget speso.
+     * Tre bastano per un'asta a turni; se non bastano, e' meglio dirlo che insistere.
+     */
+    static final int MAX_ATTEMPTS = 3;
+
+    private static <T> T retrying(Supplier<T> once) {
+        ConcurrentAppendException last = null;
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+                return once.get();
+            } catch (ConcurrentAppendException e) {
+                last = e;
+            }
+        }
+        throw last;
+    }
+
     public AuctionState state() {
         return state(scope.get());
     }
@@ -109,6 +131,11 @@ public class AuctionService {
      */
     public AuctionEvent.PlayerPurchased recordPurchase(String playerId, String participantId,
                                                        int price, String requestId) {
+        return retrying(() -> recordPurchaseOnce(playerId, participantId, price, requestId));
+    }
+
+    private AuctionEvent.PlayerPurchased recordPurchaseOnce(String playerId, String participantId,
+                                                             int price, String requestId) {
         AuctionScope currentScope = scope.get();
         AuctionEventStore currentStore = currentScope.store();
         // Sezione critica sull'istanza dello store dello scope corrente, dal
@@ -160,9 +187,17 @@ public class AuctionService {
                         buyer.name() + " ha già coperto tutti gli slot " + player.role());
             }
 
-            AuctionEvent written = currentStore.appendWithNextSeq(
-                    seq -> new AuctionEvent.PlayerPurchased(seq, Instant.now(), playerId,
-                            buyer.id(), price, requestId));
+            AuctionEvent written;
+            try {
+                written = currentStore.appendWithNextSeq(
+                        seq -> new AuctionEvent.PlayerPurchased(seq, Instant.now(), playerId,
+                                buyer.id(), price, requestId));
+            } catch (DuplicateRequestException e) {
+                // Un'altra richiesta con la stessa chiave e' arrivata al registro fra il
+                // nostro controllo e la nostra scrittura: il vincolo del database l'ha
+                // vista, e la risposta giusta e' quella che ha scritto lei.
+                return recordedFor(currentStore, requestId).orElseThrow(() -> e);
+            }
             markChangedInThisSession();
             return (AuctionEvent.PlayerPurchased) written;
         }
@@ -180,6 +215,10 @@ public class AuctionService {
 
     /** @return false se non c'era nulla da annullare */
     public boolean undoLast() {
+        return retrying(this::undoLastOnce);
+    }
+
+    private boolean undoLastOnce() {
         AuctionEventStore store = scope.get().store();
         List<AuctionEvent> events = store.load();
         Set<Long> revoked = new HashSet<>();
@@ -207,6 +246,13 @@ public class AuctionService {
      * registrata in assoluto.
      */
     public void revokePurchase(long targetSeq) {
+        retrying(() -> {
+            revokePurchaseOnce(targetSeq);
+            return null;
+        });
+    }
+
+    private void revokePurchaseOnce(long targetSeq) {
         AuctionEventStore store = scope.get().store();
         List<AuctionEvent> events = store.load();
         boolean exists = false;
@@ -253,6 +299,10 @@ public class AuctionService {
      * @throws IllegalArgumentException se il ruolo non è una fase configurata
      */
     public boolean selectPhase(Role role) {
+        return retrying(() -> selectPhaseOnce(role));
+    }
+
+    private boolean selectPhaseOnce(Role role) {
         // Un solo scope per tutta la mutazione: tre letture separate potrebbero vedere
         // aste diverse se nel frattempo se ne seleziona un'altra.
         AuctionScope currentScope = scope.get();
@@ -267,6 +317,57 @@ public class AuctionService {
         store.backup("fine-" + current.name());
         store.appendWithNextSeq(seq -> new AuctionEvent.PhaseAdvanced(seq, Instant.now(), role));
         return true;
+    }
+
+    /**
+     * Il giocatore resta quello; cambiano prezzo, acquirente o entrambi. E' uno dei due
+     * poteri dell'amministratore: si usa quando il banco ha sbagliato, non per giocare.
+     *
+     * <p>Il budget del nuovo acquirente si conta come se l'acquisto corretto non ci
+     * fosse: se e' lo stesso acquirente, il prezzo vecchio torna disponibile.
+     */
+    public void correctPurchase(long targetSeq, String newParticipantId, int newPrice) {
+        retrying(() -> {
+            correctPurchaseOnce(targetSeq, newParticipantId, newPrice);
+            return null;
+        });
+    }
+
+    private void correctPurchaseOnce(long targetSeq, String newParticipantId, int newPrice) {
+        AuctionScope currentScope = scope.get();
+        AuctionState current = state(currentScope);
+        Holding holding = current.holdings().stream()
+                .filter(h -> h.seq() == targetSeq)
+                .findFirst()
+                .orElseThrow(() -> new PurchaseRevocationException(
+                        PurchaseRevocationException.Reason.NOT_FOUND,
+                        "nessun acquisto attivo con id " + targetSeq));
+        Participant buyer = currentScope.participants().stream()
+                .filter(p -> p.id().equals(newParticipantId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("partecipante sconosciuto: " + newParticipantId));
+        if (newPrice < 1) {
+            throw new IllegalArgumentException("il prezzo deve essere almeno 1");
+        }
+        Squad squad = current.squadOf(buyer.id());
+        boolean sameBuyer = buyer.id().equals(holding.participantId());
+        int available = squad.budgetRemaining() + (sameBuyer ? holding.price() : 0);
+        if (newPrice > available) {
+            throw new PurchaseRejectedException(PurchaseRejectedException.Reason.INSUFFICIENT_BUDGET,
+                    buyer.name() + " ha solo " + available + " crediti di budget residuo");
+        }
+        if (!sameBuyer && !squad.hasRoom(holding.role())) {
+            throw new PurchaseRejectedException(PurchaseRejectedException.Reason.ROLE_SLOTS_EXHAUSTED,
+                    buyer.name() + " ha già coperto tutti gli slot " + holding.role());
+        }
+        currentScope.store().appendWithNextSeq(seq -> new AuctionEvent.PurchaseCorrected(
+                seq, Instant.now(), targetSeq, buyer.id(), newPrice));
+        markChangedInThisSession();
+    }
+
+    /** Il numero dell'ultimo evento scritto: la versione dello stato che il client ha in mano. */
+    public long version() {
+        return scope.get().store().nextSeq() - 1;
     }
 
     /**
