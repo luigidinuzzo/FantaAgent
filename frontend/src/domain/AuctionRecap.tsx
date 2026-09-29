@@ -38,7 +38,7 @@ export function AuctionRecap({ participants, board }: {
             Asta conclusa
           </h2>
           <p className="mt-3 max-w-[60ch] text-lg text-muted-foreground">
-            Tutte le rose sono complete: qui sotto le trovi squadra per squadra, e puoi scaricarle in un file.
+            Tutte le rose sono complete: qui sotto le trovi squadra per squadra, e puoi scaricarle tutte insieme.
           </p>
         </div>
 

@@ -1,57 +1,89 @@
-import { expect, test } from '@playwright/test';
+import { type Browser, type Page, expect, test } from '@playwright/test';
 
 /**
- * Precondizione: il backend gira su :8080 con un'asta aperta e almeno un
- * giocatore libero nella fase corrente.
+ * Precondizione: il backend gira su :8080, su un database di prova.
  *
- *   ./run.sh   (in un altro terminale)
+ *   FANTAAGENT_DB_DIR=$(mktemp -d) ./run.sh      (in un altro terminale)
  *
- * Questo test esiste perche' il README ammette che la suite Java non esegue
- * JavaScript ne' CSS, e che piu' di un difetto e' uscito esattamente da li'.
- * Spostando l'interfaccia su React, quella zona cieca diventerebbe la
- * maggioranza del prodotto.
+ * La prova crea utenti, una lega e un'asta veri: su una cartella temporanea non
+ * tocca data/pg. Ogni esecuzione usa indirizzi nuovi, quindi si puo' ripetere sullo
+ * stesso database.
+ *
+ * Esiste perche' la suite Java non esegue JavaScript ne' CSS, e i test del frontend
+ * girano su risposte finte: qui c'e' il percorso intero, due persone in due browser
+ * separati — due contesti, due sessioni — sullo stesso backend.
  */
-test('cercare, valutare, aggiudicare', async ({ page }) => {
-  await page.goto('/');
 
-  await expect(page.getByTestId('connection-status')).toContainText('In diretta');
+const PASSWORD = 'una-password-lunga-e2e';
 
-  const firstRow = page.locator('tbody tr').first();
-  const playerName = await firstRow.locator('button').innerText();
-  await firstRow.locator('button').click();
+async function register(browser: Browser, name: string, email: string, from = '/registrati'): Promise<Page> {
+  const page = await (await browser.newContext()).newPage();
+  await page.goto(from);
+  if (from !== '/registrati') {
+    await page.getByRole('link', { name: 'Registrati' }).click();
+  }
+  await page.getByLabel('Il tuo nome').fill(name);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: "Crea l'account" }).click();
+  return page;
+}
 
-  const card = page.getByTestId('decision-card');
-  await expect(card).toContainText(playerName);
-  await expect(page.getByTestId('max-bid')).not.toBeEmpty();
+test('lega, invito, asta: l aggiudicazione dell amministratore arriva al membro', async ({ browser }) => {
+  const stamp = Date.now();
 
-  const budgetBefore = await page.getByTestId(/^budget-/).first().innerText();
+  // L'amministratore si registra e crea la lega.
+  const admin = await register(browser, 'Anna', `anna-${stamp}@example.com`);
+  await expect(admin.getByRole('heading', { name: 'Le mie leghe' })).toBeVisible();
+  await admin.getByLabel('Nome della lega').fill(`Lega ${stamp}`);
+  await admin.getByLabel('La tua squadra').fill('Anna FC');
+  await admin.getByLabel('La tua iniziale').fill('A');
+  await admin.getByRole('button', { name: 'Crea la lega' }).click();
+  await expect(admin.getByRole('heading', { name: `Lega ${stamp}`, level: 1 })).toBeVisible();
 
-  await page.getByLabel('Prezzo').fill('1');
-  await page.getByRole('button', { name: 'Aggiudica' }).click();
+  // Il link d'invito e' composto sull'indirizzo pubblico: qui conta solo il percorso.
+  await admin.getByRole('button', { name: "Crea un link d'invito" }).click();
+  const link = await admin.getByLabel("Link d'invito").inputValue();
+  const invitePath = new URL(link).pathname;
 
-  // Il budget cambia solo DOPO che il server ha confermato: e' la prova che
-  // non c'e' aggiornamento ottimistico.
-  await expect(page.getByTestId(/^budget-/).first()).not.toHaveText(budgetBefore);
+  // Il membro apre l'invito in un altro browser, si registra da li' e ci torna.
+  const member = await register(browser, 'Bruno', `bruno-${stamp}@example.com`, invitePath);
+  await member.getByLabel('La tua squadra').fill('Bruno United');
+  await member.getByLabel('La tua iniziale').fill('B');
+  await member.getByRole('button', { name: 'Entra nella lega' }).click();
+  await expect(member.getByRole('heading', { name: `Lega ${stamp}`, level: 1 })).toBeVisible();
 
-  // E il giocatore aggiudicato sparisce dai liberi.
-  await expect(page.locator('tbody tr button', { hasText: playerName })).toHaveCount(0);
+  // L'amministratore vede il nuovo membro e crea l'asta.
+  await admin.reload();
+  await expect(admin.getByRole('list', { name: 'Membri' })).toContainText('Bruno United');
+  await admin.getByLabel('Nome della nuova asta').fill('Asta di prova');
+  await admin.getByRole('button', { name: "Crea l'asta" }).click();
+  await expect(admin).toHaveURL(/\/leghe\/[^/]+\/aste\/[^/]+$/);
+  const auctionPath = new URL(admin.url()).pathname;
 
-  // L'unica live region della pagina dice cosa e' successo, per intero.
-  await expect(page.getByRole('status')).toContainText(
-    new RegExp(`${playerName} aggiudicato a.+per 1 credito\\. Ti restano `),
-  );
-});
+  // Il membro apre la stessa asta: la segue, ma non ha comandi.
+  await member.goto(auctionPath);
+  const memberCredits = member.getByRole('region', { name: 'Crediti delle squadre' });
+  await expect(memberCredits.getByRole('listitem').filter({ hasText: 'Bruno United' }))
+    .toContainText('500 crediti');
+  await expect(member.getByRole('button', { name: 'Annulla ultimo acquisto' })).toHaveCount(0);
 
-test('a connessione caduta l azione si disabilita', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('tbody tr').first().locator('button').click();
-  await expect(page.getByRole('button', { name: 'Aggiudica' })).toBeEnabled();
+  // L'amministratore mette sul banco il primo portiere e lo aggiudica al membro.
+  const firstFree = admin.getByRole('button', { name: /^Valuta / }).first();
+  const playerName = (await firstFree.innerText()).trim();
+  await firstFree.click();
+  await admin.getByRole('button', { name: 'Aggiudica direttamente' }).click();
+  await admin.getByRole('spinbutton', { name: 'Prezzo' }).fill('7');
+  await admin.getByRole('combobox', { name: 'Aggiudica a' }).selectOption({ label: 'Bruno United' });
+  await admin.getByRole('button', { name: 'Aggiudica', exact: true }).click();
 
-  await page.route('**/api/**', (route) => route.abort());
+  // I crediti cambiano solo dopo la conferma del registro: niente aggiornamenti ottimistici.
+  await expect(admin.getByRole('region', { name: 'Crediti delle squadre' })
+    .getByRole('listitem').filter({ hasText: 'Bruno United' })).toContainText('493 crediti');
 
-  await expect(page.getByTestId('connection-status')).toContainText('Connessione persa', {
-    timeout: 30_000,
-  });
-  await expect(page.getByRole('button', { name: 'Aggiudica' })).toBeDisabled();
-  await expect(page.getByTestId('decision-card')).toHaveAttribute('data-stale', 'true');
+  // Il membro lo vede comparire da solo, entro l'intervallo di aggiornamento.
+  await expect(memberCredits.getByRole('listitem').filter({ hasText: 'Bruno United' }))
+    .toContainText('493 crediti', { timeout: 15_000 });
+  await member.getByRole('tab', { name: 'Rose squadre' }).click();
+  await expect(member.getByRole('tabpanel', { name: 'Rose squadre' })).toContainText(playerName);
 });
