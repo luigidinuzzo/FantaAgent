@@ -3,7 +3,12 @@ import { setAuctionContext } from '../api/client';
 import { publishBid, subscribeBid } from './bidChannel';
 
 describe('bidChannel', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    // Il contesto e' globale: senza ripristino l'ordine dei casi deciderebbe su
+    // quale canale parlano quelli che non lo fissano.
+    setAuctionContext({ leagueId: '', auctionId: '' });
+  });
 
   it('consegna un messaggio ai sottoscrittori', async () => {
     const seen: unknown[] = [];

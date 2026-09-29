@@ -38,7 +38,9 @@ export function CorrectPurchaseDialog({
   }, [purchase]);
 
   if (!purchase) return null;
-  const parsed = Number.parseInt(price, 10);
+  // Solo cifre: parseInt da solo leggerebbe «33abc» come 33 e salverebbe un
+  // prezzo diverso da quello scritto.
+  const parsed = /^\d+$/.test(price.trim()) ? Number.parseInt(price, 10) : Number.NaN;
   const valid = Number.isInteger(parsed) && parsed >= 1;
 
   return (

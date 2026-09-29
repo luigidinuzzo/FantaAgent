@@ -1923,4 +1923,54 @@ describe('AuctionRoute', () => {
       expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/players/targets'))).toBe(false);
     });
   });
+
+  describe("l'amministratore senza posto", () => {
+    it('sceglie un giocatore e ne registra l\'acquisto, senza chiedere consigli', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      const writes: unknown[] = [];
+      const base = fullFetchMock({
+        state: {
+          ...STATE,
+          admin: true,
+          myParticipantId: null,
+          participants: STATE.participants.map((p) => ({ ...p, me: false })),
+        },
+        onWriteCall: (body) => writes.push(body),
+      });
+      const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const href = typeof input === 'string' ? input : input.toString();
+        if (href.includes('/board/bidder/p2')) {
+          return Promise.resolve(jsonResponse({
+            ...BIDDER_SETTINGS, playerId: 'p2', name: 'Giocatore Due', team: 'BBB', listPrice: 2,
+          }));
+        }
+        return base(input, init);
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      renderAuction();
+
+      // Cerca e comanda come sempre, ma la frase dice perche' non ci sono consigli.
+      expect(await screen.findByText(/Non hai un posto in quest'asta/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Non hai un posto in quest'asta/)).toHaveLength(1);
+      expect(screen.getByRole('navigation', { name: /Fase dell'asta/ })).toBeInTheDocument();
+
+      await userEvent.type(screen.getByRole('searchbox', { name: /cerca giocatore/i }), 'due');
+      const risultati = await screen.findByRole('list', { name: /risultati/i });
+      await userEvent.click(await within(risultati).findByRole('button', { name: /Giocatore Due/ }));
+
+      const banco = await screen.findByRole('region', { name: 'Sul banco · Giocatore Due' });
+      expect(within(banco).getByText('BBB')).toBeInTheDocument();
+      expect(within(banco).queryByText(/tetto/)).not.toBeInTheDocument();
+      expect(within(banco).getByRole('button', { name: /conto alla rovescia/i })).toBeInTheDocument();
+
+      await assignDirect('7', 'anna');
+      await waitFor(() => expect(writes).toContainEqual(
+        expect.objectContaining({ playerId: 'p2', participantId: 'anna', price: 7 })));
+
+      const urls = fetchMock.mock.calls.map(([url]) => String(url));
+      expect(urls.some((u) => u.includes('/players/phase'))).toBe(false);
+      expect(urls.some((u) => u.includes('/valuation'))).toBe(false);
+      expect(urls.some((u) => u.includes('/players/targets'))).toBe(false);
+    });
+  });
 });

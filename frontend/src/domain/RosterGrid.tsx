@@ -190,7 +190,10 @@ export function RosterGrid() {
           <div
             className="grid gap-3 pb-1"
             style={{
-              gridTemplateColumns: `repeat(${board.data?.columns.length ?? 0}, minmax(11rem, 1fr))`,
+              // Per l'amministratore ogni riga porta due gesti, matita e ✕: la
+              // colonna si allarga di quanto occupa il secondo, cosi' al nome resta
+              // lo spazio di sempre invece di troncarsi alla terza lettera.
+              gridTemplateColumns: `repeat(${board.data?.columns.length ?? 0}, minmax(${admin ? '13rem' : '11rem'}, 1fr))`,
             }}
           >
             {(board.data?.columns ?? []).map((column) => (
@@ -299,6 +302,26 @@ function CancelIcon() {
   );
 }
 
+/** Una matita, come tratto vettoriale: mai un'emoji. */
+function PencilIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10.5 2.5l3 3L6 13H3v-3z" />
+      <path d="M9 4l3 3" />
+    </svg>
+  );
+}
+
 /** Il chevron che gira secondo {@code open}: tratto vettoriale, mai un'emoji. */
 function ChevronIcon({ open }: { open: boolean }) {
   return (
@@ -371,7 +394,7 @@ function RosterColumn({
             <th scope="col" className="w-9 text-right">Prezzo</th>
             {/* Senza gesti per chi non e' amministratore: la colonna della ✕ non
                 toglie spazio ai nomi. */}
-            <th scope="col" className={admin ? 'w-9' : 'w-0'}>
+            <th scope="col" className={admin ? 'w-[4.5rem]' : 'w-0'}>
               <span className="sr-only">Azioni</span>
             </th>
           </tr>
@@ -437,34 +460,33 @@ function RosterColumn({
                 {!open ? null : slots.map((slot) => (
                   <tr key={slot.seq} className="group">
                     <td className={`${ROW_H} truncate py-0`}>
-                      {admin ? (
-                        // Per l'amministratore il nome e' il gesto di correzione: un
-                        // secondo bottone accanto alla ✕ toglieva alla colonna la
-                        // larghezza del nome, e in otto colonne le intestazioni si
-                        // accavallavano. Il nome c'e' gia', e dice su chi si corregge.
-                        <button
-                          type="button"
-                          disabled={pendingSeq === slot.seq}
-                          onClick={() => onCorrect({
-                            seq: slot.seq,
-                            playerName: slot.playerName,
-                            participantId: column.participantId,
-                            price: slot.price,
-                          })}
-                          aria-label={`Correggi l'acquisto di ${slot.playerName}`}
-                          title="Correggi squadra o prezzo"
-                          className="block h-full w-full truncate rounded-md text-left underline-offset-4 hover:underline disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                        >
-                          {slot.playerName}
-                        </button>
-                      ) : slot.playerName}
+                      {slot.playerName}
                     </td>
                     <td className={`tnum ${ROW_H} py-0 text-right text-muted-foreground`}>
                       {slot.price}
                       <span className="sr-only"> crediti pagati</span>
                     </td>
-                    <td className={`${ROW_H} py-0 text-right`}>
+                    <td className={`${ROW_H} whitespace-nowrap py-0 text-right`}>
                       {admin ? (
+                      <>
+                      {/* Accanto alla ✕, con la stessa misura e le stesse regole:
+                          compare passando sulla riga o arrivandoci da tastiera, e
+                          resta sempre in vista dove non si passa sopra col
+                          puntatore. */}
+                      <button
+                        type="button"
+                        disabled={pendingSeq === slot.seq}
+                        onClick={() => onCorrect({
+                          seq: slot.seq,
+                          playerName: slot.playerName,
+                          participantId: column.participantId,
+                          price: slot.price,
+                        })}
+                        aria-label={`Correggi l'acquisto di ${slot.playerName}`}
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-muted-foreground opacity-0 hover:bg-line hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [@media(hover:none)]:opacity-100"
+                      >
+                        <PencilIcon />
+                      </button>
                       <button
                         type="button"
                         disabled={pendingSeq === slot.seq}
@@ -480,6 +502,7 @@ function RosterColumn({
                       >
                         <CancelIcon />
                       </button>
+                      </>
                       ) : null}
                     </td>
                   </tr>

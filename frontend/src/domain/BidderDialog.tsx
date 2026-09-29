@@ -125,6 +125,9 @@ function Cell({ label, children, note, testId, highlighted = false, first = fals
   );
 }
 
+/** Le colonne del tabellone, secondo quante celle ci sono: classi intere, per Tailwind. */
+const CELL_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' };
+
 export function BidderDialog({
   valuation,
   participants,
@@ -134,10 +137,18 @@ export function BidderDialog({
   disabled = false,
   pending = false,
   leader = null,
+  advice = true,
   onAssign,
   onClose,
 }: {
   valuation: ValuationResponse;
+  /**
+   * Falso per l'amministratore che batte un'asta senza avervi un posto: per lui
+   * i consigli non esistono, e di {@code valuation} valgono solo identita' e
+   * ruolo del giocatore. Tetto, mercato, margine e verdetto non si mostrano —
+   * non un tetto «nessuno», che vorrebbe dire un'altra cosa.
+   */
+  advice?: boolean;
   participants: ParticipantView[];
   timerSeconds: number;
   beepEnabled: boolean;
@@ -240,7 +251,7 @@ export function BidderDialog({
       ? 'Aggiudica non disponibile: i valori mostrati non sono aggiornati.'
       : null;
 
-  const overCeiling = valuation.maxBid > 0 && price > valuation.maxBid;
+  const overCeiling = advice && valuation.maxBid > 0 && price > valuation.maxBid;
   // Quanto manca al tuo tetto, o di quanto lo si e' passato: detto accanto
   // all'offerta, dove si guarda mentre sale, e non in piccolo in fondo al riquadro.
   const toCeiling = valuation.maxBid - price;
@@ -425,7 +436,7 @@ export function BidderDialog({
       >
         <div
           data-testid="bidder-cells"
-          className={`grid ${expired ? 'grid-cols-3' : 'grid-cols-4'} max-sm:grid-cols-2`}
+          className={`grid ${CELL_COLUMNS[(expired ? 3 : 4) - (advice ? 0 : 1)]} max-sm:grid-cols-2`}
         >
           {expired ? null : (
             <Cell label={urgent ? 'ultimi secondi' : secondsLeft === 1 ? 'secondo' : 'secondi'} urgentLabel={urgent}>
@@ -465,6 +476,7 @@ export function BidderDialog({
               l'offerta che sale, il bottone che rilancia — e il tetto e' il
               riferimento fermo accanto. Il colore qui lo porta la distanza, che e'
               l'unica cosa che cambia. */}
+          {advice ? (
           <Cell
             label="il tuo tetto"
             note={valuation.maxBid > 0 ? (
@@ -491,6 +503,7 @@ export function BidderDialog({
               {valuation.maxBid > 0 ? valuation.maxBid : 'nessuno'}
             </span>
           </Cell>
+          ) : null}
 
           {/* Chi e' in testa: LA domanda del rilancio dal vivo — sto vincendo io o
               no. La cella si accende quando sei tu, e lo dice anche a parole: il
@@ -633,7 +646,7 @@ export function BidderDialog({
           massima. A tempo scaduto non si rende piu' — li' si registra un esito,
           non si decide se spingere — e il riquadro dell'aggiudicazione ha bisogno
           di quell'altezza. */}
-      {!expired && !valuation.worthPursuing && valuation.walkAwayReason ? (
+      {advice && !expired && !valuation.worthPursuing && valuation.walkAwayReason ? (
         <p className="max-w-[80ch] text-sm text-muted-foreground">
           {valuation.walkAwayReason}
         </p>
@@ -707,6 +720,8 @@ export function BidderDialog({
       {/* La riga di riferimento: gli stessi numeri della scheda di decisione, da
           consultare, non da guardare. */}
       <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm text-muted-foreground">
+        {advice ? (
+        <>
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
           {/* Il tetto non e' piu' qui: e' salito fra i numeri della riga. Lo
               stesso numero a due corpi diversi, in due punti del riquadro, e'
@@ -725,6 +740,8 @@ export function BidderDialog({
         <p className={`font-medium ${valuation.worthPursuing ? 'text-positive' : 'text-destructive'}`}>
           {valuation.worthPursuing ? 'Prendi' : 'Lascia'}
         </p>
+        </>
+        ) : null}
         {/* L'aiuto della tastiera sulla stessa riga, in fondo a destra: una riga
             in meno nel riquadro, che ha un'altezza fissa. */}
         {/* Le scorciatoie sono il vantaggio di questo riquadro su chi batte

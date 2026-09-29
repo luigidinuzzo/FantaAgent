@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { auctionContext, userMessage } from '../api/client';
@@ -14,7 +14,7 @@ import {
   useUndoLast,
   useValuation,
 } from '../api/hooks';
-import type { PhaseSort, Role, SortDir } from '../api/types';
+import type { PhaseSort, PublicBidderResponse, Role, SortDir, ValuationResponse } from '../api/types';
 import { AnalysisPanel } from '../domain/AnalysisPanel';
 import { AuctionRecap } from '../domain/AuctionRecap';
 import { MyTeamSummary } from '../domain/MyTeamSummary';
@@ -32,6 +32,7 @@ import { PlayerSearchBox } from '../domain/PlayerSearchBox';
 import { ParticipantsColumn } from '../domain/ParticipantsColumn';
 import { PlayerTable } from '../domain/PlayerTable';
 import { RemoveIcon } from '../domain/RemoveIcon';
+import { RoleBadge } from '../domain/RoleBadge';
 import { RosterGrid } from '../domain/RosterGrid';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
 import { UndoLastButton } from '../domain/UndoLastButton';
@@ -101,6 +102,40 @@ const TABS: Array<{ key: TabKey; label: string }> = [
   { key: 'fase', label: 'Fase corrente' },
   { key: 'rose', label: 'Rose squadre' },
 ];
+
+/**
+ * Il lotto dai soli dati pubblici del giocatore, nella forma che il conto alla
+ * rovescia legge. I numeri dei consigli sono a zero ma non si mostrano:
+ * {@code BidderDialog} con {@code advice} falso non li rende.
+ */
+function lotWithoutAdvice(p: PublicBidderResponse): ValuationResponse {
+  return {
+    playerId: p.playerId, name: p.name, team: p.team, role: p.role, listPrice: p.listPrice,
+    expectedPrice: 0, maxBid: 0, hardCap: 0, margin: 0, walkAwayReason: '',
+    worthPursuing: true, confidenceStars: 0, drivers: [],
+  };
+}
+
+/**
+ * Il giocatore sul banco senza consigli: chi e', di che squadra, quanto quota.
+ * Nessun tetto, nessun verdetto — per chi non ha un posto non esistono.
+ */
+function PlayerWithoutAdvice({ lot, children }: { lot: ValuationResponse; children: ReactNode }) {
+  return (
+    <section aria-label={lot.name} className="flex flex-col gap-6">
+      <header className="flex items-baseline gap-3">
+        <p className="w-exp min-w-0 truncate text-2xl font-semibold">{lot.name}</p>
+        <span className="flex shrink-0 self-center"><RoleBadge role={lot.role} /></span>
+        <p className="shrink-0 text-sm text-muted-foreground">{lot.team}</p>
+      </header>
+      <p className="flex items-baseline gap-3">
+        <span className="tnum w-exp text-3xl font-semibold leading-none">{lot.listPrice}</span>
+        <span className="text-sm text-muted-foreground">quotazione</span>
+      </p>
+      {children}
+    </section>
+  );
+}
 
 export function AuctionRoute() {
   // Lega e asta dell'indirizzo: le ha appena fissate WithAuctionContext, nello
@@ -208,14 +243,6 @@ export function AuctionRoute() {
   // la schermata lo dice gia' a parole invece di chiederli.
   const phase = usePhasePlayers(pageOffset, sort, sortDir, advised);
   const valuation = useValuation(selectedId, advised);
-  // Il nome del pannello centrale, che cambia con quello che ci sta dentro: il
-  // lotto se c'e', altrimenti la tua squadra. Senza ne' l'uno ne' l'altra resta il
-  // nome del posto, perche' un titolo il pannello deve sempre averlo.
-  const panelTitle = valuation.data
-    ? `Sul banco · ${valuation.data.name}`
-    : me
-      ? `La tua squadra, ${me.name}`
-      : 'Sul banco';
   const assign = useAssign();
   const changePhase = useChangePhase();
   const undoLast = useUndoLast();
@@ -226,6 +253,21 @@ export function AuctionRoute() {
   // questa lettura deve spostarsi li'.
   // Servono solo al conto alla rovescia, che e' dell'amministratore.
   const bidderSettings = usePublicBidder(admin ? selectedId : null);
+  // Il giocatore sul banco. Con i consigli e' la valutazione; per l'amministratore
+  // che batte un'asta senza avervi un posto, i dati pubblici del giocatore — il
+  // lotto va registrato anche se nessuno qui ha consigli da dargli.
+  const lot = valuation.data
+    ?? (seated === false && admin && bidderSettings.data?.playerId === selectedId && bidderSettings.data
+      ? lotWithoutAdvice(bidderSettings.data)
+      : null);
+  // Il nome del pannello centrale, che cambia con quello che ci sta dentro: il
+  // lotto se c'e', altrimenti la tua squadra. Senza ne' l'uno ne' l'altra resta il
+  // nome del posto, perche' un titolo il pannello deve sempre averlo.
+  const panelTitle = lot
+    ? `Sul banco · ${lot.name}`
+    : me
+      ? `La tua squadra, ${me.name}`
+      : 'Sul banco';
 
   // Battito di vita per la proiezione (si veda useIdleHeartbeat per il
   // perche' e il come). Si ferma per tutta la durata in cui il conto alla rovescia
@@ -329,8 +371,8 @@ export function AuctionRoute() {
     undoLast.reset();
     assign.mutate(
       {
-        playerId: valuation.data!.playerId,
-        playerName: valuation.data!.name,
+        playerId: lot!.playerId,
+        playerName: lot!.name,
         participantId,
         price,
       },
@@ -384,6 +426,77 @@ export function AuctionRoute() {
     });
   }
 
+  // I gesti del banco — il conto alla rovescia e l'aggiudicazione diretta — sono
+  // dell'amministratore, e sono gli stessi con o senza consigli: stanno sotto la
+  // scheda di decisione quando c'e', sotto i dati pubblici del giocatore quando
+  // chi batte l'asta non vi ha un posto.
+  const lotControls = lot && admin ? (
+  <div className="flex flex-col items-start gap-4">
+  {/* Avvia il conto alla rovescia per il lotto conteso: BidPanel resta
+      la via diretta per un giocatore che nessuno contende,
+      questo e' l'altra via alla STESSA mutazione (assignPlayer),
+      non una seconda. Disabilitato finche' le preferenze vere
+      non sono arrivate: aprire subito significherebbe mostrare
+      un timer finto, e questa migrazione non finge mai un dato
+      che non ha ancora. */}
+  {/* L'oro, e il bersaglio piu' largo della riga: battere un
+      lotto E' il prodotto, e questo bottone era una pillola di
+      contorno in fondo a sinistra mentre il pieno stava su
+      «Aggiudica». La gerarchia diceva il contrario di quello
+      che si fa al tavolo. */}
+  <button
+    type="button"
+    onClick={() => setBidderOpen(true)}
+    disabled={!bidderSettings.data}
+    aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
+    // Su una riga tutta sua e alla taglia dei bersagli del
+    // rilancio (BID_CONTROL_H, 64px): e' l'azione principale
+    // del lotto, e ora ha la larghezza della barra «Rilancia
+    // +1» che prendera' il suo posto appena il conto parte.
+    className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-full bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+  >
+    Avvia il conto alla rovescia
+  </button>
+  {!bidderSettings.data ? (
+    <span id={bidderHintId} className="sr-only">
+      Le preferenze del banditore non sono disponibili.
+    </span>
+  ) : null}
+  {/* L'aggiudicazione diretta, dietro un bottone: e' la via per
+      un giocatore che nessuno contende. Il nome non contiene
+      «conto alla rovescia»: chi cerca quel bottone a voce o per
+      nome ne troverebbe due. Sempre in vista, con
+      prezzo e squadra precompilati, un clic sbagliato registrava
+      un acquisto vero; ora si apre solo se la si chiede, e non
+      propone niente. key: un giocatore nuovo riparte da campi
+      vuoti. */}
+  {directFor === lot.playerId ? (
+    <BidPanel
+      key={lot.playerId}
+      participants={participants}
+      role={lot.role}
+      disabled={stale}
+      pending={assign.isPending}
+      error={assignError}
+      onAssign={assignPlayer}
+    />
+  ) : (
+    <button
+      type="button"
+      aria-expanded={false}
+      onClick={() => setDirectFor(lot.playerId)}
+      // Una pillola col contorno, non un testo sottolineato:
+      // tutto cio' che si preme in questa applicazione e' una
+      // pillola, e un link sottolineato in mezzo ai bottoni si
+      // leggeva come un corpo estraneo.
+      className="min-h-11 rounded-full border border-line-strong px-5 text-sm font-medium text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+    >
+      Aggiudica direttamente
+    </button>
+  )}
+  </div>
+  ) : null;
+
   return (
     <AppShell
       chrome="top"
@@ -396,12 +509,14 @@ export function AuctionRoute() {
               onChange={changePhaseTo}
               pending={changePhase.isPending}
             />
-          ) : (
-            // La fase si legge, non si cambia: la cambia chi batte l'asta.
+          ) : state.data ? (
+            // La fase si legge, non si cambia: la cambia chi batte l'asta. Solo
+            // quando lo stato e' arrivato: prima non c'e' una fase da dire, e
+            // «portieri» di ripiego sarebbe un dato inventato.
             <span className="flex min-h-11 items-center rounded-full border border-line-strong px-4 font-medium">
-              Fase: {ROLE_NAME_PLURAL[state.data?.currentPhase ?? 'P']}
+              Fase: {ROLE_NAME_PLURAL[state.data.currentPhase]}
             </span>
-          )}
+          ) : null}
           {/* Product gap (revisione finale): non esisteva nessun modo di
               raggiungere /proiezione dall'applicazione — bisognava digitare
               l'indirizzo a mano. target="_blank": va aperta in una seconda
@@ -481,7 +596,7 @@ export function AuctionRoute() {
             <RosterGrid />
           </div>
         </>
-      ) : seated === false ? (
+      ) : seated === false && !admin ? (
         // Senza un posto non c'e' niente da consigliare ne' da scegliere: la
         // ricerca, il banco e la tabella di fase portano tutti ai consigli. Resta
         // cio' che serve a seguire l'asta — le rose, con i crediti di ognuno in
@@ -508,9 +623,20 @@ export function AuctionRoute() {
           scorrere durante un'asta dal vivo, che e' il momento in cui non si deve
           scorrere. Le 13rem sottratte sono barra, margini e la fila delle schede.
           Le tre colonne scorrono gia' dentro di se': sanno riceverne meno. */}
+      {seated === false ? (
+        // L'amministratore senza posto: batte l'asta, ma consigli per lui non ce
+        // ne sono. La frase una volta sola, sopra; la colonna dei consigli non
+        // c'e' — tenuta in piedi per una frase, restava vuota per tutta l'altezza
+        // — e il banco prende il suo spazio.
+        <p className="panel mb-4 rounded-2xl p-4 text-sm">
+          Non hai un posto in quest'asta: puoi seguirla, ma i consigli non sono disponibili.
+        </p>
+      ) : null}
       <div
         data-testid="auction-row"
-        className="grid grid-cols-1 gap-5 lg:h-[min(39rem,calc(100dvh-13rem))] lg:grid-cols-[14rem_1fr_22rem]"
+        className={`grid grid-cols-1 gap-5 lg:h-[min(39rem,calc(100dvh-13rem))] ${
+          seated === false ? 'lg:grid-cols-[14rem_1fr]' : 'lg:grid-cols-[14rem_1fr_22rem]'
+        }`}
       >
         <ParticipantsColumn participants={participants} phase={state.data?.currentPhase} />
 
@@ -551,14 +677,14 @@ export function AuctionRoute() {
               <h2
                 id={bidderPanelId}
                 className={
-                  valuation.data
+                  lot
                     ? 'text-sm font-medium text-muted-foreground'
                     : 'text-lg font-medium'
                 }
               >
                 {panelTitle}
               </h2>
-              {valuation.data ? (
+              {lot ? (
                 // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
                 // se e' aperto — lasciarlo acceso su un lotto che non c'e' piu'
                 // continuerebbe a suonare per nessuno.
@@ -596,7 +722,7 @@ export function AuctionRoute() {
                 contenuto se qualcosa esce dalle misure previste — un ingrandimento
                 del browser al 150%, un carattere di sistema piu' grande. */}
             <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
-              {valuation.data ? (
+              {lot ? (
                 // shrink-0: il lotto prende l'altezza che gli serve e non di
                 // piu'. Prima il conto alla rovescia era alto quanto il riquadro
                 // (h-full) e la scheda lo riempiva con flex-1: l'elenco delle
@@ -612,8 +738,9 @@ export function AuctionRoute() {
                   // key: un giocatore nuovo riparte da un conto alla rovescia
                   // nuovo, non da quello del precedente.
                   <BidderDialog
-                    key={valuation.data.playerId}
-                    valuation={valuation.data}
+                    key={lot.playerId}
+                    valuation={lot}
+                    advice={valuation.data !== undefined}
                     participants={participants}
                     timerSeconds={bidderSettings.data.timerSeconds}
                     beepEnabled={bidderSettings.data.beepEnabled}
@@ -623,6 +750,8 @@ export function AuctionRoute() {
                     onAssign={assignPlayer}
                     onClose={() => setBidderOpen(false)}
                   />
+                ) : !valuation.data ? (
+                  <PlayerWithoutAdvice lot={lot}>{lotControls}</PlayerWithoutAdvice>
                 ) : (
                   <PlayerDecisionCard valuation={valuation.data} stale={stale} bare me={me}>
                     {/* Il modo di aggiudicarlo e' dell'amministratore: gli altri
@@ -632,72 +761,7 @@ export function AuctionRoute() {
                         quanto e a chi e' andato. Affiancati, i due gesti si
                         leggevano come alternative pari; incolonnati si leggono
                         come una sequenza. */}
-                    {admin ? (
-                    <div className="flex flex-col items-start gap-4">
-                    {/* Avvia il conto alla rovescia per il lotto conteso: BidPanel resta
-                        la via diretta per un giocatore che nessuno contende,
-                        questo e' l'altra via alla STESSA mutazione (assignPlayer),
-                        non una seconda. Disabilitato finche' le preferenze vere
-                        non sono arrivate: aprire subito significherebbe mostrare
-                        un timer finto, e questa migrazione non finge mai un dato
-                        che non ha ancora. */}
-                    {/* L'oro, e il bersaglio piu' largo della riga: battere un
-                        lotto E' il prodotto, e questo bottone era una pillola di
-                        contorno in fondo a sinistra mentre il pieno stava su
-                        «Aggiudica». La gerarchia diceva il contrario di quello
-                        che si fa al tavolo. */}
-                    <button
-                      type="button"
-                      onClick={() => setBidderOpen(true)}
-                      disabled={!bidderSettings.data}
-                      aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
-                      // Su una riga tutta sua e alla taglia dei bersagli del
-                      // rilancio (BID_CONTROL_H, 64px): e' l'azione principale
-                      // del lotto, e ora ha la larghezza della barra «Rilancia
-                      // +1» che prendera' il suo posto appena il conto parte.
-                      className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-full bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
-                    >
-                      Avvia il conto alla rovescia
-                    </button>
-                    {!bidderSettings.data ? (
-                      <span id={bidderHintId} className="sr-only">
-                        Le preferenze del banditore non sono disponibili.
-                      </span>
-                    ) : null}
-                    {/* L'aggiudicazione diretta, dietro un bottone: e' la via per
-                        un giocatore che nessuno contende. Il nome non contiene
-                        «conto alla rovescia»: chi cerca quel bottone a voce o per
-                        nome ne troverebbe due. Sempre in vista, con
-                        prezzo e squadra precompilati, un clic sbagliato registrava
-                        un acquisto vero; ora si apre solo se la si chiede, e non
-                        propone niente. key: un giocatore nuovo riparte da campi
-                        vuoti. */}
-                    {directFor === valuation.data.playerId ? (
-                      <BidPanel
-                        key={valuation.data.playerId}
-                        participants={participants}
-                        role={valuation.data.role}
-                        disabled={stale}
-                        pending={assign.isPending}
-                        error={assignError}
-                        onAssign={assignPlayer}
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        aria-expanded={false}
-                        onClick={() => setDirectFor(valuation.data!.playerId)}
-                        // Una pillola col contorno, non un testo sottolineato:
-                        // tutto cio' che si preme in questa applicazione e' una
-                        // pillola, e un link sottolineato in mezzo ai bottoni si
-                        // leggeva come un corpo estraneo.
-                        className="min-h-11 rounded-full border border-line-strong px-5 text-sm font-medium text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                      >
-                        Aggiudica direttamente
-                      </button>
-                    )}
-                    </div>
-                    ) : null}
+                    {lotControls}
                   </PlayerDecisionCard>
                 )}
                 </div>
@@ -713,7 +777,9 @@ export function AuctionRoute() {
                 />
               ) : (
                 <p className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                  Nessuno sul banco. Cercalo qui sopra o scegline uno dalla tabella.
+                  {seated === false
+                    ? 'Nessuno sul banco. Cercalo qui sopra per registrarne l’acquisto.'
+                    : 'Nessuno sul banco. Cercalo qui sopra o scegline uno dalla tabella.'}
                 </p>
               )}
 
@@ -771,7 +837,7 @@ export function AuctionRoute() {
             stesso titolo, porta l'invito a sceglierne uno. */}
         {/* Senza un giocatore scelto, le occasioni della fase: dove conviene
             guardare, invece di una colonna vuota che invita a scegliere. */}
-        {selectedId === null ? (
+        {seated === false ? null : selectedId === null ? (
           <PhaseTargets
             phase={currentPhase}
             targets={targets.data ?? []}
@@ -785,6 +851,14 @@ export function AuctionRoute() {
         )}
       </div>
 
+      {seated === false ? (
+        // Senza posto la tabella di fase non c'e' (sono consigli: il tetto e'
+        // il tuo): restano le rose, che per chi batte l'asta sono il registro
+        // da correggere.
+        <div className="panel mt-4 rounded-2xl p-4">
+          <RosterGrid />
+        </div>
+      ) : (
       <div className="panel mt-4 rounded-2xl p-4">
         {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
             limita a somigliarci: ruolo, stato e frecce sinistra/destra per
@@ -882,6 +956,7 @@ export function AuctionRoute() {
           {activeTab === 'rose' ? <RosterGrid /> : null}
         </div>
       </div>
+      )}
       </>
       )}
 

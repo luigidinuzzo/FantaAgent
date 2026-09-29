@@ -39,6 +39,13 @@ describe('CorrectPurchaseDialog', () => {
     expect(save).toBeDisabled();
   });
 
+  it('un prezzo con lettere non si salva', async () => {
+    renderDialog();
+    await userEvent.clear(screen.getByLabelText('Prezzo'));
+    await userEvent.type(screen.getByLabelText('Prezzo'), '33abc');
+    expect(screen.getByRole('button', { name: 'Salva la correzione' })).toBeDisabled();
+  });
+
   it('salva con numero, squadra e prezzo scelti', async () => {
     const { onConfirm } = renderDialog();
     await userEvent.selectOptions(screen.getByLabelText('Squadra'), 'bruno');

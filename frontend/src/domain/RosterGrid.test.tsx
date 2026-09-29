@@ -427,4 +427,17 @@ describe('RosterGrid', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Bruno ha solo 12 crediti');
     expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
+
+  it('la correzione e un bottone accanto alla ✕, con le sue stesse regole di visibilita', async () => {
+    renderRoster();
+    const correct = await screen.findByRole('button', { name: "Correggi l'acquisto di Sommer" });
+    const cancel = screen.getByRole('button', { name: "Annulla l'acquisto di Sommer" });
+    expect(correct.closest('td')).toBe(cancel.closest('td'));
+    for (const cls of ['opacity-0', 'group-hover:opacity-100', 'focus-visible:opacity-100',
+      '[@media(hover:none)]:opacity-100', 'min-h-9', 'min-w-9']) {
+      expect(correct.className).toContain(cls);
+    }
+    // Il nome resta testo: non e' un gesto nascosto.
+    expect(screen.getByText('Sommer').closest('button')).toBeNull();
+  });
 });

@@ -808,4 +808,17 @@ describe('BidderDialog', () => {
       expect(screen.getByRole('button', { name: 'Aggiudica a Anna per 2' })).not.toBeDisabled();
     });
   });
+
+  // L'amministratore senza posto batte l'asta senza consigli: niente tetto,
+  // mercato, margine o verdetto — ne' un tetto «nessuno», che direbbe altro.
+  it('senza consigli non mostra tetto, mercato, margine ne verdetto', () => {
+    open({ advice: false, participants: TEAMS.filter((p) => !p.me) });
+    expect(screen.queryByTestId('bidder-ceiling')).not.toBeInTheDocument();
+    expect(screen.queryByText('il tuo tetto')).not.toBeInTheDocument();
+    expect(screen.queryByText('mercato')).not.toBeInTheDocument();
+    expect(screen.queryByText('margine')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^(Prendi|Lascia)$/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('bidder-cells').className).toContain('grid-cols-3');
+    expect(screen.getByRole('heading', { name: 'Bastoni' })).toBeInTheDocument();
+  });
 });
