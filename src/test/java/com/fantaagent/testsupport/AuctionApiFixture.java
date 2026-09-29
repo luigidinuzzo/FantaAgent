@@ -91,7 +91,11 @@ public final class AuctionApiFixture {
                 .view(leagues.access(UUID.fromString(leagueId), UUID.fromString(userId)), UUID.fromString(auctionId));
     }
 
-    /** Il giocatore n-esimo di quel ruolo nel listone vero, in ordine di id. */
+    /**
+     * Il giocatore n-esimo di quel ruolo, in ordine di id, dal {@link PlayerCatalog}
+     * in uso in questo contesto — quello vero letto da {@code res/}, o quello
+     * sintetico di {@link TestCatalogConfig} dove importato.
+     */
     public String player(Role role, int index) {
         List<Player> players = context.getBean(PlayerCatalog.class).all().stream()
                 .filter(p -> p.role() == role)

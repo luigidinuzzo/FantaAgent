@@ -1,16 +1,20 @@
 package com.fantaagent.adapter.in.api;
 
+import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.service.auction.AuctionView;
 import com.fantaagent.application.service.auction.LeagueAuctionService;
 import com.fantaagent.application.service.league.LeagueService;
+import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.domain.player.Role;
 import com.fantaagent.testsupport.AuctionApiFixture;
+import com.fantaagent.testsupport.TestCatalogConfig;
 import com.jayway.jsonpath.JsonPath;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
@@ -31,15 +35,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Il profilo {@code dev} tiene il catalogo vuoto per ogni altro test (si veda il
- * commento su {@code fantaagent.data-dir} in {@code application.yml}): qui serve il
- * listone vero, perche' {@link AuctionApiFixture#player} lo sfoglia per ruolo e i
- * consigli confrontati fra i test devono differire da un giocatore all'altro. La
- * property qui sotto punta questa sola classe — un contesto Spring a se', non
- * condiviso con gli altri test del profilo dev — al listone reale in {@code res/}.
+ * commento su {@code fantaagent.data-dir} in {@code application.yml}): qui serve un
+ * catalogo non vuoto, perche' {@link AuctionApiFixture#player} lo sfoglia per ruolo e i
+ * consigli confrontati fra i test devono differire da un giocatore all'altro. Niente
+ * listone vero, pero': {@code res/*.xlsx} non e' versionato (gitignored), quindi un
+ * clone pulito non ce l'ha, e un test non deve comunque poter scrivere sopra i file
+ * veri della lega. {@link TestCatalogConfig} sostituisce il {@code PlayerCatalog} con
+ * quello sintetico di {@code Fixtures.catalog()}; {@code fantaagent.data-dir} punta a
+ * una cartella sotto {@code target/} — vuota, non tracciata — cosi' anche gli altri
+ * bean che leggono file di lega (impostazioni, archivio) non toccano {@code res/}.
  */
 @SpringBootTest
 @ActiveProfiles("dev")
-@TestPropertySource(properties = "fantaagent.data-dir=res")
+@Import(TestCatalogConfig.class)
+@TestPropertySource(properties = "fantaagent.data-dir=target/test-data-api")
 class AuctionReadApiTest {
 
     static final String PROBLEMS = "https://fantaagent.local/problems/";
@@ -170,10 +179,18 @@ class AuctionReadApiTest {
 
     @Test
     void ilTabelloneSegnaLaColonnaDiChiGuarda() throws Exception {
+        String player = f.player(Role.P, 0);
+        String playerName = context.getBean(PlayerCatalog.class).byId(player).orElseThrow().name();
+        buy(player, f.carlaId, 10);
+
         f.mvc.perform(get(f.url("/board")).cookie(f.carla))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.columns.length()").value(3))
-                .andExpect(jsonPath("$.columns[?(@.participantId == '%s')].me".formatted(f.carlaId)).value(true));
+                .andExpect(jsonPath("$.columns[?(@.participantId == '%s')].me".formatted(f.carlaId)).value(true))
+                .andExpect(jsonPath("$.columns[?(@.participantId == '%s')].byRole.P[0].playerName"
+                        .formatted(f.carlaId)).value(playerName))
+                .andExpect(jsonPath("$.columns[?(@.participantId == '%s')].byRole.P[0].price"
+                        .formatted(f.carlaId)).value(10));
     }
 
     @Test
@@ -193,19 +210,33 @@ class AuctionReadApiTest {
                 .andExpect(jsonPath("$.type").value(PROBLEMS + "unknown-player"));
     }
 
+    /**
+     * Il nome dell'asta e' "Asta d'estate": l'apostrofo non e' fra gli {@code
+     * attr-char} di RFC 5987 (a differenza di lettere, cifre e pochi altri segni), e
+     * lo spazio nemmeno — {@code ContentDisposition.attachment().filename(..., UTF_8)}
+     * li percento-codifica entrambi, com'era gia' verificato per la virgoletta e gli
+     * accenti nel vecchio {@code ExportApiTest}.
+     */
     @Test
     void lExportPortaIlNomeDellAsta() throws Exception {
         f.mvc.perform(get(f.url("/export.csv")).cookie(f.bruno))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("text/csv"))
-                .andExpect(header().string("Content-Disposition", containsString("filename*=UTF-8''")));
+                .andExpect(header().string("Content-Disposition",
+                        containsString("filename*=UTF-8''rose-Asta%20d%27estate.csv")));
     }
 
     @Test
     void ilBanditorePubblicoLeggeIlTempoDellAsta() throws Exception {
+        LeagueService leagues = context.getBean(LeagueService.class);
+        context.getBean(LeagueAuctionService.class).updateBidder(
+                leagues.access(UUID.fromString(f.leagueId), UUID.fromString(f.annaId)),
+                UUID.fromString(f.auctionId), new AuctionSettings(9, false));
+
         f.mvc.perform(get(f.url("/board/bidder/" + f.player(Role.P, 0))).cookie(f.carla))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.timerSeconds").isNumber())
+                .andExpect(jsonPath("$.timerSeconds").value(9))
+                .andExpect(jsonPath("$.beepEnabled").value(false))
                 .andExpect(jsonPath("$.maxBid").doesNotExist())
                 .andExpect(jsonPath("$.hardCap").doesNotExist());
     }
