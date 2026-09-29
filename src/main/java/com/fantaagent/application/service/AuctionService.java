@@ -88,6 +88,20 @@ public class AuctionService {
      */
     static final int MAX_ATTEMPTS = 3;
 
+    /**
+     * Ritenta {@code once} fino a {@link #MAX_ATTEMPTS} volte, rilanciando l'ultimo
+     * {@link ConcurrentAppendException} se anche l'ultimo tentativo fallisce.
+     *
+     * <p><b>Il limite:</b> questa rete funziona per chi scrive senza il lock di riga
+     * di {@code AuctionWriteLock} — store in autocommit, come nei test o in un
+     * ipotetico processo diverso, dove ogni tentativo e' una scrittura a se'. Dentro
+     * una transazione del database (cioe' dentro {@code AuctionView.write}), un
+     * vincolo violato aborta l'intera transazione: un altro tentativo lì dentro non
+     * potrebbe leggere ne' scrivere nulla, quindi non serve a recuperare. Con quel
+     * lock preso, pero', le scritture sulla stessa asta sono gia' in fila una alla
+     * volta e il conflitto di sequenza non si presenta mai: {@code retrying} resta
+     * la rete per chi il lock non lo prende, non un secondo livello sopra di esso.
+     */
     private static <T> T retrying(Supplier<T> once) {
         ConcurrentAppendException last = null;
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {

@@ -1,6 +1,7 @@
 package com.fantaagent.application.service.auction;
 
 import com.fantaagent.application.port.out.AuctionRecord;
+import com.fantaagent.application.service.PurchaseRejectedException;
 import com.fantaagent.application.service.league.LeagueAccess;
 import com.fantaagent.domain.auction.AuctionEvent;
 import com.fantaagent.testsupport.Fixtures;
@@ -11,9 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,11 +59,15 @@ class ConcurrentWritesTest {
         }
         start.countDown();
         int failures = 0;
+        Throwable lastFailureCause = null;
         for (Future<?> f : results) {
             try {
-                f.get();
-            } catch (java.util.concurrent.ExecutionException e) {
+                // Un timeout qui, invece di un blocco per sempre, e' la prova che il
+                // lock mette le scritture in fila senza mai fare deadlock fra loro.
+                f.get(30, TimeUnit.SECONDS);
+            } catch (ExecutionException e) {
                 failures++;
+                lastFailureCause = e.getCause();
             }
         }
         pool.shutdown();
@@ -68,7 +75,15 @@ class ConcurrentWritesTest {
         List<AuctionEvent> events = world.stores.open(auction.id(), admin.userId()).load();
         assertThat(events).extracting(AuctionEvent::seq)
                 .containsExactlyElementsOf(java.util.stream.LongStream.rangeClosed(1, events.size()).boxed().toList());
-        assertThat(events).filteredOn(AuctionEvent.PlayerPurchased.class::isInstance).hasSize(9);
+        List<AuctionEvent.PlayerPurchased> purchases = events.stream()
+                .filter(AuctionEvent.PlayerPurchased.class::isInstance)
+                .map(AuctionEvent.PlayerPurchased.class::cast)
+                .toList();
+        assertThat(purchases).hasSize(9);
+        assertThat(purchases).filteredOn(p -> p.playerId().equals("C1")).hasSize(1);
         assertThat(failures).isEqualTo(1);
+        assertThat(lastFailureCause).isInstanceOf(PurchaseRejectedException.class);
+        assertThat(((PurchaseRejectedException) lastFailureCause).reason())
+                .isEqualTo(PurchaseRejectedException.Reason.ALREADY_SOLD);
     }
 }

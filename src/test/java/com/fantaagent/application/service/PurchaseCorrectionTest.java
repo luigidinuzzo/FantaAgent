@@ -34,7 +34,8 @@ class PurchaseCorrectionTest {
         store.append(new AuctionEvent.AuctionStarted(1, Instant.now(), "Asta"));
         service = new AuctionService(RULES, PEOPLE, new InMemoryPlayerCatalog(List.of(
                 new Player("p1", "Portiere Uno", "Inter", Role.P, 10),
-                new Player("p2", "Portiere Due", "Milan", Role.P, 10)), List.of()), store);
+                new Player("p2", "Portiere Due", "Milan", Role.P, 10),
+                new Player("d1", "Difensore Uno", "Milan", Role.D, 10)), List.of()), store);
         seq = service.recordPurchase("p1", "a", 40, "r-1").seq();
     }
 
@@ -61,16 +62,22 @@ class PurchaseCorrectionTest {
 
     @Test
     void nonSiSuperaIlBudgetDelNuovoAcquirente() {
-        service.recordPurchase("p2", "b", 70, "r-2");
+        // d1 e' un difensore, non un portiere: il ruolo di Bruno resta libero, cosi'
+        // il rifiuto puo' venire solo dal budget, non anche dagli slot pieni.
+        service.recordPurchase("d1", "b", 70, "r-2");
         assertThatThrownBy(() -> service.correctPurchase(seq, "b", 40))
-                .isInstanceOf(PurchaseRejectedException.class);
+                .isInstanceOf(PurchaseRejectedException.class)
+                .extracting(e -> ((PurchaseRejectedException) e).reason())
+                .isEqualTo(PurchaseRejectedException.Reason.INSUFFICIENT_BUDGET);
     }
 
     @Test
     void nonSiSpostaAChiHaIlRuoloPieno() {
         service.recordPurchase("p2", "b", 10, "r-2");
         assertThatThrownBy(() -> service.correctPurchase(seq, "b", 40))
-                .isInstanceOf(PurchaseRejectedException.class);
+                .isInstanceOf(PurchaseRejectedException.class)
+                .extracting(e -> ((PurchaseRejectedException) e).reason())
+                .isEqualTo(PurchaseRejectedException.Reason.ROLE_SLOTS_EXHAUSTED);
     }
 
     @Test
