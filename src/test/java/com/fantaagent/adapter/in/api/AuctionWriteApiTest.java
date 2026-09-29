@@ -102,6 +102,66 @@ class AuctionWriteApiTest {
     }
 
     @Test
+    void ilGiocatoreGiaVendutoDaUn409Tipizzato() throws Exception {
+        String p = f.player(Role.P, 0);
+        buy(f.anna, p, f.brunoId, 12, "r-1").andExpect(status().isCreated());
+        buy(f.anna, p, f.carlaId, 12, "r-2")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "player-already-sold"));
+    }
+
+    @Test
+    void ilBudgetInsufficienteDaUn422Tipizzato() throws Exception {
+        buy(f.anna, f.player(Role.P, 0), f.brunoId, 501, "r-1")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "insufficient-budget"));
+    }
+
+    /** Il regolamento sintetico ({@link com.fantaagent.testsupport.Fixtures#template()}) prevede 3 slot P. */
+    @Test
+    void gliSlotDiRuoloEsauritiDannoUn422Tipizzato() throws Exception {
+        buy(f.anna, f.player(Role.P, 0), f.brunoId, 10, "rp-1").andExpect(status().isCreated());
+        buy(f.anna, f.player(Role.P, 1), f.brunoId, 10, "rp-2").andExpect(status().isCreated());
+        buy(f.anna, f.player(Role.P, 2), f.brunoId, 10, "rp-3").andExpect(status().isCreated());
+        buy(f.anna, f.player(Role.P, 3), f.brunoId, 10, "rp-4")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "role-slots-exhausted"));
+    }
+
+    /**
+     * La chiave di idempotenza guarda solo se e' gia' stata usata: un secondo
+     * invio con un prezzo diverso non scrive un secondo evento, e la risposta
+     * riporta il prezzo registrato la prima volta, non quello appena inviato.
+     */
+    @Test
+    void ilRinvioConUnPrezzoDiversoRiportaIlPrimoRegistrato() throws Exception {
+        String p = f.player(Role.P, 0);
+        buy(f.anna, p, f.brunoId, 12, "r-dup")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.price").value(12));
+        buy(f.anna, p, f.brunoId, 50, "r-dup")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.price").value(12));
+        f.mvc.perform(get(f.url("/state")).cookie(f.anna)).andExpect(jsonPath("$.version").value(2));
+    }
+
+    @Test
+    void annullareDueVolteDa409EUnIdInesistenteDa404() throws Exception {
+        String body = buy(f.anna, f.player(Role.P, 0), f.brunoId, 12, "r-1")
+                .andReturn().getResponse().getContentAsString();
+        long seq = ((Number) JsonPath.read(body, "$.seq")).longValue();
+
+        f.mvc.perform(post(f.url("/purchases/" + seq + "/void")).with(csrf()).cookie(f.anna))
+                .andExpect(status().isNoContent());
+        f.mvc.perform(post(f.url("/purchases/" + seq + "/void")).with(csrf()).cookie(f.anna))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "purchase-already-revoked"));
+        f.mvc.perform(post(f.url("/purchases/999999/void")).with(csrf()).cookie(f.anna))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "purchase-not-found"));
+    }
+
+    @Test
     void laCorrezioneSpostaIlGiocatore() throws Exception {
         String body = buy(f.anna, f.player(Role.P, 0), f.brunoId, 12, "r-1")
                 .andReturn().getResponse().getContentAsString();
