@@ -1,14 +1,18 @@
 package com.fantaagent.testsupport;
 
+import com.fantaagent.adapter.out.file.InMemoryPlayerCatalog;
 import com.fantaagent.application.port.out.AuctionTemplate;
+import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.config.AuctionSettings;
 import com.fantaagent.config.LeagueRulesSettings;
 import com.fantaagent.config.ScoringSettings;
 import com.fantaagent.domain.league.ModifierTable;
 import com.fantaagent.domain.league.Participant;
 import com.fantaagent.domain.league.ScoringRules;
+import com.fantaagent.domain.player.Player;
 import com.fantaagent.domain.player.Role;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -45,5 +49,16 @@ public final class Fixtures {
                 return settings.toScoringRules(0.55);
             }
         };
+    }
+
+    /** Quaranta giocatori per ruolo, senza statistiche: abbastanza per costruire una catena. */
+    public static PlayerCatalog catalog() {
+        List<Player> players = new ArrayList<>();
+        for (Role role : Role.values()) {
+            for (int i = 1; i <= 40; i++) {
+                players.add(new Player(role.name() + i, role.name() + " " + i, "Squadra", role, 1 + i));
+            }
+        }
+        return new InMemoryPlayerCatalog(players, List.of());
     }
 }

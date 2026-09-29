@@ -1,14 +1,17 @@
 package com.fantaagent.config;
 
 import com.fantaagent.adapter.out.jdbc.JdbcAuctionEventStores;
+import com.fantaagent.adapter.out.jdbc.JdbcAuctionRepository;
 import com.fantaagent.adapter.out.jdbc.JdbcInviteRepository;
 import com.fantaagent.adapter.out.jdbc.JdbcLeagueRepository;
 import com.fantaagent.adapter.out.jdbc.SpringTransactions;
 import com.fantaagent.application.port.out.AuctionEventStores;
+import com.fantaagent.application.port.out.AuctionRepository;
 import com.fantaagent.application.port.out.InviteRepository;
 import com.fantaagent.application.port.out.LeagueRepository;
 import com.fantaagent.application.port.out.Transactions;
 import com.fantaagent.application.port.out.UserRepository;
+import com.fantaagent.application.service.auction.LeagueAuctionService;
 import com.fantaagent.application.service.league.InviteService;
 import com.fantaagent.application.service.league.LeagueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +45,18 @@ public class PersistenceConfig {
     public LeagueService leagueService(LeagueRepository leagues, ConfigAuctionTemplate template,
                                        Transactions tx, Clock clock) {
         return new LeagueService(leagues, template, tx, clock);
+    }
+
+    @Bean
+    public AuctionRepository auctionRepository(JdbcClient jdbc, ObjectMapper json) {
+        return new JdbcAuctionRepository(jdbc, json);
+    }
+
+    @Bean
+    public LeagueAuctionService leagueAuctionService(AuctionRepository auctions, LeagueRepository leagues,
+                                                     AuctionEventStores stores, Transactions tx,
+                                                     Clock clock, LeagueProperties props) {
+        return new LeagueAuctionService(auctions, leagues, stores, tx, clock, props.phases());
     }
 
     @Bean
