@@ -99,6 +99,20 @@ describe('ImportRoute', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
   });
 
+  it('una cartella senza asta scelta dopo una valida cancella l\'anteprima precedente', async () => {
+    stub();
+    renderImport();
+    const input = await screen.findByLabelText('Scegli la cartella dell\'asta');
+    await userEvent.upload(input, FILES);
+    expect(await screen.findByText('Asta del 2025')).toBeInTheDocument();
+
+    await userEvent.upload(input, [new File(['x'], 'foto.jpg')]);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
+    expect(screen.queryByText('Asta del 2025')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Importa l\'asta' })).not.toBeInTheDocument();
+  });
+
   it('se le rose non coincidono lo dice e non va avanti', async () => {
     stub(() => json({
       type: 'https://fantaagent.local/problems/import-mismatch',
