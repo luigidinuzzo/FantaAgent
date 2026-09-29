@@ -1,17 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  apiGet,
-  apiLeagueDelete,
-  apiLeagueGet,
-  apiLeaguePatch,
-  apiLeaguePost,
-  apiLeaguePut,
-  apiPost,
-  apiPostToAuction,
-  auctionContext,
-} from './client';
+import { apiGet, apiPost, apiPostToAuction, auctionContext } from './client';
 import type {
-  AuctionCard,
   AuctionStateResponse,
   BoardResponse,
   PhasePageResponse,
@@ -19,9 +8,6 @@ import type {
   PurchaseResponse,
   PhaseSort,
   Role,
-  SaveSettingsRequest,
-  SaveSettingsResult,
-  SettingsResponse,
   SortDir,
   TargetView,
   ValuationResponse,
@@ -43,79 +29,7 @@ const KEYS = {
   board: () => scoped('board'),
   publicBidder: (playerId: string) => scoped('public-bidder', playerId),
   targets: () => scoped('targets'),
-  auctions: ['auctions'] as const,
 };
-
-/**
- * L'elenco delle aste della lega: non sta sotto il contesto dell'asta
- * corrente, quindi passa da {@link apiLeagueGet} e non da {@link apiGet}.
- */
-export function useAuctions() {
-  return useQuery({
-    queryKey: KEYS.auctions,
-    queryFn: () => apiLeagueGet<AuctionCard[]>('/auctions'),
-  });
-}
-
-export function useSelectAuction() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (auctionId: string) =>
-      apiLeaguePost(`/auctions/${encodeURIComponent(auctionId)}/select`),
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-export function useLeaveAuction() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => apiLeaguePost('/auctions/current/leave'),
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-export function useDeleteAuction() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (auctionId: string) =>
-      apiLeagueDelete(`/auctions/${encodeURIComponent(auctionId)}`),
-    // Nessun aggiornamento ottimistico: l'elenco si rilegge dal server.
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-/** Il nuovo nome di un'asta, aperta o no: l'elenco si rilegge dal server. */
-export function useRenameAuction() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      apiLeaguePatch(`/auctions/${encodeURIComponent(id)}`, { name }),
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-/** Una copia dell'asta senza acquisti; quella aperta resta aperta. */
-export function useDuplicateAuction() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) =>
-      apiLeaguePost<{ id: string }>(`/auctions/${encodeURIComponent(id)}/duplicate`),
-    onSuccess: () => client.invalidateQueries({ queryKey: KEYS.auctions }),
-  });
-}
-
-/**
- * Le impostazioni di un'asta esistente, come punto di partenza per una nuova: le
- * chiede la schermata di creazione quando si sceglie «Parti da». Una mutazione e
- * non una query: e' un gesto dell'utente che riempie il modulo, non un dato da
- * tenere aggiornato.
- */
-export function useSettingsFrom() {
-  return useMutation({
-    mutationFn: (auctionId: string) =>
-      apiLeagueGet<SettingsResponse>(`/settings/from/${encodeURIComponent(auctionId)}`),
-  });
-}
 
 export function useAuctionState() {
   return useQuery({
@@ -307,29 +221,6 @@ export function useCorrectPurchase() {
     mutationFn: (input: CorrectPurchaseInput) =>
       apiPostToAuction(input.auctionId, `/purchases/${input.seq}/correct`,
         { participantId: input.participantId, price: input.price }),
-    onSuccess: () => client.invalidateQueries(),
-  });
-}
-
-/**
- * Le impostazioni della lega — banditore, partecipanti, punteggio — non dell'asta
- * corrente, quindi {@link apiLeagueGet} e non {@link apiGet}.
- */
-export function useSettings() {
-  return useQuery({
-    queryKey: ['settings'] as const,
-    queryFn: () => apiLeagueGet<SettingsResponse>('/settings'),
-    // Le impostazioni non cambiano da sole: nessuno le riscrive mentre le guardi.
-    // Interrogare il server ogni cinque secondi per un modulo fermo e' solo rumore.
-    refetchInterval: false,
-  });
-}
-
-export function useSaveSettings() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: SaveSettingsRequest) =>
-      apiLeaguePut<SaveSettingsResult>('/settings', input),
     onSuccess: () => client.invalidateQueries(),
   });
 }

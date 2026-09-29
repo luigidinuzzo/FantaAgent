@@ -32,7 +32,7 @@ describe('LeagueRulesFieldset', () => {
   /** Le squadre non si configurano qui: il loro numero sta sotto i partecipanti. */
   it('non contiene il numero di squadre', () => {
     render(<Harness />);
-    const group = screen.getByRole('group', { name: 'Regole della lega' });
+    const group = screen.getByRole('group', { name: 'Crediti e posti' });
     expect(within(group).queryByText('squadre')).not.toBeInTheDocument();
   });
 
@@ -66,6 +66,6 @@ describe('LeagueRulesFieldset', () => {
     const fieldset = container.querySelector('fieldset');
     expect(fieldset?.className).toContain('border-line-strong');
     expect(fieldset?.className).not.toContain('border-0');
-    expect(screen.getByText('Regole della lega').tagName).toBe('LEGEND');
+    expect(screen.getByText('Crediti e posti').tagName).toBe('LEGEND');
   });
 });

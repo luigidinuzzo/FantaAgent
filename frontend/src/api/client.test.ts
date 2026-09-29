@@ -3,7 +3,6 @@ import {
   ProblemError,
   api,
   apiGet,
-  apiLeaguePut,
   apiPost,
   apiPostToAuction,
   fieldErrors,
@@ -71,23 +70,6 @@ describe('client API', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
 
     await expect(apiPost('/phase', { role: 'C' })).resolves.toBeNull();
-  });
-
-  it('apiLeaguePut manda un PUT alla lega, non all\'asta', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ auctionId: null }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    await apiLeaguePut('/settings', { auctionName: 'Lega' });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/leagues/default/settings',
-      expect.objectContaining({ method: 'PUT' }),
-    );
   });
 
   /**

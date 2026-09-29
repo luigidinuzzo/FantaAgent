@@ -90,10 +90,6 @@ function url(path: string): string {
   return `/api/leagues/${context.leagueId}/auctions/${context.auctionId}${path}`;
 }
 
-function leagueUrl(path: string): string {
-  return `/api/leagues/${encodeURIComponent(context.leagueId)}${path}`;
-}
-
 /**
  * Come {@link url}, ma con l'identificativo dell'asta passato dal chiamante invece
  * di quello fissato in {@link context}. Vedi {@link apiPostToAuction}.
@@ -211,58 +207,6 @@ export async function apiPostToAuction<T>(
  */
 export function auctionExportUrl(auctionId: string): string {
   return auctionUrl(auctionId, '/export.csv');
-}
-
-/**
- * Gemello di {@link apiGet} che si ferma alla lega: le rotte dell'archivio
- * (l'elenco delle aste, il passaggio da una all'altra) non stanno sotto
- * un'asta particolare, quindi non passano dal segmento `/auctions/{id}`
- * che {@link url} aggiunge.
- */
-export async function apiLeagueGet<T>(path: string): Promise<T> {
-  return (await request<T>(leagueUrl(path), {
-    headers: { accept: 'application/json' },
-  })) as T;
-}
-
-/** Gemello di {@link apiPost} che si ferma alla lega. Vedi {@link apiLeagueGet}. */
-export async function apiLeaguePost<T>(path: string, body?: unknown): Promise<T | null> {
-  return request<T>(leagueUrl(path), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-
-/** Gemello di {@link apiLeaguePost} per le cancellazioni: un'asta si toglie dall'archivio. */
-export async function apiLeagueDelete(path: string): Promise<null> {
-  await request<null>(leagueUrl(path), {
-    method: 'DELETE',
-    headers: { accept: 'application/json' },
-  });
-  return null;
-}
-
-/**
- * Gemello di {@link apiPost} che si ferma alla lega, per le scritture che vogliono
- * PUT invece di POST — le impostazioni della lega (task 10/11), che non creano una
- * risorsa nuova ogni volta ma sostituiscono quella che c'e'.
- */
-export async function apiLeaguePut<T>(path: string, body: unknown): Promise<T | null> {
-  return request<T>(leagueUrl(path), {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-/** Gemello di {@link apiLeaguePut} per le modifiche parziali: il nome di un'asta. */
-export async function apiLeaguePatch<T>(path: string, body: unknown): Promise<T | null> {
-  return request<T>(leagueUrl(path), {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify(body),
-  });
 }
 
 /**

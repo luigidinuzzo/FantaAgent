@@ -58,6 +58,12 @@ describe('LeagueRoute', () => {
     expect(within(members).getByText('Anna FC')).toBeInTheDocument();
   });
 
+  it.each([true, false])('porta alle regole della lega, per tutti (amministratore: %s)', async (admin) => {
+    stub(admin);
+    renderLeague();
+    expect(await screen.findByRole('link', { name: 'Regole della lega' })).toHaveAttribute('href', '/leghe/l1/regole');
+  });
+
   it('chi non e\' amministratore non vede gli inviti', async () => {
     const fetchMock = stub(false);
     renderLeague();

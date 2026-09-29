@@ -1,25 +1,5 @@
 export type Role = 'P' | 'D' | 'C' | 'A';
 
-/**
- * Una riga della home: quanto basta a riconoscere un'asta fra le altre.
- * Specchio del record Java {@code AuctionsDtos.AuctionCard}.
- */
-export interface AuctionCard {
-  id: string;
-  label: string;
-  lastWritten: string | null;
-  purchases: number;
-  phase: Role;
-  selected: boolean;
-  /** Squadre, crediti a testa e posti totali (squadre × rosa) dell'asta. */
-  teams: number;
-  budget: number;
-  totalSlots: number;
-  /** Il partecipante segnato come proprio e i suoi crediti; null se non c'e'. */
-  myName: string | null;
-  myBudgetRemaining: number | null;
-}
-
 export interface ParticipantView {
   id: string;
   name: string;
@@ -170,13 +150,6 @@ export interface BidderSettings {
   beepEnabled: boolean;
 }
 
-export interface ParticipantSettings {
-  id: string;
-  name: string;
-  initial: string;
-  me: boolean;
-}
-
 export interface ScoringStep {
   minAverage: number;
   bonus: number;
@@ -185,8 +158,8 @@ export interface ScoringStep {
 /**
  * `thresholds` ha il suo editor in `ThresholdsTable` (task 18): righe che si
  * aggiungono e si tolgono, entrambe le colonne decimali. Il valore che arriva da
- * {@link SettingsResponse} torna al server dentro {@link SaveSettingsRequest} con
- * qualunque modifica l'utente gli abbia fatto — non riscritto o appiattito.
+ * {@link LeagueRulesResponse} torna al server dentro {@link SaveLeagueRulesRequest}
+ * con qualunque modifica l'utente gli abbia fatto — non riscritto o appiattito.
  */
 export interface ScoringSection {
   defenceModifierEnabled: boolean;
@@ -205,53 +178,34 @@ export interface ScoringSection {
 }
 
 /**
- * Specchio di {@code SettingsDtos.LeagueRulesView}: le regole dell'asta aperta, o del
- * modello quando non ce n'e' una. {@code participants} e' calcolato dal server — il
- * numero di squadre e' la lunghezza della lista dei partecipanti.
- */
-export interface LeagueRulesView {
-  participants: number;
-  budget: number;
-  slots: Record<Role, number>;
-}
-
-export interface SettingsResponse {
-  bidder: BidderSettings;
-  participants: ParticipantSettings[];
-  scoring: ScoringSection;
-  /** Ad asta aperta i parametri di punteggio sono bloccati: cambiarli riscriverebbe
-   *  i numeri con cui una rosa gia' pagata era stata valutata. */
-  auctionOpen: boolean;
-  rules: LeagueRulesView;
-}
-
-/**
- * Specchio di {@code SettingsDtos.RulesSection}: crediti e slot scelti per l'asta che
- * nasce. Le squadre no: sono i partecipanti.
+ * Crediti e posti per ruolo con cui nasce un'asta. Le squadre no: sono i membri che
+ * partecipano.
  */
 export interface RulesSection {
   budget: number;
   slots: Record<Role, number>;
 }
 
-export interface SaveSettingsRequest {
-  auctionName: string;
+/** Le regole con cui nasceranno le prossime aste della lega. */
+export interface LeagueRulesResponse {
   bidder: BidderSettings;
-  participants: ParticipantSettings[];
+  scoring: ScoringSection;
+  rules: RulesSection;
+  /** Solo l'amministratore le cambia: gli altri membri le leggono. */
+  canEdit: boolean;
+}
+
+export interface SaveLeagueRulesRequest {
+  bidder: BidderSettings;
   scoring: ScoringSection;
   rules: RulesSection;
 }
 
-export interface SaveSettingsResult {
-  /** L'id dell'asta appena nata, oppure null se ne era gia' aperta una. */
-  auctionId: string | null;
-}
-
 /**
  * Le chiavi sono di campo, non di sezione (task 16: {@code bidTimerSeconds},
- * {@code defendersCounted}, {@code participants[<id>].name}…), e una chiave compare
- * solo se ha davvero un errore — un id di partecipante o un indice di riga non si
- * possono elencare tutti in anticipo come le quattro sezioni fisse di prima.
+ * {@code defendersCounted}, {@code slots[P]}…), e una chiave compare solo se ha
+ * davvero un errore — un indice di riga non si puo' elencare in anticipo come le
+ * quattro sezioni fisse di prima.
  */
 export type SettingsErrors = Record<string, string[]>;
 

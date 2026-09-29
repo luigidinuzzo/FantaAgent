@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import type {
   BidderSettings, CreatedInvite, InvitePreview, InviteView, LeagueAuctionCard, LeagueCard, LeagueDetail,
-  SeatInput, SeatsView,
+  LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
 } from './types';
 
 const path = (id: string) => `/api/leagues/${encodeURIComponent(id)}`;
@@ -12,6 +12,7 @@ export const LEAGUE_KEYS = {
   one: (id: string) => ['leagues', id] as const,
   invites: (id: string) => ['leagues', id, 'invites'] as const,
   auctions: (id: string) => ['leagues', id, 'auctions'] as const,
+  rules: (id: string) => ['leagues', id, 'rules'] as const,
   seats: (id: string, auctionId: string) => ['leagues', id, 'auctions', auctionId, 'seats'] as const,
   invite: (token: string) => ['invite', token] as const,
 };
@@ -155,5 +156,27 @@ export function useRemoveMember(leagueId: string) {
     // rileggerla (404, piu' un tentativo), e aspettarlo lo terrebbe su una pagina
     // d'errore per un secondo prima di portarlo all'elenco delle leghe.
     onSuccess: () => { void client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }); },
+  });
+}
+
+/**
+ * Le regole con cui nasceranno le prossime aste della lega. Nessuno le riscrive
+ * mentre le si guarda, e la schermata e' un modulo: un refetch sotto le dita
+ * riscriverebbe quello che si sta scrivendo.
+ */
+export function useLeagueRules(leagueId: string) {
+  return useQuery({
+    queryKey: LEAGUE_KEYS.rules(leagueId),
+    queryFn: () => api<LeagueRulesResponse>(`${path(leagueId)}/rules`),
+    ...STILL,
+  });
+}
+
+export function useSaveLeagueRules(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SaveLeagueRulesRequest) =>
+      api<LeagueRulesResponse>(`${path(leagueId)}/rules`, { method: 'PUT', body }),
+    onSuccess: (saved) => client.setQueryData(LEAGUE_KEYS.rules(leagueId), saved),
   });
 }

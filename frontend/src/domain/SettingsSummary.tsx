@@ -1,20 +1,40 @@
-import type { Role, RulesSection, ScoringSection } from '../api/types';
+import type { BidderSettings, Role, RulesSection, ScoringSection } from '../api/types';
 import { RoleBadge } from './RoleBadge';
 import { ROLE_NAME_PLURAL, ROLES } from './roles';
 
 /**
- * Regole e punteggio di un'asta aperta, da leggere e non da modificare.
+ * Banditore, regole e punteggio da leggere e non da modificare: quello che vede
+ * chi non e' amministratore della lega.
  *
- * <p>Prima erano gli stessi campi della creazione, spenti, con la stessa frase
- * «Asta in corso: … bloccati» ripetuta tre volte: sembravano un modulo rotto. Qui
- * sono valori scritti, con la ragione detta una volta sola da chi li monta.
+ * <p>Prima erano gli stessi campi del modulo, spenti, con la stessa frase ripetuta
+ * tre volte: sembravano un modulo rotto. Qui sono valori scritti, con la ragione
+ * detta una volta sola da chi li monta.
  */
-export function RulesSummary({ rules, teams }: { rules: RulesSection; teams: number }) {
+export function BidderSummary({ bidder }: { bidder: BidderSettings }) {
+  return (
+    <section aria-labelledby="bidder-summary" className="rounded-2xl border border-line-strong p-4">
+      <h2 id="bidder-summary" className="text-base font-medium">Banditore</h2>
+      <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
+        <Value label="Secondi del conto alla rovescia" value={bidder.bidTimerSeconds} />
+        <div className="flex flex-col-reverse gap-1">
+          <dt className="text-sm text-muted-foreground">Avviso acustico allo scadere</dt>
+          <dd className="w-exp text-2xl font-semibold">{bidder.beepEnabled ? 'Sì' : 'No'}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * {@code teams} solo dove il numero di squadre e' davvero una regola: nella lega
+ * non lo e', sono i membri che partecipano a ogni asta.
+ */
+export function RulesSummary({ rules, teams }: { rules: RulesSection; teams?: number }) {
   return (
     <section aria-labelledby="rules-summary" className="rounded-2xl border border-line-strong p-4">
-      <h2 id="rules-summary" className="text-base font-medium">Regole della lega</h2>
+      <h2 id="rules-summary" className="text-base font-medium">Crediti e posti</h2>
       <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
-        <Value label="Squadre" value={teams} />
+        {teams !== undefined ? <Value label="Squadre" value={teams} /> : null}
         <Value label="Crediti per squadra" value={rules.budget} />
         {ROLES.map((role: Role) => (
           <div key={role} className="flex flex-col-reverse gap-1">

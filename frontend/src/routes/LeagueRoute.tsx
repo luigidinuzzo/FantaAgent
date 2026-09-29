@@ -45,7 +45,14 @@ export function LeagueRoute() {
 
   return (
     <AppShell chrome="top">
-      <h1 className="w-exp mx-auto mb-4 max-w-5xl text-2xl font-semibold">{league.data.name}</h1>
+      {/* Il nome e, accanto, le regole: valgono per tutte le aste che la lega fara',
+          e le legge chiunque ne faccia parte. */}
+      <div className="mx-auto mb-4 flex max-w-5xl flex-wrap items-center justify-between gap-3">
+        <h1 className="w-exp text-2xl font-semibold">{league.data.name}</h1>
+        <Link to={`/leghe/${leagueId}/regole`} className={`inline-flex items-center ${SECONDARY_BUTTON}`}>
+          Regole della lega
+        </Link>
+      </div>
       <div className="mx-auto grid max-w-5xl items-start gap-4 lg:grid-cols-2">
         <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
         <MembersPanel league={league.data} />

@@ -5,6 +5,7 @@ import { AuctionSettingsRoute } from './routes/AuctionSettingsRoute';
 import { ForgotPasswordRoute } from './routes/ForgotPasswordRoute';
 import { InviteRoute } from './routes/InviteRoute';
 import { LeagueRoute } from './routes/LeagueRoute';
+import { LeagueRulesRoute } from './routes/LeagueRulesRoute';
 import { LeaguesRoute } from './routes/LeaguesRoute';
 import { LoginRoute } from './routes/LoginRoute';
 import { ProfileRoute } from './routes/ProfileRoute';
@@ -12,7 +13,6 @@ import { ProjectionRoute } from './routes/ProjectionRoute';
 import { RegisterRoute } from './routes/RegisterRoute';
 import { RequireAuth } from './routes/RequireAuth';
 import { ResetPasswordRoute } from './routes/ResetPasswordRoute';
-import { SettingsRoute } from './routes/SettingsRoute';
 import { VerifyEmailRoute } from './routes/VerifyEmailRoute';
 import { WithAuctionContext } from './routes/WithAuctionContext';
 
@@ -27,10 +27,11 @@ import { WithAuctionContext } from './routes/WithAuctionContext';
 // quelle che il server inoltra a index.html.
 export const routeDefinitions = [
   { path: '/', element: <RequireAuth><LeaguesRoute /></RequireAuth> },
-  { path: '/impostazioni', element: <RequireAuth><SettingsRoute /></RequireAuth> },
   { path: '/profilo', element: <RequireAuth><ProfileRoute /></RequireAuth> },
   { path: '/leghe', element: <Navigate to="/" replace /> },
   { path: '/leghe/:leagueId', element: <RequireAuth><LeagueRoute /></RequireAuth> },
+  // Le regole con cui nasceranno le prossime aste: della lega, non di un'asta.
+  { path: '/leghe/:leagueId/regole', element: <RequireAuth><LeagueRulesRoute /></RequireAuth> },
   // Lega e asta nell'indirizzo: e' quello che si manda nel gruppo, ed e' quello che
   // un ricaricamento deve ritrovare.
   {
