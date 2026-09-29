@@ -10,6 +10,7 @@ import com.fantaagent.application.service.account.InvalidTokenException;
 import com.fantaagent.application.service.account.TooManyAttemptsException;
 import com.fantaagent.application.service.league.AdminOnlyException;
 import com.fantaagent.application.service.league.InvalidLeagueDataException;
+import com.fantaagent.application.service.league.InviteUnavailableException;
 import com.fantaagent.application.service.league.NotLeagueMemberException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
@@ -213,6 +214,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InitialTakenException.class)
     ProblemDetail initialTaken(InitialTakenException e) {
         return problem(HttpStatus.CONFLICT, "initial-taken", e.getMessage());
+    }
+
+    @ExceptionHandler(InviteUnavailableException.class)
+    ProblemDetail inviteUnavailable(InviteUnavailableException e) {
+        return problem(HttpStatus.GONE, "invite-unavailable", e.getMessage());
     }
 
     /**

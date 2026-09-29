@@ -54,4 +54,21 @@ public final class LeagueDtos {
                                          SettingsDtos.ScoringSection scoring,
                                          SettingsDtos.RulesSection rules) {
     }
+
+    public record InviteView(String id, java.time.Instant createdAt, java.time.Instant expiresAt) {
+
+        public static InviteView of(com.fantaagent.application.port.out.Invite i) {
+            return new InviteView(i.id().toString(), i.createdAt(), i.expiresAt());
+        }
+    }
+
+    public record CreatedInviteView(String id, String link, java.time.Instant expiresAt) {
+    }
+
+    public record InvitePreviewView(String leagueId, String leagueName, String invitedBy,
+                                    boolean alreadyMember, List<String> takenInitials) {
+    }
+
+    public record AcceptInviteRequest(String teamName, String initial) {
+    }
 }
