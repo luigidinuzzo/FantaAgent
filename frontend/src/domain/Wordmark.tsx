@@ -33,8 +33,8 @@ const BALL_SIZE = {
 /**
  * Il bordo nero: il contorno delle lettere disegnato DIETRO il riempimento
  * (paint-order), cosi' le ingrossa invece di assottigliarle, piu' un'ombra stretta.
- * Serve al marchio grande in fondo alla home, che sta sull'erba e deve staccarsi
- * dalle linee del campo.
+ * Serve al marchio grande che sta sulla meta' campo delle pagine d'ingresso
+ * (AuthLayout/HalfPitch) e deve staccarsi dalle linee del campo.
  */
 const OUTLINE =
   '[-webkit-text-stroke:2px_#000] sm:[-webkit-text-stroke:3px_#000] [paint-order:stroke_fill]'

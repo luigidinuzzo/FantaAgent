@@ -59,6 +59,31 @@ describe('AppShell', () => {
     expect(screen.getByRole('banner')).toHaveTextContent('in diretta');
   });
 
+  /**
+   * Con la navigazione (chrome="top") lo stato non si stringe: c'e' il percorso
+   * e il profilo accanto, e non c'e' altro testo con cui contendersi lo spazio.
+   * Sulla proiezione (chrome="none") lo stato e' l'unica cosa nella barra oltre
+   * al marchio, e puo' essere lungo (il nome della squadra al banco): deve
+   * poter mandare a capo il suo testo invece di spingere la barra fuori
+   * schermo — shrink-0 impediva anche quello.
+   */
+  it('lo stato si stringe solo senza la navigazione (la proiezione)', () => {
+    const { unmount } = render(withRouter(
+      <AppShell chrome="top" slotStatus={<span>in diretta</span>}><p>x</p></AppShell>,
+    ));
+    const statoConNav = screen.getByText('in diretta').parentElement;
+    expect(statoConNav?.className).toContain('shrink-0');
+    expect(statoConNav?.className).not.toContain('min-w-0');
+    unmount();
+
+    render(withRouter(
+      <AppShell chrome="none" slotStatus={<span>in diretta</span>}><p>x</p></AppShell>,
+    ));
+    const statoProiezione = screen.getByText('in diretta').parentElement;
+    expect(statoProiezione?.className).toContain('min-w-0');
+    expect(statoProiezione?.className).not.toContain('shrink-0');
+  });
+
   it('senza percorso porta solo il marchio, verso la home', () => {
     render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
     const links = screen.getAllByRole('link');
@@ -116,6 +141,23 @@ describe('AppShell', () => {
   it('la barra va a capo sul telefono invece di allargare la pagina', () => {
     render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
     expect(screen.getByRole('banner').className).toContain('max-sm:flex-wrap');
+  });
+
+  /**
+   * Con un solo passo (la home, che passa solo «Le mie leghe») ogni <li> e'
+   * max-sm:hidden: sul telefono resterebbe un <nav> «Percorso» senza un solo
+   * elemento dentro, un landmark vuoto per chi ascolta. Con tre passi il <nav>
+   * resta visibile: c'e' davvero qualcosa da attraversare, il passo precedente.
+   */
+  it('col percorso di un passo solo il nav sparisce sul telefono', () => {
+    const { unmount } = render(withRouter(
+      <AppShell chrome="top" trail={[{ label: 'Le mie leghe' }]}><p>x</p></AppShell>,
+    ));
+    expect(screen.getByRole('navigation', { name: 'Percorso' }).className).toContain('max-sm:hidden');
+    unmount();
+
+    render(withRouter(<AppShell chrome="top" trail={TRAIL}><p>x</p></AppShell>));
+    expect(screen.getByRole('navigation', { name: 'Percorso' }).className).not.toContain('max-sm:hidden');
   });
 
   it('la proiezione non ha percorso, nemmeno se glielo si passa', () => {

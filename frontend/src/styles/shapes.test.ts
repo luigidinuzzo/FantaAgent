@@ -5,8 +5,9 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SRC = new URL('..', import.meta.url).pathname;
+const SRC = fileURLToPath(new URL('..', import.meta.url));
 
 /**
  * Dove la pillola e' ammessa, e perche': solo cio' che e' uno stato o un'etichetta.
@@ -36,10 +37,16 @@ function sources(dir: string, found: string[] = []): string[] {
 }
 
 describe('le forme', () => {
+  // Se la scansione trovasse zero file passerebbe comunque, a vuoto: un
+  // controllo che non guarda nessun sorgente non prova niente.
+  it('la scansione trova davvero i sorgenti', () => {
+    expect(sources(SRC).length).toBeGreaterThan(50);
+  });
+
   it('nessun raggio oltre gli 8px: pannelli, bottoni e campi sono rounded-lg', () => {
     const offenders: string[] = [];
     for (const file of sources(SRC)) {
-      const found = readFileSync(file, 'utf8').match(/rounded-(?:[a-z]{1,2}-)?(?:xl|2xl|3xl)\b/g);
+      const found = readFileSync(file, 'utf8').match(/rounded-(?:[a-z]{1,2}-)?(?:xl|2xl|3xl|4xl)\b/g);
       if (found) offenders.push(`${file.slice(SRC.length)}: ${found.join(', ')}`);
     }
     expect(offenders).toEqual([]);

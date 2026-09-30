@@ -75,7 +75,12 @@ export function AppShell({
             <Wordmark size="bar" />
           )}
           {chrome === 'top' && trail.length > 0 ? <Trail steps={trail} /> : null}
-          <div className="ml-auto shrink-0">{slotStatus}</div>
+          {/* shrink-0 solo con la navigazione: percorso e profilo accanto non
+              lasciano comunque spazio da cedere. Sulla proiezione (chrome="none")
+              lo stato e' l'unica cosa oltre al marchio, e puo' essere lungo (il
+              nome della squadra al banco): min-w-0 lo lascia andare a capo
+              invece di spingere la barra fuori dalla finestra del telefono. */}
+          <div className={`ml-auto ${chrome === 'top' ? 'shrink-0' : 'min-w-0'}`}>{slotStatus}</div>
           {chrome === 'top' && me.data ? (
             <ProfileMenu me={me.data} current={location.pathname === '/profilo'} />
           ) : null}
@@ -103,7 +108,10 @@ function Trail({ steps }: { steps: TrailStep[] }) {
   // Il passo da cui si viene: l'unico che resta sul telefono.
   const previous = steps.length - 2;
   return (
-    <nav aria-label="Percorso" className="min-w-0">
+    // Con un solo passo (la home, «Le mie leghe» senza percorso da attraversare)
+    // ogni <li> e' max-sm:hidden: senza questo, sul telefono restava un <nav>
+    // «Percorso» senza un solo elemento dentro, un landmark vuoto per chi ascolta.
+    <nav aria-label="Percorso" className={`min-w-0 ${steps.length < 2 ? 'max-sm:hidden' : ''}`}>
       <ol className="flex min-w-0 items-center gap-1">
         {steps.map((step, i) => {
           const current = i === steps.length - 1;

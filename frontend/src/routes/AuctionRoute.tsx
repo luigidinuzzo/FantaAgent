@@ -701,8 +701,12 @@ export function AuctionRoute() {
           la finestra ha davvero. 39rem + la barra + i margini fanno 717px, e su un
           portatile da 13" le schede qui sotto nascevano fuori schermo — si finiva a
           scorrere durante un'asta dal vivo, che e' il momento in cui non si deve
-          scorrere. Le 13rem sottratte sono barra, margini e la fila delle schede.
-          Le tre colonne scorrono gia' dentro di se': sanno riceverne meno. */}
+          scorrere. Il chrome fisso sopra la riga e' oggi due barre, non una sola:
+          --header-h (la navigazione, 3.5rem) e --commands-h (i comandi della
+          pagina, 3.5625rem). Restano 8.6875rem per margini e la fila delle schede:
+          erano le vecchie 13rem meno la vecchia barra unica di 4.3125rem, che le
+          due barre di oggi hanno sostituito. Le tre colonne scorrono gia' dentro
+          di se': sanno riceverne meno. */}
       {seated === false ? (
         // L'amministratore senza posto: batte l'asta, ma consigli per lui non ce
         // ne sono. La frase una volta sola, sopra; la colonna dei consigli non
@@ -714,7 +718,7 @@ export function AuctionRoute() {
       ) : null}
       <div
         data-testid="auction-row"
-        className={`grid grid-cols-1 gap-5 lg:h-[min(39rem,calc(100dvh-13rem))] ${
+        className={`grid grid-cols-1 gap-5 lg:h-[min(39rem,calc(100dvh-var(--header-h)-var(--commands-h)-8.6875rem))] ${
           seated === false ? 'lg:grid-cols-[14rem_1fr]' : 'lg:grid-cols-[14rem_1fr_22rem]'
         }`}
       >

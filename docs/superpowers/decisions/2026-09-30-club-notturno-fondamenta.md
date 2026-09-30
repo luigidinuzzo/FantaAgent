@@ -28,7 +28,7 @@ Confronto fatto con `npm run screens`, a 1440×900 e 390×844, prima e dopo.
 | 14d Asta, tempo scaduto | Niente da segnalare. | Niente da segnalare. | 2 — asta |
 | 14c Asta, rose | Niente da segnalare: colonne di squadra affiancate, ognuna con bordo visibile. | Niente da segnalare. | 2 — asta |
 | 15 Impostazioni dell'asta | Niente da segnalare: qui il percorso mostra il nome vero della lega e dell'asta (pagina raggiunta dopo che erano già in cache). | Niente da segnalare. | 3 — gestione |
-| 16 Proiezione | Niente da segnalare come difetto: il nome della squadra va ora su due righe (atteso, ultimo commit del task 7); su un nome composto («Borussia Porcmund») lo spezzare va a metà parola («Borus» / «sia Porc…») — leggibile, ma da rivedere quando si disegnerà la proiezione per bene. | Scorre di lato di +30px (era già +16px in «prima»): vedi «Rimandato» per la causa. Non è una novità introdotta da questo passo, il difetto esisteva già. | 2 — asta |
+| 16 Proiezione | Niente da segnalare come difetto: il nome della squadra va ora su due righe (atteso, ultimo commit del task 7); su un nome composto («Borussia Porcmund») lo spezzare va a metà parola («Borus» / «sia…») — leggibile, ma da rivedere quando si disegnerà la proiezione per bene. | Scorre di lato di +16px, come in «prima» (era salito a +30px con questo piano, corretto nel passo di rifinitura finale — vedi «Corretto in questo passo»). | 2 — asta |
 
 ## Il banco, misurato
 
@@ -43,9 +43,29 @@ stima di oltre 80px.
 
 ## Corretto in questo passo
 
-Nessuna correzione: nessuna delle 40 coppie di schermate mostra erba o gesso fuori
+Dalla revisione finale di tutto il ramo sono arrivati cinque correttivi, applicati in un
+solo passo:
+
+- Il campo di ricerca dell'asta (`PlayerSearchBox`) non aveva un contorno a 3:1 sul
+  fondo: il pannello che lo disegna ora porta `border-control-border` invece del
+  `panel-border` più tenue di `@utility panel`.
+- L'altezza della riga dell'asta sottraeva ancora la vecchia barra unica (13rem): ora
+  sottrae le due barre di oggi separatamente (`--header-h` più la nuova `--commands-h`,
+  3,5625rem) più il resto invariato (8,6875rem).
+- Lo stato in testata (`slotStatus` di `AppShell`) non si stringeva più su nessuna
+  pagina: ora `shrink-0` resta solo con la navigazione (`chrome="top"`), mentre sulla
+  proiezione (`chrome="none"`) `min-w-0` lascia il testo andare a capo — la correzione
+  di `16-proiezione-telefono`, sotto.
+- Il percorso (`Trail`) con un solo passo lasciava un `<nav>` vuoto sul telefono (ogni
+  `li` è `max-sm:hidden`): ora è il `<nav>` stesso a nascondersi quando i passi sono
+  meno di due.
+- Commenti non più veri (il riferimento all'erba in `PlayerSearchBox` e in `Wordmark`,
+  la descrizione mancante di `.pitch-grass`) e due test di cornice (`shapes.test.ts`,
+  `sizes.test.ts`) rafforzati contro un passaggio vuoto.
+
+Nessun'altra correzione: nessuna delle 40 coppie di schermate mostra erba o gesso fuori
 dalle pagine d'ingresso, testo illeggibile, o un bordo di bottone o di campo che non si
-vede. Le uniche differenze trovate rispetto a «prima» sono i cambi voluti dalle
+vede. Le altre differenze trovate rispetto a «prima» sono i cambi voluti dalle
 fondamenta (niente erba, raggi a 8px, due barre, iniziali senza oro, nomi squadra su
 due righe in proiezione) o difetti già presenti prima di questo piano.
 
@@ -59,23 +79,33 @@ già a piena larghezza. Non è un difetto di questo passo (le pagine hanno la st
 impaginazione di prima, come da regola del piano) — è materiale per chi disegnerà
 queste due pagine.
 
-**`16-proiezione-telefono` scorre di lato di più che prima (+16px → +30px).** La
-proiezione è pensata per un proiettore, non per un telefono, quindi non si corregge
-qui — ma la causa dell'aumento è stata trovata con un secondo script Playwright
-temporaneo che misura, dentro la pagina, ogni elemento la cui `right` supera 390px:
-è la riga di stato in testa alla proiezione (`slotStatus` di `AppShell`, in
-`ProjectionRoute`), quella che dice «Il giocatore all'asta non compare su questo
-schermo» accanto a «In diretta». Il contenitore `<div className="flex items-center
-gap-4">` con dentro il messaggio (`<div className="ml-auto shrink-0">`) non va a capo
-sul telefono: la sua larghezza naturale (~404px) supera i 390px del viewport e spinge
-tutta la pagina a 420px. Il difetto esisteva già in «prima» (+16px, probabilmente per
-altre righe della testata rimosse dal task 6); le fondamenta lo hanno solo allargato
-spostando il messaggio «non compare su questo schermo» dentro la stessa riga flessibile
-del segnale «In diretta». Chi scriverà il piano dell'asta sul telefono dovrà far andare
-a capo (o accorciare) quella riga di stato.
+**`16-proiezione-telefono` scorreva di lato più che prima (+16px → +30px), corretto in
+questo passo.** La causa non era `ProjectionRoute`: era `AppShell`. Il contenitore dello
+stato in testata (`slotStatus`), `<div className="ml-auto shrink-0">`, era diventato
+`shrink-0` su ogni pagina col task 6 — anche sulla proiezione, dove lo stato («Il
+giocatore all'asta non compare su questo schermo» accanto a «In diretta») è l'unica cosa
+oltre al marchio e può essere lungo (~404px, contro i 390px del telefono). Non potendo
+stringersi, spingeva l'intera pagina a 420px. Corretto rendendo `shrink-0` condizionato
+a `chrome === 'top'` (dove percorso e profilo non lasciano comunque spazio da cedere) e
+dando a `chrome === 'none'` un `min-w-0` che lascia il testo andare a capo. Misurato di
+nuovo con `npm run screens -- test-results/screens/finale`: `16-proiezione-telefono`
+torna a +16px, lo stesso scarto di «prima» (dovuto ad altre righe della testata, non a
+questo stato) — nessun'altra pagina compare nella `larghe:`.
 
 **Il nome «Borussia Porcmund» si spezza a metà parola in proiezione (computer).** Con
-`line-clamp-2 break-words`, la seconda riga diventa «sia Porc…»: resta leggibile ma è
+`line-clamp-2 break-words`, la seconda riga diventa «sia…»: resta leggibile ma è
 scomodo da leggere al volo su un proiettore. Non è un difetto di questo passo (il
 comportamento è quello introdotto dall'ultimo commit del task 7 ed è coerente con la
 regola delle due righe), ma vale la pena rivederlo quando si ridisegnerà la proiezione.
+
+## Deviazioni dalla specifica
+
+**`--header-h` copre solo la barra di navigazione, non le due barre insieme.** La spec
+(§3.6) dice: «`--header-h` diventa l'altezza di quello che c'è: 3,5rem con una barra,
+7rem con due». In pratica `--header-h` è rimasta ferma a 3,5rem (l'altezza della sola
+barra di navigazione, fissa su ogni pagina) e la barra dei comandi ha una variabile sua,
+`--commands-h` (3,5625rem: 56px di `min-h-14` più 1px di bordo) — perché esiste solo
+sulle pagine che passano `slotActions` e non è sempre alta 56px esatti come
+`--header-h`. Chi ha bisogno di sapere dove comincia il contenuto sotto le due barre
+(oggi solo `AuctionRoute`, per l'altezza della riga del banco) sottrae entrambe le
+variabili, non una sola «altezza totale» calcolata a monte.

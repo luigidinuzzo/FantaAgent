@@ -113,21 +113,25 @@ export function PlayerSearchBox({
     // solo <input>, la via d'uscita spariva appena ci si spostava.
     // Il clic fuori deliberatamente NON chiude: si perderebbe una ricerca a
     // meta' per un clic di troppo.
-    // Un pannello solo, con un bordo solo: "tutto cio' che si legge sta dentro
-    // un pannello, mai direttamente sull'erba" (index.css) — in linea sopra il
-    // campo i nomi avevano le righe del disegno che gli passavano attraverso.
+    // Un pannello solo, con un bordo solo: tutto cio' che si legge sta dentro
+    // un pannello (index.css) — in linea sopra il campo i nomi avevano le
+    // righe del disegno che gli passavano attraverso.
     // Il campo di testo qui dentro NON porta un bordo suo: il contorno del
     // pannello e' gia' il contorno della barra, e disegnarne un secondo era il
-    // doppio riquadro di prima. A riposo il pannello e' alto quanto la barra;
-    // cercando cresce verso il basso, e il filo che separa la barra dai
-    // risultati dice dove finisce quello che si scrive.
+    // doppio riquadro di prima. Ma qui il pannello e' anche l'unico contorno di
+    // un campo di ricerca, che vuole un contatto di almeno 3:1 col fondo
+    // (WCAG 1.4.11): border-control-border (4.55:1) sovrascrive il border-color
+    // piu' tenue (1.62:1) che @utility panel disegna di norma — vince perche'
+    // nel foglio generato viene dopo, stessa specificita'. A riposo il pannello
+    // e' alto quanto la barra; cercando cresce verso il basso, e il filo che
+    // separa la barra dai risultati dice dove finisce quello che si scrive.
     // h-full: quando chi lo monta gli da' una colonna da riempire (durante la
     // ricerca il pannello e' l'unica cosa in quella colonna), arriva in fondo
     // come i due pannelli accanto, invece di fermarsi a mezz'aria. Fuori da un
     // contenitore con un'altezza, h-full non fa nulla: a riposo resta alto
     // quanto la barra.
     <div
-      className="panel flex h-full flex-col"
+      className="panel flex h-full flex-col border-control-border"
       onKeyDown={(e) => {
         if (e.key !== 'Escape') return;
         e.preventDefault();

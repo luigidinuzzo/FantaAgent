@@ -1607,7 +1607,9 @@ describe('AuctionRoute', () => {
 
     await screen.findByRole('region', { name: 'Crediti delle squadre' });
     const riga = container.querySelector('[data-testid="auction-row"]')!;
-    expect(riga.className).toContain('lg:h-[min(39rem,calc(100dvh-13rem))]');
+    expect(riga.className).toContain(
+      'lg:h-[min(39rem,calc(100dvh-var(--header-h)-var(--commands-h)-8.6875rem))]',
+    );
   });
 
   /**

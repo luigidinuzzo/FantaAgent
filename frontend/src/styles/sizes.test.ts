@@ -2,8 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const SRC = new URL('..', import.meta.url).pathname;
+const SRC = fileURLToPath(new URL('..', import.meta.url));
 
 /**
  * Dove i 12px sono ammessi, e perche': solo cio' che e' decorazione o ripete a
@@ -22,6 +23,12 @@ function sources(dir: string, found: string[] = []): string[] {
 }
 
 describe('la misura del testo', () => {
+  // Se la scansione trovasse zero file passerebbe comunque, a vuoto: un
+  // controllo che non guarda nessun sorgente non prova niente.
+  it('la scansione trova davvero i sorgenti', () => {
+    expect(sources(SRC).length).toBeGreaterThan(50);
+  });
+
   // Seconde righe, etichette e note erano a 12px su verde scuro: si leggevano a
   // fatica sul portatile e per niente sul telefono. La misura piu' piccola per un
   // testo che informa e' text-meta, 13px.

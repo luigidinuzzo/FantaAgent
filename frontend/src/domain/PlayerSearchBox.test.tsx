@@ -82,6 +82,10 @@ describe('PlayerSearchBox', () => {
     // uno attorno all'elenco) sarebbero il doppio contorno di prima.
     const radice = container.firstElementChild;
     expect(radice).toHaveClass('panel');
+    // Il campo non ha un bordo suo: il contorno che lo riga e' quello del
+    // pannello. Deve garantire 3:1 su sfondo (WCAG 1.4.11): border-control-border,
+    // non il panel-border piu' tenue che @utility panel disegna di norma.
+    expect(radice).toHaveClass('border-control-border');
 
     await search(user, 'ros', [{ id: 'a1', name: 'Rossini', team: 'Roma', role: 'A', listPrice: 10 }]);
     await waitFor(() => expect(screen.getByRole('button', { name: /rossini/i })).toBeInTheDocument());
