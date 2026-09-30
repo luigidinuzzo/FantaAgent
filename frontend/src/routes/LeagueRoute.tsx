@@ -287,7 +287,7 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
       <ul aria-label="Membri" className="flex-1 divide-y divide-line border-t border-line">
         {members.map((m) => (
           <li key={m.userId} className="flex min-h-16 items-center gap-3 px-5 py-2 md:px-6">
-            <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-accent font-semibold text-on-accent">
+            <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full border border-panel-border bg-surface-raised font-semibold">
               {m.initial}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">

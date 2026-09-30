@@ -200,8 +200,16 @@ function BoardTeam({ column: c, slots }: {
       aria-labelledby={headingId}
       className={`flex min-h-0 min-w-0 flex-col rounded-lg border bg-surface px-3 py-2 ${c.me ? 'border-accent' : 'border-panel-border'}`}
     >
-      <header className="flex shrink-0 items-baseline justify-between gap-2 border-b border-line-strong pb-2">
-        <h3 id={headingId} className="w-exp truncate text-[clamp(1rem,2.4vh,2rem)] font-extrabold">
+      {/* items-start: col nome su due righe, i crediti restano in cima invece di
+          scendere sulla seconda. */}
+      <header className="flex shrink-0 items-start justify-between gap-2 border-b border-line-strong pb-2">
+        {/* Due righe al massimo, e sempre il posto di due (2,1em a interlinea 1,05):
+            un nome corto non accorcia la sua intestazione, e le righe dei
+            giocatori restano allineate da una squadra all'altra. */}
+        <h3
+          id={headingId}
+          className="w-exp line-clamp-2 min-h-[2.1em] break-words text-[clamp(1rem,2.4vh,2rem)] font-extrabold leading-[1.05]"
+        >
           {c.participantName}
         </h3>
         <p className="flex shrink-0 flex-col items-end leading-none">

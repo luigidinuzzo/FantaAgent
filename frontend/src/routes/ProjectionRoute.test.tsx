@@ -387,4 +387,20 @@ describe('ProjectionRoute', () => {
     // 3 + 8 + 8 + 6 posti, due presi: ventitre righe vuote.
     expect(anna.querySelectorAll('[aria-hidden="true"].border-dashed')).toHaveLength(23);
   });
+
+  /**
+   * Sul proiettore il nome di una squadra e' cio' che la sala cerca per primo:
+   * troncato a «Real…» e «Atle…» non lo trova nessuno. Va su due righe, e ogni
+   * intestazione tiene il posto di due, cosi' le righe sotto restano allineate da
+   * una squadra all'altra.
+   */
+  it('il nome della squadra va su due righe invece di troncarsi', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+    const name = await screen.findByRole('heading', { name: 'Anna', level: 3 });
+    expect(name.className).not.toContain('truncate');
+    expect(name.className).toContain('line-clamp-2');
+    expect(name.className).toContain('min-h-[2.1em]');
+  });
 });

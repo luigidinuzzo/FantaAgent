@@ -85,6 +85,18 @@ describe('LeagueRoute', () => {
     expect(within(members).getByText('Anna FC')).toBeInTheDocument();
   });
 
+  // L'oro e' dell'azione principale e del numero su cui si decide. Otto tondi
+  // d'oro in un elenco di membri gli toglievano forza senza dire niente.
+  it('le iniziali dei membri non portano l oro', async () => {
+    stub(false);
+    renderLeague();
+    const members = await screen.findByRole('list', { name: 'Membri' });
+    await within(members).findByText('Bruno FC');
+    const initials = members.querySelectorAll('li > span[aria-hidden="true"]');
+    expect(initials).toHaveLength(2);
+    initials.forEach((initial) => expect(initial.className).not.toContain('bg-accent'));
+  });
+
   it.each([true, false])('porta alle regole della lega, per tutti (amministratore: %s)', async (admin) => {
     stub(admin);
     renderLeague();
