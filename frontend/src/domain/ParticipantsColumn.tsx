@@ -37,7 +37,7 @@ export function ParticipantsColumn({ participants, phase }: {
       aria-label="Crediti delle squadre"
       className="panel flex min-h-0 min-w-0 flex-col max-lg:p-3 lg:overflow-hidden"
     >
-      <div aria-hidden="true" className="flex shrink-0 justify-between px-3 text-meta font-medium text-muted-foreground max-lg:mb-2 lg:min-h-11 lg:items-center lg:border-b lg:border-line lg:px-4">
+      <div aria-hidden="true" className="flex justify-between px-3 text-meta font-medium text-muted-foreground max-lg:mb-2 lg:shrink-0 lg:min-h-11 lg:items-center lg:border-b lg:border-line lg:px-4">
         <span>Squadra</span>
         <span>Crediti</span>
       </div>
@@ -50,20 +50,20 @@ export function ParticipantsColumn({ participants, phase }: {
             key={p.id}
             data-testid={`manager-${p.id}`}
             data-me={p.me}
-            className={`flex flex-col justify-center gap-0.5 max-lg:shrink-0 max-lg:rounded-lg max-lg:border max-lg:px-3 max-lg:py-2 lg:min-h-16 lg:flex-1 lg:border-b lg:border-l-[3px] lg:border-b-line lg:px-4 lg:last:border-b-0 ${
+            className={`flex flex-col gap-0.5 max-lg:shrink-0 max-lg:rounded-lg max-lg:border max-lg:px-3 max-lg:py-2 lg:min-h-16 lg:flex-1 lg:justify-center lg:border-b lg:border-l-[3px] lg:border-b-line lg:px-4 lg:last:border-b-0 ${
               p.me
                 ? 'bg-surface-raised max-lg:border-accent lg:border-l-accent'
-                : 'max-lg:border-control-border lg:border-l-transparent'
+                : 'max-lg:border-panel-border lg:border-l-transparent'
             }`}
           >
-            <span className="flex items-start justify-between gap-3">
+            <span className="flex items-baseline justify-between gap-3 lg:items-start">
               <span data-testid="team-name" className="font-medium max-lg:truncate lg:line-clamp-2 lg:leading-tight">
                 {p.name}
                 {p.me ? <span className="sr-only">, sei tu</span> : null}
               </span>
               <span
                 data-testid={`budget-${p.id}`}
-                className={`tnum shrink-0 text-lg font-semibold ${p.me ? 'text-accent' : ''}`}
+                className={`tnum shrink-0 font-medium lg:text-lg lg:font-semibold ${p.me ? 'text-accent' : 'text-muted-foreground lg:text-foreground'}`}
               >
                 {p.budgetRemaining}
                 <span className="sr-only"> crediti</span>

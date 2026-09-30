@@ -74,4 +74,20 @@ describe('ParticipantsColumn', () => {
     expect(name.className).toContain('lg:line-clamp-2');
     expect(name.className).not.toMatch(/(^| )truncate( |$)/);
   });
+
+  /**
+   * Il piano vale da `lg` in su: sotto, il telefono resta come prima di questo
+   * piano. Il bordo e il peso dei crediti che cambiavano senza prefisso
+   * accendevano la card anche sul telefono, dove nessuna riga si divide
+   * l'altezza di niente.
+   */
+  it('sotto lg il bordo e i crediti restano quelli di prima del piano', () => {
+    render(<ParticipantsColumn participants={[ANNA, CARLA]} phase="C" />);
+    const carlaRow = screen.getByTestId('manager-carla');
+    expect(carlaRow.className).toContain('max-lg:border-panel-border');
+    const carlaBudget = screen.getByTestId('budget-carla');
+    expect(carlaBudget.className).toContain('text-muted-foreground');
+    expect(carlaBudget.className).toContain('lg:font-semibold');
+    expect(carlaBudget.className).not.toMatch(/(^| )font-semibold( |$)/);
+  });
 });
