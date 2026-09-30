@@ -42,8 +42,10 @@ const ORDER_PHRASE: Record<PhaseSort, Record<SortDir, string>> = {
 // farebbe niente.
 
 // Le intestazioni ferme in alto con `fill`: il fondo pieno copre le righe che ci
-// scorrono sotto.
-const STICKY_TH = 'lg:sticky lg:top-0 lg:z-10 lg:bg-surface';
+// scorrono sotto. Senza padding verticale: l'intestazione e' alta quanto i suoi
+// bottoni (44px), e col padding arrivava a 60 — sotto il banco, a 1440x900, era
+// una riga di tabella in meno.
+const STICKY_TH = 'lg:sticky lg:top-0 lg:z-10 lg:bg-surface lg:py-0';
 
 /**
  * La freccia del verso, accanto alla colonna ordinata. Tratto vettoriale, mai

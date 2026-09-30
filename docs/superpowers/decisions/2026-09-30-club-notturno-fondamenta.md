@@ -109,3 +109,81 @@ sulle pagine che passano `slotActions` e non è sempre alta 56px esatti come
 `--header-h`. Chi ha bisogno di sapere dove comincia il contenuto sotto le due barre
 (oggi solo `AuctionRoute`, per l'altezza della riga del banco) sottrae entrambe le
 variabili, non una sola «altezza totale» calcolata a monte.
+
+## L'asta sul computer — misure finali
+
+Misurato con `SIZES=1440x900,1920x1080,1280x720,390x844 npm run screens --
+test-results/screens/asta-misure`: lo script ora stampa, per le schermate 13 e 14 da
+1024px in su, l'altezza del banco, il contenuto che gli serve e quello che mostra
+(`traboccano:`), e le pagine che scorrono in verticale (`scorrono:`).
+
+**Da dove si partiva (Task 7, a 1440×900).** Banco 380px in ogni stato, di cui 90 del
+banco stesso (padding, testata col suo spazio, bordo): restavano 290px di contenuto. Il
+lotto chiedeva 315px, il conto alla rovescia 339, il tempo scaduto 451: i bottoni in
+fondo si tagliavano e il banco scorreva. La barra dei comandi era alta 59px e non 57
+come diceva `--commands-h`, e la pagina scorreva di 2px. L'intestazione della tabella
+era 60px (i bottoni d'ordinamento, 44, più il padding delle celle), e sotto il banco si
+vedevano quattro righe.
+
+**Cosa si è corretto, nell'ordine deciso, rimisurando dopo ogni passo.** Il banco non
+poteva salire oltre ~409px (753 − ricerca 48 − due spazi 32 − una tabella di 264: schede
+44 + intestazione 44 + quattro righe da 44), quindi si sono accorciati gli stati. Sono
+serviti tutti e sei i passi:
+
+1. **Il nome del giocatore una volta sola.** La testata del banco porta nome (grande),
+   ruolo, squadra · quotazione, e «Togli dal banco» a destra; la scheda di decisione e il
+   conto alla rovescia, dentro il banco, non rendono più la loro (`hideHeader`). Il nome
+   accessibile del banco resta «Sul banco · nome» (un prefisso solo per chi ascolta). Il
+   giocatore senza consigli (amministratore senza posto) non ha più una scheda sua: la
+   testata dice già chi è, di che squadra e quanto quota, e sotto restano i gesti.
+   Lotto 315 → entra; conto 339 → 299; scaduto 451 → 411.
+2. **`--commands-h` = 3,6875rem (59px), la misura vera.** La pagina non scorre più.
+3. **Intestazione della tabella a 44px** con `fill`, da lg (`lg:py-0` sulle celle).
+4. **Il conto alla rovescia più basso, da lg:** celle del tabellone `lg:py-3` invece di
+   `py-5`, righe del riquadro a 8px invece di 12. L'offerta resta a 84px. Conto 299 →
+   entra; scaduto 411 → 383.
+5. **A tempo scaduto niente riga di riferimento** (mercato, margine, verdetto: si
+   registra un esito, non si decide) e i tasti sulla riga di «Aggiudica», a destra.
+   Scaduto 383 → 351.
+6. **Da xl le otto squadre su una riga sola**, con la nota («se lo prende», i crediti)
+   su una riga anche nel bottone stretto. Scaduto 351 → 292.
+
+**`--banco-h` = 24rem (384px).** Lo stato più alto misurato è il tempo scaduto, 292px
+di contenuto (291,4 arrotondato), più i 90 del banco: 382, al quarto di rem in su 384.
+Sotto il tetto di ~409. La riga dell'asta non scende sotto ricerca + banco + 14,75rem di
+tabella + i due spazi: prima era un 43,5rem scritto a mano, ora è
+`calc(var(--banco-h) + 19.75rem)`, così segue il banco se cambia.
+
+| | 1440×900 | 1920×1080 |
+|---|---|---|
+| banco | 384px (contenuto 294) | 384px (contenuto 294) |
+| riposo, contenuto naturale | 267 | 267 |
+| lotto | 263 | 263 |
+| conto alla rovescia | 271 | 271 |
+| tempo scaduto | 292 | 292 |
+| righe di tabella in vista | 4 intere (e un filo della quinta) | 8 intere |
+| la pagina scorre | no | no |
+
+(Il contenuto «naturale» è misurato togliendo il riempimento: a banco pieno gli stati
+col riempimento occupano comunque i 294px, e lo scorrimento del banco non si vede.)
+
+**A 1280×720** la pagina scorre di 127px per costruzione (720 − 147 di barre e margini
+< 700 di minimo della riga): non è un difetto. Lì però anche il banco scorre: la colonna
+centrale è più stretta e le cose vanno a capo — riposo 325px, conto 347, scaduto 327 in
+294. Il piano chiedeva 1440 e 1920; a 1280 resta da decidere.
+
+**Il telefono (390×844)** non cambia fuori da questi punti, che valgono a ogni misura:
+la testata del lotto (nome, sotto la pillola del ruolo, sotto squadra · quotazione;
+«Togli dal banco» a destra, su una riga sola) al posto di «Sul banco · nome» più la
+testata della scheda; a tempo scaduto niente mercato/margine/verdetto e i tasti sotto i
+bottoni di «Aggiudica»; l'amministratore senza posto non vede più la quotazione come
+numero grande (è nella testata). Tutto il resto dei passi 3, 4 e 6 è `lg:`/`xl:`.
+
+**Restano.** Da xl, a 1440, i nomi delle squadre nei bottoni a tempo scaduto si troncano
+dopo tre o quattro lettere («Rea…», «Atle…»): il numero del tasto e i crediti restano, e
+la squadra in testa è scritta per intero nel tabellone e nel bottone «Aggiudica». Il
+banco è tagliato sugli stati misurati: una frase in più — il perché del «Lascia» mentre
+il conto corre, «X non può comprarlo» o un errore a tempo scaduto — aggiunge una riga
+(~28px) e il banco scorre dentro di sé, che è la valvola prevista. Nella nota sulle
+deviazioni, qui sopra, `--commands-h` è scritto 3,5625rem: era la misura di allora, ora è
+3,6875rem.

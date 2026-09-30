@@ -67,17 +67,22 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
    c'e', e' della pagina che la chiede. */
 :root {
   --header-h: 3.5rem;
-  /* La barra dei comandi (AppShell, slotActions): min-h-14 (56px) piu' il suo
-     bordo inferiore di 1px, 57px. E' della pagina che la chiede: la sottrae chi
-     ne ha bisogno per non finire fuori dalla finestra, non AppShell stesso. */
-  --commands-h: 3.5625rem;
+  /* La barra dei comandi (AppShell, slotActions) all'asta: misurata su uno
+     screenshot vero, 59px — il controllo delle fasi (bersagli di 44px col suo
+     bordo) piu' py-1.5 e il bordo inferiore di 1px. min-h-14 da solo diceva 57, e
+     la pagina scorreva di 2px. E' della pagina che la chiede: la sottrae chi ne
+     ha bisogno per non finire fuori dalla finestra, non AppShell stesso. */
+  --commands-h: 3.6875rem;
 }
 
 /* L'altezza del banco dell'asta, uguale in ogni stato: a riposo, col lotto, col
    conto che corre, a tempo scaduto. Presa dallo stato piu' alto misurato su uno
-   screenshot vero (docs/superpowers/decisions): e' l'unico posto in cui cambiarla. */
+   screenshot vero a 1440x900 e 1920x1080 (docs/superpowers/decisions): il tempo
+   scaduto, 292px di contenuto, piu' i 90 del banco stesso (padding, testata e
+   il suo spazio, bordo), arrotondato al quarto di rem. E' l'unico posto in cui
+   cambiarla. */
 :root {
-  --banco-h: 23.75rem;
+  --banco-h: 24rem;
 }
 
 /* L'erba a strisce (PitchGrass): due token in un gradiente ripetuto, dodici

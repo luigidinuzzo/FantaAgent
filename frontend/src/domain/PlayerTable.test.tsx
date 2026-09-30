@@ -296,4 +296,20 @@ describe('PlayerTable', () => {
     expect(region.className).toContain('lg:overflow-auto');
     screen.getAllByRole('columnheader').forEach((th) => expect(th.className).toContain('lg:sticky'));
   });
+
+  // A riempimento l'intestazione e' alta quanto i suoi bottoni, 44px: il padding
+  // verticale della cella li portava a 60, e sotto il banco, a 1440x900, si
+  // vedeva una riga di tabella in meno. Solo da lg: sotto, la tabella resta com'era.
+  it('a riempimento le intestazioni non aggiungono spazio attorno ai bottoni, da lg', () => {
+    render(<PlayerTable fill rows={ROWS} selectedId={null} onSelect={() => {}} onSort={() => {}} />);
+    screen.getAllByRole('columnheader').forEach((th) => {
+      expect(th.className).toContain('lg:py-0');
+      expect(th.className).toContain('py-2');
+    });
+  });
+
+  it('senza riempimento le intestazioni restano come prima', () => {
+    render(<PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} onSort={() => {}} />);
+    screen.getAllByRole('columnheader').forEach((th) => expect(th.className).not.toContain('lg:py-0'));
+  });
 });

@@ -584,6 +584,47 @@ describe('AuctionRoute', () => {
     expect(screen.queryByTestId('decision-card')).not.toBeInTheDocument();
   });
 
+  /**
+   * Il nome del giocatore sul banco compare una volta: nella testata del banco,
+   * accanto a «Togli dal banco», col ruolo e la squadra. Prima il banco diceva
+   * «Sul banco · nome» e la scheda sotto ripeteva nome, ruolo e squadra — una riga
+   * che mancava al banco per non scorrere. Il nome accessibile del banco resta
+   * «Sul banco · nome».
+   */
+  it('il nome del giocatore compare una volta, nella testata del banco, col lotto e col conto', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    vi.stubGlobal('fetch', fullFetchMock());
+
+    render(
+      <QueryProvider>
+        <MemoryRouter><AuctionRoute /></MemoryRouter>
+      </QueryProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+    const banco = await screen.findByRole('region', { name: 'Sul banco · Giocatore Uno' });
+    await waitFor(() => expect(screen.getByTestId('max-bid')).toBeInTheDocument());
+
+    function headerCarriesThePlayer() {
+      const heading = within(banco).getByRole('heading', { level: 2, name: 'Giocatore Uno' });
+      // La testata e' quella del banco: la stessa riga di «Togli dal banco».
+      const row = heading.closest('[data-testid=banco-header]') as HTMLElement;
+      expect(row).not.toBeNull();
+      expect(within(row).getByRole('button', { name: 'Togli dal banco' })).toBeInTheDocument();
+      expect(within(row).getByTestId('list-price')).toBeInTheDocument();
+      expect(screen.getAllByTestId('list-price')).toHaveLength(1);
+      expect(banco.textContent!.split('Giocatore Uno')).toHaveLength(2);
+    }
+
+    headerCarriesThePlayer();
+
+    const open = screen.getByRole('button', { name: /conto alla rovescia/i });
+    await waitFor(() => expect(open).not.toBeDisabled());
+    await userEvent.click(open);
+    expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+    headerCarriesThePlayer();
+  });
+
   it('chiudere il conto alla rovescia torna al pannello di aggiudicazione diretta', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
@@ -641,10 +682,12 @@ describe('AuctionRoute', () => {
     await userEvent.click(otherRow);
 
     // Il lotto e' rimasto lo stesso: il banco mostra ancora Giocatore
-    // Uno, il countdown non e' saltato a un altro playerId.
+    // Uno, il countdown non e' saltato a un altro playerId. Il nome lo porta la
+    // testata del banco, sopra il conto alla rovescia.
     const dialog = screen.getByTestId('bidder-dialog');
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByText('Giocatore Uno')).toBeInTheDocument();
+    expect(within(screen.getByTestId('banco')).getByRole('heading', { level: 2, name: 'Giocatore Uno' }))
+      .toBeInTheDocument();
     expect(screen.queryByLabelText('Prezzo')).not.toBeInTheDocument();
 
     // Chiudendo il conto alla rovescia, la selezione torna deliberatamente possibile.
@@ -1621,14 +1664,15 @@ describe('AuctionRoute', () => {
 
   /**
    * La riga dell'asta e' alta quanto la finestra meno le due barre e i margini, e
-   * mai meno di 43,5rem: sotto, scorre la pagina. Il banco ha un'altezza sola,
-   * --banco-h, in ogni stato; la tabella prende cio' che resta.
+   * mai meno di ricerca, banco, 14,75rem di tabella e i due spazi: sotto, scorre
+   * la pagina. Il banco ha un'altezza sola, --banco-h, in ogni stato; la tabella
+   * prende cio' che resta.
    */
   it('la riga dell asta e alta quanto la finestra, col banco a misura fissa', async () => {
     stubApi({ state: STATE });
     renderAuction();
     const row = await screen.findByTestId('auction-row');
-    expect(row.className).toContain('lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))]');
+    expect(row.className).toContain('lg:h-[max(calc(var(--banco-h)+19.75rem),calc(100dvh-var(--header-h)-var(--commands-h)-2rem))]');
     expect(row.className).toContain('lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]');
   });
 

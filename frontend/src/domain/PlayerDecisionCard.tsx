@@ -26,6 +26,7 @@ export function PlayerDecisionCard({
   valuation,
   stale,
   bare = false,
+  hideHeader = false,
   me,
   children,
 }: {
@@ -43,6 +44,13 @@ export function PlayerDecisionCard({
    * dello stesso colore erano solo rumore attorno al numero che conta.
    */
   bare?: boolean;
+  /**
+   * Senza la testata del giocatore (nome, ruolo, squadra e quotazione): nel banco
+   * la porta il banco stesso, accanto a «Togli dal banco». Ripeterla qui era il
+   * nome due volte a una riga di distanza, e un'altezza che al banco mancava.
+   * Senza testata la scheda non ha un nome suo: il nome e' quello del banco.
+   */
+  hideHeader?: boolean;
   /** La riga dei controlli del lotto. */
   children?: ReactNode;
 }) {
@@ -67,7 +75,7 @@ export function PlayerDecisionCard({
     <section
       data-testid="decision-card"
       data-stale={stale}
-      aria-labelledby={nameId}
+      aria-labelledby={hideHeader ? undefined : nameId}
       className={`flex flex-1 flex-col ${frame}`}
     >
       {stale ? (
@@ -80,6 +88,7 @@ export function PlayerDecisionCard({
         <p className="sr-only">I valori mostrati non sono più aggiornati.</p>
       ) : null}
 
+      {hideHeader ? null : (
       <header className="flex items-baseline gap-3">
         <h2 id={nameId} className="w-exp min-w-0 truncate text-2xl font-semibold">
           {valuation.name}
@@ -101,6 +110,7 @@ export function PlayerDecisionCard({
           <span data-testid="list-price" className="tnum">{valuation.listPrice}</span>
         </p>
       </header>
+      )}
 
       {/* In alto, non centrato: i prezzi si leggono subito sotto il nome, e i
           controlli si impilano sotto di loro nell'ordine in cui si usano —
@@ -109,7 +119,7 @@ export function PlayerDecisionCard({
           consulta di continuo deve stare sempre alla stessa quota, e centrando
           il gruppo si spostava a ogni riga in piu' o in meno (la ragione del
           "Lascia", per esempio). */}
-      <div className="flex flex-1 flex-col gap-6 pt-5">
+      <div className={`flex flex-1 flex-col gap-6 ${hideHeader ? '' : 'pt-5'}`}>
         <div className={dimmed}>
           {/* I numeri sotto sono quelli che decidono, e li vede solo chi
               guarda questa schermata: la proiezione, sulla parete, mostra

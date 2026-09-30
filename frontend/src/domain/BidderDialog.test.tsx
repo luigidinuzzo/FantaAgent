@@ -304,6 +304,22 @@ describe('BidderDialog', () => {
     expect(screen.getByTestId('bidder-remaining').className).toContain('text-[56px]');
   });
 
+  // Il banco ha un'altezza fissa, e a 1440x900 il conto alla rovescia non ci
+  // stava: da lg le celle del tabellone hanno meno aria sopra e sotto (12px, non
+  // 20) e le righe del riquadro stanno a 8px l'una dall'altra, non 12. L'offerta
+  // resta a 84px. Sotto lg il telefono resta com'era.
+  it('da lg il tabellone e le sue righe sono piu stretti in altezza, l offerta no', () => {
+    open();
+    const dialog = screen.getByTestId('bidder-dialog');
+    expect(dialog.className).toContain('gap-3');
+    expect(dialog.className).toContain('lg:gap-2');
+    dialog.querySelectorAll('[data-cell]').forEach((cell) => {
+      expect(cell.className).toContain('py-5');
+      expect(cell.className).toContain('lg:py-3');
+    });
+    expect(screen.getByTestId('bidder-price').className).toContain('text-[84px]');
+  });
+
   it('mostra il giocatore e il tetto: e la versione privata', () => {
     open();
     expect(screen.getByText('Bastoni')).toBeInTheDocument();
@@ -537,6 +553,41 @@ describe('BidderDialog', () => {
       // E il tasto fa quello che dice: sceglie a chi va.
       await user.keyboard('2');
       expect(screen.getByRole('button', { name: 'Aggiudica a Diego per 2' })).toBeInTheDocument();
+    });
+
+    // A tempo scaduto si registra un esito, non si decide se spingere: la riga di
+    // riferimento (mercato, margine, verdetto) se ne va come la riga privata, e i
+    // tasti stanno sulla riga di «Aggiudica», in fondo a destra. Due righe in meno
+    // in un banco alto quanto e' deciso in anticipo.
+    it('a tempo scaduto niente riga di riferimento, e i tasti sulla riga di Aggiudica', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      expect(screen.getByText('mercato')).toBeInTheDocument();
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      expect(screen.queryByText('mercato')).not.toBeInTheDocument();
+      expect(screen.queryByText('margine')).not.toBeInTheDocument();
+      expect(screen.queryByText(/^(Prendi|Lascia)$/)).not.toBeInTheDocument();
+      const assign = screen.getByRole('button', { name: /^Aggiudica a/ });
+      const shortcuts = screen.getByTestId('bidder-shortcuts');
+      expect(assign.parentElement).toBe(shortcuts.parentElement);
+      expect(shortcuts.className).toContain('sm:ml-auto');
+    });
+
+    // Da xl le squadre stanno su una riga sola: su due righe il tempo scaduto era
+    // lo stato piu' alto del banco, e non ci stava. Sotto xl restano quattro per
+    // riga, e sul telefono due.
+    it('a tempo scaduto da xl le squadre stanno su una riga sola', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      const grid = screen.getByRole('button', { name: /^Diego/ }).parentElement!;
+      expect(grid.className).toContain('grid-cols-2');
+      expect(grid.className).toContain('sm:grid-cols-4');
+      expect(grid.className).toContain('xl:grid-cols-8');
     });
 
     it('a tempo scaduto il conto se ne va, invece di restare a zero', async () => {
@@ -807,5 +858,14 @@ describe('BidderDialog', () => {
     // riga nemmeno prima, la griglia ora non dipende piu' da `advice`.
     expect(screen.getByTestId('bidder-cells').querySelectorAll('[data-cell]')).toHaveLength(3);
     expect(screen.getByRole('heading', { name: 'Bastoni' })).toBeInTheDocument();
+  });
+
+  // Dentro il banco nome, ruolo e squadra li porta la testata del banco: il
+  // conto alla rovescia non li ripete, e l'offerta sale di una riga.
+  it('senza testata non ripete il nome del giocatore', () => {
+    open({ hideHeader: true });
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bastoni')).not.toBeInTheDocument();
+    expect(screen.getByTestId('bidder-price')).toHaveTextContent('1');
   });
 });

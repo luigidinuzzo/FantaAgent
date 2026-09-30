@@ -95,6 +95,20 @@ describe('PlayerDecisionCard', () => {
     expect(within(header).getByTestId('list-price')).toHaveTextContent(String(VALUATION.listPrice));
   });
 
+  /**
+   * Dentro il banco la testata del giocatore la porta il banco, accanto a «Togli
+   * dal banco»: la scheda ripeteva nome, ruolo e squadra una riga sotto, e quella
+   * riga era l'altezza che mancava al banco per non scorrere.
+   */
+  it('senza testata non ripete nome, squadra e quotazione, e tiene i numeri', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} bare hideHeader me={ME} />);
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.queryByText(VALUATION.name)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('list-price')).not.toBeInTheDocument();
+    expect(screen.getByTestId('max-bid')).toHaveTextContent(String(VALUATION.maxBid));
+    expect(screen.getByTestId('affordable')).toBeInTheDocument();
+  });
+
   it('dice che i numeri li vedi solo tu', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
     expect(screen.getByText('Lo vedi solo tu')).toBeInTheDocument();

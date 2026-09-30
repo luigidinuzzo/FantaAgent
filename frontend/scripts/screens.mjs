@@ -203,8 +203,17 @@ function respond(method, path, query, authed) {
   return J({ detail: 'x' }, 404);
 }
 
+// Le misure delle finestre: quelle di sempre, o quelle chieste con SIZES.
+const SIZES = (process.env.SIZES ?? '1440x900,390x844').split(',').map((s) => {
+  const [width, height] = s.split('x').map(Number);
+  const tag = s === '1440x900' ? 'desktop' : s === '390x844' ? 'telefono' : s;
+  return { viewport: { width, height }, tag };
+});
+
 const browser = await chromium.launch();
 const wide = [];
+const spilling = [];
+const scrolling = [];
 
 async function open(viewport, authed) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'it-IT' });
@@ -227,14 +236,28 @@ async function shot(page, name, path, after) {
   // Una pagina che scorre di lato e' un difetto su qualunque schermo.
   const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   if (extra > 0) wide.push(`${name} (+${extra}px)`);
+  // Sul computer il banco ha un'altezza fissa: il suo contenuto non deve scorrere
+  // e la pagina dell'asta non deve scorrere in verticale.
+  if (/^1[34]/.test(name) && page.viewportSize().width >= 1024) {
+    const fit = await page.evaluate(() => {
+      const banco = document.querySelector('[data-testid=banco]');
+      const content = document.querySelector('[data-testid=banco-content]');
+      return {
+        banco: banco ? Math.round(banco.getBoundingClientRect().height) : null,
+        needed: content ? content.scrollHeight : null,
+        shown: content ? content.clientHeight : null,
+        pageExtra: document.documentElement.scrollHeight - window.innerHeight,
+      };
+    });
+    if (fit.needed !== null && fit.needed > fit.shown + 1) spilling.push(`${name}: banco ${fit.banco}px, contenuto ${fit.needed}px in ${fit.shown}px`);
+    if (fit.pageExtra > 0) scrolling.push(`${name} (+${fit.pageExtra}px)`);
+    if (fit.banco !== null) console.log(`   banco ${fit.banco}px, contenuto ${fit.needed}/${fit.shown}px`);
+  }
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
   console.log('ok', name);
 }
 
-const DESK = { width: 1440, height: 900 };
-const PHONE = { width: 390, height: 844 };
-
-for (const [vp, tag] of [[DESK, 'desktop'], [PHONE, 'telefono']]) {
+for (const { viewport: vp, tag } of SIZES) {
   const anon = await open(vp, false);
   await shot(anon.page, `01-accedi-${tag}`, '/accedi');
   await shot(anon.page, `02-registrati-${tag}`, '/registrati');
@@ -278,3 +301,5 @@ for (const [vp, tag] of [[DESK, 'desktop'], [PHONE, 'telefono']]) {
 await browser.close();
 console.log('larghe:', wide);
 console.log('non gestite:', [...unknown]);
+console.log('traboccano:', spilling);
+console.log('scorrono:', scrolling);

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { auctionContext, isNotFound, userMessage } from '../api/client';
@@ -124,27 +124,6 @@ function lotWithoutAdvice(p: PublicBidderResponse): ValuationResponse {
   };
 }
 
-/**
- * Il giocatore sul banco senza consigli: chi e', di che squadra, quanto quota.
- * Nessun tetto, nessun verdetto — per chi non ha un posto non esistono.
- */
-function PlayerWithoutAdvice({ lot, children }: { lot: ValuationResponse; children: ReactNode }) {
-  return (
-    <section aria-label={lot.name} className="flex flex-col gap-6">
-      <header className="flex items-baseline gap-3">
-        <p className="w-exp min-w-0 truncate text-2xl font-semibold">{lot.name}</p>
-        <span className="flex shrink-0 self-center"><RoleBadge role={lot.role} /></span>
-        <p className="shrink-0 text-sm text-muted-foreground">{lot.team}</p>
-      </header>
-      <p className="flex items-baseline gap-3">
-        <span className="tnum w-exp text-3xl font-semibold leading-none">{lot.listPrice}</span>
-        <span className="text-sm text-muted-foreground">quotazione</span>
-      </p>
-      {children}
-    </section>
-  );
-}
-
 export function AuctionRoute() {
   // Lega e asta dell'indirizzo: le ha appena fissate WithAuctionContext, nello
   // stesso render, dai parametri della rotta.
@@ -175,6 +154,7 @@ export function AuctionRoute() {
     { auctionId: string; seq: number; player: string; buyer: string; price: number } | null>(null);
   const bidderHintId = useId();
   const bidderPanelId = useId();
+  const bancoPrefixId = useId();
   // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
   // cambia scheda: senza, la selezione si sposterebbe ma il focus della
   // tastiera resterebbe indietro sul bottone precedente, che e' esattamente il
@@ -289,14 +269,10 @@ export function AuctionRoute() {
     ?? (seated === false && admin && bidderSettings.data?.playerId === selectedId && bidderSettings.data
       ? lotWithoutAdvice(bidderSettings.data)
       : null);
-  // Il nome del pannello centrale, che cambia con quello che ci sta dentro: il
-  // lotto se c'e', altrimenti la tua squadra. Senza ne' l'uno ne' l'altra resta il
-  // nome del posto, perche' un titolo il pannello deve sempre averlo.
-  const panelTitle = lot
-    ? `Sul banco · ${lot.name}`
-    : me
-      ? `La tua squadra, ${me.name}`
-      : 'Sul banco';
+  // Il titolo del pannello centrale senza lotto: la tua squadra, o il nome del
+  // posto, perche' un titolo il pannello deve sempre averlo. Col lotto il titolo
+  // e' la testata del giocatore (piu' sotto).
+  const panelTitle = me ? `La tua squadra, ${me.name}` : 'Sul banco';
 
   // Battito di vita per la proiezione (si veda useIdleHeartbeat per il
   // perche' e il come). Si ferma per tutta la durata in cui il conto alla rovescia
@@ -484,8 +460,8 @@ export function AuctionRoute() {
 
   // I gesti del banco — il conto alla rovescia e l'aggiudicazione diretta — sono
   // dell'amministratore, e sono gli stessi con o senza consigli: stanno sotto la
-  // scheda di decisione quando c'e', sotto i dati pubblici del giocatore quando
-  // chi batte l'asta non vi ha un posto.
+  // scheda di decisione quando c'e', soli sotto la testata del banco quando chi
+  // batte l'asta non vi ha un posto.
   const lotControls = lot && admin ? (
   <div className="flex flex-wrap items-center gap-3">
   {/* Avvia il conto alla rovescia per il lotto conteso: BidPanel resta
@@ -683,11 +659,12 @@ export function AuctionRoute() {
           contenuto piu' largo (la fila delle squadre sul telefono), e la pagina
           intera scorreva di lato. */}
       {/* Da lg la riga e' alta quanto la finestra, decisa in anticipo e non dedotta
-          dal contenuto. A 1440x900: navigazione 56 + comandi 57 + margini 32 =
-          145, restano 755. Nella colonna centrale ricerca 48 + 16 + banco 380 +
-          16 = 460; la tabella prende i 295 che restano: la riga delle schede,
-          l'intestazione e le prime righe. Sotto 43,5rem (48 + 16 + 380 + 16 +
-          236) scorre la pagina, non le colonne.
+          dal contenuto. A 1440x900: navigazione 56 + comandi 59 + margini 32 =
+          147, restano 753. Nella colonna centrale ricerca 48 + 16 + banco 384 +
+          16 = 464; la tabella prende i 289 che restano: la riga delle schede
+          (44), l'intestazione (44) e quattro righe e mezza. Sotto ricerca + banco
+          + 14,75rem di tabella + i due spazi (il calc qui sotto) scorre la
+          pagina, non le colonne.
           L'altezza del banco e' --banco-h in index.css, l'unico posto in cui
           cambiarla; le colonne laterali scorrono dentro di se'. Senza posto non
           c'e' tabella di fase: la riga resta alta quanto il banco, e le rose
@@ -707,7 +684,7 @@ export function AuctionRoute() {
         className={`grid grid-cols-1 gap-5 lg:gap-4 ${
           seated === false
             ? 'lg:grid-cols-[14.5rem_minmax(0,1fr)] lg:grid-rows-[3rem_var(--banco-h)]'
-            : 'lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))] lg:grid-cols-[14.5rem_minmax(0,1fr)_20.5rem] lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]'
+            : 'lg:h-[max(calc(var(--banco-h)+19.75rem),calc(100dvh-var(--header-h)-var(--commands-h)-2rem))] lg:grid-cols-[14.5rem_minmax(0,1fr)_20.5rem] lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]'
         }`}
       >
         <ParticipantsColumn
@@ -745,26 +722,41 @@ export function AuctionRoute() {
         {searchActive ? null : (
         <section
           data-testid="banco"
-          aria-labelledby={bidderPanelId}
+          // Col lotto il nome accessibile e' «Sul banco · nome»: il prefisso e'
+          // solo per chi ascolta, a chi guarda lo dice il riquadro stesso.
+          aria-labelledby={lot ? `${bancoPrefixId} ${bidderPanelId}` : bidderPanelId}
           className="panel flex min-h-0 flex-1 flex-col p-4 lg:col-start-2 lg:row-start-2"
         >
-          <div className="flex min-h-11 items-center justify-between gap-3">
+          <div data-testid="banco-header" className="flex min-h-11 items-center justify-between gap-3">
             {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
                 c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
                 annuncerebbe — anche a chi ascolta, via aria-labelledby — una cosa
                 che non c'e', e la prima riga di contenuto lo smentirebbe subito.
-                Col lotto sul banco il titolo lo nomina, piccolo e quieto: il nome
-                grande lo porta la scheda qui sotto. */}
-            <h2
-              id={bidderPanelId}
-              className={
-                lot
-                  ? 'text-sm font-medium text-muted-foreground'
-                  : 'text-lg font-medium'
-              }
-            >
-              {panelTitle}
-            </h2>
+                Col lotto sul banco il titolo e' la testata del giocatore — nome,
+                ruolo, squadra e quotazione — una volta sola: la scheda e il conto
+                alla rovescia qui sotto non la ripetono. Prima il banco diceva
+                «Sul banco · nome» e la scheda ripeteva nome e squadra una riga
+                sotto: il nome due volte, e un'altezza che al banco mancava. */}
+            {lot ? (
+              <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span id={bancoPrefixId} className="sr-only">Sul banco ·</span>
+                <h2 id={bidderPanelId} className="w-exp min-w-0 truncate text-2xl font-semibold">
+                  {lot.name}
+                </h2>
+                {/* La pillola centrata sull'altezza del nome: sulla linea di base
+                    il cerchio finirebbe fuori squadra. Il ruolo per esteso resta
+                    in sr-only dentro RoleBadge. */}
+                <span className="flex shrink-0 self-center"><RoleBadge role={lot.role} /></span>
+                <p className="text-sm text-muted-foreground">
+                  <span>{lot.team}</span> · quotazione{' '}
+                  <span data-testid="list-price" className="tnum">{lot.listPrice}</span>
+                </p>
+              </div>
+            ) : (
+              <h2 id={bidderPanelId} className="text-lg font-medium">
+                {panelTitle}
+              </h2>
+            )}
             {lot ? (
               // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
               // se e' aperto — lasciarlo acceso su un lotto che non c'e' piu'
@@ -784,7 +776,7 @@ export function AuctionRoute() {
                   setSelectedId(null);
                 }}
                 onBlur={() => setConfirmRemove(false)}
-                className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                   confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-control-border hover:bg-line'
                 }`}
               >
@@ -821,6 +813,7 @@ export function AuctionRoute() {
                 <BidderDialog
                   key={lot.playerId}
                   valuation={lot}
+                  hideHeader
                   advice={valuation.data !== undefined}
                   participants={participants}
                   timerSeconds={bidderSettings.data.timerSeconds}
@@ -832,9 +825,11 @@ export function AuctionRoute() {
                   onClose={() => setBidderOpen(false)}
                 />
               ) : !valuation.data ? (
-                <PlayerWithoutAdvice lot={lot}>{lotControls}</PlayerWithoutAdvice>
+                // Senza consigli restano i gesti del banco: chi e', di che
+                // squadra e quanto quota lo dice gia' la testata del banco.
+                lotControls
               ) : (
-                <PlayerDecisionCard valuation={valuation.data} stale={stale} bare me={me}>
+                <PlayerDecisionCard valuation={valuation.data} stale={stale} bare hideHeader me={me}>
                   {/* Il modo di aggiudicarlo e' dell'amministratore: gli altri
                       vedono la scheda, non i gesti del banco. */}
                   {/* Impilati, nell'ordine in cui le cose succedono: prima

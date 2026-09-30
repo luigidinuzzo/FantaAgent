@@ -83,7 +83,8 @@ function ReopenIcon() {
 
 /**
  * Una cella del tabellone: il valore grande sopra, l'etichetta sotto, e — dove
- * serve — una riga di contesto in fondo («sei tu», quando sei in testa).
+ * serve — una riga di contesto in fondo («sei tu», quando sei in testa). Da lg
+ * meno aria sopra e sotto (12px, non 20): il banco ha un'altezza fissa.
  *
  * <p>Vive come componente e non come tre copie di classi perche' e' esattamente
  * il punto: celle della stessa riga hanno la stessa altezza per costruzione, e
@@ -109,7 +110,7 @@ function Cell({ label, children, note, testId, raised = false, first = false, ur
     <div
       data-cell
       data-testid={testId}
-      className={`flex min-w-0 flex-col items-center justify-center gap-1.5 px-4 py-5 text-center ${
+      className={`flex min-w-0 flex-col items-center justify-center gap-1.5 px-4 py-5 text-center lg:py-3 ${
         first ? '' : 'border-l border-line max-sm:[&:nth-child(odd)]:border-l-0'
       } ${raised ? 'bg-surface-raised' : ''}`}
     >
@@ -139,6 +140,7 @@ export function BidderDialog({
   pending = false,
   leader = null,
   advice = true,
+  hideHeader = false,
   onAssign,
   onClose,
 }: {
@@ -150,6 +152,12 @@ export function BidderDialog({
    * non un tetto «nessuno», che vorrebbe dire un'altra cosa.
    */
   advice?: boolean;
+  /**
+   * Senza la testata del giocatore: nel banco nome, ruolo e squadra li porta il
+   * banco stesso, accanto a «Togli dal banco», e il conto alla rovescia non li
+   * ripete. Senza testata il riquadro non ha un nome suo: e' quello del banco.
+   */
+  hideHeader?: boolean;
   participants: ParticipantView[];
   timerSeconds: number;
   beepEnabled: boolean;
@@ -392,6 +400,34 @@ export function BidderDialog({
   // svuota dicono la stessa cosa a chi il rosso non lo distingue.
   const urgent = !expired && countdown.remaining <= 3_000;
 
+  // L'aiuto della tastiera, in fondo a destra della riga in cui sta: quella di
+  // riferimento mentre il conto corre, quella di «Aggiudica» a tempo scaduto —
+  // una riga in meno nel riquadro, che ha un'altezza fissa.
+  // Le scorciatoie sono il vantaggio di questo riquadro su chi batte l'asta a
+  // mano, ed erano scritte nel corpo meno leggibile dello schermo: una riga
+  // grigia unita dai punti medi. Rese come tasti si trovano senza leggerle.
+  const shortcuts = (
+    <p data-testid="bidder-shortcuts" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground sm:ml-auto">
+      {/* Scaduto il tempo lo spazio non rilancia piu' — l'ascolto si spegne —
+          e continuare a offrirlo istruirebbe a un gesto che non fa niente. */}
+      {expired ? null : (
+        <span className="flex items-center gap-2">
+          <kbd className={KEY_CAP}>Spazio</kbd> rilancia di uno
+        </span>
+      )}
+      {/* I tasti delle squadre valgono solo a tempo scaduto: mentre il conto
+          corre da qui si offre per la propria squadra e basta. */}
+      {expired ? (
+        <span className="flex items-center gap-2">
+          <kbd className={KEY_CAP}>{keyRange}</kbd> a chi va
+        </span>
+      ) : null}
+      <span className="flex items-center gap-2">
+        <kbd className={KEY_CAP}>Esc</kbd> chiude
+      </span>
+    </p>
+  );
+
   return (
     // Senza cornice propria: questa card sta dentro il riquadro del banco,
     // che porta gia' bordo, fondo e titolo. Mentre il conto alla rovescia corre,
@@ -399,12 +435,14 @@ export function BidderDialog({
     <section
       data-testid="bidder-dialog"
       data-over-ceiling={overCeiling}
-      aria-labelledby="bidder-name"
+      aria-labelledby={hideHeader ? undefined : 'bidder-name'}
       // Altezza naturale, non h-full: sotto, dentro lo stesso riquadro del banco,
       // vivono le alternative, e prendendosi tutto il riquadro questo non ne
-      // lasciava nessuna.
-      className="flex flex-col gap-3"
+      // lasciava nessuna. Da lg le righe stanno piu' vicine (8px, non 12): il
+      // banco ha un'altezza fissa, e a tempo scaduto altrimenti non ci stava.
+      className="flex flex-col gap-3 lg:gap-2"
     >
+      {hideHeader ? null : (
       <header className="flex items-baseline gap-3">
         <h2 id="bidder-name" className="w-exp text-xl font-semibold">{valuation.name}</h2>
         {/* La pillola del ruolo, centrata sull'altezza del nome: sulla linea di
@@ -415,6 +453,7 @@ export function BidderDialog({
         </span>
         <p className="text-sm text-muted-foreground">{valuation.team}</p>
       </header>
+      )}
 
       {/* Il TABELLONE: le tre letture su cui si decide mentre il conto corre —
           quanto tempo resta, a quanto siamo, chi e' in testa — e la barra del
@@ -540,10 +579,12 @@ export function BidderDialog({
           A chi va
           <span className="font-normal"> — se l’ha preso un altro, tocca la sua squadra o premi il suo numero</span>
         </legend>
-        {/* Quattro colonne fisse: otto squadre stanno su due righe anche nel
-            riquadro stretto, e il banco non si allunga — la sua altezza e'
-            decisa in anticipo e non dipende da quante squadre sono al tavolo. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {/* Colonne fisse: il banco non si allunga — la sua altezza e' decisa in
+            anticipo e non dipende da quante squadre sono al tavolo. Quattro per
+            riga sotto xl; da xl otto, una riga sola: su due il tempo scaduto era
+            lo stato piu' alto del banco e non ci stava. I nomi lunghi si
+            troncano, il numero del tasto e i crediti restano. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
           {participants.map((p, i) => {
             const picked = p.id === participantId;
             const full = roleFull(p, valuation.role);
@@ -558,7 +599,7 @@ export function BidderDialog({
                 type="button"
                 aria-pressed={picked}
                 onClick={() => setBuyerChoice(p.id)}
-                className={`relative flex min-h-11 min-w-0 flex-col items-start justify-center rounded-lg border px-3 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
+                className={`relative flex min-h-11 min-w-0 flex-col items-start justify-center rounded-lg border px-3 py-1 text-left xl:px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
                   picked ? 'border-accent bg-accent text-on-accent' : 'border-control-border hover:bg-line'
                 }`}
               >
@@ -568,7 +609,9 @@ export function BidderDialog({
                     <span aria-hidden="true" className={`tnum ml-auto text-meta ${picked ? '' : 'text-muted-foreground'}`}>{i + 1}</span>
                   ) : null}
                 </span>
-                <span className={`tnum text-meta ${picked ? '' : 'text-muted-foreground'}`}>
+                {/* Su una riga sola anche nei bottoni stretti di xl: a capo, «se
+                    lo prende» allungava il bottone scelto e con lui il banco. */}
+                <span className={`tnum w-full truncate text-meta ${picked ? '' : 'text-muted-foreground'}`}>
                   {picked ? 'se lo prende' : note}
                 </span>
               </button>
@@ -697,7 +740,10 @@ export function BidderDialog({
       )}
 
       {/* La riga di riferimento: gli stessi numeri della scheda di decisione, da
-          consultare, non da guardare. */}
+          consultare, non da guardare. Solo mentre il conto corre, come la riga
+          privata: a tempo scaduto si registra un esito, e i tasti vanno sulla
+          riga di «Aggiudica». */}
+      {expired ? null : (
       <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm text-muted-foreground">
         {advice ? (
         <>
@@ -721,32 +767,9 @@ export function BidderDialog({
         </p>
         </>
         ) : null}
-        {/* L'aiuto della tastiera sulla stessa riga, in fondo a destra: una riga
-            in meno nel riquadro, che ha un'altezza fissa. */}
-        {/* Le scorciatoie sono il vantaggio di questo riquadro su chi batte
-            l'asta a mano, ed erano scritte nel corpo meno leggibile dello
-            schermo: una riga grigia unita dai punti medi, in fondo a destra.
-            Rese come tasti si trovano senza leggerle. */}
-        <p data-testid="bidder-shortcuts" className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:ml-auto">
-          {/* Scaduto il tempo lo spazio non rilancia piu' — l'ascolto si spegne —
-              e continuare a offrirlo istruirebbe a un gesto che non fa niente. */}
-          {expired ? null : (
-            <span className="flex items-center gap-2">
-              <kbd className={KEY_CAP}>Spazio</kbd> rilancia di uno
-            </span>
-          )}
-          {/* I tasti delle squadre valgono solo a tempo scaduto: mentre il conto
-              corre da qui si offre per la propria squadra e basta. */}
-          {expired ? (
-            <span className="flex items-center gap-2">
-              <kbd className={KEY_CAP}>{keyRange}</kbd> a chi va
-            </span>
-          ) : null}
-          <span className="flex items-center gap-2">
-            <kbd className={KEY_CAP}>Esc</kbd> chiude
-          </span>
-        </p>
+        {shortcuts}
       </div>
+      )}
 
       {overCeiling ? (
         // Per chi ascolta: il colore e la riga sotto l'offerta lo dicono a chi
@@ -813,6 +836,7 @@ export function BidderDialog({
               <ReopenIcon />
               Riprendi le offerte
             </button>
+            {shortcuts}
             {disabledReason ? (
               <span id={hintId} className="sr-only">
                 {disabledReason}
