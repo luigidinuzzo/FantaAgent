@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "tokens": "node scripts/write-tokens.mjs",
+    "screens": "node scripts/screens.mjs",
     "test": "vitest run"
   },
   "dependencies": {

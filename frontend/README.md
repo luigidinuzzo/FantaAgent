@@ -32,6 +32,20 @@ Gli spec Playwright in `e2e/` sono un'altra cosa: girano contro un backend vero 
 solo compensare, non cancellare. Non fanno parte di `npm test` e non vanno lanciati
 per abitudine. Playwright non avvia il backend da sé: è una precondizione dichiarata.
 
+## Guardare le schermate
+
+Le prove in jsdom non dicono niente su proporzioni, vuoti e colori. `npm run screens`
+fotografa ogni pagina a 1440×900 e a 390×844 rispondendo al posto del backend, quindi
+non serve `./run.sh` e non si creano aste vere:
+
+```bash
+npm run dev                                   # in un altro terminale
+npm run screens -- test-results/screens/dopo  # un PNG per pagina
+```
+
+In fondo stampa le pagine che scorrono di lato e le chiamate a cui non ha saputo
+rispondere. Se Vite non è sulla 5173: `BASE=http://localhost:5175 npm run screens`.
+
 ## Colori
 
 I token non si scrivono a mano. `scripts/palette.mjs` tiene la palette in esadecimale
