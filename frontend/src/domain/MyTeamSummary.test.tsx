@@ -76,16 +76,36 @@ describe('MyTeamSummary', () => {
     expect(screen.getByText(/il tavolo sta a 19/)).toBeInTheDocument();
   });
 
-  /**
-   * A riposo il pannello non porta accento. L'oro segnava i crediti anche qui,
-   * mentre la colonna di sinistra lo usa gia' per dire «questa riga sei tu»: lo
-   * stesso dato, due volte, nello stesso colore. E in una schermata dove l'oro marca
-   * gia' marchio, fase corrente, scheda attiva e margini, un settimo impiego lo
-   * riduce a decorazione. Qui la gerarchia la fa la dimensione: 48px bastano.
-   */
-  it('a riposo nessun numero porta l accento', () => {
-    render(<MyTeamSummary me={ME} participants={TAVOLO} phase="P" freeInPhase={62} />);
-    expect(screen.getByText('310')).not.toHaveClass('text-accent');
+  // L'oro va al numero su cui si decide: a riposo sono i tuoi crediti. Gli altri
+  // numeri restano bianchi, la gerarchia la fa la taglia.
+  it('a riposo solo i tuoi crediti portano l accento', () => {
+    const { container } = render(<MyTeamSummary me={ME} participants={TAVOLO} phase="P" freeInPhase={62} />);
+    const accented = container.querySelectorAll('dd.text-accent');
+    expect(accented).toHaveLength(1);
+    expect(accented[0]).toHaveTextContent(String(ME.budgetRemaining));
+  });
+
+  // Il banco ha un'altezza decisa: gli ultimi acquisti sono quattro, quanti ne
+  // stanno accanto ai numeri senza farlo scorrere.
+  it('gli ultimi acquisti sono al massimo quattro', () => {
+    const board = {
+      auctionId: 'a1', currentPhase: 'P' as const,
+      columns: [
+        { participantId: 'anna', participantName: 'Anna', me: true, budgetRemaining: 310, slotsRemaining: 20,
+          byRole: { P: [
+            { seq: 1, playerName: 'Maignan', price: 38 },
+            { seq: 3, playerName: 'Sommer', price: 12 },
+            { seq: 5, playerName: 'Hernandez', price: 8 },
+          ], D: [], C: [], A: [] } },
+        { participantId: 'diego', participantName: 'Diego', me: false, budgetRemaining: 400, slotsRemaining: 24,
+          byRole: { P: [
+            { seq: 2, playerName: 'Svilar', price: 42 },
+            { seq: 4, playerName: 'Tomori', price: 15 },
+          ], D: [], C: [], A: [] } },
+      ],
+    };
+    render(<MyTeamSummary me={ME} board={board} />);
+    expect(within(screen.getByTestId('recent-list')).getAllByRole('listitem').length).toBeLessThanOrEqual(4);
   });
 
   it('dice crediti, posti liberi e la media per posto arrotondata per difetto', () => {

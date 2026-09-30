@@ -4,7 +4,7 @@ import { RoleBadge } from './RoleBadge';
 import { ROLE_NAME_PLURAL } from './roles';
 
 /** Quanti acquisti mostra la colonna degli ultimi: quanti ne stanno nella sua altezza. */
-const RECENT = 8;
+const RECENT = 4;
 
 /**
  * Il banco a riposo: dove sei tu e dove sta il tavolo, invece di una scatola vuota
@@ -74,7 +74,7 @@ export function MyTeamSummary({
   const showPhase = phase !== undefined && participants !== undefined && participants.length > 0;
 
   return (
-    <div className="grid flex-1 gap-6 px-2 py-2 sm:px-4 xl:grid-cols-[minmax(0,1fr)_17rem]">
+    <div className="grid flex-1 gap-6 px-2 py-2 sm:px-4 lg:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="flex min-w-0 flex-col justify-center gap-7">
         {/* Il titolo non e' qui: lo rende il pannello che ci ospita, perche' a
             riposo il titolo del pannello E' questo — «La tua squadra, Anna». Reso
@@ -82,11 +82,9 @@ export function MyTeamSummary({
             entrerebbe in una regione che si annuncia col proprio primo contenuto. */}
         {/* La prima fila sei tu. */}
         <dl className="grid grid-cols-3 gap-4">
-          {/* Senza accento: la colonna di sinistra usa gia' l'oro sui tuoi crediti
-              per dire «questa riga sei tu», e in pagina lo portano gia' marchio,
-              fase corrente, scheda attiva e margini. Qui la gerarchia la fa la
-              dimensione. */}
-          <Figure label="crediti rimasti" value={me.budgetRemaining} />
+          {/* L'oro va al numero su cui si decide: a riposo sono i tuoi crediti.
+              Gli altri numeri restano bianchi, la gerarchia la fa la taglia. */}
+          <Figure label="crediti rimasti" value={me.budgetRemaining} accent={true} />
           <Figure label="posti liberi" value={me.slotsRemaining} />
           {/* Con la rosa piena non c'e' niente da dividere: il trattino, non uno zero
               che si leggerebbe come «non puoi spendere niente». */}
@@ -136,7 +134,7 @@ export function MyTeamSummary({
 
       {/* Gli ultimi acquisti di tutta la lega, dal piu' recente: cosa e' appena
           andato, a chi e a quanto. Il tuo in giallo. */}
-      <section aria-labelledby="recent-purchases" className="flex min-w-0 flex-col border-line xl:border-l xl:pl-6">
+      <section aria-labelledby="recent-purchases" className="flex min-w-0 flex-col border-line lg:border-l lg:pl-6">
         <h3 id="recent-purchases" className="text-sm font-medium text-muted-foreground">Ultimi acquisti</h3>
         {/* Il registro parte dal titolo e scende: il piu' recente entra in cima e
             spinge gli altri giu'. Appoggiarlo al FONDO della colonna (mt-auto) e'
@@ -176,7 +174,7 @@ export function MyTeamSummary({
   );
 }
 
-function Figure({ label, value, note, size = 'lg', testId }: {
+function Figure({ label, value, note, size = 'lg', testId, accent }: {
   label: string;
   value: number | string;
   /** Una riga di contesto sotto l'etichetta: il metro del numero, non un secondo numero. */
@@ -184,6 +182,7 @@ function Figure({ label, value, note, size = 'lg', testId }: {
   /** "lg" sono i tuoi numeri, "sm" quelli del tavolo: la gerarchia dice di chi si parla. */
   size?: 'lg' | 'sm';
   testId?: string;
+  accent?: boolean;
 }) {
   return (
     // L'etichetta sotto il numero, come nella scheda del giocatore: prima si legge
@@ -199,7 +198,7 @@ function Figure({ label, value, note, size = 'lg', testId }: {
         data-testid={testId}
         className={`tnum w-exp font-semibold leading-none ${
           size === 'lg' ? 'text-4xl sm:text-5xl' : 'text-3xl'
-        }`}
+        } ${accent ? 'text-accent' : ''}`}
       >
         {value}
       </dd>
