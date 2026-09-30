@@ -68,7 +68,7 @@ export function ImportRoute() {
       <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto w-full max-w-3xl">
           {/* Testata e scelta della cartella nello stesso pannello. */}
-          <section className="panel rounded-2xl p-6">
+          <section className="panel p-6">
             <div className="flex items-center gap-4">
               <BackLink to={`/leghe/${leagueId}`} label="Torna alla lega" />
               <h1 className="w-exp text-2xl font-semibold">Importa un'asta</h1>
@@ -88,7 +88,7 @@ export function ImportRoute() {
             ) : null}
           </section>
           {preview.data ? (
-            <section className="panel mt-4 rounded-2xl p-6">
+            <section className="panel mt-4 p-6">
               <h2 className="w-exp text-lg font-semibold">{preview.data.name}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{preview.data.purchases} acquisti</p>
               <table aria-label="Abbinamenti" className="mt-4 w-full text-sm">
@@ -102,7 +102,7 @@ export function ImportRoute() {
                       <td className="py-2">
                         <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
                           onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
-                          className="min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3">
+                          className="min-h-11 w-full rounded-lg border border-control-border bg-surface px-3">
                           <option value="">Scegli…</option>
                           {members.map((m) => (
                             <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>
@@ -121,7 +121,7 @@ export function ImportRoute() {
               <button type="button" disabled={!complete || doImport.isPending}
                 onClick={() => doImport.mutate({ files, mapping },
                   { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
-                className="mt-6 min-h-11 rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+                className="mt-6 min-h-11 rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
                 {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
               </button>
             </section>

@@ -148,7 +148,7 @@ export function RosterGrid() {
           <a
             href={auctionExportUrl(board.data.auctionId)}
             download
-            className="flex min-h-11 items-center gap-2 rounded-full border border-line-strong px-4 font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex min-h-11 items-center gap-2 rounded-lg border border-control-border px-4 font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             <DownloadIcon />
             Scarica il CSV delle rose
@@ -371,7 +371,7 @@ function RosterColumn({
     // come nella colonna delle squadre e nella proiezione.
     <section
       aria-labelledby={`roster-${column.participantId}`}
-      className={`min-w-0 rounded-xl border p-3 ${column.me ? 'border-accent' : 'border-line'}`}
+      className={`min-w-0 rounded-lg border p-3 ${column.me ? 'border-accent' : 'border-line'}`}
     >
       <h3 id={`roster-${column.participantId}`} className="flex items-baseline justify-between gap-2">
         <span className="truncate font-medium">{column.participantName}</span>
@@ -483,7 +483,7 @@ function RosterColumn({
                           price: slot.price,
                         })}
                         aria-label={`Correggi l'acquisto di ${slot.playerName}`}
-                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-muted-foreground opacity-0 hover:bg-line hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [@media(hover:none)]:opacity-100"
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg text-muted-foreground opacity-0 hover:bg-line hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [@media(hover:none)]:opacity-100"
                       >
                         <PencilIcon />
                       </button>
@@ -498,7 +498,7 @@ function RosterColumn({
                         // griglia. Sui dispositivi senza puntatore che passa sopra
                         // (telefoni, tablet) resta sempre visibile, o non si
                         // raggiungerebbe mai.
-                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-full text-muted-foreground opacity-0 hover:bg-line hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [@media(hover:none)]:opacity-100"
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg text-muted-foreground opacity-0 hover:bg-line hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent [@media(hover:none)]:opacity-100"
                       >
                         <CancelIcon />
                       </button>

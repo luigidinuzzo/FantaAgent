@@ -28,8 +28,30 @@ export const CONTROL_H = 'min-h-14';
 export const BID_CONTROL_H = 'min-h-16';
 
 /** Il raggio dei controlli del rilancio, uno per tutti. */
-export const BID_RADIUS = 'rounded-2xl';
+export const BID_RADIUS = 'rounded-lg';
 
 /** Il contorno di messa a fuoco, identico ovunque. */
 export const FOCUS_RING =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
+
+const BUTTON_SHAPE =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 disabled:opacity-50';
+
+/**
+ * L'azione principale della schermata: una sola per schermata porta l'oro. Il
+ * contorno di messa a fuoco e' chiaro e non oro, perche' oro su oro non si vede.
+ */
+export const BUTTON_PRIMARY =
+  `${BUTTON_SHAPE} bg-accent font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`;
+
+/** Ogni altra azione: contorno e nient'altro. */
+export const BUTTON_SECONDARY =
+  `${BUTTON_SHAPE} border border-control-border font-medium hover:bg-line ${FOCUS_RING}`;
+
+/** Cio' che non si puo' annullare: togliere, eliminare, uscire. */
+export const BUTTON_DESTRUCTIVE =
+  `${BUTTON_SHAPE} bg-destructive font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`;
+
+/** Un campo di testo: 48px, col bordo dei controlli. */
+export const FIELD =
+  `min-h-12 w-full rounded-lg border border-control-border bg-surface px-4 text-base placeholder:text-muted-foreground ${FOCUS_RING}`;

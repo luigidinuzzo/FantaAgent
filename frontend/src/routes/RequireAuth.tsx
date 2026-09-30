@@ -21,7 +21,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
       return <Navigate to={`/accedi?dopo=${back}`} replace />;
     }
     return (
-      <p role="alert" className="panel m-6 rounded-xl p-4 text-sm font-medium text-destructive">
+      <p role="alert" className="panel m-6 p-4 text-sm font-medium text-destructive">
         {userMessage(me.error, 'Non riesco a caricare il tuo profilo. Riprova fra poco.')}
       </p>
     );

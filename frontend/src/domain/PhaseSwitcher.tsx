@@ -56,7 +56,7 @@ export function PhaseSwitcher({
               // la soglia e' 4,5 — e anche al 70% gli attaccanti restano sotto.
               // Un elemento che arretra non e' un elemento che si smette di poter
               // leggere, e qui dentro ci sono le lettere con cui si cambia fase.
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               <RoleBadge role={role} filled={isCurrent} size={isCurrent ? 'lg' : 'md'} />
             </button>

@@ -19,7 +19,7 @@ export function Crest({ id, name, muted = false, size = 'md' }: {
   return (
     <span
       aria-hidden="true"
-      className={`w-exp grid shrink-0 place-items-center rounded-xl font-bold ${
+      className={`w-exp grid shrink-0 place-items-center rounded-lg font-bold ${
         size === 'lg' ? 'size-14 text-2xl' : 'size-11 text-lg'
       } ${
         muted

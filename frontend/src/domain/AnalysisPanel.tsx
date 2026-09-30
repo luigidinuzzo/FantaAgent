@@ -40,7 +40,7 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
   // tutto il resto: sembrava un guasto, non un invito.
   if (!valuation) {
     return (
-      <section aria-labelledby={HEADING_ID} className="panel flex flex-col rounded-2xl p-5">
+      <section aria-labelledby={HEADING_ID} className="panel flex flex-col p-5">
         <h2 id={HEADING_ID} className="text-sm font-medium text-muted-foreground">
           Perché questo prezzo
         </h2>
@@ -68,7 +68,7 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
     // che qui si vuole impedire.
     <section
       aria-labelledby={HEADING_ID}
-      className="panel flex min-h-0 flex-col rounded-2xl p-5"
+      className="panel flex min-h-0 flex-col p-5"
     >
       <h2 id={HEADING_ID} className="shrink-0 text-sm font-medium text-muted-foreground">
         Perché questo prezzo

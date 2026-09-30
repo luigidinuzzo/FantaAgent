@@ -57,7 +57,7 @@ export function PhaseTargets({
   return (
     <section
       aria-labelledby={HEADING_ID}
-      className={bare ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col rounded-2xl p-5'}
+      className={bare ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col p-5'}
     >
       {/* Nel banco il titolo non arretra: e' la via d'uscita dal lotto aperto, non
           una nota a pie' di pagina. Il criterio gli sta accanto sulla stessa riga —
@@ -141,9 +141,9 @@ export function PhaseTargets({
                 // leggevano come testo invece che come qualcosa da premere.
                 className={
                   bare && stacked
-                    ? 'flex min-h-11 w-full min-w-0 items-baseline gap-3 rounded-xl border border-line-strong px-3 py-2 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
+                    ? 'flex min-h-11 w-full min-w-0 items-baseline gap-3 rounded-lg border border-control-border px-3 py-2 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
                     : bare
-                    ? 'flex min-h-14 w-full min-w-0 flex-col justify-center rounded-xl border border-line-strong px-3 py-1.5 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
+                    ? 'flex min-h-14 w-full min-w-0 flex-col justify-center rounded-lg border border-control-border px-3 py-1.5 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
                     : 'flex min-h-14 w-full items-center gap-3 px-1 py-2 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'
                 }
               >

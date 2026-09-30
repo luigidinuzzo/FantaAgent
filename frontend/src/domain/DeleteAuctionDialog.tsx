@@ -36,7 +36,7 @@ export function DeleteAuctionDialog({
       ref={dialogRef}
       aria-labelledby="delete-auction-title"
       onCancel={(e) => { e.preventDefault(); onCancel(); }}
-      className="panel m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl p-6 text-foreground backdrop:bg-black/60"
+      className="panel m-auto w-[min(32rem,calc(100vw-2rem))] p-6 text-foreground backdrop:bg-black/60"
     >
       <h2 id="delete-auction-title" className="w-exp text-lg font-semibold">
         Eliminare «{auction.label}»?
@@ -47,11 +47,11 @@ export function DeleteAuctionDialog({
       ) : null}
       <div className="mt-5 flex justify-end gap-3">
         <button ref={cancelRef} type="button" onClick={onCancel}
-          className="min-h-11 rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+          className="min-h-11 rounded-lg border border-control-border px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
           Annulla
         </button>
         <button type="button" disabled={pending} onClick={() => onConfirm(auction.id)}
-          className="min-h-11 rounded-full bg-destructive px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+          className="min-h-11 rounded-lg bg-destructive px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
           {pending ? 'Elimino…' : 'Elimina'}
         </button>
       </div>

@@ -70,7 +70,7 @@ describe('PhaseTargets', () => {
       );
       const bottone = screen.getByRole('button', { name: /^Falcone/ });
       expect(bottone.className).toContain('border');
-      expect(bottone.className).toContain('rounded-xl');
+      expect(bottone.className).toContain('rounded-lg');
     });
 
     it('senza cornice propria: il banco porta gia bordo, fondo e titolo', () => {
@@ -127,7 +127,7 @@ describe('PhaseTargets', () => {
       <PhaseTargets phase="P" targets={[T]} loading={false} disabled={false} onSelect={() => {}} bare stacked />,
     );
     const bottone = screen.getByRole('button', { name: /^Falcone/ });
-    expect(bottone.className).toContain('rounded-xl');
+    expect(bottone.className).toContain('rounded-lg');
     expect(bottone).toHaveTextContent('Lecce · mercato 16 · tetto 34');
     expect(screen.getByRole('list').className).toContain('grid-cols-1');
     expect(screen.getByRole('list').className).not.toContain('overflow-y-auto');

@@ -9,10 +9,10 @@ import {
 import type { LeagueCard, LeagueMatch, MyJoinRequest } from '../api/types';
 import { PRIMARY_BUTTON, TextField } from '../domain/AuthForm';
 import { Crest } from '../domain/Crest';
+import { BUTTON_SECONDARY } from '../domain/controls';
 import { PageFrame } from '../domain/PageFrame';
 
-const SECONDARY_BUTTON =
-  'min-h-11 shrink-0 rounded-full border border-line-strong px-4 text-sm font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
+const SECONDARY_BUTTON = `shrink-0 text-sm ${BUTTON_SECONDARY}`;
 
 /**
  * L'inizio: le mie leghe, e le due porte per entrare in una nuova — crearla, o
@@ -56,7 +56,7 @@ export function LeaguesRoute() {
               scorre l'elenco, non la pagina. */}
           <section
             aria-labelledby="leagues-title"
-            className="panel flex flex-col overflow-hidden rounded-2xl lg:h-0 lg:min-h-full"
+            className="panel flex flex-col overflow-hidden lg:h-0 lg:min-h-full"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 pb-4 pt-5">
               <h1 id="leagues-title" className="w-exp text-2xl font-bold">Le mie leghe</h1>
@@ -151,7 +151,7 @@ function PendingRow({ request }: { request: MyJoinRequest }) {
   );
 }
 
-const PANEL = 'panel flex flex-col rounded-2xl p-5 md:p-6';
+const PANEL = 'panel flex flex-col p-5 md:p-6';
 
 const CREATE_FIELDS = ['name', 'teamName'];
 
@@ -281,10 +281,10 @@ function JoinLeaguePanel() {
           value={text}
           onChange={(e) => { setText(e.target.value); setChosen(null); setSentTo(null); }}
           aria-describedby="league-search-status"
-          className="mt-2 min-h-11 w-full rounded-xl border border-line-strong bg-surface px-4 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="mt-2 min-h-11 w-full rounded-lg border border-control-border bg-surface px-4 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         />
       </div>
-      <div className="mt-4 min-h-[7rem] flex-1 basis-0 overflow-y-auto rounded-xl border border-line">
+      <div className="mt-4 min-h-[7rem] flex-1 basis-0 overflow-y-auto rounded-lg border border-line">
         {chosen ? (
           <RequestForm
             league={chosen}
@@ -349,7 +349,7 @@ function InviteLinkForm() {
           onChange={(e) => { setLink(e.target.value); setInvalid(false); }}
           aria-invalid={invalid ? 'true' : undefined}
           aria-describedby={invalid ? 'invite-link-error' : undefined}
-          className="min-h-11 min-w-48 flex-1 rounded-xl border border-line-strong bg-surface px-4 text-base placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="min-h-11 min-w-48 flex-1 rounded-lg border border-control-border bg-surface px-4 text-base placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         />
         <button type="submit" disabled={link.trim() === ''} className={`${SECONDARY_BUTTON} px-5`}>
           Entra con il link
@@ -473,7 +473,7 @@ function RequestForm({ league, onCancel, onSent }: {
       <div className="mt-auto flex gap-3 pt-4">
         <button type="button" onClick={onCancel} className={`flex-1 ${SECONDARY_BUTTON}`}>Indietro</button>
         <button type="submit" disabled={send.isPending}
-          className="min-h-11 flex-[2] rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+          className="min-h-11 flex-[2] rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
           {send.isPending ? 'Invio…' : 'Manda la richiesta'}
         </button>
       </div>

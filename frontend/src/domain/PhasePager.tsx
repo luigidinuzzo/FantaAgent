@@ -59,7 +59,7 @@ export function PhasePager({
         onClick={onPrevious}
         disabled={!hasPrevious}
         aria-describedby={previousReason ? previousHintId : undefined}
-        className="min-h-11 min-w-11 rounded-full border border-line px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="min-h-11 min-w-11 rounded-lg border border-control-border px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         Pagina precedente
       </button>
@@ -76,7 +76,7 @@ export function PhasePager({
         onClick={onNext}
         disabled={!hasNext}
         aria-describedby={nextReason ? nextHintId : undefined}
-        className="min-h-11 min-w-11 rounded-full border border-line px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="min-h-11 min-w-11 rounded-lg border border-control-border px-3 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         Pagina successiva
       </button>

@@ -69,8 +69,8 @@ export function ProfileMenu({ me, current }: { me: Me; current: boolean }) {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:px-4 ${
-          current ? 'border-accent bg-accent text-on-accent' : 'border-line-strong hover:bg-line'
+        className={`flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:px-4 ${
+          current ? 'border-accent bg-accent text-on-accent' : 'border-control-border hover:bg-line'
         }`}
       >
         <PersonIcon />
@@ -89,7 +89,7 @@ export function ProfileMenu({ me, current }: { me: Me; current: boolean }) {
           role="menu"
           aria-label="Profilo"
           onKeyDown={onMenuKeyDown}
-          className="panel absolute right-0 top-full z-40 mt-2 flex w-64 flex-col rounded-xl p-1.5 text-base shadow-[0_12px_32px_rgb(0_0_0/0.45)]"
+          className="panel absolute right-0 top-full z-40 mt-2 flex w-64 flex-col p-1.5 text-base shadow-[0_12px_32px_rgb(0_0_0/0.45)]"
         >
           <div className="mb-1.5 border-b border-line px-3 pb-2.5 pt-1.5">
             <p className="truncate font-semibold">{me.displayName}</p>

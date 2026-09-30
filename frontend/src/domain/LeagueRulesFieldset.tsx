@@ -35,7 +35,7 @@ export function LeagueRulesFieldset({
   return (
     // Cornice e titolo come «Partecipanti» e «Punteggio»: sono le tre sezioni del
     // modulo, e questa si leggeva come una riga qualunque fra i campi del banditore.
-    <fieldset className="space-y-3 rounded-2xl border border-line-strong p-4">
+    <fieldset className="space-y-3 rounded-lg border border-line-strong p-4">
       <legend className="px-2 text-base font-medium">Crediti e posti</legend>
       {disabled ? <p id={lockId} className="text-base text-muted-foreground">{LOCK_TEXT}</p> : null}
 

@@ -25,7 +25,7 @@ export function ProfileRoute() {
           e i pannelli stanno in mezzo invece che appesi in alto. */}
       <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto grid w-full max-w-3xl gap-4 md:grid-cols-2">
-          <section aria-labelledby="profile-name" className="panel rounded-2xl p-6">
+          <section aria-labelledby="profile-name" className="panel p-6">
             <h1 id="profile-name" className="w-exp text-lg font-semibold">Il tuo profilo</h1>
             <form className="mt-4" onSubmit={(e) => { e.preventDefault(); rename.mutate(current); }}>
               <TextField id="profile-display-name" label="Il tuo nome" autoComplete="name"
@@ -36,7 +36,7 @@ export function ProfileRoute() {
               </button>
             </form>
           </section>
-          <section aria-labelledby="profile-access" className="panel rounded-2xl p-6">
+          <section aria-labelledby="profile-access" className="panel p-6">
             <h2 id="profile-access" className="w-exp text-lg font-semibold">Accesso</h2>
             <p className="mt-4 text-sm">{me.data.email}</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -45,13 +45,13 @@ export function ProfileRoute() {
             {!me.data.emailVerified ? (
               <button type="button" disabled={resend.isPending || resend.isSuccess}
                 onClick={() => resend.mutate()}
-                className="mt-4 min-h-11 rounded-full border border-line-strong px-5 font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                className="mt-4 min-h-11 rounded-lg border border-control-border px-5 font-medium disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
                 {resend.isSuccess ? 'Email inviata' : 'Mandami di nuovo la conferma'}
               </button>
             ) : null}
             <button type="button" disabled={logout.isPending}
               onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/accedi', { replace: true }) })}
-              className="mt-6 flex min-h-11 w-full items-center justify-center rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+              className="mt-6 flex min-h-11 w-full items-center justify-center rounded-lg border border-control-border px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
               Esci
             </button>
             {rename.isError && !errors.displayName ? (

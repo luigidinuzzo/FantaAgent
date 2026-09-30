@@ -14,11 +14,11 @@ import { RenameAuctionDialog } from '../domain/RenameAuctionDialog';
 import { Crest } from '../domain/Crest';
 import { PageFrame } from '../domain/PageFrame';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
+import { BUTTON_SECONDARY } from '../domain/controls';
 
 const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
 
-const SECONDARY_BUTTON =
-  'min-h-11 rounded-full border border-line-strong px-4 font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
+const SECONDARY_BUTTON = BUTTON_SECONDARY;
 
 export function LeagueRoute() {
   const { leagueId = '' } = useParams();
@@ -32,7 +32,7 @@ export function LeagueRoute() {
       <AppShell chrome="top">
         <PageFrame>
           <div className="grid flex-1 place-items-center">
-            <p role="alert" className="panel max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
+            <p role="alert" className="panel max-w-xl p-4 text-sm font-medium text-destructive">
               {userMessage(league.error, 'Questa lega non esiste, o non ne fai parte.')}
             </p>
           </div>
@@ -94,7 +94,7 @@ function LeagueHeader({ leagueId, name, admin, members, auctions }: {
       members === 1 ? '1 membro' : `${members} membri`,
       auctions === 1 ? '1 asta' : `${auctions} aste`].filter(Boolean).join(', ');
   return (
-    <section aria-labelledby="league-title" className="panel flex flex-wrap items-center gap-4 rounded-2xl p-5 md:p-6">
+    <section aria-labelledby="league-title" className="panel flex flex-wrap items-center gap-4 p-5 md:p-6">
       {name ? <Crest id={leagueId} name={name} size="lg" /> : <span className="size-14 shrink-0" />}
       {/* Largo almeno 12rem: sul telefono le regole vanno a capo invece di tagliare il nome. */}
       <div className="min-w-0 flex-1 basis-48">
@@ -134,7 +134,7 @@ function AuctionsPanel({ leagueId, admin, create }: {
     : null;
 
   return (
-    <section aria-labelledby="auctions-title" className="panel flex flex-1 flex-col overflow-hidden rounded-2xl">
+    <section aria-labelledby="auctions-title" className="panel flex flex-1 flex-col overflow-hidden">
       <div className="flex items-baseline justify-between gap-4 px-5 pb-4 pt-5 md:px-6">
         <h2 id="auctions-title" className="w-exp text-xl font-bold">Aste</h2>
         {admin ? (
@@ -159,7 +159,7 @@ function AuctionsPanel({ leagueId, admin, create }: {
               errors={errors.name} />
           </div>
           <button type="submit" disabled={create.isPending || name.trim() === ''}
-            className="min-h-11 rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+            className="min-h-11 rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
             Crea l'asta
           </button>
         </form>
@@ -222,7 +222,7 @@ function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boole
   if (!requests.data || requests.data.length === 0) return null;
 
   return (
-    <section aria-labelledby="join-requests-title" className="panel rounded-2xl p-5 md:p-6">
+    <section aria-labelledby="join-requests-title" className="panel p-5 md:p-6">
       <h2 id="join-requests-title" className="w-exp text-xl font-bold">Richieste di ingresso</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Hanno trovato la lega cercandone il nome. Chi accetti entra con la squadra che ha scritto.
@@ -249,7 +249,7 @@ function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boole
             <button type="button" disabled={decide.isPending}
               aria-label={`Accetta ${r.teamName}`}
               onClick={() => decide.mutate({ userId: r.userId, accept: true })}
-              className="min-h-11 rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+              className="min-h-11 rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
               Accetta
             </button>
           </li>
@@ -278,7 +278,7 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
   return (
     // Prende l'altezza che resta nella colonna: con molti membri si allunga la
     // pagina, con pochi il pannello resta pieno fino in fondo.
-    <section aria-labelledby="members-title" className="panel flex flex-1 flex-col overflow-hidden rounded-2xl">
+    <section aria-labelledby="members-title" className="panel flex flex-1 flex-col overflow-hidden">
       <div className="flex items-baseline justify-between gap-4 px-5 pb-4 pt-5 md:px-6">
         <h2 id="members-title" className="w-exp text-xl font-bold">Membri</h2>
         {league ? <p className="text-sm text-muted-foreground">{members.length}</p> : null}
@@ -358,7 +358,7 @@ function LeaveLeagueDialog({ leagueName, leaving, pending, error, onConfirm, onC
       ref={dialogRef}
       aria-labelledby="leave-league-title"
       onCancel={(e) => { e.preventDefault(); onCancel(); }}
-      className="panel m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl p-6 text-foreground backdrop:bg-black/60"
+      className="panel m-auto w-[min(32rem,calc(100vw-2rem))] p-6 text-foreground backdrop:bg-black/60"
     >
       <h2 id="leave-league-title" className="w-exp text-lg font-semibold">
         {leaving.self ? `Lasciare «${leagueName}»?` : `Togliere «${leaving.teamName}» dalla lega?`}
@@ -369,11 +369,11 @@ function LeaveLeagueDialog({ leagueName, leaving, pending, error, onConfirm, onC
       ) : null}
       <div className="mt-5 flex justify-end gap-3">
         <button ref={cancelRef} type="button" onClick={onCancel}
-          className="min-h-11 rounded-full border border-line-strong px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+          className="min-h-11 rounded-lg border border-control-border px-5 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
           Annulla
         </button>
         <button type="button" disabled={pending} onClick={() => onConfirm(leaving)}
-          className="min-h-11 rounded-full bg-destructive px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+          className="min-h-11 rounded-lg bg-destructive px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
           {leaving.self ? 'Esci dalla lega' : 'Togli'}
         </button>
       </div>
@@ -393,7 +393,7 @@ function InvitesPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean })
   const link = create.data?.link;
 
   return (
-    <section aria-labelledby="invites-title" className="panel shrink-0 rounded-2xl p-5 md:p-6">
+    <section aria-labelledby="invites-title" className="panel shrink-0 p-5 md:p-6">
       <h2 id="invites-title" className="w-exp text-xl font-bold">Inviti</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Un link solo per tutto il gruppo: vale due settimane, chiunque lo apra può entrare.
@@ -407,7 +407,7 @@ function InvitesPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean })
           <label htmlFor="invite-link" className="block text-sm font-medium">Link d'invito</label>
           <div className="mt-2 flex gap-2">
             <input id="invite-link" readOnly value={link} onFocus={(e) => e.target.select()}
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-line-strong bg-surface px-4 text-sm" />
+              className="min-h-11 min-w-0 flex-1 rounded-lg border border-control-border bg-surface px-4 text-sm" />
             <button type="button" className={SECONDARY_BUTTON}
               onClick={() => { void navigator.clipboard?.writeText(link); }}>
               Copia

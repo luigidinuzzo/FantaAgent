@@ -78,7 +78,7 @@ export function AuctionAdminMenu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className="flex h-full min-h-11 w-11 items-center justify-center rounded-xl border border-line-strong text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className="flex h-full min-h-11 w-11 items-center justify-center rounded-lg border border-control-border text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
           <circle cx="5" cy="12" r="2" />
@@ -93,7 +93,7 @@ export function AuctionAdminMenu({
           role="menu"
           aria-label={`Azioni per ${label}`}
           onKeyDown={onMenuKeyDown}
-          className="panel absolute right-0 top-full z-20 mt-2 flex w-56 flex-col rounded-xl p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.45)]"
+          className="panel absolute right-0 top-full z-20 mt-2 flex w-56 flex-col p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.45)]"
         >
           <Link
             ref={(el) => { itemRefs.current[0] = el; }}

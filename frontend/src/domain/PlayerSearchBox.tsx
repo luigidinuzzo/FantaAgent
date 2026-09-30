@@ -127,7 +127,7 @@ export function PlayerSearchBox({
     // contenitore con un'altezza, h-full non fa nulla: a riposo resta alto
     // quanto la barra.
     <div
-      className="panel flex h-full flex-col rounded-2xl"
+      className="panel flex h-full flex-col"
       onKeyDown={(e) => {
         if (e.key !== 'Escape') return;
         e.preventDefault();
@@ -148,7 +148,7 @@ export function PlayerSearchBox({
           value={query}
           placeholder="Cerca giocatore"
           onChange={(e) => setQuery(e.target.value)}
-          className="min-h-12 w-full rounded-2xl bg-transparent pl-12 pr-4 text-base placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="min-h-12 w-full rounded-lg bg-transparent pl-12 pr-4 text-base placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         />
       </div>
 
@@ -173,8 +173,8 @@ export function PlayerSearchBox({
             <legend className="sr-only">Filtra per ruolo</legend>
             <div className="flex flex-wrap gap-2">
               <label
-                className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border px-3 text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
-                  role === null ? 'border-accent bg-accent font-medium text-on-accent' : 'border-line-strong text-muted-foreground'
+                className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border px-3 text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent ${
+                  role === null ? 'border-accent bg-accent font-medium text-on-accent' : 'border-control-border text-muted-foreground'
                 }`}
               >
                 <input
@@ -194,7 +194,7 @@ export function PlayerSearchBox({
                   // sotto i 44px richiesti su ogni controllo — lo stesso debito
                   // gia' chiuso per la tabella di fase (PlayerTable.tsx), dove
                   // pero' dipendeva dall'auto-layout della cella. Qui e' esplicito.
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent"
                 >
                   <input
                     type="radio"
@@ -284,7 +284,7 @@ export function PlayerSearchBox({
           )}
 
           {soldMatches.length > 0 ? (
-            <div className="shrink-0 rounded-xl border border-line p-3">
+            <div className="shrink-0 rounded-lg border border-line p-3">
               <p className="text-sm font-medium text-muted-foreground">
                 {noResults ? 'Già comprato, non è più all\'asta' : 'Già comprati'}
               </p>

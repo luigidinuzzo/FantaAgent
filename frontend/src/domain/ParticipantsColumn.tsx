@@ -32,7 +32,7 @@ export function ParticipantsColumn({ participants, phase }: {
     // al proprio contenuto.
     <section
       aria-label="Crediti delle squadre"
-      className="panel flex min-h-0 min-w-0 flex-col rounded-2xl p-3"
+      className="panel flex min-h-0 min-w-0 flex-col p-3"
     >
       {/* Cosa misura il numero, detto una volta in testa alla colonna: prima era
           un numero nudo accanto al nome, e si capiva solo sapendolo gia'. */}
@@ -50,7 +50,7 @@ export function ParticipantsColumn({ participants, phase }: {
             key={p.id}
             data-testid={`manager-${p.id}`}
             data-me={p.me}
-            className={`flex flex-col gap-0.5 rounded-xl border px-3 py-2 max-lg:shrink-0 ${
+            className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2 max-lg:shrink-0 ${
               p.me ? 'border-accent bg-surface-raised' : 'border-panel-border'
             }`}
           >

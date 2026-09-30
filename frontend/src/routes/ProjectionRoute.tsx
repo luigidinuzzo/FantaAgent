@@ -107,7 +107,7 @@ export function ProjectionRoute() {
     return (
       <AppShell chrome="none">
         <h1 className="sr-only">Proiezione</h1>
-        <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-5 text-lg text-destructive">
+        <p role="alert" className="panel mx-auto max-w-xl p-5 text-lg text-destructive">
           Questa lega non esiste, o non ne fai parte.
         </p>
       </AppShell>
@@ -160,11 +160,11 @@ export function ProjectionRoute() {
       >
         <h2 id="projection-board-heading" className="sr-only">Tabelloni</h2>
         {board.isLoading ? (
-          <p className="panel rounded-xl p-5 text-lg text-muted-foreground">Carico i tabelloni…</p>
+          <p className="panel p-5 text-lg text-muted-foreground">Carico i tabelloni…</p>
         ) : board.isError ? (
           // role="alert": puntuale su questa sezione, non una seconda live
           // region ambientale. L'unica di quel tipo nell'app resta AuctionAnnouncer.
-          <p role="alert" className="panel rounded-xl p-5 text-lg text-destructive">
+          <p role="alert" className="panel p-5 text-lg text-destructive">
             Non riesco a caricare i tabelloni.
           </p>
         ) : (board.data?.columns.length ?? 0) === 0 ? (
@@ -198,7 +198,7 @@ function BoardTeam({ column: c, slots }: {
   return (
     <section
       aria-labelledby={headingId}
-      className={`flex min-h-0 min-w-0 flex-col rounded-xl border bg-surface px-3 py-2 ${c.me ? 'border-accent' : 'border-panel-border'}`}
+      className={`flex min-h-0 min-w-0 flex-col rounded-lg border bg-surface px-3 py-2 ${c.me ? 'border-accent' : 'border-panel-border'}`}
     >
       <header className="flex shrink-0 items-baseline justify-between gap-2 border-b border-line-strong pb-2">
         <h3 id={headingId} className="w-exp truncate text-[clamp(1rem,2.4vh,2rem)] font-extrabold">

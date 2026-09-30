@@ -87,7 +87,7 @@ function SettingsIcon() {
 // Bersaglio 44x44 garantito (min-h-11 min-w-11, non dedotto dall'auto-layout),
 // condiviso dai due link icona della barra superiore.
 const ICON_LINK =
-  'flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong'
+  'flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-control-border'
   + ' focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
 type TabKey = 'fase' | 'rose';
@@ -497,7 +497,7 @@ export function AuctionRoute() {
     // rilancio (BID_CONTROL_H, 64px): e' l'azione principale
     // del lotto, e ora ha la larghezza della barra «Rilancia
     // +1» che prendera' il suo posto appena il conto parte.
-    className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-full bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+    className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
   >
     Avvia il conto alla rovescia
   </button>
@@ -533,7 +533,7 @@ export function AuctionRoute() {
       // tutto cio' che si preme in questa applicazione e' una
       // pillola, e un link sottolineato in mezzo ai bottoni si
       // leggeva come un corpo estraneo.
-      className="min-h-11 rounded-full border border-line-strong px-5 text-sm font-medium text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      className="min-h-11 rounded-lg border border-control-border px-5 text-sm font-medium text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
     >
       Aggiudica direttamente
     </button>
@@ -547,7 +547,7 @@ export function AuctionRoute() {
   if (isNotFound(state.error)) {
     return (
       <AppShell chrome="top">
-        <div className="panel mx-auto max-w-xl rounded-xl p-4">
+        <div className="panel mx-auto max-w-xl p-4">
           <p role="alert" className="text-sm font-medium text-destructive">
             Questa lega non esiste, o non ne fai parte.
           </p>
@@ -573,7 +573,7 @@ export function AuctionRoute() {
             // La fase si legge, non si cambia: la cambia chi batte l'asta. Solo
             // quando lo stato e' arrivato: prima non c'e' una fase da dire, e
             // «portieri» di ripiego sarebbe un dato inventato.
-            <span className="flex min-h-11 items-center rounded-full border border-line-strong px-4 font-medium">
+            <span className="flex min-h-11 items-center rounded-lg border border-control-border px-4 font-medium">
               Fase: {ROLE_NAME_PLURAL[state.data.currentPhase]}
             </span>
           ) : null}
@@ -623,7 +623,7 @@ export function AuctionRoute() {
         // sopra): al massimo un role="alert" da queste due fonti, non uno
         // per bottone. role="alert", non un secondo role="status": l'unica
         // live region ambientale della pagina resta AuctionAnnouncer.
-        <p role="alert" className="panel mb-4 rounded-xl p-4 text-sm font-medium text-destructive">
+        <p role="alert" className="panel mb-4 p-4 text-sm font-medium text-destructive">
           {barAlertMessage}
         </p>
       ) : null}
@@ -654,7 +654,7 @@ export function AuctionRoute() {
           <AuctionRecap participants={participants} board={board.data} />
           {/* Le rose complete, subito: e' quello che si viene a guardare ad asta
               finita. Senza schede, perche' la fase corrente non c'e' piu'. */}
-          <div className="panel mt-4 rounded-2xl p-4">
+          <div className="panel mt-4 p-4">
             <RosterGrid />
           </div>
         </>
@@ -667,10 +667,10 @@ export function AuctionRoute() {
         // alte quanto venticinque posti, restava vuota per due terzi, e i crediti
         // li dicono gia' le intestazioni delle rose.
         <>
-          <p className="panel mb-4 rounded-2xl p-4 text-sm">
+          <p className="panel mb-4 p-4 text-sm">
             Non hai un posto in quest'asta: puoi seguirla, ma i consigli non sono disponibili.
           </p>
-          <div className="panel min-w-0 rounded-2xl p-4">
+          <div className="panel min-w-0 p-4">
             <RosterGrid />
           </div>
         </>
@@ -690,7 +690,7 @@ export function AuctionRoute() {
         // ne sono. La frase una volta sola, sopra; la colonna dei consigli non
         // c'e' — tenuta in piedi per una frase, restava vuota per tutta l'altezza
         // — e il banco prende il suo spazio.
-        <p className="panel mb-4 rounded-2xl p-4 text-sm">
+        <p className="panel mb-4 p-4 text-sm">
           Non hai un posto in quest'asta: puoi seguirla, ma i consigli non sono disponibili.
         </p>
       ) : null}
@@ -728,7 +728,7 @@ export function AuctionRoute() {
               ogni lettera. Nascosto, non svuotato — selectedId resta intatto, e
               uscendo dalla ricerca si ritrova il lotto com'era. */}
           {searchActive ? null : (
-          <section aria-labelledby={bidderPanelId} className="panel flex min-h-0 flex-1 flex-col rounded-2xl p-4">
+          <section aria-labelledby={bidderPanelId} className="panel flex min-h-0 flex-1 flex-col p-4">
             <div className="flex min-h-11 items-center justify-between gap-3">
               {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
                   c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
@@ -765,8 +765,8 @@ export function AuctionRoute() {
                     setSelectedId(null);
                   }}
                   onBlur={() => setConfirmRemove(false)}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                    confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-line-strong hover:bg-line'
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                    confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-control-border hover:bg-line'
                   }`}
                 >
                   <RemoveIcon />
@@ -917,11 +917,11 @@ export function AuctionRoute() {
         // Senza posto la tabella di fase non c'e' (sono consigli: il tetto e'
         // il tuo): restano le rose, che per chi batte l'asta sono il registro
         // da correggere.
-        <div className="panel mt-4 rounded-2xl p-4">
+        <div className="panel mt-4 p-4">
           <RosterGrid />
         </div>
       ) : (
-      <div className="panel mt-4 rounded-2xl p-4">
+      <div className="panel mt-4 p-4">
         {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
             limita a somigliarci: ruolo, stato e frecce sinistra/destra per
             spostare la selezione, come da WAI-ARIA Authoring Practices. */}
@@ -1029,7 +1029,7 @@ export function AuctionRoute() {
           (AuctionAnnouncer), e due voci si sovrapporrebbero. */}
       {sale ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
-          <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-positive bg-surface px-5 py-3 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
+          <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-positive bg-surface px-5 py-3 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             <p className="text-base">
               <span className="font-medium">{sale.player}</span>
               {` a ${sale.buyer} per `}
@@ -1039,7 +1039,7 @@ export function AuctionRoute() {
               type="button"
               onClick={() => voidSaleNow(sale)}
               disabled={voidSale.isPending || undoLast.isPending}
-              className="min-h-11 rounded-full border border-line-strong px-4 font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="min-h-11 rounded-lg border border-control-border px-4 font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               Annulla
             </button>

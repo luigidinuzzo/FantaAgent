@@ -172,7 +172,7 @@ export function LeagueRulesRoute() {
       <AppShell chrome="top">
       <PageFrame>
         <h1 className="sr-only">{TITLE}</h1>
-        <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
+        <p role="alert" className="panel mx-auto max-w-xl p-4 text-sm font-medium text-destructive">
           {userMessage(rules.error, 'Le regole della lega non si sono caricate. Riprova.')}
         </p>
       </PageFrame>
@@ -191,7 +191,7 @@ export function LeagueRulesRoute() {
         <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
           {/* Lo scheletro dell'indice: stessa struttura di quello vero (titolo e
               tre voci da 44px), cosi' ha anche la stessa altezza. */}
-          <div aria-hidden="true" className="panel self-start rounded-2xl p-3 max-lg:hidden">
+          <div aria-hidden="true" className="panel self-start p-3 max-lg:hidden">
             <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">&nbsp;</p>
             <ol className="flex flex-col gap-1">
               {SECTION_IDS.map((id) => (
@@ -201,7 +201,7 @@ export function LeagueRulesRoute() {
               ))}
             </ol>
           </div>
-          <div className="panel flex min-h-[60dvh] items-center justify-center rounded-2xl md:min-h-0">
+          <div className="panel flex min-h-[60dvh] items-center justify-center md:min-h-0">
             <p className="text-sm text-muted-foreground">Carico le regole della lega…</p>
           </div>
         </div>
@@ -269,7 +269,7 @@ export function LeagueRulesRoute() {
             </div>
 
             <div>
-              <label className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-full border border-line-strong px-4 text-base">
+              <label className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg border border-control-border px-4 text-base">
                 <input
                   type="checkbox"
                   checked={form.bidder.beepEnabled}
@@ -329,7 +329,7 @@ export function LeagueRulesRoute() {
           scorrimento interno e la tastiera aperta sopra lascerebbe una fessura. */}
       <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
         <nav aria-label="Sezioni del modulo" className="self-start max-lg:hidden">
-          <div className="panel rounded-2xl p-3">
+          <div className="panel p-3">
             <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">{TITLE}</p>
             <ol className="flex flex-col gap-1">
               {sections.map((section) => (
@@ -339,7 +339,7 @@ export function LeagueRulesRoute() {
                   <a
                     href={`#${section.id}`}
                     aria-current={activeSection === section.id ? 'location' : undefined}
-                    className={`flex min-h-11 items-center rounded-full px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                    className={`flex min-h-11 items-center rounded-lg px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                       activeSection === section.id ? 'bg-accent text-on-accent' : 'hover:bg-line'
                     }`}
                   >
@@ -353,7 +353,7 @@ export function LeagueRulesRoute() {
 
         {/* Un unico pannello pieno per tutto il modulo, dall'indice al bottone
             di salvataggio. */}
-        <div className="panel flex min-h-0 min-w-0 flex-col rounded-2xl">
+        <div className="panel flex min-h-0 min-w-0 flex-col">
           <div className="px-5 pt-5 sm:px-8 sm:pt-8">
             <div className="relative flex items-center justify-center">
               {/* Si torna alla lega, da cui si e' arrivati: «Le mie leghe» nella barra
@@ -361,7 +361,7 @@ export function LeagueRulesRoute() {
               <Link
                 to={`/leghe/${leagueId}`}
                 aria-label="Torna alla lega"
-                className="absolute left-0 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="absolute left-0 flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-control-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -374,7 +374,7 @@ export function LeagueRulesRoute() {
               Valgono per le prossime aste della lega. Quelle già create tengono le regole con cui sono nate.
             </p>
             {!canEdit ? (
-              <p className="mt-4 rounded-xl border border-line p-4 text-base">
+              <p className="mt-4 rounded-lg border border-line p-4 text-base">
                 Solo l'amministratore della lega può cambiare le regole.
               </p>
             ) : null}
@@ -415,7 +415,7 @@ export function LeagueRulesRoute() {
                   alert di campo che si popolano insieme se ne mangerebbero tutti tranne
                   uno. La conferma sta in un role="status" a parte, sempre montato, cosi'
                   che il cambio di testo venga annunciato. */}
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-6 gap-y-2 rounded-b-2xl border-t border-line-strong bg-surface px-5 py-4 max-md:sticky max-md:bottom-0 max-md:z-10 sm:px-8">
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-6 gap-y-2 rounded-b-lg border-t border-line-strong bg-surface px-5 py-4 max-md:sticky max-md:bottom-0 max-md:z-10 sm:px-8">
                 {summary ? (
                   <p role="alert" className="mr-auto text-sm font-medium text-destructive">{summary}</p>
                 ) : null}
@@ -425,7 +425,7 @@ export function LeagueRulesRoute() {
                 <button
                   type="submit"
                   disabled={save.isPending}
-                  className="min-h-12 rounded-full bg-accent px-8 text-lg font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+                  className="min-h-12 rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
                 >
                   {save.isPending ? 'Salvo…' : 'Salva le regole'}
                 </button>

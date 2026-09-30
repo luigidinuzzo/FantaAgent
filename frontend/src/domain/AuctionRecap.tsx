@@ -31,7 +31,7 @@ export function AuctionRecap({ participants, board }: {
     <div className="grid grid-cols-1 gap-5 lg:h-[39rem] lg:grid-cols-[1fr_24rem]">
       <section
         aria-labelledby="recap-heading"
-        className="flex flex-col justify-center gap-8 rounded-2xl border-2 border-accent bg-surface-raised p-6 sm:p-10"
+        className="flex flex-col justify-center gap-8 rounded-lg border-2 border-accent bg-surface-raised p-6 sm:p-10"
       >
         <div>
           <h2 id="recap-heading" className="w-exp text-3xl font-semibold sm:text-5xl">
@@ -53,21 +53,21 @@ export function AuctionRecap({ participants, board }: {
             <a
               href={auctionExportUrl(board.auctionId)}
               download
-              className="flex min-h-14 items-center rounded-full bg-accent px-8 text-lg font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
+              className="flex min-h-14 items-center rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
             >
               Scarica le rose
             </a>
           ) : null}
           <Link
             to="/"
-            className="flex min-h-14 items-center rounded-full border border-line-strong px-8 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="flex min-h-14 items-center rounded-lg border border-control-border px-8 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             Torna alle aste
           </Link>
         </div>
       </section>
 
-      <section aria-labelledby="recap-top-heading" className="panel flex min-h-0 flex-col rounded-2xl p-5">
+      <section aria-labelledby="recap-top-heading" className="panel flex min-h-0 flex-col p-5">
         <h2 id="recap-top-heading" className="text-sm font-medium text-muted-foreground">
           Gli acquisti più cari
         </h2>

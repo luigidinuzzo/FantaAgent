@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { HalfPitch } from './HalfPitch';
 import { Wordmark } from './Wordmark';
 import { FieldErrors } from './FieldErrors';
+import { BUTTON_PRIMARY, FIELD } from './controls';
 
 /**
  * Il ritorno dopo l'accesso, solo se e' un percorso di questa app. "//altro.it" e'
@@ -34,7 +35,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
     >
       <section
         aria-labelledby="auth-title"
-        className="order-2 w-full max-w-[28rem] rounded-2xl border border-panel-border bg-surface p-6 lg:col-start-1 lg:row-start-1 lg:flex lg:max-w-none lg:flex-col lg:justify-center lg:rounded-none lg:border-0 lg:border-r lg:px-12 lg:py-12 xl:px-16"
+        className="order-2 w-full max-w-[28rem] rounded-lg border border-panel-border bg-surface p-6 lg:col-start-1 lg:row-start-1 lg:flex lg:max-w-none lg:flex-col lg:justify-center lg:rounded-none lg:border-0 lg:border-r lg:px-12 lg:py-12 xl:px-16"
       >
         <div className="lg:mx-auto lg:w-full lg:max-w-sm">
           <h1 id="auth-title" className="w-exp text-2xl font-bold lg:text-3xl">{title}</h1>
@@ -45,7 +46,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
         <div className="order-1">
           <Wordmark size="hero" outlined />
         </div>
-        <p className="order-3 w-full max-w-[28rem] rounded-2xl border border-panel-border bg-surface p-5 text-sm text-muted-foreground lg:max-w-[40rem] lg:p-[clamp(0.875rem,2.4cqw,1.5rem)] lg:text-[clamp(0.8125rem,2cqw,1.125rem)] lg:leading-snug">
+        <p className="order-3 w-full max-w-[28rem] rounded-lg border border-panel-border bg-surface p-5 text-sm text-muted-foreground lg:max-w-[40rem] lg:p-[clamp(0.875rem,2.4cqw,1.5rem)] lg:text-[clamp(0.8125rem,2cqw,1.125rem)] lg:leading-snug">
           <span className="block font-semibold text-foreground">
             L&apos;asta del fantacalcio della tua lega, tutti collegati insieme.
           </span>
@@ -85,7 +86,7 @@ export function TextField({
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={errors.length > 0 ? 'true' : undefined}
         aria-describedby={describedBy}
-        className="mt-2 min-h-11 w-full rounded-xl border border-line-strong bg-surface px-4 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className={`mt-2 ${FIELD}`}
       />
       {hint ? <p id={hintId} className="mt-1 text-sm text-muted-foreground">{hint}</p> : null}
       <FieldErrors id={`${id}-errors`} errors={errors} />
@@ -93,8 +94,7 @@ export function TextField({
   );
 }
 
-export const PRIMARY_BUTTON =
-  'mt-6 min-h-11 w-full rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground';
+export const PRIMARY_BUTTON = `mt-6 w-full ${BUTTON_PRIMARY}`;
 
 export const TEXT_LINK =
   'font-medium underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';

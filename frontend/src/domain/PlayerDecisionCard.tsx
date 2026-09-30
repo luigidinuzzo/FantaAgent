@@ -48,7 +48,7 @@ export function PlayerDecisionCard({
   const nameId = `player-name-${valuation.playerId}`;
   const frame = bare
     ? ''
-    : `rounded-2xl border bg-surface p-5 ${
+    : `rounded-lg border bg-surface p-5 ${
         stale ? 'border-dashed border-muted-foreground' : 'border-panel-border'
       }`;
 

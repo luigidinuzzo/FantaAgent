@@ -432,7 +432,7 @@ export function BidderDialog({
           erano tre segni decorativi in un momento a zero tolleranza. */}
       <div
         data-testid="bidder-scoreboard"
-        className="overflow-hidden rounded-2xl border border-line-strong"
+        className="overflow-hidden rounded-lg border border-line-strong"
       >
         <div
           data-testid="bidder-cells"
@@ -588,8 +588,8 @@ export function BidderDialog({
                 type="button"
                 aria-pressed={picked}
                 onClick={() => setBuyerChoice(p.id)}
-                className={`relative flex min-h-12 min-w-0 flex-col items-start justify-center rounded-xl border px-3 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
-                  picked ? 'border-accent bg-accent text-on-accent' : 'border-line-strong hover:bg-line'
+                className={`relative flex min-h-12 min-w-0 flex-col items-start justify-center rounded-lg border px-3 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
+                  picked ? 'border-accent bg-accent text-on-accent' : 'border-control-border hover:bg-line'
                 }`}
               >
                 <span className="flex w-full items-baseline gap-2">
@@ -619,7 +619,7 @@ export function BidderDialog({
       {!expired && me ? (
         <div
           data-testid="bidder-after"
-          className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-xl border border-line px-4 py-3"
+          className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-lg border border-line px-4 py-3"
         >
           <span className="text-sm font-medium text-muted-foreground">{`Se lo prendi a ${price}`}</span>
           <span className="tnum text-sm">
@@ -674,7 +674,7 @@ export function BidderDialog({
                 key={step}
                 type="button"
                 onClick={() => raiseTo((p) => p + step)}
-                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} min-w-20 border border-line-strong px-6 text-2xl font-semibold text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} min-w-20 border border-control-border px-6 text-2xl font-semibold text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
               >
                 +{step}
                 <span className="sr-only"> crediti</span>
@@ -704,11 +704,11 @@ export function BidderDialog({
                 placeholder="Offerta diretta"
                 value={customBid}
                 onChange={(e) => setCustomBid(e.target.value)}
-                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} w-full min-w-0 border border-line-strong bg-transparent px-4 text-2xl font-semibold placeholder:text-base placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} w-full min-w-0 border border-control-border bg-transparent px-4 text-2xl font-semibold placeholder:text-base placeholder:font-normal placeholder:text-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
               />
               <button
                 type="submit"
-                className={`${BID_CONTROL_H} ${BID_RADIUS} shrink-0 border border-line-strong px-6 text-2xl font-semibold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+                className={`${BID_CONTROL_H} ${BID_RADIUS} shrink-0 border border-control-border px-6 text-2xl font-semibold hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
               >
                 Offri
               </button>
@@ -829,7 +829,7 @@ export function BidderDialog({
             <button
               type="button"
               onClick={() => { setExpired(false); countdown.start(); }}
-              className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-line-strong px-6 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+              className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-control-border px-6 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
             >
               <ReopenIcon />
               Riprendi le offerte

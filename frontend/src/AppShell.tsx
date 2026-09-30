@@ -77,8 +77,8 @@ export function AppShell({
             <Link
               to="/"
               aria-current={onHome ? 'page' : undefined}
-              className={`flex min-h-11 items-center rounded-full px-4 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent max-sm:hidden ${
-                onHome ? 'bg-accent text-on-accent' : 'border border-line-strong hover:bg-line'
+              className={`flex min-h-11 items-center rounded-lg px-4 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent max-sm:hidden ${
+                onHome ? 'bg-accent text-on-accent' : 'border border-control-border hover:bg-line'
               }`}
             >
               Le mie leghe

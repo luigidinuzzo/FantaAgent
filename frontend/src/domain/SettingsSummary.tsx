@@ -12,7 +12,7 @@ import { ROLE_NAME_PLURAL, ROLES } from './roles';
  */
 export function BidderSummary({ bidder }: { bidder: BidderSettings }) {
   return (
-    <section aria-labelledby="bidder-summary" className="rounded-2xl border border-line-strong p-4">
+    <section aria-labelledby="bidder-summary" className="rounded-lg border border-line-strong p-4">
       <h2 id="bidder-summary" className="text-base font-medium">Banditore</h2>
       <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
         <Value label="Secondi del conto alla rovescia" value={bidder.bidTimerSeconds} />
@@ -31,7 +31,7 @@ export function BidderSummary({ bidder }: { bidder: BidderSettings }) {
  */
 export function RulesSummary({ rules, teams }: { rules: RulesSection; teams?: number }) {
   return (
-    <section aria-labelledby="rules-summary" className="rounded-2xl border border-line-strong p-4">
+    <section aria-labelledby="rules-summary" className="rounded-lg border border-line-strong p-4">
       <h2 id="rules-summary" className="text-base font-medium">Crediti e posti</h2>
       <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
         {teams !== undefined ? <Value label="Squadre" value={teams} /> : null}
@@ -71,7 +71,7 @@ function points(n: number): string {
 
 export function ScoringSummary({ scoring }: { scoring: ScoringSection }) {
   return (
-    <section aria-labelledby="scoring-summary" className="rounded-2xl border border-line-strong p-4">
+    <section aria-labelledby="scoring-summary" className="rounded-lg border border-line-strong p-4">
       <h2 id="scoring-summary" className="text-base font-medium">Punteggio</h2>
       <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
         {SCORING_VALUES.map(({ key, label }) => (

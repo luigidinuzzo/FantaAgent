@@ -7,11 +7,10 @@ import { userMessage } from '../api/client';
 import { useLeague, useLeagueAuctions, useSaveSeats, useSeats, useUpdateAuction } from '../api/leagues';
 import type { SeatInput, SeatsView } from '../api/types';
 import { StepperField } from '../domain/StepperField';
+import { BUTTON_PRIMARY, BUTTON_SECONDARY } from '../domain/controls';
 
-const BUTTON =
-  'min-h-11 min-w-11 rounded-full border border-line-strong px-3 font-medium hover:bg-line disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
-const PRIMARY =
-  'min-h-11 rounded-full bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground';
+const BUTTON = `min-w-11 ${BUTTON_SECONDARY}`;
+const PRIMARY = BUTTON_PRIMARY;
 
 const toInputs = (view: SeatsView): SeatInput[] =>
   view.seats.map((s) => ({ userId: s.userId, teamName: s.teamName, initial: s.initial }));
@@ -46,7 +45,7 @@ export function AuctionSettingsRoute() {
     return (
       <AppShell chrome="top">
       <PageFrame>
-        <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
+        <p role="alert" className="panel mx-auto max-w-xl p-4 text-sm font-medium text-destructive">
           {userMessage(league.error ?? seats.error ?? auctions.error,
             'Quest\'asta non esiste, o non fai parte della sua lega.')}
         </p>
@@ -98,7 +97,7 @@ export function AuctionSettingsRoute() {
           (tre controlli) lasciava una colonna mezza vuota accanto al turno. */}
       <div className="mx-auto w-full max-w-3xl">
         {/* Testata in un pannello, come nelle altre pagine. */}
-        <section className="panel flex items-center gap-4 rounded-2xl p-5 md:p-6">
+        <section className="panel flex items-center gap-4 p-5 md:p-6">
           <BackLink to={`/leghe/${leagueId}/aste/${auctionId}`} label="Torna all'asta" />
           <div className="min-w-0">
             <h1 className="w-exp truncate text-2xl font-semibold">{card.name}</h1>
@@ -106,7 +105,7 @@ export function AuctionSettingsRoute() {
           </div>
         </section>
         <div className="mt-4 grid gap-4">
-          <section aria-labelledby="order-title" className="panel rounded-2xl p-6">
+          <section aria-labelledby="order-title" className="panel p-6">
             <h2 id="order-title" className="w-exp text-lg font-semibold">Turno di chiamata</h2>
             {admin && locked ? (
               <p className="mt-2 text-sm text-muted-foreground">
@@ -121,10 +120,10 @@ export function AuctionSettingsRoute() {
                     <>
                       <input aria-label={`Nome della squadra di ${nameOf(s.userId)}`} value={s.teamName}
                         onChange={(e) => edit(i, { teamName: e.target.value })}
-                        className="min-h-11 min-w-40 flex-1 rounded-xl border border-line-strong bg-surface px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" />
+                        className="min-h-11 min-w-40 flex-1 rounded-lg border border-control-border bg-surface px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" />
                       <input aria-label={`Iniziale di ${nameOf(s.userId)}`} value={s.initial} maxLength={1}
                         onChange={(e) => edit(i, { initial: e.target.value.toUpperCase().slice(-1) })}
-                        className="min-h-11 w-14 rounded-xl border border-line-strong bg-surface text-center font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" />
+                        className="min-h-11 w-14 rounded-lg border border-control-border bg-surface text-center font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" />
                     </>
                   ) : (
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -176,7 +175,7 @@ export function AuctionSettingsRoute() {
             ) : null}
           </section>
           {admin ? (
-            <section aria-labelledby="bidder-title" className="panel rounded-2xl p-6">
+            <section aria-labelledby="bidder-title" className="panel p-6">
               <h2 id="bidder-title" className="w-exp text-lg font-semibold">Banditore</h2>
               <label htmlFor="bidder-seconds" className="mt-4 block text-sm font-medium">
                 Secondi del conto alla rovescia
