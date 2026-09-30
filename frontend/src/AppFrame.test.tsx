@@ -18,12 +18,12 @@ function withRoutes(path = '/') {
 }
 
 describe('AppFrame', () => {
-  // Dal bordo in alto: le pagine d'ingresso non hanno la barra, e un campo che
-  // partiva sotto di essa lasciava lassu' una fascia senza strisce.
-  it('disegna il campo una volta sola, per tutta la finestra', () => {
+  // L'erba a strisce non copre piu' la finestra: resta solo nella meta' campo
+  // delle pagine d'ingresso.
+  it('il fondo e uniforme: nessun campo dietro le pagine', () => {
     const { container, getByTestId } = withRoutes();
-    expect(container.querySelectorAll('[data-testid="pitch"]')).toHaveLength(1);
-    expect(getByTestId('pitch').className).toContain('inset-0');
+    expect(container.querySelector('[data-testid="pitch"]')).toBeNull();
+    expect(getByTestId('app-frame').className).toContain('bg-background');
   });
 
   it('mostra dentro di se la pagina della rotta', () => {
@@ -31,18 +31,13 @@ describe('AppFrame', () => {
     expect(screen.getByText('home')).toBeInTheDocument();
   });
 
-  /**
-   * E' il motivo per cui il campo sta qui e non in AppShell: cambiando pagina la
-   * rotta si smonta, e con lei si rifaceva anche il campo — che si rimisura dopo il
-   * primo fotogramma, e per un istante disegnava linee di un'altra misura.
-   */
-  it('cambiando pagina il campo resta lo stesso elemento, non viene rifatto', async () => {
+  it('cambiando pagina la cornice resta lo stesso elemento, non viene rifatta', async () => {
     const { getByTestId } = withRoutes();
-    const before = getByTestId('pitch');
+    const before = getByTestId('app-frame');
 
     await userEvent.click(screen.getByRole('link', { name: 'vai' }));
 
     expect(screen.getByText('asta')).toBeInTheDocument();
-    expect(getByTestId('pitch')).toBe(before);
+    expect(getByTestId('app-frame')).toBe(before);
   });
 });

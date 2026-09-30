@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { PitchFrame } from '../domain/PitchFrame';
+import { PageFrame } from '../domain/PageFrame';
 import { ProblemError, userMessage } from '../api/client';
 import { useLeagueRules, useSaveLeagueRules } from '../api/leagues';
 import type { SaveLeagueRulesRequest, SettingsErrors } from '../api/types';
@@ -170,12 +170,12 @@ export function LeagueRulesRoute() {
   if (rules.isError) {
     return (
       <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
         <h1 className="sr-only">{TITLE}</h1>
         <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
           {userMessage(rules.error, 'Le regole della lega non si sono caricate. Riprova.')}
         </p>
-      </PitchFrame>
+      </PageFrame>
       </AppShell>
     );
   }
@@ -186,9 +186,9 @@ export function LeagueRulesRoute() {
     // dopo diventa quello grande fa sembrare che la pagina cambi due volte.
     return (
       <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
         <h1 className="sr-only">{TITLE}</h1>
-        <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-7rem-4px)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
           {/* Lo scheletro dell'indice: stessa struttura di quello vero (titolo e
               tre voci da 44px), cosi' ha anche la stessa altezza. */}
           <div aria-hidden="true" className="panel self-start rounded-2xl p-3 max-lg:hidden">
@@ -205,7 +205,7 @@ export function LeagueRulesRoute() {
             <p className="text-sm text-muted-foreground">Carico le regole della lega…</p>
           </div>
         </div>
-      </PitchFrame>
+      </PageFrame>
       </AppShell>
     );
   }
@@ -321,13 +321,13 @@ export function LeagueRulesRoute() {
 
   return (
     <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
       {/* Due colonne da lg in su: a sinistra l'indice delle sezioni, fermo mentre il
           modulo scorre; a destra il modulo. Da tablet in su la pagina non scorre: il
           riquadro e' alto quanto la finestra e scorre dentro, con titolo e «Salva»
           sempre in vista. Sul telefono scorre la pagina: un riquadro con lo
           scorrimento interno e la tastiera aperta sopra lascerebbe una fessura. */}
-      <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-7rem-4px)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
+      <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
         <nav aria-label="Sezioni del modulo" className="self-start max-lg:hidden">
           <div className="panel rounded-2xl p-3">
             <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">{TITLE}</p>
@@ -351,8 +351,8 @@ export function LeagueRulesRoute() {
           </div>
         </nav>
 
-        {/* Un unico pannello pieno per tutto il modulo: etichette, pillole e
-            messaggi non poggiano mai sulle linee del campo. */}
+        {/* Un unico pannello pieno per tutto il modulo, dall'indice al bottone
+            di salvataggio. */}
         <div className="panel flex min-h-0 min-w-0 flex-col rounded-2xl">
           <div className="px-5 pt-5 sm:px-8 sm:pt-8">
             <div className="relative flex items-center justify-center">
@@ -436,7 +436,7 @@ export function LeagueRulesRoute() {
           )}
         </div>
       </div>
-      </PitchFrame>
+      </PageFrame>
     </AppShell>
   );
 }

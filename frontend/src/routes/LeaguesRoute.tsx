@@ -8,7 +8,8 @@ import {
 } from '../api/leagues';
 import type { LeagueCard, LeagueMatch, MyJoinRequest } from '../api/types';
 import { PRIMARY_BUTTON, TextField } from '../domain/AuthForm';
-import { Crest, HalfwayLine, PitchFrame } from '../domain/PitchFrame';
+import { Crest } from '../domain/Crest';
+import { PageFrame } from '../domain/PageFrame';
 
 const SECONDARY_BUTTON =
   'min-h-11 shrink-0 rounded-full border border-line-strong px-4 text-sm font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
@@ -23,7 +24,7 @@ const SECONDARY_BUTTON =
  * schermo per ripetere il marchio della barra, schiacciando elenco e modulo in una
  * colonna.
  *
- * <p>Due meta' campo: a sinistra le leghe, in una colonna che non spinge fuori
+ * <p>Due colonne: a sinistra le leghe, in una colonna che non spinge fuori
  * dalla finestra il resto; a destra le due porte per una nuova, una sopra l'altra. Sul telefono tutto in fila: leghe, poi le due porte.
  *
  * <p>L'iniziale non si chiede: la sceglie il server (vedi {@code LeagueService.initialOr}).
@@ -48,8 +49,8 @@ export function LeaguesRoute() {
 
   return (
     <AppShell chrome="top">
-      <PitchFrame>
-        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)]">
+      <PageFrame>
+        <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Sul computer la colonna e' alta quanto i pannelli accanto e non di piu'
               (h-0 min-h-full: non conta nell'altezza della riga): con molte leghe
               scorre l'elenco, non la pagina. */}
@@ -76,7 +77,6 @@ export function LeaguesRoute() {
               </ul>
             ) : null}
           </section>
-          <HalfwayLine />
           {/* Crea in alto, compatto; Unisciti prende il resto dell'altezza, e il suo
               riquadro dei risultati con lui. */}
           <div className="flex flex-col gap-6">
@@ -84,7 +84,7 @@ export function LeaguesRoute() {
             <JoinLeaguePanel />
           </div>
         </div>
-      </PitchFrame>
+      </PageFrame>
     </AppShell>
   );
 }

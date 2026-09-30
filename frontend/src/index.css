@@ -53,23 +53,9 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
 
 /* L'altezza della barra in alto (AppShell): py-3 attorno a controlli da 44px, piu'
    il bordo. Serve a chi deve sapere dove comincia il contenuto rispetto alla
-   finestra — pitch-frame qui sotto, la colonna della home. */
+   finestra. */
 :root {
   --header-h: 4.3125rem;
-}
-
-/* La colonna della home. La misura nasce dalle linee in gesso che il campo
-   disegnava prima (1.5rem dal bordo, piu' 3rem di margine interno): quelle linee
-   sono spente, ma il ritmo che davano alla pagina resta buono e non c'e' ragione
-   di cambiarlo. Oltre 96rem le righe dell'elenco si allargherebbero troppo: il
-   margine laterale cresce, ma il blocco resta centrato. Solo da md: sul telefono
-   si scorre comunque. */
-@utility pitch-frame {
-  max-width: 96rem;
-  @media (min-width: 48rem) {
-    padding-top: 3rem;
-    max-width: min(96rem, calc(100vw - 9rem));
-  }
 }
 
 .pitch-grass {

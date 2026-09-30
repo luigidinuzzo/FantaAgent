@@ -25,8 +25,8 @@ describe('ProfileRoute', () => {
     })));
     render(<QueryProvider><MemoryRouter><ProfileRoute /></MemoryRouter></QueryProvider>);
 
-    // Il campo (PitchFrame) e' alto quanto la finestra; dentro, i pannelli stanno
-    // nel contenitore che ne prende tutta l'altezza (flex-1) e li centra.
+    // Il contenitore (PageFrame) e' alto quanto la finestra; dentro, i pannelli
+    // stanno nel contenitore che ne prende tutta l'altezza (flex-1) e li centra.
     const heading = await screen.findByRole('heading', { name: 'Il tuo profilo' });
     const frame = heading.closest('main')?.firstElementChild;
     expect(frame?.className).toContain('min-h-[calc(100dvh-var(--header-h)-2rem)]');

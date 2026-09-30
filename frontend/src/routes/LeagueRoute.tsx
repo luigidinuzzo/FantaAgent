@@ -11,7 +11,8 @@ import { AuctionAdminMenu } from '../domain/AuctionAdminMenu';
 import { TextField } from '../domain/AuthForm';
 import { DeleteAuctionDialog } from '../domain/DeleteAuctionDialog';
 import { RenameAuctionDialog } from '../domain/RenameAuctionDialog';
-import { Crest, HalfwayLine, PitchFrame } from '../domain/PitchFrame';
+import { Crest } from '../domain/Crest';
+import { PageFrame } from '../domain/PageFrame';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
 
 const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
@@ -29,13 +30,13 @@ export function LeagueRoute() {
   if (league.isError) {
     return (
       <AppShell chrome="top">
-        <PitchFrame>
+        <PageFrame>
           <div className="grid flex-1 place-items-center">
             <p role="alert" className="panel max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
               {userMessage(league.error, 'Questa lega non esiste, o non ne fai parte.')}
             </p>
           </div>
-        </PitchFrame>
+        </PageFrame>
       </AppShell>
     );
   }
@@ -53,17 +54,16 @@ export function LeagueRoute() {
 
   return (
     <AppShell chrome="top">
-      <PitchFrame>
-        <div className="grid flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_4rem_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_5rem_minmax(0,1fr)]">
-          {/* Meta' campo sinistra: la lega e le sue aste, la ragione per cui si apre
+      <PageFrame>
+        <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Colonna sinistra: la lega e le sue aste, la ragione per cui si apre
               la pagina. */}
           <div className="flex flex-col gap-6">
             <LeagueHeader leagueId={leagueId} name={league.data?.name ?? ''} admin={admin}
               members={loaded?.members.length} auctions={auctions.data?.length} />
             <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
           </div>
-          <HalfwayLine />
-          {/* Meta' campo destra: le persone. Chi chiede di entrare, chi c'e', come
+          {/* Colonna destra: le persone. Chi chiede di entrare, chi c'e', come
               invitarne altri. */}
           <div className="flex flex-col gap-6">
             {admin ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
@@ -71,7 +71,7 @@ export function LeagueRoute() {
             {admin ? <InvitesPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
           </div>
         </div>
-      </PitchFrame>
+      </PageFrame>
     </AppShell>
   );
 }
@@ -109,7 +109,7 @@ function LeagueHeader({ leagueId, name, admin, members, auctions }: {
 }
 
 /**
- * Le aste della lega, in un elenco che prende l'altezza della meta' campo. Ogni riga
+ * Le aste della lega, in un elenco che prende l'altezza della colonna. Ogni riga
  * porta all'asta; accanto, per l'amministratore, il menu con impostazioni, rinomina
  * ed elimina. In cima, sempre per lui, il campo per crearne una nuova.
  */
@@ -213,8 +213,8 @@ function AuctionsPanel({ leagueId, admin, create }: {
 
 /**
  * Chi ha cercato la lega per nome e chiede di entrare. Solo per l'amministratore, e
- * solo quando c'e' qualcuno da decidere: e' una cosa da fare, e sta in cima alla meta'
- * campo delle persone; senza richieste non occupa posto.
+ * solo quando c'e' qualcuno da decidere: e' una cosa da fare, e sta in cima alla
+ * colonna delle persone; senza richieste non occupa posto.
  */
 function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean }) {
   const requests = useJoinRequests(leagueId, true);
@@ -276,8 +276,8 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
   const me = members.find((m) => m.me);
 
   return (
-    // Prende l'altezza che resta nella meta' campo: con molti membri si allunga la
-    // pagina, con pochi il pannello resta pieno fino in fondo invece di lasciare erba.
+    // Prende l'altezza che resta nella colonna: con molti membri si allunga la
+    // pagina, con pochi il pannello resta pieno fino in fondo.
     <section aria-labelledby="members-title" className="panel flex flex-1 flex-col overflow-hidden rounded-2xl">
       <div className="flex items-baseline justify-between gap-4 px-5 pb-4 pt-5 md:px-6">
         <h2 id="members-title" className="w-exp text-xl font-bold">Membri</h2>

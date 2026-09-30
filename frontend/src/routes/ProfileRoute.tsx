@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { PitchFrame } from '../domain/PitchFrame';
+import { PageFrame } from '../domain/PageFrame';
 import { useLogout, useMe, useRenameMe, useResendVerification } from '../api/auth';
 import { fieldErrors, userMessage } from '../api/client';
 import { PRIMARY_BUTTON, TextField } from '../domain/AuthForm';
@@ -19,10 +19,10 @@ export function ProfileRoute() {
 
   return (
     <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
       {/* Due soli pannelli, corti: senza centrarli restava un vuoto enorme sotto,
-          specie sulle finestre larghe. Il campo e' alto quanto la finestra, e i
-          pannelli stanno in mezzo invece che appesi in alto. */}
+          specie sulle finestre larghe. Il contenitore e' alto quanto la finestra,
+          e i pannelli stanno in mezzo invece che appesi in alto. */}
       <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto grid w-full max-w-3xl gap-4 md:grid-cols-2">
           <section aria-labelledby="profile-name" className="panel rounded-2xl p-6">
@@ -62,7 +62,7 @@ export function ProfileRoute() {
           </section>
         </div>
       </div>
-      </PitchFrame>
+      </PageFrame>
     </AppShell>
   );
 }

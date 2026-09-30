@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { BackLink } from '../domain/BackLink';
-import { PitchFrame } from '../domain/PitchFrame';
+import { PageFrame } from '../domain/PageFrame';
 import { fieldErrors, userMessage } from '../api/client';
 import { IMPORT_FILES, useImportAuction, useImportPreview, useLeague } from '../api/leagues';
 import type { MemberView } from '../api/types';
@@ -61,14 +61,13 @@ export function ImportRoute() {
 
   return (
     <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
       {/* Come ProfileRoute: senza centrare, un modulo corto come questo lascia un
-          vuoto enorme sotto sulle finestre larghe. Il campo e' alto quanto la
-          finestra, e il modulo sta in mezzo. */}
+          vuoto enorme sotto sulle finestre larghe. Il contenitore e' alto quanto
+          la finestra, e il modulo sta in mezzo. */}
       <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto w-full max-w-3xl">
-          {/* Testata e scelta della cartella nello stesso pannello: nessun testo
-              poggia sull'erba. */}
+          {/* Testata e scelta della cartella nello stesso pannello. */}
           <section className="panel rounded-2xl p-6">
             <div className="flex items-center gap-4">
               <BackLink to={`/leghe/${leagueId}`} label="Torna alla lega" />
@@ -129,7 +128,7 @@ export function ImportRoute() {
           ) : null}
         </div>
       </div>
-      </PitchFrame>
+      </PageFrame>
     </AppShell>
   );
 }

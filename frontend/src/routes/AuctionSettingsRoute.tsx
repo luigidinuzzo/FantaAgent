@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { BackLink } from '../domain/BackLink';
-import { PitchFrame } from '../domain/PitchFrame';
+import { PageFrame } from '../domain/PageFrame';
 import { userMessage } from '../api/client';
 import { useLeague, useLeagueAuctions, useSaveSeats, useSeats, useUpdateAuction } from '../api/leagues';
 import type { SeatInput, SeatsView } from '../api/types';
@@ -45,17 +45,17 @@ export function AuctionSettingsRoute() {
   if (league.isError || auctions.isError || seats.isError || (auctions.data && !card)) {
     return (
       <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
         <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
           {userMessage(league.error ?? seats.error ?? auctions.error,
             'Quest\'asta non esiste, o non fai parte della sua lega.')}
         </p>
-      </PitchFrame>
+      </PageFrame>
       </AppShell>
     );
   }
   if (!league.data || !seats.data || !card) {
-    return <AppShell chrome="top"><PitchFrame><span /></PitchFrame></AppShell>;
+    return <AppShell chrome="top"><PageFrame><span /></PageFrame></AppShell>;
   }
 
   const admin = league.data.admin;
@@ -93,12 +93,11 @@ export function AuctionSettingsRoute() {
 
   return (
     <AppShell chrome="top">
-      <PitchFrame>
+      <PageFrame>
       {/* Una colonna sola, turno sopra e banditore sotto: affiancato, il banditore
           (tre controlli) lasciava una colonna mezza vuota accanto al turno. */}
       <div className="mx-auto w-full max-w-3xl">
-        {/* Testata in un pannello, come nelle altre pagine: nessun testo poggia
-            sull'erba. */}
+        {/* Testata in un pannello, come nelle altre pagine. */}
         <section className="panel flex items-center gap-4 rounded-2xl p-5 md:p-6">
           <BackLink to={`/leghe/${leagueId}/aste/${auctionId}`} label="Torna all'asta" />
           <div className="min-w-0">
@@ -210,7 +209,7 @@ export function AuctionSettingsRoute() {
           ) : null}
         </div>
       </div>
-      </PitchFrame>
+      </PageFrame>
     </AppShell>
   );
 }

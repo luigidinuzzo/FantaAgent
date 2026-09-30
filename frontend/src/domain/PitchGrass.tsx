@@ -1,14 +1,10 @@
 /**
- * L'erba dietro ogni schermata: strisce di taglio, e nient'altro.
+ * L'erba a strisce della meta' campo delle pagine d'ingresso: strisce di taglio, e
+ * nient'altro. Prima copriva tutta la finestra dietro ogni schermata; ora il fondo
+ * dell'app e' uniforme e l'erba resta qui, come firma del prodotto.
  *
- * <p><b>Le linee in gesso sono spente.</b> Prima qui c'era un campo intero
- * disegnato in SVG — cerchio di centrocampo, aree, dischetti, archi d'angolo —
- * che riempiva lo spazio sotto la barra. Ma i pannelli pieni ci stanno sopra e ne
- * coprono la maggior parte: quel che si vedeva erano frammenti di disegno negli
- * spazi fra un pannello e l'altro, e il cerchio di centrocampo che affiorava
- * sotto il banco si leggeva come un difetto di resa, non come un'identita'. Le
- * strisce restano perche' sono uno sfondo e si comportano da sfondo: non hanno
- * pezzi da tagliare.
+ * <p>Riempie l'antenato posizionato piu' vicino ({@code absolute}), non la
+ * finestra: chi la monta decide dove sta.
  *
  * <p><b>Nessun testo poggia sull'erba.</b> Tutto cio' che si legge sta in un
  * pannello pieno ({@code bg-surface}) con il suo bordo.
@@ -25,7 +21,7 @@ export function PitchGrass({ className = 'inset-0' }: { className?: string }) {
     <div
       data-testid="pitch"
       aria-hidden="true"
-      className={`pitch-grass pointer-events-none fixed z-0 ${className}`}
+      className={`pitch-grass pointer-events-none absolute z-0 ${className}`}
     />
   );
 }

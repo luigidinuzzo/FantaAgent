@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { PitchGrass } from './PitchGrass';
 
 /**
  * La meta' superiore di un campo, in scala (68×52,5), nella colonna di destra delle
@@ -17,7 +18,10 @@ import type { ReactNode } from 'react';
  */
 export function HalfPitch({ children }: { children: ReactNode }) {
   return (
-    <div className="max-lg:contents lg:col-start-2 lg:row-start-1 lg:flex lg:items-center lg:justify-center">
+    <div className="max-lg:contents lg:relative lg:col-start-2 lg:row-start-1 lg:flex lg:items-center lg:justify-center">
+      {/* L'erba riempie la colonna di destra, e solo quella. Sul telefono la meta'
+          campo non c'e' e i figli entrano nella griglia della pagina: niente erba. */}
+      <PitchGrass className="inset-0 max-lg:hidden" />
       <div className={`max-lg:contents lg:relative lg:aspect-[68/52.5] lg:[container-type:inline-size] ${SIZE}`}>
         <HalfPitchLines />
         {/* La zona libera, in percentuale dell'altezza: dalla lunetta (20,15 m su
