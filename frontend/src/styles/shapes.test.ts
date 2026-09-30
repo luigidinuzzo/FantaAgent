@@ -25,6 +25,8 @@ const PILLS = new Map([
   ['routes/LeagueRoute.tsx', 1],
   // La riga dello scheletro mentre le regole si caricano.
   ['routes/LeagueRulesRoute.tsx', 1],
+  // Il pallino del ruolo in ogni fase del controllo segmentato.
+  ['domain/PhaseSwitcher.tsx', 1],
 ]);
 
 function sources(dir: string, found: string[] = []): string[] {

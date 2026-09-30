@@ -34,17 +34,19 @@ describe('PhaseSwitcher', () => {
   });
 
   /**
-   * La fase e' lo stato piu' importante della serata — si stanno chiamando i
-   * portieri, non gli attaccanti — e viveva in alto a destra, piccola, fra tre
-   * pastiglie che sembravano importanti quanto quella attiva.
+   * Quattro lettere colorate non dicevano cosa si stava chiamando a chi non le
+   * conosceva gia'. Da schermo largo il nome e' scritto; la corrente si stacca per
+   * fondo e per il filetto del suo ruolo, non per colore da solo.
    */
-  it('la fase corrente si legge piu grande delle altre', () => {
+  it('la fase porta il suo nome, e la corrente si stacca per fondo', () => {
     render(<PhaseSwitcher phases={['P', 'D', 'C', 'A']} current="D" onChange={() => {}} pending={false} />);
 
     const corrente = screen.getByRole('button', { name: /difensori, fase corrente/i });
     const altra = screen.getByRole('button', { name: /^attaccanti$/i });
-    expect(corrente.querySelector('span')?.className).toContain('text-2xl');
-    expect(altra.querySelector('span')?.className).toContain('text-meta');
+    expect(corrente).toHaveTextContent('Difensori');
+    expect(altra).toHaveTextContent('Attaccanti');
+    expect(corrente.className).toContain('bg-surface-raised');
+    expect(altra.className).not.toContain('bg-surface-raised');
   });
 
   /**

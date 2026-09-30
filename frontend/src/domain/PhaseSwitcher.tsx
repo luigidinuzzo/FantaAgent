@@ -1,6 +1,14 @@
 import type { Role } from '../api/types';
-import { RoleBadge } from './RoleBadge';
-import { ROLE_NAME_PLURAL } from './roles';
+import { BG_ROLE_CLASS, ROLE_NAME_PLURAL, ROLE_NAME_PLURAL_CAPITALIZED } from './roles';
+
+// Il filetto sotto la fase corrente, nel colore del suo ruolo. Scritte per intero:
+// Tailwind trova le classi leggendo il sorgente.
+const UNDERLINE: Record<Role, string> = {
+  P: 'shadow-[inset_0_-2px_0_var(--color-role-p)]',
+  D: 'shadow-[inset_0_-2px_0_var(--color-role-d)]',
+  C: 'shadow-[inset_0_-2px_0_var(--color-role-c)]',
+  A: 'shadow-[inset_0_-2px_0_var(--color-role-a)]',
+};
 
 /**
  * Il cambio fase, che fino a ieri stava sulla schermata proiettata.
@@ -24,45 +32,32 @@ export function PhaseSwitcher({
   pending: boolean;
 }) {
   return (
-    <>
-      {/* Il controllo segmentato: una pillola sola che contiene le quattro
-          fasi, non quattro bottoni sciolti. RoleBadge porta il colore del
-          ruolo dentro ognuna — lo stesso che colora la tabella di fase e la
-          ricerca — cosi' la fase corrente non e' segnalata solo dal riquadro
-          chiaro dietro, che il colore da solo non basterebbe a dire. */}
-      {/* Senza bordo ne' padding attorno ai bottoni: il fondo appena piu' chiaro
-          basta a farne una pillola sola, e la pillola resta alta quanto i suoi
-          bottoni (44px). Con la cornice era 54px, e alzava la barra dell'asta
-          sopra quella delle altre pagine, coprendo piu' campo. */}
-      {/* Senza il suo contenitore a pillola: la fase corrente si stacca da sola,
-          e una pillola attorno a quattro pastiglie ne disegnava una quinta. */}
-      <nav aria-label="Fase dell'asta" className="flex items-center gap-1">
-        {/* La parola, accanto alle quattro lettere: senza, erano quattro tondi
-            colorati di cui non si capiva il compito. Per chi ascolta c'e' gia' il
-            nome della navigazione. */}
-        <span aria-hidden="true" className="pl-3 pr-1 text-sm font-medium text-muted-foreground max-sm:hidden">Fase</span>
-        {phases.map((role) => {
-          const isCurrent = role === current;
-          return (
-            <button
-              key={role}
-              type="button"
-              disabled={pending || isCurrent}
-              aria-label={isCurrent ? `${ROLE_NAME_PLURAL[role]}, fase corrente` : ROLE_NAME_PLURAL[role]}
-              onClick={() => onChange(role)}
-              // Le fasi non correnti arretrano per TAGLIA, mai per opacita'.
-              // Misurato con il metodo di contrast.test.ts: smorzate al 40% le
-              // quattro lettere scendono fra 2,1 e 2,6 contro 1 sul fondo, dove
-              // la soglia e' 4,5 — e anche al 70% gli attaccanti restano sotto.
-              // Un elemento che arretra non e' un elemento che si smette di poter
-              // leggere, e qui dentro ci sono le lettere con cui si cambia fase.
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <RoleBadge role={role} filled={isCurrent} size={isCurrent ? 'lg' : 'md'} />
-            </button>
-          );
-        })}
-      </nav>
-    </>
+    // Un controllo segmentato: un contenitore solo con le quattro fasi dentro. La
+    // corrente ha il fondo rialzato e il filetto del suo ruolo sotto; le altre
+    // restano leggibili, mai smorzate con un'opacita'. Il nome per esteso da xl in
+    // su: fra lg e xl la barra dei comandi non ha posto per quattro parole e tre
+    // comandi scritti, e restano le lettere.
+    <nav aria-label="Fase dell'asta" className="flex items-center gap-0.5 rounded-lg border border-panel-border bg-surface p-0.5">
+      {phases.map((role) => {
+        const isCurrent = role === current;
+        return (
+          <button
+            key={role}
+            type="button"
+            disabled={pending || isCurrent}
+            aria-label={isCurrent ? `${ROLE_NAME_PLURAL[role]}, fase corrente` : ROLE_NAME_PLURAL[role]}
+            onClick={() => onChange(role)}
+            className={`flex min-h-10 min-w-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+              isCurrent ? `bg-surface-raised text-foreground ${UNDERLINE[role]}` : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {/* Il pallino del ruolo: e' uno stato (quale fase), per questo tondo. */}
+            <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${BG_ROLE_CLASS[role]}`} />
+            <span aria-hidden="true" className="xl:hidden">{role}</span>
+            <span aria-hidden="true" className="max-xl:hidden">{ROLE_NAME_PLURAL_CAPITALIZED[role]}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
