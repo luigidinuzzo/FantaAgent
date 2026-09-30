@@ -4,6 +4,7 @@ import type { ParticipantView, ValuationResponse } from '../api/types';
 import { publishBid } from './bidChannel';
 import { maxAffordable, roleFull } from './bidRules';
 import { BID_CONTROL_H, BID_RADIUS } from './controls';
+import { OnlyYouBadge } from './OnlyYouBadge';
 import { signed } from './PlayerDecisionCard';
 import { RoleBadge } from './RoleBadge';
 import { ROLE_NAME_PLURAL } from './roles';
@@ -92,14 +93,14 @@ function ReopenIcon() {
  * <p>{@code data-cell} serve alle prove per chiedere «in quale cella sta questo
  * numero» senza dipendere dall'ordine delle colonne.
  */
-function Cell({ label, children, note, testId, highlighted = false, first = false, urgentLabel = false }: {
+function Cell({ label, children, note, testId, raised = false, first = false, urgentLabel = false }: {
   label: string;
   children: ReactNode;
   /** La riga di contesto sotto l'etichetta. */
   note?: ReactNode;
   testId?: string;
-  /** La cella si accende: oggi solo «in testa», quando sei tu. */
-  highlighted?: boolean;
+  /** Il fondo appena staccato: oggi solo l'offerta, il numero su cui si decide. */
+  raised?: boolean;
   /** La prima cella della riga non porta il filetto a sinistra. */
   first?: boolean;
   urgentLabel?: boolean;
@@ -110,13 +111,11 @@ function Cell({ label, children, note, testId, highlighted = false, first = fals
       data-testid={testId}
       className={`flex min-w-0 flex-col items-center justify-center gap-1.5 px-4 py-5 text-center ${
         first ? '' : 'border-l border-line max-sm:[&:nth-child(odd)]:border-l-0'
-      } ${highlighted ? 'bg-accent text-on-accent' : ''}`}
+      } ${raised ? 'bg-surface-raised' : ''}`}
     >
       {children}
       <span
-        className={`text-sm ${
-          highlighted ? 'text-on-accent' : urgentLabel ? 'font-medium text-destructive' : 'text-muted-foreground'
-        }`}
+        className={`text-sm ${urgentLabel ? 'font-medium text-destructive' : 'text-muted-foreground'}`}
       >
         {label}
       </span>
@@ -125,8 +124,10 @@ function Cell({ label, children, note, testId, highlighted = false, first = fals
   );
 }
 
-/** Le colonne del tabellone, secondo quante celle ci sono: classi intere, per Tailwind. */
-const CELL_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' };
+/** Le colonne del tabellone: tre mentre il conto corre, due a tempo scaduto (il
+ *  tetto non e' mai stato una di queste, con o senza consigli). L'offerta pesa
+ *  piu' delle altre due, essendo il numero eroe della riga. */
+const CELL_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-[1fr_1.25fr_1.25fr]' };
 
 export function BidderDialog({
   valuation,
@@ -415,18 +416,21 @@ export function BidderDialog({
         <p className="text-sm text-muted-foreground">{valuation.team}</p>
       </header>
 
-      {/* Il TABELLONE: le quattro letture su cui si decide, celle di una riga
-          sola — quanto tempo resta, a quanto siamo, dove ti fermi, chi e' in
-          testa — e la barra del tempo come sua base.
+      {/* Il TABELLONE: le tre letture su cui si decide mentre il conto corre —
+          quanto tempo resta, a quanto siamo, chi e' in testa — e la barra del
+          tempo come sua base. Il tetto non e' una di queste: e' il riferimento
+          fermo di chi decide, non una cosa che succede adesso, e vive nella riga
+          di cio' che vedi solo tu, qui sotto.
 
           Celle e non elementi affiancati a mano: due altezze diverse non possono
           nascere da celle della stessa riga. Prima chi era in testa stava in un
           riquadro accanto alla griglia, con un'allineamento tutto suo — partiva
           con le cifre e finiva a meta' delle etichette — e si vedeva.
 
-          I tre numeri hanno lo stesso corpo. In un tabellone le celle si leggono
-          come un insieme, e tre taglie diverse le farebbero sembrare tre cose
-          scollegate: l'urgenza la porta il colore, non una cifra piu' grande.
+          L'offerta e' l'unico numero eroe di questa riga: e' quello su cui si
+          decide adesso, ed e' l'unica cella che prende l'oro e un fondo staccato
+          dal resto. Tempo e chi e' in testa restano allo stesso peso di sempre —
+          due letture di contesto, non il numero su cui si agisce.
 
           Niente icone accanto ai numeri: la clessidra, il gettone e il fascione
           erano tre segni decorativi in un momento a zero tolleranza. */}
@@ -436,7 +440,7 @@ export function BidderDialog({
       >
         <div
           data-testid="bidder-cells"
-          className={`grid ${CELL_COLUMNS[(expired ? 3 : 4) - (advice ? 0 : 1)]} max-sm:grid-cols-2`}
+          className={`grid ${CELL_COLUMNS[expired ? 2 : 3]} max-sm:grid-cols-2`}
         >
           {expired ? null : (
             <Cell label={urgent ? 'ultimi secondi' : secondsLeft === 1 ? 'secondo' : 'secondi'} urgentLabel={urgent}>
@@ -452,7 +456,7 @@ export function BidderDialog({
                   non distingue il rosso ha comunque tre segnali. */}
               <span
                 data-testid="bidder-remaining"
-                className={`tnum text-[56px] font-extrabold leading-none max-sm:text-5xl ${
+                className={`tnum text-[56px] font-semibold leading-none max-sm:text-5xl ${
                   urgent ? 'text-destructive' : ''
                 }`}
               >
@@ -461,10 +465,13 @@ export function BidderDialog({
             </Cell>
           )}
 
-          <Cell label="offerta" first={expired}>
+          {/* L'offerta: il numero su cui si decide adesso, oro e su un fondo
+              appena staccato — la sola cella che li porta, ed e' l'unico numero
+              eroe della pagina mentre il conto corre. */}
+          <Cell label="offerta" first={expired} raised>
             <span
               data-testid="bidder-price"
-              className={`tnum text-[56px] font-extrabold leading-none max-sm:text-5xl ${
+              className={`tnum text-[84px] leading-[0.85] max-sm:text-6xl font-extrabold ${
                 overCeiling ? 'text-destructive' : 'text-accent'
               }`}
             >
@@ -472,52 +479,18 @@ export function BidderDialog({
             </span>
           </Cell>
 
-          {/* Il tetto non prende l'oro: l'oro e' il colore di cio' che succede —
-              l'offerta che sale, il bottone che rilancia — e il tetto e' il
-              riferimento fermo accanto. Il colore qui lo porta la distanza, che e'
-              l'unica cosa che cambia. */}
-          {advice ? (
-          <Cell
-            label="il tuo tetto"
-            note={valuation.maxBid > 0 ? (
-              <span
-                data-testid="bidder-ceiling-distance"
-                className={`text-sm font-medium ${
-                  overCeiling ? 'text-destructive' : toCeiling === 0 ? 'text-accent' : 'text-positive'
-                }`}
-              >
-                {overCeiling ? `${-toCeiling} oltre` : toCeiling === 0 ? 'ci sei' : `${toCeiling} sotto`}
-              </span>
-            ) : null}
-          >
-            <span
-              data-testid="bidder-ceiling"
-              className={`tnum font-extrabold leading-none ${
-                // Tetto zero non e' un prezzo basso: e' l'assenza di un prezzo, la
-                // stessa cosa che la tabella di fase dice con la stessa parola. In
-                // riga con i secondi e l'offerta uno zero si leggerebbe come una
-                // cifra, e per giunta come la piu' conveniente della serata.
-                valuation.maxBid > 0 ? 'text-[56px] max-sm:text-5xl' : 'text-3xl text-muted-foreground'
-              }`}
-            >
-              {valuation.maxBid > 0 ? valuation.maxBid : 'nessuno'}
-            </span>
-          </Cell>
-          ) : null}
-
           {/* Chi e' in testa: LA domanda del rilancio dal vivo — sto vincendo io o
-              no. La cella si accende quando sei tu, e lo dice anche a parole: il
-              colore da solo non e' informazione. */}
+              no — ma la risposta non prende l'oro: l'oro e' gia' dell'offerta, e
+              «in testa»/«sei tu» le dicono le parole, non il colore. */}
           <Cell
             testId="bidder-leader"
             label="in testa"
             note={leadingMyself ? <span className="text-sm">sei tu</span> : null}
-            highlighted={leadingMyself}
           >
-            {/* Troncato: il nome di una squadra puo' essere lungo quanto vuole, e
-                allargandosi sformerebbe la cella. Nell'albero di accessibilita'
-                resta intero. */}
-            <span className="max-w-full truncate text-3xl font-semibold leading-none max-sm:text-2xl">
+            {/* Non piu' troncato su una riga: il nome va a capo su due righe
+                prima di perdersi, cosi' una squadra lunga resta leggibile invece
+                di finire in punti di sospensione. */}
+            <span className="line-clamp-2 break-words text-2xl font-semibold leading-tight">
               {shownLeader ?? '—'}
             </span>
           </Cell>
@@ -529,18 +502,14 @@ export function BidderDialog({
 
             aria-hidden: il dato lo porta il numero, e una barra che si svuota
             dieci volte al secondo, annunciata, sarebbe rumore. */}
-        {/* Il filetto sopra non e' decorazione: la cella di chi e' in testa si
-            accende d'oro e arriva fino a qui, e senza una linea la barra — anch'essa
-            oro — le si fondeva contro, lasciando in vista solo il pezzo di binario
-            grigio sotto la cella accesa, che si leggeva come un guasto. */}
         <div aria-hidden className={`w-full border-t border-line-strong bg-line ${urgent ? 'h-2.5' : 'h-2'}`}>
-          {/* Non oro. Dentro il tabellone l'oro dice gia' due cose — l'offerta che
-              sale, la cella accesa di chi e' in testa — e la barra ci passa sotto:
-              piena, si fondeva contro quella cella e non si capiva dove finisse
-              l'una e cominciasse l'altra. Il tempo non e' una cosa su cui si
-              agisce, e' una condizione, e prende il colore con cui l'applicazione
-              disegna le strutture. Negli ultimi secondi passa al rosso: li' il
-              tempo smette di essere una condizione e diventa la cosa da guardare. */}
+          {/* Non oro. Dentro il tabellone l'oro dice gia' una cosa — l'offerta che
+              sale — e la barra ci passa sotto: piena, si fonderebbe contro quella
+              cella e non si capirebbe dove finisce l'una e comincia l'altra. Il
+              tempo non e' una cosa su cui si agisce, e' una condizione, e prende il
+              colore con cui l'applicazione disegna le strutture. Negli ultimi
+              secondi passa al rosso: li' il tempo smette di essere una condizione e
+              diventa la cosa da guardare. */}
           <div
             data-testid="bidder-remaining-bar"
             className={`h-full ${urgent ? 'bg-destructive' : 'bg-control-border'}`}
@@ -571,9 +540,10 @@ export function BidderDialog({
           A chi va
           <span className="font-normal"> — se l’ha preso un altro, tocca la sua squadra o premi il suo numero</span>
         </legend>
-        {/* Tante colonne quante ne entrano, da 8rem: otto squadre stanno su due
-            righe anche nel riquadro stretto, e il banco non si allunga. */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
+        {/* Quattro colonne fisse: otto squadre stanno su due righe anche nel
+            riquadro stretto, e il banco non si allunga — la sua altezza e'
+            decisa in anticipo e non dipende da quante squadre sono al tavolo. */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {participants.map((p, i) => {
             const picked = p.id === participantId;
             const full = roleFull(p, valuation.role);
@@ -588,7 +558,7 @@ export function BidderDialog({
                 type="button"
                 aria-pressed={picked}
                 onClick={() => setBuyerChoice(p.id)}
-                className={`relative flex min-h-12 min-w-0 flex-col items-start justify-center rounded-lg border px-3 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
+                className={`relative flex min-h-11 min-w-0 flex-col items-start justify-center rounded-lg border px-3 py-1 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground ${
                   picked ? 'border-accent bg-accent text-on-accent' : 'border-control-border hover:bg-line'
                 }`}
               >
@@ -608,34 +578,43 @@ export function BidderDialog({
       </fieldset>
       ) : null}
 
-      {/* «Se lo prendi»: la domanda che ogni rilancio fa nascere e a cui
-          l'applicazione non rispondeva — quanto mi resta, se lo pago questo. Sono
-          i numeri della colonna di sinistra proiettati dopo l'acquisto, non una
-          stima nuova: crediti meno il prezzo, un posto in meno, e la media che ne
-          esce.
-
-          Solo mentre il conto corre: a tempo scaduto il prezzo non cambia piu', e
-          il riquadro dell'aggiudicazione ha bisogno di quell'altezza. */}
-      {!expired && me ? (
-        <div
-          data-testid="bidder-after"
-          className="flex flex-wrap items-baseline gap-x-8 gap-y-2 rounded-lg border border-line px-4 py-3"
-        >
-          <span className="text-sm font-medium text-muted-foreground">{`Se lo prendi a ${price}`}</span>
-          <span className="tnum text-sm">
-            <span className="font-semibold">{Math.max(0, me.budgetRemaining - price)}</span>
-            <span className="text-muted-foreground"> crediti</span>
+      {/* La riga di cio' che vedi solo tu: il tetto, quanto manca per arrivarci o di
+          quanto lo si e' passato, il verdetto, e «se lo prendi a N» coi numeri della
+          tua squadra dopo l'acquisto. Solo mentre il conto corre: a tempo scaduto si
+          registra un esito, non si decide se spingere. */}
+      {advice && !expired ? (
+        <div data-testid="bidder-private" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <OnlyYouBadge label="Lo vedi solo tu" />
+          <span>
+            il tuo tetto{' '}
+            <span data-testid="bidder-ceiling" className="tnum text-lg font-semibold">
+              {valuation.maxBid > 0 ? valuation.maxBid : 'nessuno'}
+            </span>
           </span>
-          <span className="tnum text-sm">
-            <span className="font-semibold">{Math.max(0, me.slotsRemaining - 1)}</span>
-            <span className="text-muted-foreground"> posti da riempire</span>
-          </span>
-          {me.slotsRemaining - 1 > 0 ? (
-            <span className="tnum text-sm">
-              <span className="font-semibold">
-                {Math.floor(Math.max(0, me.budgetRemaining - price) / (me.slotsRemaining - 1))}
-              </span>
-              <span className="text-muted-foreground"> di media per posto</span>
+          {valuation.maxBid > 0 ? (
+            <span
+              data-testid="bidder-ceiling-distance"
+              className={`font-medium ${overCeiling ? 'text-destructive' : toCeiling === 0 ? 'text-accent' : 'text-positive'}`}
+            >
+              {overCeiling ? `${-toCeiling} oltre` : toCeiling === 0 ? 'ci sei' : `${toCeiling} sotto`}
+            </span>
+          ) : null}
+          {me ? (
+            <span data-testid="bidder-after" className="tnum text-muted-foreground">
+              {`se lo prendi a ${price}: `}
+              <span className="font-semibold text-foreground">{Math.max(0, me.budgetRemaining - price)}</span>
+              {' crediti, '}
+              <span className="font-semibold text-foreground">{Math.max(0, me.slotsRemaining - 1)}</span>
+              {' posti'}
+              {me.slotsRemaining - 1 > 0 ? (
+                <>
+                  {', '}
+                  <span className="font-semibold text-foreground">
+                    {Math.floor(Math.max(0, me.budgetRemaining - price) / (me.slotsRemaining - 1))}
+                  </span>
+                  {' di media'}
+                </>
+              ) : null}
             </span>
           ) : null}
         </div>

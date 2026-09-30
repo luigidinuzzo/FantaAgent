@@ -29,7 +29,9 @@ const SRC = new URL('..', import.meta.url).pathname;
  */
 const HEROES = new Map([
   ['domain/PlayerDecisionCard.tsx', 1],
-  ['domain/BidderDialog.tsx', 3],
+  // Mentre il conto corre il numero su cui si decide e' l'offerta: le altre due
+  // letture (tempo, chi e' in testa) non prendono piu' il peso massimo.
+  ['domain/BidderDialog.tsx', 1],
   // La proiezione e' l'altra schermata: si legge da tutto il tavolo, e li' il
   // prezzo, il nome e il conto SONO la pagina. Non c'e' niente da cui staccarli.
   ['domain/PublicBidderDialog.tsx', 4],

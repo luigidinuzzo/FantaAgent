@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ParticipantView, ValuationResponse } from '../api/types';
@@ -122,27 +122,38 @@ describe('BidderDialog', () => {
     expect(screen.getByTestId('bidder-leader')).toHaveTextContent('Diego');
   });
 
-  /**
-   * Chi e' in testa e' LA domanda del rilancio dal vivo — sto vincendo io o no —
-   * e viveva in una riga di 14px grigi accanto alla barra. Ora e' una pillola:
-   * piena quando sei tu, col contorno quando e' un altro. Il colore non basta da
-   * solo, quindi chi ascolta lo sente a parole.
-   */
-  it('chi e in testa si legge a colpo d occhio, e dice se sei tu', () => {
-    open({ participants: TEAMS });
-    const testa = screen.getByTestId('bidder-leader');
-    expect(testa).toHaveTextContent('Anna');
-    expect(testa.className).toContain('bg-accent');
-    // La cella ha spazio per dirlo a parole: il colore non resta l'unico segnale.
-    expect(testa).toHaveTextContent('sei tu');
+  // L'oro col conto avviato e' dell'offerta: e' il numero su cui si decide. «In
+  // testa» e «sei tu» lo dicono le parole, non il colore.
+  it('la cella di chi e in testa non si tinge d oro, l offerta si', () => {
+    open();
+    expect(screen.getByTestId('bidder-leader').className).not.toContain('bg-accent');
+    expect(screen.getByTestId('bidder-leader')).toHaveTextContent('sei tu');
+    expect(screen.getByTestId('bidder-price').className).toContain('text-accent');
   });
 
-  it('quando e un altro in testa la pillola non si accende', () => {
-    open({ participants: TEAMS, leader: { name: 'Diego' } });
-    const testa = screen.getByTestId('bidder-leader');
-    expect(testa).toHaveTextContent('Diego');
-    expect(testa.className).not.toContain('bg-accent');
-    expect(testa).not.toHaveTextContent('sei tu');
+  // Il tetto e' il riferimento fermo, non il prezzo: esce dal tabellone e scende
+  // nella riga di cio' che vedi solo tu, accanto a quanto manca per arrivarci.
+  it('il tetto sta nella riga privata, non fra le caselle', () => {
+    open();
+    const cells = screen.getByTestId('bidder-cells');
+    expect(within(cells).queryByTestId('bidder-ceiling')).toBeNull();
+    const privateRow = screen.getByTestId('bidder-private');
+    expect(within(privateRow).getByTestId('bidder-ceiling')).toBeInTheDocument();
+    expect(within(privateRow).getByText('Lo vedi solo tu')).toBeInTheDocument();
+  });
+
+  it('tre caselle mentre il conto corre, due a tempo scaduto', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    open();
+    expect(screen.getByTestId('bidder-cells').querySelectorAll('[data-cell]')).toHaveLength(3);
+    // Si porta il conto a zero con lo stesso meccanismo delle prove di
+    // scadenza qui sotto: un rilancio (avvia il conto), poi l'orologio finto
+    // avanti oltre i cinque secondi del timer.
+    await user.keyboard(' ');
+    await act(async () => { vi.advanceTimersByTime(5100); });
+    expect(screen.getByTestId('bidder-cells').querySelectorAll('[data-cell]')).toHaveLength(2);
+    vi.useRealTimers();
   });
 
   /**
@@ -230,14 +241,14 @@ describe('BidderDialog', () => {
 
   it('sotto il tetto dice quanto ne manca', async () => {
     open();
-    // La distanza sta sotto il numero che nomina, non sotto l'offerta: «il tuo
-    // tetto 47, 46 sotto» si legge di seguito, senza rimbalzare fra due colonne.
-    // Nella stessa cella del tetto: «il tuo tetto 47, 46 sotto» si legge di
-    // seguito, senza rimbalzare da una colonna all'altra.
+    // La distanza sta accanto al tetto, nella stessa riga privata: «il tuo
+    // tetto 47, 46 sotto» si legge di seguito, senza rimbalzare fra due
+    // riquadri.
     const distance = screen.getByTestId('bidder-ceiling-distance');
     expect(distance).toHaveTextContent('46 sotto');
-    expect(screen.getByTestId('bidder-ceiling').closest('[data-cell]'))
-      .toContainElement(distance);
+    const privateRow = screen.getByTestId('bidder-private');
+    expect(within(privateRow).getByTestId('bidder-ceiling')).toBeInTheDocument();
+    expect(privateRow).toContainElement(distance);
   });
 
   it('Esc chiude il conto alla rovescia', async () => {
@@ -283,15 +294,14 @@ describe('BidderDialog', () => {
     vi.useRealTimers();
   });
 
-  it('i tre numeri hanno lo stesso corpo: nessuno e piu importante per la taglia', () => {
+  // L'offerta e' adesso l'unico numero eroe del tabellone (84px): i secondi
+  // restano a 56px. Prima i tre corpi erano identici apposta, perche' nessuna
+  // cella prendeva l'oro da sola; ora l'offerta lo prende, ed e' lei che deve
+  // saltare all'occhio.
+  it('l offerta e piu grande dei secondi: e lei l unico numero eroe', () => {
     open();
-
-    // In un tabellone le celle si leggono come un insieme: tre corpi diversi le
-    // farebbero sembrare tre cose scollegate. L'urgenza la porta il colore, non
-    // una taglia maggiore.
-    const corpo = (id: string) => screen.getByTestId(id).className.match(/text-\[\d+px\]/)?.[0];
-    expect(corpo('bidder-remaining')).toBe(corpo('bidder-price'));
-    expect(corpo('bidder-price')).toBe(corpo('bidder-ceiling'));
+    expect(screen.getByTestId('bidder-price').className).toContain('text-[84px]');
+    expect(screen.getByTestId('bidder-remaining').className).toContain('text-[56px]');
   });
 
   it('mostra il giocatore e il tetto: e la versione privata', () => {
@@ -300,24 +310,14 @@ describe('BidderDialog', () => {
     expect(screen.getByTestId('bidder-ceiling')).toHaveTextContent('47');
   });
 
-  it('il tetto e una delle letture del tabellone, non una nota in fondo', () => {
+  it('il tetto si dice una volta sola: nella riga privata', () => {
     open();
 
-    // Il difetto che questo blocca: il tetto viveva in fondo al riquadro, a 14px
-    // grigi, mentre l'offerta saliva a 56px in cima. E' il numero per cui questa
-    // applicazione esiste, e stava nel corpo meno leggibile dello schermo proprio
-    // nei secondi in cui serve.
-    expect(screen.getByTestId('bidder-cells')).toContainElement(screen.getByTestId('bidder-ceiling'));
-  });
-
-  it('il tetto si dice una volta sola: in cima, non anche in fondo', () => {
-    open();
-
-    // Due volte lo stesso numero, a due corpi diversi, e' due numeri per chi
-    // legge di fretta. Salito in cima, quello in fondo se ne va.
+    // Due volte lo stesso numero sarebbe due numeri per chi legge di fretta.
+    // Vive nella riga di cio' che vedi solo tu, non anche nel tabellone.
     const labels = screen.getAllByText('il tuo tetto');
     expect(labels).toHaveLength(1);
-    expect(screen.getByTestId('bidder-cells')).toContainElement(labels[0]);
+    expect(screen.getByTestId('bidder-private')).toContainElement(labels[0]);
   });
 
   it('senza nessun prezzo conveniente il tetto dice «nessuno», non zero', () => {
@@ -330,25 +330,19 @@ describe('BidderDialog', () => {
   });
 
   /**
-   * Chi e' in testa sta sulla stessa linea di secondi, offerta e tetto, ma
-   * allineato a destra e dentro un riquadro: e' la quarta lettura della riga, non
-   * il quarto numero. Sotto la barra si perdeva; incolonnato con i numeri
-   * fingerebbe di essere una misura.
+   * Le tre letture sono celle della STESSA riga, e questo e' il punto: due
+   * altezze diverse non possono nascere da celle di una riga sola. Il tetto non
+   * e' piu' una di queste tre — e' sceso nella riga privata — quindi restano
+   * tempo, offerta e chi e' in testa.
    */
-  /**
-   * Le quattro letture sono celle della STESSA riga, e questo e' il punto: due
-   * altezze diverse non possono nascere da celle di una riga sola. Prima chi era
-   * in testa stava in un riquadro accanto alla griglia, con un'alineazione tutta
-   * sua: partiva con le cifre e finiva a meta' delle etichette.
-   */
-  it('le quattro letture sono celle della stessa riga: stessa altezza per costruzione', () => {
+  it('le tre letture sono celle della stessa riga: stessa altezza per costruzione', () => {
     open({ leader: { name: 'Diego' }, participants: TEAMS });
     const riga = screen.getByTestId('bidder-cells');
 
-    for (const id of ['bidder-remaining', 'bidder-price', 'bidder-ceiling', 'bidder-leader']) {
+    for (const id of ['bidder-remaining', 'bidder-price', 'bidder-leader']) {
       expect(riga).toContainElement(screen.getByTestId(id));
     }
-    expect(riga.children).toHaveLength(4);
+    expect(riga.children).toHaveLength(3);
   });
 
   /** La barra e' la base del tabellone, non una linea che gli galleggia sotto. */
@@ -357,19 +351,6 @@ describe('BidderDialog', () => {
     expect(screen.getByTestId('bidder-scoreboard')).toContainElement(
       screen.getByTestId('bidder-remaining-bar'),
     );
-  });
-
-  /**
-   * La barra non e' oro. Nel tabellone l'oro dice gia' due cose — l'offerta che
-   * sale e la cella accesa di chi e' in testa — e la barra ci passa sotto: piena,
-   * si fondeva contro la cella accesa e non si capiva dove finisse l'una e
-   * cominciasse l'altra. Il tempo non e' una cosa su cui si agisce, e' una
-   * condizione: prende il colore delle strutture.
-   */
-  it('la barra del tempo non e oro: non si confonde con la cella accesa', () => {
-    open({ participants: TEAMS });
-    expect(screen.getByTestId('bidder-leader').className).toContain('bg-accent');
-    expect(screen.getByTestId('bidder-remaining-bar').className).not.toContain('bg-accent');
   });
 
   /**
@@ -566,10 +547,13 @@ describe('BidderDialog', () => {
 
       // Uno zero gigante e' informazione morta nel posto piu' in vista del
       // riquadro, proprio dove serve l'esito. Restano le due letture che ancora
-      // dicono qualcosa: a quanto siamo, e dove ti fermavi.
+      // dicono qualcosa: a quanto siamo, e chi e' in testa. Il tetto non c'e'
+      // piu' nemmeno nella riga privata: a tempo scaduto si registra un esito,
+      // non si decide se spingere.
       expect(screen.queryByTestId('bidder-remaining')).not.toBeInTheDocument();
       expect(screen.getByTestId('bidder-price')).toBeInTheDocument();
-      expect(screen.getByTestId('bidder-ceiling')).toBeInTheDocument();
+      expect(screen.getByTestId('bidder-leader')).toBeInTheDocument();
+      expect(screen.queryByTestId('bidder-ceiling')).not.toBeInTheDocument();
     });
 
     /**
@@ -814,11 +798,14 @@ describe('BidderDialog', () => {
   it('senza consigli non mostra tetto, mercato, margine ne verdetto', () => {
     open({ advice: false, participants: TEAMS.filter((p) => !p.me) });
     expect(screen.queryByTestId('bidder-ceiling')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bidder-private')).not.toBeInTheDocument();
     expect(screen.queryByText('il tuo tetto')).not.toBeInTheDocument();
     expect(screen.queryByText('mercato')).not.toBeInTheDocument();
     expect(screen.queryByText('margine')).not.toBeInTheDocument();
     expect(screen.queryByText(/^(Prendi|Lascia)$/)).not.toBeInTheDocument();
-    expect(screen.getByTestId('bidder-cells').className).toContain('grid-cols-3');
+    // Tre caselle anche senza consigli: il tetto non era una casella di questa
+    // riga nemmeno prima, la griglia ora non dipende piu' da `advice`.
+    expect(screen.getByTestId('bidder-cells').querySelectorAll('[data-cell]')).toHaveLength(3);
     expect(screen.getByRole('heading', { name: 'Bastoni' })).toBeInTheDocument();
   });
 });
