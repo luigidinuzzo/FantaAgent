@@ -126,4 +126,12 @@ class InviteServiceTest {
     void unTokenInventatoNonVale() {
         assertThatThrownBy(() -> invites.preview("inventato", null)).isInstanceOf(InviteUnavailableException.class);
     }
+
+    @Test
+    void senzaInizialeChiEntraNeRiceveUnaLiberaDalNomeDellaSquadra() {
+        String token = tokenOf(invites.create(admin));
+        UUID leagueId = invites.accept(token, bruno, "Anna Bis", null);
+        // La A e' dell'amministratrice: la prossima lettera libera del nome.
+        assertThat(leagues.access(leagueId, bruno).me().initial()).isEqualTo('N');
+    }
 }

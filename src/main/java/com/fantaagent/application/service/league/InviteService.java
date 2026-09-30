@@ -5,7 +5,6 @@ import com.fantaagent.application.port.out.InviteRepository;
 import com.fantaagent.application.port.out.League;
 import com.fantaagent.application.port.out.LeagueMember;
 import com.fantaagent.application.port.out.LeagueRepository;
-import com.fantaagent.application.port.out.MemberRole;
 import com.fantaagent.application.port.out.UserAccount;
 import com.fantaagent.application.port.out.UserRepository;
 import com.fantaagent.application.service.account.Tokens;
@@ -84,12 +83,11 @@ public class InviteService {
         if (leagues.member(invite.leagueId(), userId).isPresent()) {
             return invite.leagueId();
         }
-        Map<String, List<String>> problems = LeagueService.memberProblems(teamName, initial);
+        Map<String, List<String>> problems = LeagueService.memberProblems(teamName, initial, false);
         if (!problems.isEmpty()) {
             throw new InvalidLeagueDataException(problems);
         }
-        leagues.insertMember(new LeagueMember(invite.leagueId(), userId, MemberRole.MEMBER,
-                teamName.trim(), LeagueService.initialOf(initial), clock.instant(), null));
+        Joining.insertMember(leagues, clock, invite.leagueId(), userId, teamName, initial);
         return invite.leagueId();
     }
 

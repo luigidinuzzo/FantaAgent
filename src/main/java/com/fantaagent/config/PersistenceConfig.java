@@ -4,11 +4,13 @@ import com.fantaagent.adapter.out.importing.FileImportReader;
 import com.fantaagent.adapter.out.jdbc.JdbcAuctionEventStores;
 import com.fantaagent.adapter.out.jdbc.JdbcAuctionRepository;
 import com.fantaagent.adapter.out.jdbc.JdbcInviteRepository;
+import com.fantaagent.adapter.out.jdbc.JdbcJoinRequestRepository;
 import com.fantaagent.adapter.out.jdbc.JdbcLeagueRepository;
 import com.fantaagent.adapter.out.jdbc.SpringTransactions;
 import com.fantaagent.application.port.out.AuctionEventStores;
 import com.fantaagent.application.port.out.AuctionRepository;
 import com.fantaagent.application.port.out.InviteRepository;
+import com.fantaagent.application.port.out.JoinRequestRepository;
 import com.fantaagent.application.port.out.LeagueRepository;
 import com.fantaagent.application.port.out.PlayerCatalog;
 import com.fantaagent.application.port.out.Transactions;
@@ -17,6 +19,7 @@ import com.fantaagent.application.service.auction.AuctionRegistry;
 import com.fantaagent.application.service.auction.LeagueAuctionService;
 import com.fantaagent.application.service.importing.AuctionImportService;
 import com.fantaagent.application.service.league.InviteService;
+import com.fantaagent.application.service.league.JoinRequestService;
 import com.fantaagent.application.service.league.LeagueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
@@ -89,5 +92,16 @@ public class PersistenceConfig {
                                        UserRepository users, Clock clock,
                                        @Value("${fantaagent.public-url}") String publicUrl) {
         return new InviteService(invites, leagues, users, clock, publicUrl);
+    }
+
+    @Bean
+    public JoinRequestRepository joinRequestRepository(JdbcClient jdbc) {
+        return new JdbcJoinRequestRepository(jdbc);
+    }
+
+    @Bean
+    public JoinRequestService joinRequestService(JoinRequestRepository requests, LeagueRepository leagues,
+                                                 Clock clock) {
+        return new JoinRequestService(requests, leagues, clock);
     }
 }

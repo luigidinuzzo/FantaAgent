@@ -55,6 +55,7 @@ const USER_FACING_PROBLEMS = new Set([
   'admin-only',
   'initial-taken',
   'invite-unavailable',
+  'join-request-gone',
   'admin-cannot-leave',
   'not-enough-members',
   'no-seat',

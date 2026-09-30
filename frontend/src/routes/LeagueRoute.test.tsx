@@ -20,6 +20,7 @@ function stub(admin: boolean, extra: Record<string, () => Response> = {}) {
     'GET /api/me': () => json(ME),
     'GET /api/leagues/l1': () => json({ id: 'l1', name: 'Lega del Bar', admin, members: MEMBERS }),
     'GET /api/leagues/l1/invites': () => json([]),
+    'GET /api/leagues/l1/join-requests': () => json([]),
     'GET /api/leagues/l1/auctions': () => json([]),
     ...extra,
   };
@@ -50,11 +51,37 @@ function renderLeagueWithAuctionRoute() {
 describe('LeagueRoute', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it('l\'amministratore accetta chi chiede di entrare', async () => {
+    let requests = [{ userId: 'u3', displayName: 'Carla', teamName: 'Carla FC', requestedAt: '2026-09-29T10:00:00Z' }];
+    const fetchMock = stub(true, {
+      'GET /api/leagues/l1/join-requests': () => json(requests),
+      'POST /api/leagues/l1/join-requests/u3/approve': () => { requests = []; return new Response(null, { status: 204 }); },
+      'GET /api/leagues': () => json([]),
+    });
+    renderLeague();
+
+    const list = await screen.findByRole('list', { name: 'Richieste di ingresso' });
+    expect(within(list).getByText('Carla FC')).toBeInTheDocument();
+    await userEvent.click(within(list).getByRole('button', { name: 'Accetta Carla FC' }));
+
+    expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/leagues/l1/join-requests/u3/approve'
+      && (init?.method ?? '').toUpperCase() === 'POST')).toBe(true);
+    // Senza piu' richieste il pannello sparisce.
+    await vi.waitFor(() => expect(screen.queryByRole('heading', { name: 'Richieste di ingresso' })).toBeNull());
+  });
+
+  it('chi non amministra non chiede le richieste', async () => {
+    const fetchMock = stub(false);
+    renderLeague();
+    await screen.findByRole('list', { name: 'Membri' });
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/leagues/l1/join-requests')).toBe(false);
+  });
+
   it('mostra i membri con la loro squadra', async () => {
     stub(false);
     renderLeague();
     const members = await screen.findByRole('list', { name: 'Membri' });
-    expect(within(members).getByText('Bruno FC')).toBeInTheDocument();
+    expect(await within(members).findByText('Bruno FC')).toBeInTheDocument();
     expect(within(members).getByText('Anna FC')).toBeInTheDocument();
   });
 

@@ -18,13 +18,12 @@ function withRoutes(path = '/') {
 }
 
 describe('AppFrame', () => {
-  it('disegna il campo una volta sola, sotto la barra e per tutta la finestra', () => {
+  // Dal bordo in alto: le pagine d'ingresso non hanno la barra, e un campo che
+  // partiva sotto di essa lasciava lassu' una fascia senza strisce.
+  it('disegna il campo una volta sola, per tutta la finestra', () => {
     const { container, getByTestId } = withRoutes();
     expect(container.querySelectorAll('[data-testid="pitch"]')).toHaveLength(1);
-    const pitch = getByTestId('pitch').className;
-    expect(pitch).toContain('inset-x-0');
-    expect(pitch).toContain('bottom-0');
-    expect(pitch).toContain('top-[var(--header-h)]');
+    expect(getByTestId('pitch').className).toContain('inset-0');
   });
 
   it('mostra dentro di se la pagina della rotta', () => {

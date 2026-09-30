@@ -83,6 +83,11 @@ public class LeagueAuctionService {
         return auction;
     }
 
+    /** Quante aste ha la lega, senza aprirne i registri: per l'elenco delle leghe. */
+    public int count(LeagueAccess access) {
+        return auctions.byLeague(access.leagueId()).size();
+    }
+
     public List<AuctionCard> list(LeagueAccess access) {
         List<AuctionCard> cards = new ArrayList<>();
         String me = access.userId().toString();
@@ -144,7 +149,7 @@ public class LeagueAuctionService {
         Set<UUID> seen = new HashSet<>();
         Set<Character> initials = new HashSet<>();
         for (SeatRequest r : requested) {
-            Map<String, List<String>> problems = LeagueService.memberProblems(r.teamName(), r.initial());
+            Map<String, List<String>> problems = LeagueService.memberProblems(r.teamName(), r.initial(), true);
             if (!problems.isEmpty()) {
                 throw new InvalidLeagueDataException(problems);
             }

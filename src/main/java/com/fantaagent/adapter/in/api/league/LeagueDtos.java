@@ -19,11 +19,47 @@ public final class LeagueDtos {
     public record RenameRequest(String name) {
     }
 
-    public record LeagueCard(String id, String name, boolean admin, String teamName, String initial) {
+    /**
+     * Una lega fra le mie.
+     *
+     * @param pendingRequests le richieste d'ingresso da decidere; sempre 0 per chi non amministra
+     */
+    public record LeagueCard(String id, String name, boolean admin, String teamName, String initial,
+                             int members, int auctions, int pendingRequests) {
 
-        public static LeagueCard of(LeagueAccess a) {
+        public static LeagueCard of(LeagueAccess a, int members, int auctions, int pendingRequests) {
             return new LeagueCard(a.leagueId().toString(), a.league().name(), a.isAdmin(),
-                    a.me().teamName(), String.valueOf(a.me().initial()));
+                    a.me().teamName(), String.valueOf(a.me().initial()), members, auctions, pendingRequests);
+        }
+    }
+
+    /** @param status MEMBER se chi cerca ne fa gia' parte, PENDING se ha gia' chiesto, NONE altrimenti */
+    public record LeagueMatchView(String id, String name, String adminName, int members, String status) {
+
+        public static LeagueMatchView of(com.fantaagent.application.port.out.LeagueMatch m) {
+            return new LeagueMatchView(m.id().toString(), m.name(), m.adminName(), m.members(),
+                    m.member() ? "MEMBER" : m.pending() ? "PENDING" : "NONE");
+        }
+    }
+
+    public record JoinRequestBody(String teamName) {
+    }
+
+    /** Una richiesta mandata, vista da chi l'ha mandata. */
+    public record MyJoinRequestView(String leagueId, String leagueName, String teamName,
+                                    java.time.Instant requestedAt) {
+
+        public static MyJoinRequestView of(com.fantaagent.application.port.out.JoinRequest r) {
+            return new MyJoinRequestView(r.leagueId().toString(), r.leagueName(), r.teamName(), r.requestedAt());
+        }
+    }
+
+    /** Una richiesta da decidere, vista dall'amministratore. */
+    public record JoinRequestView(String userId, String displayName, String teamName,
+                                  java.time.Instant requestedAt) {
+
+        public static JoinRequestView of(com.fantaagent.application.port.out.JoinRequest r) {
+            return new JoinRequestView(r.userId().toString(), r.displayName(), r.teamName(), r.requestedAt());
         }
     }
 

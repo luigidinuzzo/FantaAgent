@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import javax.sql.DataSource;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static com.fantaagent.domain.player.Role.A;
@@ -122,5 +123,26 @@ class LeagueServiceTest {
         assertThatThrownBy(() -> leagues.create(anna, " ", "", "7"))
                 .isInstanceOfSatisfying(InvalidLeagueDataException.class, e ->
                         assertThat(e.errors()).containsOnlyKeys("name", "teamName", "initial"));
+    }
+
+    // L'app non chiede piu' l'iniziale: la sceglie il server, dalla squadra.
+    @Test
+    void senzaInizialeLaLegaLaPrendeDalNomeDellaSquadra() {
+        LeagueAccess access = leagues.create(anna, "Lega", " erasmus FC", null);
+        assertThat(access.me().initial()).isEqualTo('E');
+    }
+
+    @Test
+    void lInizialeSceltaDalServerSaltaLeLetterePrese() {
+        assertThat(LeagueService.initialOr("", "Erasmus", Set.of('E', 'R'))).isEqualTo('A');
+        assertThat(LeagueService.initialOr(null, "12 !!", Set.of('A'))).isEqualTo('B');
+        assertThat(LeagueService.initialOr(" x ", "Erasmus", Set.of())).isEqualTo('X');
+    }
+
+    // I posti di un'asta la riportano sempre: li' non c'e' nessuno che la scelga.
+    @Test
+    void lInizialeEFacoltativaPerEntrareMaNonPerIPostiDiUnAsta() {
+        assertThat(LeagueService.memberProblems("Anna FC", "", false)).isEmpty();
+        assertThat(LeagueService.memberProblems("Anna FC", "", true)).containsOnlyKeys("initial");
     }
 }

@@ -4,7 +4,6 @@ import { useMe } from '../api/auth';
 import { fieldErrors, userMessage } from '../api/client';
 import { useAcceptInvite, useInvitePreview } from '../api/leagues';
 import { AuthLayout, PRIMARY_BUTTON, TEXT_LINK, TextField } from '../domain/AuthForm';
-import { InitialField, initialTaken } from '../domain/InitialField';
 
 /**
  * Pubblica: chi apre il link del gruppo di solito non ha ancora un account. Si vede
@@ -18,7 +17,6 @@ export function InviteRoute() {
   const accept = useAcceptInvite(token);
   const navigate = useNavigate();
   const [teamName, setTeamName] = useState('');
-  const [initial, setInitial] = useState('');
   const back = encodeURIComponent(`/invito/${token}`);
   const errors = fieldErrors(accept.error);
 
@@ -53,20 +51,17 @@ export function InviteRoute() {
           className="mt-6"
           onSubmit={(e) => {
             e.preventDefault();
-            accept.mutate({ teamName, initial }, { onSuccess: (league) => navigate(`/leghe/${league.id}`) });
+            accept.mutate({ teamName }, { onSuccess: (league) => navigate(`/leghe/${league.id}`) });
           }}
         >
           <TextField id="invite-team" label="La tua squadra" value={teamName} onChange={setTeamName}
             errors={errors.teamName} />
-          <InitialField id="invite-initial" value={initial} onChange={setInitial}
-            taken={p.takenInitials} errors={errors.initial} />
           {accept.isError && Object.keys(errors).length === 0 ? (
             <p role="alert" className="mt-4 text-sm font-medium text-destructive">
               {userMessage(accept.error, 'Non sono riuscito a farti entrare. Riprova fra poco.')}
             </p>
           ) : null}
-          <button type="submit" className={PRIMARY_BUTTON}
-            disabled={accept.isPending || initialTaken(initial, p.takenInitials)}>
+          <button type="submit" className={PRIMARY_BUTTON} disabled={accept.isPending}>
             {accept.isPending ? 'Entro…' : 'Entra nella lega'}
           </button>
         </form>

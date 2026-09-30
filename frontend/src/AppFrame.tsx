@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Outlet } from 'react-router-dom';
 import { PitchGrass } from './domain/PitchGrass';
 
@@ -9,14 +10,19 @@ import { PitchGrass } from './domain/PitchGrass';
  * vecchia e monta la nuova, e con lei si rifaceva anche lo sfondo. Qui resta
  * montato: a cambiare e' solo cio' che sta dentro.
  *
- * <p>L'erba comincia sotto la barra ({@code --header-h}), che ogni pagina disegna
- * per conto suo dentro {@code AppShell}.
+ * <p>L'erba copre tutta la finestra. Sulle pagine con la barra ({@code AppShell})
+ * la barra e' piena e ferma in cima, e la copre; le pagine d'ingresso non hanno
+ * barra, e partire da sotto di essa lasciava una fascia senza strisce in alto.
  */
-export function AppFrame() {
+/**
+ * <p>{@code children} al posto della rotta: la pagina d'errore del router, che
+ * sostituisce la cornice intera e senza questo resterebbe senza erba.
+ */
+export function AppFrame({ children }: { children?: ReactNode }) {
   return (
     <div className="min-h-dvh bg-background text-foreground font-sans">
-      <PitchGrass className="inset-x-0 bottom-0 top-[var(--header-h)]" />
-      <Outlet />
+      <PitchGrass className="inset-0" />
+      {children ?? <Outlet />}
     </div>
   );
 }

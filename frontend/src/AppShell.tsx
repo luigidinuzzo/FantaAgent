@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useMe } from './api/auth';
+import { ProfileMenu } from './domain/ProfileMenu';
 import { Wordmark } from './domain/Wordmark';
 
 /**
@@ -15,7 +16,7 @@ import { Wordmark } from './domain/Wordmark';
  * <p>A sinistra il marchio e «Le mie leghe», entrambi verso la home — il marchio solo
  * per chi sa che i loghi si cliccano, la voce per tutti gli altri. Sulla home la voce
  * dice di essere la pagina corrente. A destra i pulsanti della schermata
- * ({@code slotActions}: all'asta proiezione, annulla, impostazioni) e lo stato.
+ * ({@code slotActions}: all'asta proiezione, annulla, impostazioni), lo stato e in fondo «Profilo».
  *
  * <p><b>Pannelli pieni.</b> La barra e' un pannello: nessun testo poggia
  * direttamente sulle linee del campo. Il campo e il fondo non stanno qui ma in
@@ -32,8 +33,11 @@ export function AppShell({
   chrome,
   slotStatus,
   slotActions,
+  bleed = false,
 }: {
   children: ReactNode;
+  /** Senza margini attorno al contenuto: la pagina divisa in pannello e campo, che va da bordo a bordo. */
+  bleed?: boolean;
   /** "top": la barra con la navigazione. "none": la proiezione, senza navigazione. */
   chrome: 'top' | 'none';
   slotStatus?: ReactNode;
@@ -88,15 +92,11 @@ export function AppShell({
         {/* Sul telefono: marchio e stato sulla prima riga, le azioni tutte insieme
             sulla seconda, a tutta larghezza. Da sm in su tutto in fila, con lo
             stato in fondo a destra. */}
-        <div className="ml-auto sm:order-last sm:ml-0">{slotStatus}</div>
+        {/* Senza pulsanti della schermata e' lo stato ad aprire il lato destro, e
+            Profilo lo segue in fondo; con i pulsanti, sono loro ad aprirlo. */}
+        <div className={`ml-auto sm:order-last ${actions ? 'sm:ml-0' : ''}`}>{slotStatus}</div>
         {chrome === 'top' && me.data ? (
-          <Link
-            to="/profilo"
-            aria-current={location.pathname === '/profilo' ? 'page' : undefined}
-            className="flex min-h-11 items-center rounded-full border border-line-strong px-4 font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:order-last"
-          >
-            {me.data.displayName}
-          </Link>
+          <ProfileMenu me={me.data} current={location.pathname === '/profilo'} />
         ) : null}
         {actions ? (
           <div className="flex items-center gap-2 max-sm:w-full max-sm:justify-between sm:ml-auto sm:gap-4">
@@ -104,9 +104,10 @@ export function AppShell({
           </div>
         ) : null}
       </header>
-      <main role="main" className="relative z-10 p-4 md:p-6">
+      <main role="main" className={`relative z-10 ${bleed ? '' : 'p-4 md:p-6'}`}>
         {children}
       </main>
     </>
   );
 }
+

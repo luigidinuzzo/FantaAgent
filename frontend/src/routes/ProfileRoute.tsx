@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '../AppShell';
+import { PitchFrame } from '../domain/PitchFrame';
 import { useLogout, useMe, useRenameMe, useResendVerification } from '../api/auth';
 import { fieldErrors, userMessage } from '../api/client';
 import { PRIMARY_BUTTON, TextField } from '../domain/AuthForm';
@@ -18,11 +19,11 @@ export function ProfileRoute() {
 
   return (
     <AppShell chrome="top">
+      <PitchFrame>
       {/* Due soli pannelli, corti: senza centrarli restava un vuoto enorme sotto,
-          specie sulle finestre larghe. min-h copre l'altezza reale sotto la barra
-          (100dvh meno --header-h meno il padding verticale di <main>, p-4/md:p-6),
-          cosi' i pannelli stanno in mezzo invece che appesi in alto. */}
-      <div className="flex min-h-[calc(100dvh-var(--header-h)-2rem)] items-center justify-center md:min-h-[calc(100dvh-var(--header-h)-3rem)]">
+          specie sulle finestre larghe. Il campo e' alto quanto la finestra, e i
+          pannelli stanno in mezzo invece che appesi in alto. */}
+      <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto grid w-full max-w-3xl gap-4 md:grid-cols-2">
           <section aria-labelledby="profile-name" className="panel rounded-2xl p-6">
             <h1 id="profile-name" className="w-exp text-lg font-semibold">Il tuo profilo</h1>
@@ -61,6 +62,7 @@ export function ProfileRoute() {
           </section>
         </div>
       </div>
+      </PitchFrame>
     </AppShell>
   );
 }

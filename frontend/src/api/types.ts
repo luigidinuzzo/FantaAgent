@@ -216,6 +216,35 @@ export interface LeagueCard {
   admin: boolean;
   teamName: string;
   initial: string;
+  members: number;
+  auctions: number;
+  /** Le richieste d'ingresso da decidere: sempre 0 per chi non amministra. */
+  pendingRequests: number;
+}
+
+/** Una lega trovata cercandone il nome. Specchio di {@code LeagueDtos.LeagueMatchView}. */
+export interface LeagueMatch {
+  id: string;
+  name: string;
+  adminName: string;
+  members: number;
+  status: 'NONE' | 'PENDING' | 'MEMBER';
+}
+
+/** Una richiesta d'ingresso mandata, vista da chi l'ha mandata. */
+export interface MyJoinRequest {
+  leagueId: string;
+  leagueName: string;
+  teamName: string;
+  requestedAt: string;
+}
+
+/** Una richiesta d'ingresso da decidere, vista dall'amministratore. */
+export interface JoinRequestView {
+  userId: string;
+  displayName: string;
+  teamName: string;
+  requestedAt: string;
 }
 
 export interface MemberView {

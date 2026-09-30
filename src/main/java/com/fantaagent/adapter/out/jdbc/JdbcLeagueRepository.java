@@ -107,8 +107,14 @@ public class JdbcLeagueRepository implements LeagueRepository {
                 .param("user", userId).query(JdbcLeagueRepository::mapMember).list();
     }
 
+    /**
+     * Con il membro se ne va anche una sua vecchia richiesta d'ingresso, rimasta se era
+     * entrato col link mentre aspettava: fuori dalla lega, tornerebbe a essere aperta.
+     */
     @Override
     public void deleteMember(UUID leagueId, UUID userId) {
+        jdbc.sql("DELETE FROM league_join_request WHERE league_id = :league AND user_id = :user")
+                .param("league", leagueId).param("user", userId).update();
         jdbc.sql("DELETE FROM league_member WHERE league_id = :league AND user_id = :user")
                 .param("league", leagueId).param("user", userId).update();
     }

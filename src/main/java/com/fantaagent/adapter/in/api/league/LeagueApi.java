@@ -3,6 +3,7 @@ package com.fantaagent.adapter.in.api.league;
 import com.fantaagent.adapter.in.api.ApiAccess;
 import com.fantaagent.adapter.in.security.AppUserPrincipal;
 import com.fantaagent.application.service.auction.LeagueAuctionService;
+import com.fantaagent.application.service.league.JoinRequestService;
 import com.fantaagent.application.service.league.LeagueAccess;
 import com.fantaagent.application.service.league.LeagueService;
 import com.fantaagent.application.service.league.NotLeagueMemberException;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/leagues")
@@ -27,16 +30,24 @@ public class LeagueApi {
     private final ApiAccess access;
     private final LeagueService leagues;
     private final LeagueAuctionService auctions;
+    private final JoinRequestService requests;
 
-    public LeagueApi(ApiAccess access, LeagueService leagues, LeagueAuctionService auctions) {
+    public LeagueApi(ApiAccess access, LeagueService leagues, LeagueAuctionService auctions,
+                     JoinRequestService requests) {
         this.access = access;
         this.leagues = leagues;
         this.auctions = auctions;
+        this.requests = requests;
     }
 
     @GetMapping
     public List<LeagueDtos.LeagueCard> mine(@AuthenticationPrincipal AppUserPrincipal me) {
-        return leagues.mine(me.id()).stream().map(LeagueDtos.LeagueCard::of).toList();
+        List<LeagueAccess> mine = leagues.mine(me.id());
+        Map<UUID, Integer> pending = requests.pendingCounts(mine);
+        return mine.stream()
+                .map(a -> LeagueDtos.LeagueCard.of(a, leagues.members(a).size(), auctions.count(a),
+                        pending.getOrDefault(a.leagueId(), 0)))
+                .toList();
     }
 
     @PostMapping

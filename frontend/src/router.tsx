@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, matchRoutes, Navigate, RouterProvider } from 'react-router-dom';
 import { AppFrame } from './AppFrame';
 import { AuctionRoute } from './routes/AuctionRoute';
 import { AuctionSettingsRoute } from './routes/AuctionSettingsRoute';
@@ -12,8 +12,10 @@ import { LoginRoute } from './routes/LoginRoute';
 import { ProfileRoute } from './routes/ProfileRoute';
 import { ProjectionRoute } from './routes/ProjectionRoute';
 import { RegisterRoute } from './routes/RegisterRoute';
+import { KnownPathContext } from './routes/knownPath';
 import { RequireAuth } from './routes/RequireAuth';
 import { ResetPasswordRoute } from './routes/ResetPasswordRoute';
+import { RouteErrorRoute } from './routes/RouteErrorRoute';
 import { VerifyEmailRoute } from './routes/VerifyEmailRoute';
 import { WithAuctionContext } from './routes/WithAuctionContext';
 
@@ -61,9 +63,22 @@ export const routeDefinitions = [
 ];
 
 // Tutte dentro AppFrame: campo e fondo restano montati fra una pagina e l'altra, e
-// a cambiare e' solo il contenuto.
-const router = createBrowserRouter([{ element: <AppFrame />, children: routeDefinitions }]);
+// a cambiare e' solo il contenuto. errorElement: un indirizzo che non c'e' (o una
+// schermata che si rompe) mostra una pagina nostra, non quella di React Router.
+const router = createBrowserRouter([{
+  element: <AppFrame />,
+  errorElement: <AppFrame><RouteErrorRoute /></AppFrame>,
+  children: routeDefinitions,
+}]);
+
+function isKnownPath(path: string): boolean {
+  return matchRoutes(routeDefinitions, path) !== null;
+}
 
 export function AppRouter() {
-  return <RouterProvider router={router} />;
+  return (
+    <KnownPathContext.Provider value={isKnownPath}>
+      <RouterProvider router={router} />
+    </KnownPathContext.Provider>
+  );
 }

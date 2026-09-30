@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { AppShell } from './AppShell';
 import { QueryProvider } from './api/QueryProvider';
 
@@ -132,11 +133,38 @@ describe('AppShell', () => {
     expect(screen.queryByRole('button', { name: 'Annulla' })).not.toBeInTheDocument();
   });
 
-  it('mostra il nome di chi ha fatto l\'accesso, verso il profilo', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      id: 'u1', email: 'a@b.it', displayName: 'Anna', emailVerified: true,
-    }), { status: 200, headers: { 'content-type': 'application/json' } })));
-    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
-    expect(await screen.findByRole('link', { name: 'Anna' })).toHaveAttribute('href', '/profilo');
+  it('Profilo apre un menu con il profilo e l\'uscita', async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/auth/logout' && init?.method === 'POST') return Promise.resolve(new Response(null, { status: 204 }));
+      if (url === '/api/auth/csrf') return Promise.resolve(new Response(null, { status: 204 }));
+      return Promise.resolve(new Response(JSON.stringify({
+        id: 'u1', email: 'a@b.it', displayName: 'Anna', emailVerified: true,
+      }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const router = createMemoryRouter([
+      { path: '/', element: <AppShell chrome="top"><p>x</p></AppShell> },
+      { path: '/accedi', element: <p>pagina di accesso</p> },
+    ]);
+    render(<QueryProvider><RouterProvider router={router} /></QueryProvider>);
+
+    const button = await screen.findByRole('button', { name: /Profilo/ });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(button);
+
+    const menu = screen.getByRole('menu', { name: 'Profilo' });
+    expect(menu).toHaveTextContent('Anna');
+    expect(menu).toHaveTextContent('a@b.it');
+    expect(within(menu).getByRole('menuitem', { name: 'Il tuo profilo' })).toHaveAttribute('href', '/profilo');
+    // Aperto, il focus va alla prima voce; Esc chiude e torna al bottone.
+    expect(within(menu).getByRole('menuitem', { name: 'Il tuo profilo' })).toHaveFocus();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(button).toHaveFocus();
+
+    await userEvent.click(button);
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Esci' }));
+    expect(await screen.findByText('pagina di accesso')).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([url, init]) => url === '/api/auth/logout' && init?.method === 'POST')).toBe(true);
   });
 });

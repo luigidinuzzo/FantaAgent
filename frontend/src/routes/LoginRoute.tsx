@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLogin } from '../api/auth';
 import { userMessage } from '../api/client';
+import { useKnownPath } from './knownPath';
 import { AuthLayout, PRIMARY_BUTTON, TEXT_LINK, TextField, safeAfter } from '../domain/AuthForm';
 
 export function LoginRoute() {
@@ -10,7 +11,7 @@ export function LoginRoute() {
   const login = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const after = safeAfter(params.get('dopo'));
+  const after = safeAfter(params.get('dopo'), useKnownPath());
   const registerHref = after === '/' ? '/registrati' : `/registrati?dopo=${encodeURIComponent(after)}`;
 
   return (

@@ -19,6 +19,7 @@ import com.fantaagent.application.service.league.AdminCannotLeaveException;
 import com.fantaagent.application.service.league.AdminOnlyException;
 import com.fantaagent.application.service.league.InvalidLeagueDataException;
 import com.fantaagent.application.service.league.InviteUnavailableException;
+import com.fantaagent.application.service.league.JoinRequestGoneException;
 import com.fantaagent.application.service.league.NotLeagueMemberException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpHeaders;
@@ -217,6 +218,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(InviteUnavailableException.class)
     ProblemDetail inviteUnavailable(InviteUnavailableException e) {
         return problem(HttpStatus.GONE, "invite-unavailable", e.getMessage());
+    }
+
+    @ExceptionHandler(JoinRequestGoneException.class)
+    ProblemDetail joinRequestGone(JoinRequestGoneException e) {
+        return problem(HttpStatus.GONE, "join-request-gone", e.getMessage());
     }
 
     @ExceptionHandler(AuctionNotFoundException.class)

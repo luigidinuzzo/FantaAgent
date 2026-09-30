@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
+import { BackLink } from '../domain/BackLink';
+import { PitchFrame } from '../domain/PitchFrame';
 import { fieldErrors, userMessage } from '../api/client';
 import { IMPORT_FILES, useImportAuction, useImportPreview, useLeague } from '../api/leagues';
 import type { MemberView } from '../api/types';
@@ -59,16 +61,20 @@ export function ImportRoute() {
 
   return (
     <AppShell chrome="top">
+      <PitchFrame>
       {/* Come ProfileRoute: senza centrare, un modulo corto come questo lascia un
-          vuoto enorme sotto sulle finestre larghe. min-h copre l'altezza reale
-          sotto la barra (100dvh meno --header-h meno il padding verticale di
-          <main>, p-4/md:p-6). */}
-      <div className="flex min-h-[calc(100dvh-var(--header-h)-2rem)] items-center justify-center md:min-h-[calc(100dvh-var(--header-h)-3rem)]">
+          vuoto enorme sotto sulle finestre larghe. Il campo e' alto quanto la
+          finestra, e il modulo sta in mezzo. */}
+      <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto w-full max-w-3xl">
-          <p className="text-sm"><Link to={`/leghe/${leagueId}`} className="underline underline-offset-4">Torna alla lega</Link></p>
-          <h1 className="w-exp mt-2 text-2xl font-semibold">Importa un'asta</h1>
-          <section className="panel mt-4 rounded-2xl p-6">
-            <p className="text-sm">
+          {/* Testata e scelta della cartella nello stesso pannello: nessun testo
+              poggia sull'erba. */}
+          <section className="panel rounded-2xl p-6">
+            <div className="flex items-center gap-4">
+              <BackLink to={`/leghe/${leagueId}`} label="Torna alla lega" />
+              <h1 className="w-exp text-2xl font-semibold">Importa un'asta</h1>
+            </div>
+            <p className="mt-4 text-sm">
               Scegli la cartella di un'asta giocata con la versione di FantaAgent installata sul tuo computer.
               Poi abbina ogni partecipante a un membro della lega.
             </p>
@@ -78,10 +84,10 @@ export function ImportRoute() {
               onChange={(e) => choose(e.target.files)}
               className="mt-2 block min-h-11 text-sm" />
             {alert ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{alert}</p> : null}
+            {preview.isPending ? (
+              <p role="status" className="mt-4 text-sm text-muted-foreground">Leggo l'asta…</p>
+            ) : null}
           </section>
-          {preview.isPending ? (
-            <p role="status" className="mt-4 text-sm text-muted-foreground">Leggo l'asta…</p>
-          ) : null}
           {preview.data ? (
             <section className="panel mt-4 rounded-2xl p-6">
               <h2 className="w-exp text-lg font-semibold">{preview.data.name}</h2>
@@ -123,6 +129,7 @@ export function ImportRoute() {
           ) : null}
         </div>
       </div>
+      </PitchFrame>
     </AppShell>
   );
 }

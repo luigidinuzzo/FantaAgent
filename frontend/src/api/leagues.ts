@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, apiUpload } from './client';
 import type {
-  BidderSettings, CreatedInvite, ImportPreview, ImportResult, InvitePreview, InviteView, LeagueAuctionCard,
-  LeagueCard, LeagueDetail, LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
+  BidderSettings, CreatedInvite, ImportPreview, ImportResult, InvitePreview, InviteView, JoinRequestView,
+  LeagueAuctionCard, LeagueCard, LeagueDetail, LeagueMatch, MyJoinRequest, LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
 } from './types';
 
 const path = (id: string) => `/api/leagues/${encodeURIComponent(id)}`;
@@ -15,6 +15,9 @@ export const LEAGUE_KEYS = {
   rules: (id: string) => ['leagues', id, 'rules'] as const,
   seats: (id: string, auctionId: string) => ['leagues', id, 'auctions', auctionId, 'seats'] as const,
   invite: (token: string) => ['invite', token] as const,
+  joinRequests: (id: string) => ['leagues', id, 'join-requests'] as const,
+  search: (text: string) => ['league-search', text] as const,
+  myRequests: ['my-join-requests'] as const,
 };
 
 /** Le leghe cambiano quando qualcuno entra o ne crea una: niente interrogazioni periodiche. */
@@ -27,14 +30,28 @@ export function useLeagues() {
 export function useCreateLeague() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; teamName: string; initial: string }) =>
+    mutationFn: (body: { name: string; teamName: string }) =>
       api<LeagueDetail>('/api/leagues', { method: 'POST', body }),
     onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
   });
 }
 
+/**
+ * Arrivando dall'elenco, nome e ruolo sono gia' noti: la pagina li mostra subito,
+ * mentre i membri arrivano. Senza, la testata restava vuota per un istante e poi
+ * compariva, e il passaggio dall'elenco scattava.
+ */
 export function useLeague(id: string) {
-  return useQuery({ queryKey: LEAGUE_KEYS.one(id), queryFn: () => api<LeagueDetail>(path(id)), ...STILL });
+  const client = useQueryClient();
+  return useQuery({
+    queryKey: LEAGUE_KEYS.one(id),
+    queryFn: () => api<LeagueDetail>(path(id)),
+    placeholderData: () => {
+      const card = client.getQueryData<LeagueCard[]>(LEAGUE_KEYS.all)?.find((l) => l.id === id);
+      return card ? { id: card.id, name: card.name, admin: card.admin, members: [] } : undefined;
+    },
+    ...STILL,
+  });
 }
 
 export function useRenameLeague(id: string) {
@@ -86,9 +103,85 @@ export function useInvitePreview(token: string) {
 export function useAcceptInvite(token: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { teamName: string; initial: string }) =>
+    mutationFn: (body: { teamName: string }) =>
       api<LeagueCard>(`/api/invites/${encodeURIComponent(token)}/accept`, { method: 'POST', body }),
     onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
+  });
+}
+
+/** Sotto le tre lettere non si chiede niente: il server risponderebbe con un elenco vuoto. */
+export const MIN_SEARCH = 3;
+
+export function useLeagueSearch(text: string) {
+  const clean = text.trim();
+  return useQuery({
+    queryKey: LEAGUE_KEYS.search(clean.toLowerCase()),
+    queryFn: () => api<LeagueMatch[]>(`/api/leagues/search?q=${encodeURIComponent(clean)}`),
+    enabled: clean.length >= MIN_SEARCH,
+    // Mentre si scrive resta l'elenco di prima invece di un vuoto a ogni lettera.
+    placeholderData: (previous) => previous,
+    ...STILL,
+  });
+}
+
+export function useMyJoinRequests() {
+  return useQuery({
+    queryKey: LEAGUE_KEYS.myRequests,
+    queryFn: () => api<MyJoinRequest[]>('/api/join-requests'),
+    ...STILL,
+  });
+}
+
+/** Mandare o ritirare cambia lo stato delle righe trovate: la ricerca si rilegge. */
+function afterMyRequestChanged(client: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    client.invalidateQueries({ queryKey: LEAGUE_KEYS.myRequests }),
+    client.invalidateQueries({ queryKey: ['league-search'] }),
+  ]);
+}
+
+export function useRequestJoin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leagueId, teamName }: { leagueId: string; teamName: string }) =>
+      api<null>(`/api/join-requests/${encodeURIComponent(leagueId)}`, { method: 'POST', body: { teamName } }),
+    onSuccess: () => afterMyRequestChanged(client),
+  });
+}
+
+export function useWithdrawJoin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (leagueId: string) =>
+      api<null>(`/api/join-requests/${encodeURIComponent(leagueId)}`, { method: 'DELETE' }),
+    onSuccess: () => afterMyRequestChanged(client),
+  });
+}
+
+export function useJoinRequests(leagueId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: LEAGUE_KEYS.joinRequests(leagueId),
+    queryFn: () => api<JoinRequestView[]>(`${path(leagueId)}/join-requests`),
+    enabled,
+    ...STILL,
+  });
+}
+
+/** Accettare cambia i membri della lega; accettare o rifiutare, il numero sulla sua scheda. */
+export function useDecideJoin(leagueId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, accept }: { userId: string; accept: boolean }) => {
+      const at = `${path(leagueId)}/join-requests/${encodeURIComponent(userId)}`;
+      return accept
+        ? api<null>(`${at}/approve`, { method: 'POST' })
+        : api<null>(at, { method: 'DELETE' });
+    },
+    onSettled: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.joinRequests(leagueId) }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.one(leagueId), exact: true }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.all, exact: true }),
+    ]),
   });
 }
 

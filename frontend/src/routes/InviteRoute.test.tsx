@@ -58,7 +58,6 @@ describe('InviteRoute', () => {
     const router = renderInvite();
 
     await userEvent.type(await screen.findByLabelText('La tua squadra'), 'Bruno FC');
-    await userEvent.type(screen.getByLabelText('La tua iniziale'), 'b');
     await userEvent.click(screen.getByRole('button', { name: 'Entra nella lega' }));
 
     expect(await screen.findByText('pagina della lega')).toBeInTheDocument();
@@ -78,15 +77,15 @@ describe('InviteRoute', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Questo invito è scaduto');
   });
 
-  it('un\'iniziale gia\' presa si vede prima di inviare', async () => {
+  // L'iniziale la sceglie il server: chi entra scrive solo il nome della squadra.
+  it('per entrare basta il nome della squadra: l\'iniziale non si chiede', async () => {
     stub({
       'GET /api/invites/abc': () => json(PREVIEW),
       'GET /api/me': () => json({ id: 'u2', email: 'b@c.it', displayName: 'Bruno', emailVerified: true }),
     });
     renderInvite();
 
-    await userEvent.type(await screen.findByLabelText('La tua iniziale'), 'a');
-    expect(screen.getByText('La A è già di un altro membro.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Entra nella lega' })).toBeDisabled();
+    expect(await screen.findByLabelText('La tua squadra')).toBeInTheDocument();
+    expect(screen.queryByLabelText('La tua iniziale')).not.toBeInTheDocument();
   });
 });

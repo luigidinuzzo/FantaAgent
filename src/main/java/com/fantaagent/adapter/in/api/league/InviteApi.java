@@ -2,6 +2,7 @@ package com.fantaagent.adapter.in.api.league;
 
 import com.fantaagent.adapter.in.api.ApiAccess;
 import com.fantaagent.adapter.in.security.AppUserPrincipal;
+import com.fantaagent.application.service.auction.LeagueAuctionService;
 import com.fantaagent.application.service.league.CreatedInvite;
 import com.fantaagent.application.service.league.InvitePreview;
 import com.fantaagent.application.service.league.InviteService;
@@ -25,11 +26,14 @@ public class InviteApi {
     private final ApiAccess access;
     private final InviteService invites;
     private final LeagueService leagues;
+    private final LeagueAuctionService auctions;
 
-    public InviteApi(ApiAccess access, InviteService invites, LeagueService leagues) {
+    public InviteApi(ApiAccess access, InviteService invites, LeagueService leagues,
+                     LeagueAuctionService auctions) {
         this.access = access;
         this.invites = invites;
         this.leagues = leagues;
+        this.auctions = auctions;
     }
 
     @PostMapping("/api/leagues/{leagueId}/invites")
@@ -76,6 +80,8 @@ public class InviteApi {
                                         @PathVariable String token,
                                         @RequestBody LeagueDtos.AcceptInviteRequest body) {
         UUID leagueId = invites.accept(token, me.id(), body.teamName(), body.initial());
-        return LeagueDtos.LeagueCard.of(leagues.access(leagueId, me.id()));
+        // Chi entra col link non amministra: niente richieste da decidere.
+        var joined = leagues.access(leagueId, me.id());
+        return LeagueDtos.LeagueCard.of(joined, leagues.members(joined).size(), auctions.count(joined), 0);
     }
 }

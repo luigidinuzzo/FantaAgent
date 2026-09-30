@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
+import { BackLink } from '../domain/BackLink';
+import { PitchFrame } from '../domain/PitchFrame';
 import { userMessage } from '../api/client';
 import { useLeague, useLeagueAuctions, useSaveSeats, useSeats, useUpdateAuction } from '../api/leagues';
 import type { SeatInput, SeatsView } from '../api/types';
@@ -43,15 +45,17 @@ export function AuctionSettingsRoute() {
   if (league.isError || auctions.isError || seats.isError || (auctions.data && !card)) {
     return (
       <AppShell chrome="top">
+      <PitchFrame>
         <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-4 text-sm font-medium text-destructive">
           {userMessage(league.error ?? seats.error ?? auctions.error,
             'Quest\'asta non esiste, o non fai parte della sua lega.')}
         </p>
+      </PitchFrame>
       </AppShell>
     );
   }
   if (!league.data || !seats.data || !card) {
-    return <AppShell chrome="top"><p className="text-sm">Un attimo…</p></AppShell>;
+    return <AppShell chrome="top"><PitchFrame><span /></PitchFrame></AppShell>;
   }
 
   const admin = league.data.admin;
@@ -89,16 +93,19 @@ export function AuctionSettingsRoute() {
 
   return (
     <AppShell chrome="top">
+      <PitchFrame>
       {/* Una colonna sola, turno sopra e banditore sotto: affiancato, il banditore
           (tre controlli) lasciava una colonna mezza vuota accanto al turno. */}
-      <div className="mx-auto max-w-3xl">
-        <p className="text-sm">
-          <Link to={`/leghe/${leagueId}/aste/${auctionId}`}
-            className="inline-flex min-h-11 items-center underline underline-offset-4">
-            Torna all'asta
-          </Link>
-        </p>
-        <h1 className="w-exp text-2xl font-semibold">{card.name}</h1>
+      <div className="mx-auto w-full max-w-3xl">
+        {/* Testata in un pannello, come nelle altre pagine: nessun testo poggia
+            sull'erba. */}
+        <section className="panel flex items-center gap-4 rounded-2xl p-5 md:p-6">
+          <BackLink to={`/leghe/${leagueId}/aste/${auctionId}`} label="Torna all'asta" />
+          <div className="min-w-0">
+            <h1 className="w-exp truncate text-2xl font-semibold">{card.name}</h1>
+            <p className="text-sm text-muted-foreground">Impostazioni dell&apos;asta</p>
+          </div>
+        </section>
         <div className="mt-4 grid gap-4">
           <section aria-labelledby="order-title" className="panel rounded-2xl p-6">
             <h2 id="order-title" className="w-exp text-lg font-semibold">Turno di chiamata</h2>
@@ -203,6 +210,7 @@ export function AuctionSettingsRoute() {
           ) : null}
         </div>
       </div>
+      </PitchFrame>
     </AppShell>
   );
 }
