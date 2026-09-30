@@ -42,7 +42,7 @@ describe('PlayerDecisionCard', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale={false} me={ME} />);
     // hardCap della valutazione (90), non i 276 che maxAffordable(ME) darebbe
     // ricalcolando qui la stessa formula: la fonte e' una, ed e' il server. Il
-    // numero appartiene allo stesso scatto degli altri quattro della riga —
+    // numero appartiene allo stesso scatto degli altri tre della riga —
     // ricalcolarlo fresco dentro un blocco segnato come stantio lo farebbe
     // discordare proprio quando si guarda se fidarsi.
     expect(screen.getByTestId('affordable')).toHaveTextContent('90');
@@ -50,10 +50,10 @@ describe('PlayerDecisionCard', () => {
   });
 
   /**
-   * Quattro numeri in fila allo stesso corpo si leggono come un elenco solo, e
-   * non lo sono: quotazione, mercato e margine parlano del GIOCATORE, «puoi
-   * offrire» parla di TE — e' il tuo budget, non una quarta misura del lotto. La
-   * riga li separa con una linea, cosi' l'occhio non li somma.
+   * Numeri in fila allo stesso corpo si leggono come un elenco solo, e non lo
+   * sono: mercato e margine parlano del GIOCATORE, «puoi offrire» parla di TE —
+   * e' il tuo budget, non una terza misura del lotto. La riga li separa con una
+   * linea, cosi' l'occhio non li somma.
    */
   it('separa il numero che riguarda te da quelli che riguardano il giocatore', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale={false} me={ME} />);
