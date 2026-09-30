@@ -428,6 +428,16 @@ export function BidderDialog({
     </p>
   );
 
+  // role="alert": un controllo puntuale, non la live region ambientale (che resta
+  // AuctionAnnouncer). Senza, un'aggiudicazione fallita non arriverebbe a chi
+  // ascolta. A tempo scaduto sta sotto «Aggiudica», che e' il gesto che l'ha
+  // prodotto: in fondo al riquadro, dopo le squadre, poteva finire oltre il bordo.
+  const errorLine = error ? (
+    <p role="alert" className="text-sm font-medium text-destructive">
+      {error}
+    </p>
+  ) : null;
+
   return (
     // Senza cornice propria: questa card sta dentro il riquadro del banco,
     // che porta gia' bordo, fondo e titolo. Mentre il conto alla rovescia corre,
@@ -436,10 +446,10 @@ export function BidderDialog({
       data-testid="bidder-dialog"
       data-over-ceiling={overCeiling}
       aria-labelledby={hideHeader ? undefined : 'bidder-name'}
-      // Altezza naturale, non h-full: sotto, dentro lo stesso riquadro del banco,
-      // vivono le alternative, e prendendosi tutto il riquadro questo non ne
-      // lasciava nessuna. Da lg le righe stanno piu' vicine (8px, non 12): il
-      // banco ha un'altezza fissa, e a tempo scaduto altrimenti non ci stava.
+      // Altezza naturale, non h-full: a stirarla non c'e' niente da guadagnare,
+      // le alternative stanno nella colonna dei consigli e non qui sotto. Da lg
+      // le righe stanno piu' vicine (8px, non 12): il banco ha un'altezza fissa,
+      // e a tempo scaduto altrimenti non ci stava.
       className="flex flex-col gap-3 lg:gap-2"
     >
       {hideHeader ? null : (
@@ -557,6 +567,82 @@ export function BidderDialog({
         </div>
       </div>
 
+      {/* L'esito, a tempo scaduto: SOPRA le squadre, nel documento come a
+          schermo (niente order-*: chi va col tab e chi ascolta lo trovano nello
+          stesso punto in cui lo vede chi guarda). Il banco ha un'altezza fissa,
+          misurata con otto squadre su una riga; con dieci o dodici i bottoni vanno
+          su due righe, e un «Aggiudica» messo sotto finiva oltre il bordo. Cosi' e'
+          la seconda riga di squadre a scorrere dentro il banco, mai il gesto che
+          chiude il lotto. */}
+      {expired ? (
+        <>
+          {/* Solo per chi ascolta. Allo scadere il modulo compare ed e' ovvio a
+              chi vede; senza questa riga chi ascolta — col beep spento — non
+              saprebbe che si puo' aggiudicare, e nemmeno a chi.
+
+              A schermo invece era la quarta copia dello stesso nome nello stesso
+              riquadro: lo dicono gia' il riquadro di chi e' in testa, il bottone
+              squadra acceso e il bottone «Aggiudica a …». role="alert" resta:
+              sr-only nasconde alla vista, non all'albero di accessibilita'. */}
+          <p role="alert" className="sr-only">
+            {shownLeader
+              ? `Tempo scaduto: ${shownLeader} è in testa a ${price}.`
+              : 'Tempo scaduto: scegli a chi va.'}
+          </p>
+          {/* L'acquirente proposto e' chi e' in testa. Senza nessuno in testa va
+              scelto: «Aggiudica» resta spento finche' non lo si sceglie, invece di
+              proporre la propria squadra per un giocatore vinto da un altro. */}
+          <form
+            className="flex flex-wrap items-center gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!participantId) return;
+              onAssign({ participantId, price });
+            }}
+          >
+            <button
+              type="submit"
+              disabled={disabled || pending || participantId === ''}
+              aria-describedby={disabledReason ? hintId : undefined}
+              className={`${BID_CONTROL_H} ${BID_RADIUS} bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+            >
+              {/* «Aggiudica a 3» si leggeva «alla squadra numero 3»: i bottoni
+                  squadra qui sotto sono numerati da 1 in su, e il numero del
+                  prezzo cadeva esattamente in quella lettura. Ora la squadra si
+                  chiama per nome e il prezzo si introduce con «per». */}
+              {pending ? 'Aggiudico…' : buyer ? `Aggiudica a ${buyer.name} per ${price}` : `Aggiudica per ${price}`}
+            </button>
+            {/* La via di ritorno: il tempo e' scaduto ma qualcuno rilancia lo
+                stesso. Riparte dal prezzo raggiunto, non da uno. */}
+            <button
+              type="button"
+              onClick={() => { setExpired(false); countdown.start(); }}
+              className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-control-border px-6 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+            >
+              <ReopenIcon />
+              Riprendi le offerte
+            </button>
+            {shortcuts}
+            {disabledReason ? (
+              <span id={hintId} className="sr-only">
+                {disabledReason}
+              </span>
+            ) : null}
+          </form>
+          {errorLine}
+          {/* Il server rifiuterebbe comunque: dirlo prima evita un «Aggiudica»
+              che torna indietro con un errore. */}
+          {buyerCannotPay ? (
+            <p className="text-sm font-medium text-destructive">
+              {`${buyer!.name} non può comprarlo a ${price}: `}
+              {roleFull(buyer!, valuation.role)
+                ? `ha già tutti i posti ${ROLE_NAME_PLURAL[valuation.role]}.`
+                : `può offrire al massimo ${Math.max(0, maxAffordable(buyer!))}.`}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
       {/* Le squadre, una per bottone — SOLO a tempo scaduto.
 
           Mentre il conto correva c'erano anche li', ed erano il modo di battere
@@ -569,7 +655,8 @@ export function BidderDialog({
           Qui invece non sono un'offerta: sono l'esito. Il lotto e' proposto a chi
           e' in testa, e questi bottoni servono a correggere quando al tavolo se
           l'e' preso un altro. Nessuno e' spento: se il tavolo ha aggiudicato, lo
-          si deve poter registrare, e il perche' non si puo' e' scritto sotto.
+          si deve poter registrare, e il perche' non si puo' e' scritto sopra,
+          sotto «Aggiudica».
 
           Il giorno in cui il server sapra' chi e' in testa, questa fila sparisce
           e il lotto va al vincitore da solo. */}
@@ -579,11 +666,13 @@ export function BidderDialog({
           A chi va
           <span className="font-normal"> — se l’ha preso un altro, tocca la sua squadra o premi il suo numero</span>
         </legend>
-        {/* Colonne fisse: il banco non si allunga — la sua altezza e' decisa in
-            anticipo e non dipende da quante squadre sono al tavolo. Quattro per
-            riga sotto xl; da xl otto, una riga sola: su due il tempo scaduto era
-            lo stato piu' alto del banco e non ci stava. I nomi lunghi si
-            troncano, il numero del tasto e i crediti restano. */}
+        {/* Colonne fisse: il banco non si allunga, la sua altezza e' decisa in
+            anticipo. Quattro per riga sotto xl; da xl otto, una riga sola: su due
+            il tempo scaduto era lo stato piu' alto del banco e non ci stava. Con
+            piu' di otto squadre la seconda riga c'e' comunque, e scorre dentro il
+            banco: per questo «Aggiudica» sta sopra. Dodici su una riga sola, a
+            1440px, lasciavano una lettera per nome. I nomi lunghi si troncano, il
+            numero del tasto e i crediti restano. */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
           {participants.map((p, i) => {
             const picked = p.id === participantId;
@@ -779,82 +868,8 @@ export function BidderDialog({
         </p>
       ) : null}
 
-      {error ? (
-        // role="alert": un controllo puntuale, non la live region ambientale
-        // (che resta AuctionAnnouncer). Senza, un'aggiudicazione fallita non
-        // arriverebbe a chi ascolta.
-        <p role="alert" className="text-sm font-medium text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {expired ? null : errorLine}
 
-      {expired ? (
-        <>
-          {/* Solo per chi ascolta. Allo scadere il modulo compare ed e' ovvio a
-              chi vede; senza questa riga chi ascolta — col beep spento — non
-              saprebbe che si puo' aggiudicare, e nemmeno a chi.
-
-              A schermo invece era la quarta copia dello stesso nome nello stesso
-              riquadro: lo dicono gia' il riquadro di chi e' in testa, il bottone
-              squadra acceso e il bottone «Aggiudica a …». role="alert" resta:
-              sr-only nasconde alla vista, non all'albero di accessibilita'. */}
-          <p role="alert" className="sr-only">
-            {shownLeader
-              ? `Tempo scaduto: ${shownLeader} è in testa a ${price}.`
-              : 'Tempo scaduto: scegli a chi va.'}
-          </p>
-          {/* L'acquirente proposto e' chi e' in testa. Senza nessuno in testa va
-              scelto: «Aggiudica» resta spento finche' non lo si sceglie, invece di
-              proporre la propria squadra per un giocatore vinto da un altro. */}
-          <form
-            className="flex flex-wrap items-center gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!participantId) return;
-              onAssign({ participantId, price });
-            }}
-          >
-            <button
-              type="submit"
-              disabled={disabled || pending || participantId === ''}
-              aria-describedby={disabledReason ? hintId : undefined}
-              className={`${BID_CONTROL_H} ${BID_RADIUS} bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
-            >
-              {/* «Aggiudica a 3» si leggeva «alla squadra numero 3»: i bottoni
-                  squadra qui sopra sono numerati da 1 in su, e il numero del
-                  prezzo cadeva esattamente in quella lettura. Ora la squadra si
-                  chiama per nome e il prezzo si introduce con «per». */}
-              {pending ? 'Aggiudico…' : buyer ? `Aggiudica a ${buyer.name} per ${price}` : `Aggiudica per ${price}`}
-            </button>
-            {/* La via di ritorno: il tempo e' scaduto ma qualcuno rilancia lo
-                stesso. Riparte dal prezzo raggiunto, non da uno. */}
-            <button
-              type="button"
-              onClick={() => { setExpired(false); countdown.start(); }}
-              className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-control-border px-6 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
-            >
-              <ReopenIcon />
-              Riprendi le offerte
-            </button>
-            {shortcuts}
-            {disabledReason ? (
-              <span id={hintId} className="sr-only">
-                {disabledReason}
-              </span>
-            ) : null}
-          </form>
-          {/* Il server rifiuterebbe comunque: dirlo prima evita un «Aggiudica»
-              che torna indietro con un errore. */}
-          {buyerCannotPay ? (
-            <p className="text-sm font-medium text-destructive">
-              {`${buyer!.name} non può comprarlo a ${price}: `}
-              {roleFull(buyer!, valuation.role)
-                ? `ha già tutti i posti ${ROLE_NAME_PLURAL[valuation.role]}.`
-                : `può offrire al massimo ${Math.max(0, maxAffordable(buyer!))}.`}
-            </p>
-          ) : null}
-        </>
-      ) : null}
     </section>
   );
 }

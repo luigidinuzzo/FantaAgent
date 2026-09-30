@@ -15,9 +15,17 @@ mkdirSync(OUT, { recursive: true });
 
 const ROLES = ['P', 'D', 'C', 'A'];
 const SLOTS = { P: 3, D: 8, C: 8, A: 6 };
-const TEAMS = ['Real Colizzati', 'Atletico Ma Non Troppo', 'Borussia Porcmund', 'Longobarda',
-  'AC Picchia', 'Dinamo Spritz', 'Scarsenal', 'Patetico Madrid'];
-const PEOPLE = ['Luigi', 'Diego', 'Marta', 'Paolo', 'Sara', 'Andrea', 'Giulia', 'Tommaso'];
+// Quante squadre al tavolo: otto di solito, altre con TEAMS_COUNT (una lega ne ha
+// almeno due e nessun massimo). Le prime otto restano quelle di sempre, cosi' le
+// fotografie di default non cambiano; oltre la lista si numerano.
+const TEAMS_COUNT = Math.max(2, Number(process.env.TEAMS_COUNT ?? 8));
+const ALL_TEAMS = ['Real Colizzati', 'Atletico Ma Non Troppo', 'Borussia Porcmund', 'Longobarda',
+  'AC Picchia', 'Dinamo Spritz', 'Scarsenal', 'Patetico Madrid', 'Inter Nazionale', 'Rapid Mente',
+  'Olympique Marsiglia Nera', 'Bayern Monaco di Baviera'];
+const ALL_PEOPLE = ['Luigi', 'Diego', 'Marta', 'Paolo', 'Sara', 'Andrea', 'Giulia', 'Tommaso', 'Chiara', 'Luca',
+  'Elena', 'Stefano'];
+const TEAMS = Array.from({ length: TEAMS_COUNT }, (_, i) => ALL_TEAMS[i] ?? `Squadra ${i + 1}`);
+const PEOPLE = Array.from({ length: TEAMS_COUNT }, (_, i) => ALL_PEOPLE[i] ?? `Giocatore ${i + 1}`);
 const NAMES = {
   P: ['Maignan', 'Sommer', 'Di Gregorio', 'Svilar', 'Carnesecchi', 'Meret', 'Provedel', 'De Gea', 'Skorupski',
     'Milinkovic-Savic', 'Okoye', 'Falcone', 'Suzuki', 'Montipo', 'Caprile', 'Leali', 'Audero', 'Muric', 'Butez',
@@ -43,6 +51,14 @@ const NAMES = {
 };
 const CLUBS = ['Inter', 'Milan', 'Juventus', 'Napoli', 'Atalanta', 'Roma', 'Lazio', 'Fiorentina', 'Bologna',
   'Torino', 'Udinese', 'Genoa', 'Como', 'Parma', 'Verona', 'Cagliari', 'Lecce', 'Empoli', 'Monza', 'Venezia'];
+
+// Con piu' di otto squadre i nomi finiscono prima dei posti da riempire: se ne
+// aggiungono di numerati, perche' nessun giocatore finisca in due rose.
+const SOLD = { P: 3, D: 8, C: 4 };
+for (const r of ROLES) {
+  const needed = (SOLD[r] ?? 0) * TEAMS.length + 30;
+  for (let i = NAMES[r].length; TEAMS.length > 8 && i < needed; i++) NAMES[r].push(`${NAMES[r][i % 20]} ${Math.floor(i / 20) + 1}`);
+}
 
 const players = {};
 for (const r of ROLES) {
@@ -77,7 +93,7 @@ const board = TEAMS.map((name, t) => {
   };
   take('P', 3);
   take('D', 8);
-  take('C', [3, 2, 4, 1, 3, 2, 2, 3][t]);
+  take('C', [3, 2, 4, 1, 3, 2, 2, 3][t % 8]);
   return { t, name, byRole, spent: Math.min(spent, 380) };
 });
 const soldNames = new Set(board.flatMap((b) => ROLES.flatMap((r) => b.byRole[r].map((s) => s.playerName))));
@@ -99,13 +115,13 @@ const me = { id: 'U0', email: 'luigi@esempio.it', displayName: 'Luigi', emailVer
 const bidder = { bidTimerSeconds: 5, beepEnabled: true };
 const auctions = [
   { id: 'A1', name: 'Asta estiva 2026', createdAt: '2026-09-01T18:00:00Z', lastWritten: '2026-09-28T21:10:00Z',
-    purchases: seq, phase: 'C', teams: 8, budget: 500, totalSlots: 200,
+    purchases: seq, phase: 'C', teams: TEAMS.length, budget: 500, totalSlots: 25 * TEAMS.length,
     myBudgetRemaining: participants[0].budgetRemaining, bidder },
   { id: 'A2', name: 'Asta di riparazione', createdAt: '2026-01-10T18:00:00Z', lastWritten: '2026-01-12T22:00:00Z',
-    purchases: 24, phase: 'A', teams: 8, budget: 150, totalSlots: 24, myBudgetRemaining: 12, bidder },
+    purchases: 24, phase: 'A', teams: TEAMS.length, budget: 150, totalSlots: 24, myBudgetRemaining: 12, bidder },
 ];
 const leagues = [
-  { id: 'L1', name: 'Lega dei Colizzati', admin: true, teamName: 'Real Colizzati', initial: 'R', members: 8, auctions: 2, pendingRequests: 2 },
+  { id: 'L1', name: 'Lega dei Colizzati', admin: true, teamName: 'Real Colizzati', initial: 'R', members: TEAMS.length, auctions: 2, pendingRequests: 2 },
   { id: 'L2', name: 'Fantaufficio', admin: false, teamName: 'Scarsenal', initial: 'S', members: 10, auctions: 1, pendingRequests: 0 },
   { id: 'L3', name: 'Calcetto del giovedì', admin: false, teamName: 'Dinamo Spritz', initial: 'D', members: 6, auctions: 2, pendingRequests: 0 },
 ];

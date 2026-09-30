@@ -524,6 +524,26 @@ describe('BidderDialog', () => {
       expect(screen.getByRole('button', { name: /^Diego/ })).toBeInTheDocument();
     });
 
+    // Una lega non ha un massimo di squadre, e dieci o dodici sono comuni. Il banco
+    // ha un'altezza fissa, misurata con otto: con dodici i bottoni vanno su due
+    // righe, e se «Aggiudica» stesse sotto finirebbe oltre il bordo del banco. Sta
+    // sopra, nel documento come a schermo: e' la seconda riga di squadre a
+    // scorrere, non il gesto che chiude il lotto.
+    it('con dodici squadre ci sono tutti i bottoni, e «Aggiudica» viene prima', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const twelve: ParticipantView[] = Array.from({ length: 12 }, (_, i) => ({
+        ...TEAMS[1], id: `t${i}`, name: `Squadra ${i + 1}`, me: i === 0,
+      }));
+      open({ participants: twelve });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      const teams = screen.getByRole('group', { name: /A chi va/ });
+      expect(within(teams).getAllByRole('button')).toHaveLength(12);
+      const assign = screen.getByRole('button', { name: /^Aggiudica/ });
+      expect(teams.compareDocumentPosition(assign) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    });
+
     it('scegliere a chi va non rilancia e non fa ripartire il conto', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       open({ participants: TEAMS });
