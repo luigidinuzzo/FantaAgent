@@ -64,15 +64,15 @@ export function AppShell({
       <div className="sticky top-0 z-30">
         <header
           role="banner"
-          className="flex min-h-[var(--header-h)] items-center gap-4 border-b border-panel-border bg-bar px-4 text-sm"
+          className="flex min-h-[var(--header-h)] items-center gap-2 border-b border-panel-border bg-bar px-4 text-sm max-sm:flex-wrap max-sm:py-1.5 sm:gap-4"
         >
           {chrome === 'top' ? (
             <Link to="/" className={`flex min-h-11 shrink-0 items-center ${FOCUS_RING}`}>
-              <Wordmark size="md" />
+              <Wordmark size="bar" />
             </Link>
           ) : (
             // La proiezione: «FantaAgent» e' testo semplice, non un collegamento.
-            <Wordmark size="md" />
+            <Wordmark size="bar" />
           )}
           {chrome === 'top' && trail.length > 0 ? <Trail steps={trail} /> : null}
           <div className="ml-auto shrink-0">{slotStatus}</div>
@@ -120,12 +120,14 @@ function Trail({ steps }: { steps: TrailStep[] }) {
               ) : (
                 <Link
                   to={step.to}
-                  className={`flex min-h-11 min-w-0 items-center gap-1 rounded-lg px-2 text-muted-foreground hover:text-foreground ${FOCUS_RING}`}
+                  className={`flex min-h-11 min-w-0 items-center gap-1 rounded-lg px-2 text-muted-foreground hover:text-foreground max-sm:min-w-11 max-sm:justify-center ${FOCUS_RING}`}
                 >
-                  {/* Sul telefono, dove e' il solo passo in vista, dice di essere
-                      la via del ritorno. Decorazione: il nome resta quello del passo. */}
+                  {/* Sul telefono, dove e' il solo passo in vista, il passo e' la
+                      sola freccia: il nome resta per chi ascolta (sr-only, non
+                      tolto), e la freccia da sola tiene comunque il bersaglio a
+                      44px. */}
                   <span aria-hidden="true" className="sm:hidden">‹</span>
-                  <span className="truncate">{step.label}</span>
+                  <span className="truncate max-sm:sr-only">{step.label}</span>
                 </Link>
               )}
             </li>

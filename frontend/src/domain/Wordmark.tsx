@@ -16,6 +16,9 @@ const TEXT_SIZE = {
   // disegnata accanto al modulo, e si misura sulla sua larghezza (cqw): il marchio
   // e' largo circa 10,5 volte la sua altezza, e occupa tre quarti del campo.
   hero: 'text-3xl min-[400px]:text-4xl sm:text-5xl lg:text-[7cqw]',
+  // La barra di navigazione. Sul telefono la barra ha posto per il marchio a
+  // 16px, non a 24: da sm in su torna quello di sempre.
+  bar: 'text-base sm:text-2xl',
 } as const;
 const BALL_SIZE = {
   md: 'h-7 w-7',
@@ -23,6 +26,8 @@ const BALL_SIZE = {
   xl: 'h-10 w-10 sm:h-12 sm:w-12',
   // In em: segue il testo qualunque misura prenda.
   hero: 'h-[1.05em] w-[1.05em]',
+  // Segue il testo dello stesso size, piu' piccolo sul telefono.
+  bar: 'h-5 w-5 sm:h-7 sm:w-7',
 } as const;
 
 /**

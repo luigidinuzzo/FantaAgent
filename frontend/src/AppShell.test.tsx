@@ -98,6 +98,26 @@ describe('AppShell', () => {
     expect(item('Asta estiva')?.className).toContain('max-sm:hidden');
   });
 
+  /**
+   * Sul telefono il passo precedente e' solo la freccia «‹»: il nome resta per
+   * chi ascolta (aria non cambia, l'etichetta e' solo nascosta alla vista) e il
+   * bersaglio resta 44px anche senza testo a riempirlo.
+   */
+  it('sul telefono il passo precedente e la sola freccia, col nome per chi ascolta', () => {
+    render(withRouter(<AppShell chrome="top" trail={TRAIL}><p>x</p></AppShell>));
+    const nav = screen.getByRole('navigation', { name: 'Percorso' });
+    const link = within(nav).getByRole('link', { name: 'Lega del Bar' });
+    expect(link.className).toContain('max-sm:min-w-11');
+    expect(link.className).toContain('max-sm:justify-center');
+    expect(within(link).getByText('Lega del Bar').className).toContain('max-sm:sr-only');
+  });
+
+  /** Uno stato lungo (connessione persa) va a capo invece di allargare la pagina. */
+  it('la barra va a capo sul telefono invece di allargare la pagina', () => {
+    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    expect(screen.getByRole('banner').className).toContain('max-sm:flex-wrap');
+  });
+
   it('la proiezione non ha percorso, nemmeno se glielo si passa', () => {
     render(withRouter(<AppShell chrome="none" trail={TRAIL}><p>x</p></AppShell>));
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
@@ -108,6 +128,14 @@ describe('AppShell', () => {
     const link = screen.getByRole('link', { name: 'FantaAgent' });
     expect(link).toHaveAttribute('href', '/');
     expect(within(link).getByTestId('wordmark')).toBeInTheDocument();
+  });
+
+  /** Sul telefono la barra ha posto per il marchio a 16px, non a 24: da sm in su torna quello di sempre. */
+  it('il marchio della barra e piu piccolo sul telefono', () => {
+    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    const wordmark = screen.getByTestId('wordmark');
+    expect(wordmark.className).toContain('text-base');
+    expect(wordmark.className).toContain('sm:text-2xl');
   });
 
   /**
