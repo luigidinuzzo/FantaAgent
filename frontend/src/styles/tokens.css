@@ -2,38 +2,42 @@
    Rigenera con: npm run tokens */
 
 :root {
-  --background: oklch(0.4731 0.1066 145.54);
-  --grass-stripe: oklch(0.4416 0.0991 145.74);
-  --surface: oklch(0.2801 0.0493 155.09);
-  --panel-border: oklch(0.8159 0.0865 149.61);
-  --surface-raised: oklch(0.3149 0.0576 154.42);
-  --foreground: oklch(0.9702 0.0091 150.69);
-  --muted-foreground: oklch(0.6942 0.0414 160.28);
-  --accent: oklch(0.8490 0.1484 80.73);
+  --background: oklch(0.1731 0.0207 166.18);
+  --bar: oklch(0.2005 0.0274 160.77);
+  --surface: oklch(0.2272 0.0329 160.42);
+  --panel-border: oklch(0.3647 0.0466 160.39);
+  --control-border: oklch(0.6079 0.0656 159.95);
+  --surface-raised: oklch(0.2818 0.0455 156.74);
+  --foreground: oklch(0.9698 0.0062 137.77);
+  --muted-foreground: oklch(0.7663 0.0243 157.43);
+  --accent: oklch(0.8208 0.1470 80.74);
   --on-accent: oklch(0.1944 0.0398 92.72);
-  --positive: oklch(0.7738 0.1449 153.97);
-  --destructive: oklch(0.7088 0.1522 35.34);
-  --role-p: oklch(0.7969 0.1443 60.82);
-  --role-d: oklch(0.8161 0.1265 154.59);
-  --role-c: oklch(0.7972 0.1095 245.56);
-  --role-a: oklch(0.7752 0.1362 9.34);
+  --positive: oklch(0.7701 0.1570 155.03);
+  --destructive: oklch(0.6884 0.1660 22.43);
+  --role-p: oklch(0.8305 0.1453 74.18);
+  --role-d: oklch(0.7928 0.1620 153.91);
+  --role-c: oklch(0.7478 0.1357 248.99);
+  --role-a: oklch(0.7252 0.1772 7.94);
   --crest-1: oklch(0.8054 0.0819 185.81);
   --crest-2: oklch(0.7722 0.1027 294.72);
   --crest-3: oklch(0.8402 0.1471 124.87);
   --crest-4: oklch(0.8476 0.0616 79.03);
   --crest-5: oklch(0.7883 0.0903 326.39);
   --crest-6: oklch(0.7774 0.0478 263.65);
-  --line: rgba(255,255,255,0.15);
-  --line-strong: rgba(255,255,255,0.25);
+  --grass: oklch(0.4731 0.1066 145.54);
+  --grass-stripe: oklch(0.4416 0.0991 145.74);
+  --line: rgba(255,255,255,0.09);
+  --line-strong: rgba(255,255,255,0.18);
   --chalk: rgba(255,255,255,0.4);
   --font-sans: 'Archivo Variable', system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-grass-stripe: var(--grass-stripe);
+  --color-bar: var(--bar);
   --color-surface: var(--surface);
   --color-panel-border: var(--panel-border);
+  --color-control-border: var(--control-border);
   --color-surface-raised: var(--surface-raised);
   --color-foreground: var(--foreground);
   --color-muted-foreground: var(--muted-foreground);
@@ -51,6 +55,8 @@
   --color-crest-4: var(--crest-4);
   --color-crest-5: var(--crest-5);
   --color-crest-6: var(--crest-6);
+  --color-grass: var(--grass);
+  --color-grass-stripe: var(--grass-stripe);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-chalk: var(--chalk);

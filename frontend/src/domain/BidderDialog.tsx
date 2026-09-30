@@ -543,7 +543,7 @@ export function BidderDialog({
               tempo smette di essere una condizione e diventa la cosa da guardare. */}
           <div
             data-testid="bidder-remaining-bar"
-            className={`h-full ${urgent ? 'bg-destructive' : 'bg-panel-border'}`}
+            className={`h-full ${urgent ? 'bg-destructive' : 'bg-control-border'}`}
             style={{ width: `${fraction * 100}%` }}
           />
         </div>

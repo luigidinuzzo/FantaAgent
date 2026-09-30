@@ -31,10 +31,8 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   }
 }
 
-/* Il pannello: tutto cio' che si legge sta qui dentro, mai direttamente
-   sull'erba. Pieno (niente trasparenze sopra le linee del campo) e con un bordo
-   che lo stacca dal campo — la coppia panel-border/background e' in
-   contrast.test.ts. */
+/* Il pannello: tutto cio' che si legge sta qui dentro. Pieno, e un gradino piu'
+   chiaro del fondo: e' la luminosita' a staccarlo, il bordo lo rifinisce. */
 @utility panel {
   background-color: var(--color-surface);
   border: 1px solid var(--color-panel-border);
@@ -74,17 +72,14 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   }
 }
 
-/* L'erba a strisce (PitchGrass): due token in un gradiente ripetuto,
-   12 strisce da un lato all'altro. Le strisce di taglio corrono di traverso:
-   verticali sugli schermi orizzontali, orizzontali su quelli verticali. */
 .pitch-grass {
-  background-color: var(--background);
-  background-image: linear-gradient(90deg, var(--background) 50%, var(--grass-stripe) 50%);
+  background-color: var(--grass);
+  background-image: linear-gradient(90deg, var(--grass) 50%, var(--grass-stripe) 50%);
   background-size: calc(200% / 12) 100%;
 }
 @media (orientation: portrait) {
   .pitch-grass {
-    background-image: linear-gradient(180deg, var(--background) 50%, var(--grass-stripe) 50%);
+    background-image: linear-gradient(180deg, var(--grass) 50%, var(--grass-stripe) 50%);
     background-size: 100% calc(200% / 12);
   }
 }

@@ -32,51 +32,46 @@ const DECORATIVE = new Map([
   ],
 ]);
 
-// Ogni coppia che l'interfaccia mette davvero una sopra l'altra.
-//
-// Il testo vive SEMPRE dentro un pannello (surface): l'erba (background) e' il
-// campo, non un fondo da leggere. Per questo le coppie di testo sono tutte su
-// surface, e l'unica coppia con background e' quella del bordo del pannello, che
-// deve staccarlo dal campo (3:1, la soglia dei contorni dei componenti).
-//
-// La soglia del testo segue la DIMENSIONE con cui il colore viene reso: accent,
-// positive e destructive escono a text-sm (14-16px), quindi 4.5 e non 3.
 const PAIRS: Array<[keyof typeof PALETTE, keyof typeof PALETTE, number]> = [
+  // Il testo, su ognuno dei quattro fondi su cui puo' poggiare.
+  ['foreground', 'background', 4.5],
+  ['foreground', 'bar', 4.5],
   ['foreground', 'surface', 4.5],
-  // La card «Crea asta» usa surface-raised: tutto cio' che le sta sopra va verificato
-  // anche li', non solo su surface.
   ['foreground', 'surface-raised', 4.5],
-  ['muted-foreground', 'surface-raised', 4.5],
-  ['accent', 'surface-raised', 4.5],
-  ['positive', 'surface-raised', 4.5],
-  ['panel-border', 'surface-raised', 3],
+  ['muted-foreground', 'background', 4.5],
+  ['muted-foreground', 'bar', 4.5],
   ['muted-foreground', 'surface', 4.5],
+  ['muted-foreground', 'surface-raised', 4.5],
+  ['accent', 'bar', 4.5],
   ['accent', 'surface', 4.5],
+  ['accent', 'surface-raised', 4.5],
+  ['positive', 'surface', 4.5],
+  ['positive', 'surface-raised', 4.5],
+  ['destructive', 'surface', 4.5],
+  ['destructive', 'surface-raised', 4.5],
   ['on-accent', 'accent', 4.5],
   ['on-accent', 'positive', 4.5],
-  // Il bottone «Elimina» della conferma di cancellazione.
   ['on-accent', 'destructive', 4.5],
-  ['positive', 'surface', 4.5],
-  ['destructive', 'surface', 4.5],
-  // I quattro ruoli escono come testo dentro una pillola: 4.5, non 3.
   ['role-p', 'surface', 4.5],
   ['role-d', 'surface', 4.5],
   ['role-c', 'surface', 4.5],
   ['role-a', 'surface', 4.5],
-  // Il marchio e la firma in fondo alla home stanno direttamente sull'erba: la firma
-  // e' testo piccolo (4.5), «Agent» in accento e' testo grande (3).
-  ['foreground', 'background', 4.5],
+  // Il bordo di cio' che si preme e di cio' in cui si scrive. Il bordo dei
+  // pannelli (panel-border) non e' qui apposta: senza erba dietro un pannello non
+  // e' un controllo, lo distingue la sua luminosita', e la soglia dei componenti
+  // (3:1) vale per i controlli.
+  ['control-border', 'background', 3],
+  ['control-border', 'bar', 3],
+  ['control-border', 'surface', 3],
+  ['control-border', 'surface-raised', 3],
+  // L'erba resta nella meta' campo delle pagine d'ingresso, e il marchio ci poggia.
+  ['foreground', 'grass', 4.5],
   ['foreground', 'grass-stripe', 4.5],
-  ['accent', 'background', 3],
+  ['accent', 'grass', 3],
   ['accent', 'grass-stripe', 3],
-  // Il bordo del pannello contro l'erba, su entrambe le strisce di taglio, e
-  // contro il pannello stesso.
-  ['panel-border', 'background', 3],
-  ['panel-border', 'grass-stripe', 3],
-  ['panel-border', 'surface', 3],
 ];
 
-describe('palette Campo', () => {
+describe('palette Club Notturno', () => {
   it.each(PAIRS)('%s su %s raggiunge %s:1', (fg, bg, min) => {
     expect(contrastRatio(PALETTE[fg], PALETTE[bg])).toBeGreaterThanOrEqual(min);
   });

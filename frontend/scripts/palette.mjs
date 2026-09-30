@@ -1,56 +1,60 @@
 // Unica fonte dei colori del progetto. tokens.css è generato da qui:
 // modificare il CSS a mano significa perdere la modifica alla prossima build.
 export const PALETTE = {
-  // Il campo: erba viva, con le strisce di taglio di un campo vero. Nessun testo
-  // ci poggia sopra direttamente — sta sempre dentro un pannello (surface).
-  background:         '#2E6B34',
-  'grass-stripe':     '#29612F',
-  // Il pannello: pieno, mai trasparente, con il suo bordo che lo stacca
-  // dall'erba (almeno 3:1, verificato da contrast.test.ts).
-  surface:            '#12301E',
-  'panel-border':     '#9BD3A5',
-  // Un pannello piu' chiaro per il solo invito principale (la card «Crea asta»):
-  // lo distingue dagli altri senza cambiargli forma. Non e' un secondo fondo di
-  // uso generale — tutto il resto resta su surface.
-  'surface-raised':   '#163A24',
-  foreground:         '#F1F7F2',
-  'muted-foreground': '#87A594',
-  accent:             '#FFC24B',
+  // Il fondo della finestra: uniforme, quasi nero con una punta di verde. L'erba a
+  // strisce non e' piu' qui — vedi grass, in fondo.
+  background:         '#07130E',
+  // Le barre: quella di navigazione in alto, e quella in basso sul telefono.
+  bar:                '#0A1A12',
+  // Il pannello: pieno, mai trasparente. Si stacca dal fondo per luminosita'; il
+  // bordo lo rifinisce, non lo regge.
+  surface:            '#0D2117',
+  'panel-border':     '#274636',
+  // Il bordo di bottoni secondari e campi: almeno 3:1 su ogni fondo, verificato da
+  // contrast.test.ts. E' cio' che dice «questo si preme, qui si scrive».
+  'control-border':   '#5F8F75',
+  // Cio' che e' scelto o e' tuo dentro un pannello: la riga selezionata, la tua
+  // squadra, la casella dell'offerta.
+  'surface-raised':   '#143020',
+  foreground:         '#F3F6F2',
+  'muted-foreground': '#A7B8AD',
+  accent:             '#F5B942',
   'on-accent':        '#1B1400',
-  positive:           '#5FD08A',
-  destructive:        '#F07A5C',
+  positive:           '#4ED187',
+  destructive:        '#F06A6A',
   // I quattro ruoli. NON riusano positive e destructive nonostante la
   // somiglianza cromatica (il difensore e' verde, l'attaccante e' rosso): sono
   // coincidenze, non lo stesso significato. Il giorno in cui "positivo"
   // diventasse blu, i difensori non devono seguirlo.
-  'role-p':           '#FFA552',
-  'role-d':           '#7BDB9E',
-  'role-c':           '#7FC4FF',
-  'role-a':           '#FF8FA3',
-  // Lo stemma di ogni asta nella home: un colore per riconoscerla a colpo d'occhio,
-  // scelto dall'identificativo. Tinte lontane dai quattro ruoli e dall'accento
-  // (niente arancio, verde prato, azzurro, rosa, giallo), perche' uno stemma «P»
-  // non deve sembrare il badge dei portieri. Lettera scura sopra (on-accent).
+  'role-p':           '#FFB84D',
+  'role-d':           '#55D98A',
+  'role-c':           '#63B3FF',
+  'role-a':           '#FF6F91',
+  // Lo stemma di ogni lega: un colore per riconoscerla a colpo d'occhio, scelto
+  // dall'identificativo. Tinte lontane dai quattro ruoli e dall'accento, perche'
+  // uno stemma «P» non deve sembrare il badge dei portieri. Lettera scura sopra
+  // (on-accent).
   'crest-1':          '#7FD1C7',
   'crest-2':          '#B9A8F0',
   'crest-3':          '#B5DB6A',
   'crest-4':          '#E3C9A0',
   'crest-5':          '#D9A6D9',
   'crest-6':          '#A7B7D6',
+  // L'erba, con le strisce di taglio: solo la meta' campo delle pagine d'ingresso
+  // (HalfPitch). E' la firma del prodotto, non piu' lo sfondo di ogni pagina.
+  grass:              '#2E6B34',
+  'grass-stripe':     '#29612F',
 };
 
 // Divisori dentro i pannelli (line, line-strong) e il gesso delle linee del
 // campo (chalk): bianco con alfa, perché il loro senso è "la stessa linea, più o
-// meno marcata", non tre colori diversi.
+// meno marcata", non tre colori diversi. Piu' tenui di prima: su un fondo scuro e
+// uniforme una linea al 25% si leggeva come un bordo, non come un divisore.
 export const LINES = {
-  line:        'rgba(255,255,255,0.15)',
-  'line-strong': 'rgba(255,255,255,0.25)',
-  // Il gesso tenue, uguale su ogni schermata: i pannelli coprono quasi tutto il
-  // campo, e linee piene che spuntano negli spazi stretti fra un pannello e l'altro
-  // tiravano l'occhio. Il campo resta riconoscibile, ma sta dietro. Uno solo: con
-  // due tinte (piena all'asta, tenue sulla home) il campo cambiava da una pagina
-  // all'altra.
-  chalk:       'rgba(255,255,255,0.4)',
+  line:          'rgba(255,255,255,0.09)',
+  'line-strong': 'rgba(255,255,255,0.18)',
+  // Solo le righe della meta' campo d'ingresso.
+  chalk:         'rgba(255,255,255,0.4)',
 };
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
