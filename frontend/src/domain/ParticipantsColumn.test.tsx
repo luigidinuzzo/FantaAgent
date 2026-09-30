@@ -52,4 +52,26 @@ describe('ParticipantsColumn', () => {
     render(<ParticipantsColumn participants={[ANNA]} />);
     expect(screen.getByTestId('manager-anna')).not.toHaveTextContent('cerca');
   });
+
+  /**
+   * Un pannello solo con le righe separate da una linea: otto card dentro una card
+   * erano otto cornici in piu' da leggere. La tua riga si riconosce dal fondo e dal
+   * filetto oro a sinistra, oltre che a parole.
+   */
+  it('da schermo largo le squadre sono righe di un pannello solo, la tua col filetto oro', () => {
+    render(<ParticipantsColumn participants={[ANNA, CARLA]} phase="C" />);
+    const rows = screen.getAllByRole('listitem');
+    rows.forEach((row) => expect(row.className).toContain('lg:border-b'));
+    const mine = rows.find((row) => row.getAttribute('data-me') === 'true')!;
+    expect(mine.className).toContain('lg:border-l-accent');
+    expect(mine.className).toContain('bg-surface-raised');
+  });
+
+  // Il nome intero: «Atletico Ma No…» non si riconosceva a colpo d'occhio.
+  it('il nome della squadra va su due righe invece di troncarsi', () => {
+    render(<ParticipantsColumn participants={[ANNA, CARLA]} phase="C" />);
+    const name = screen.getAllByRole('listitem')[0].querySelector('[data-testid="team-name"]')!;
+    expect(name.className).toContain('lg:line-clamp-2');
+    expect(name.className).not.toMatch(/(^| )truncate( |$)/);
+  });
 });

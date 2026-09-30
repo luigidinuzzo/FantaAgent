@@ -16,6 +16,9 @@ import { ROLE_NAME_PLURAL, ROLE_NAME_SINGULAR } from './roles';
  * <p>Chi guarda riconosce la propria riga dal bordo e dal colore dei crediti; chi
  * ascolta la riconosce dal testo, perche' un colore non entra nell'albero di
  * accessibilita' e {@code data-me} e' un data-*, non un attributo ARIA.
+ *
+ * <p>Da schermo largo le squadre sono righe di un pannello solo, e il nome va
+ * su due righe invece di troncarsi.
  */
 export function ParticipantsColumn({ participants, phase }: {
   participants: ParticipantView[];
@@ -32,36 +35,35 @@ export function ParticipantsColumn({ participants, phase }: {
     // al proprio contenuto.
     <section
       aria-label="Crediti delle squadre"
-      className="panel flex min-h-0 min-w-0 flex-col p-3"
+      className="panel flex min-h-0 min-w-0 flex-col max-lg:p-3 lg:overflow-hidden"
     >
-      {/* Cosa misura il numero, detto una volta in testa alla colonna: prima era
-          un numero nudo accanto al nome, e si capiva solo sapendolo gia'. */}
-      <div aria-hidden="true" className="mb-2 flex justify-between px-3 text-meta font-medium text-muted-foreground">
+      <div aria-hidden="true" className="flex shrink-0 justify-between px-3 text-meta font-medium text-muted-foreground max-lg:mb-2 lg:min-h-11 lg:items-center lg:border-b lg:border-line lg:px-4">
         <span>Squadra</span>
         <span>Crediti</span>
       </div>
-      {/* Sul telefono una fila che scorre di lato, alta una riga: in colonna, otto
-          squadre occupavano il primo schermo intero prima della ricerca. relative:
-          i testi sr-only delle righe sono position:absolute, e senza un
-          riferimento qui dentro sfuggivano alla fila e allargavano la pagina. */}
-      <ul className="relative flex min-h-0 flex-1 gap-1.5 overflow-x-auto pb-1 max-lg:flex-row lg:flex-col lg:overflow-y-auto lg:overflow-x-visible lg:pb-0 lg:pr-1">
+      {/* Sul telefono una fila che scorre di lato, alta una riga, come prima. Da
+          schermo largo una colonna di righe che si dividono l'altezza del pannello:
+          con otto squadre ognuna prende un ottavo, con dodici la lista scorre. */}
+      <ul className="relative flex min-h-0 flex-1 gap-1.5 overflow-x-auto pb-1 max-lg:flex-row lg:flex-col lg:gap-0 lg:overflow-y-auto lg:overflow-x-visible lg:pb-0">
         {participants.map((p) => (
           <li
             key={p.id}
             data-testid={`manager-${p.id}`}
             data-me={p.me}
-            className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2 max-lg:shrink-0 ${
-              p.me ? 'border-accent bg-surface-raised' : 'border-panel-border'
+            className={`flex flex-col justify-center gap-0.5 max-lg:shrink-0 max-lg:rounded-lg max-lg:border max-lg:px-3 max-lg:py-2 lg:min-h-16 lg:flex-1 lg:border-b lg:border-l-[3px] lg:border-b-line lg:px-4 lg:last:border-b-0 ${
+              p.me
+                ? 'bg-surface-raised max-lg:border-accent lg:border-l-accent'
+                : 'max-lg:border-control-border lg:border-l-transparent'
             }`}
           >
-            <span className="flex items-baseline justify-between gap-3">
-              <span className="truncate font-medium">
+            <span className="flex items-start justify-between gap-3">
+              <span data-testid="team-name" className="font-medium max-lg:truncate lg:line-clamp-2 lg:leading-tight">
                 {p.name}
                 {p.me ? <span className="sr-only">, sei tu</span> : null}
               </span>
               <span
                 data-testid={`budget-${p.id}`}
-                className={`tnum shrink-0 font-medium ${p.me ? 'text-accent' : 'text-muted-foreground'}`}
+                className={`tnum shrink-0 text-lg font-semibold ${p.me ? 'text-accent' : ''}`}
               >
                 {p.budgetRemaining}
                 <span className="sr-only"> crediti</span>
