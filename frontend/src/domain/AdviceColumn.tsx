@@ -18,6 +18,7 @@ import { PhaseTargets } from './PhaseTargets';
  */
 export function AdviceColumn({
   phase, targets, targetsLoading, targetsFailed, selectedId, valuation, bidderOpen, onSelect, me, myColumn,
+  className = '',
 }: {
   phase: Role | undefined;
   targets: TargetView[];
@@ -33,9 +34,11 @@ export function AdviceColumn({
   me: ParticipantView | undefined;
   /** La tua colonna del tabellone, se e' arrivata. */
   myColumn: BoardColumn | undefined;
+  /** Il posto nella griglia di chi la monta (righe e colonne dell'asta). */
+  className?: string;
 }) {
   return (
-    <section aria-labelledby="advice-title" className="panel flex min-h-0 min-w-0 flex-col overflow-hidden">
+    <section aria-labelledby="advice-title" className={`panel flex min-h-0 min-w-0 flex-col overflow-hidden ${className}`}>
       <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-line px-4">
         <h2 id="advice-title" className="text-meta font-semibold text-muted-foreground">I tuoi consigli</h2>
         <OnlyYouBadge label="Solo tu" />

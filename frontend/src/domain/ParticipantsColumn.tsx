@@ -20,13 +20,15 @@ import { ROLE_NAME_PLURAL, ROLE_NAME_SINGULAR } from './roles';
  * <p>Da schermo largo le squadre sono righe di un pannello solo, e il nome va
  * su due righe invece di troncarsi.
  */
-export function ParticipantsColumn({ participants, phase }: {
+export function ParticipantsColumn({ participants, phase, className = '' }: {
   participants: ParticipantView[];
   /**
    * Il ruolo che si sta chiamando. Assente ad asta conclusa, dove non c'e'
    * nessuna fase in corso e la riga resta nome e crediti.
    */
   phase?: Role;
+  /** Il posto nella griglia di chi la monta (righe e colonne dell'asta). */
+  className?: string;
 }) {
   return (
     // Scorre dentro: una lega da dodici squadre non deve allungare la riga in
@@ -35,7 +37,7 @@ export function ParticipantsColumn({ participants, phase }: {
     // al proprio contenuto.
     <section
       aria-label="Crediti delle squadre"
-      className="panel flex min-h-0 min-w-0 flex-col max-lg:p-3 lg:overflow-hidden"
+      className={`panel flex min-h-0 min-w-0 flex-col max-lg:p-3 lg:overflow-hidden ${className}`}
     >
       <div aria-hidden="true" className="flex justify-between px-3 text-meta font-medium text-muted-foreground max-lg:mb-2 lg:shrink-0 lg:min-h-11 lg:items-center lg:border-b lg:border-line lg:px-4">
         <span>Squadra</span>

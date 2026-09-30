@@ -648,9 +648,10 @@ export function AuctionRoute() {
       ) : null}
       {/* Tre colonne, come si sta al tavolo: a sinistra chi ha quanto, al centro
           il giocatore su cui si decide e sotto di lui le due schede — fase
-          corrente e rose —, a destra il perche' del prezzo. Sotto lg la griglia
-          si srotola in una colonna sola, nell'ordine in cui e' scritta: crediti,
-          ricerca, banco, consigli, e le schede in fondo come prima. */}
+          corrente e rose —, a destra il perche' del prezzo. Una griglia sola, i
+          figli messi a posto per riga e colonna: nel documento restano
+          nell'ordine del telefono — crediti, ricerca, banco, consigli, schede —
+          che e' quello in cui sotto lg la griglia si srotola in una colonna. */}
       {concluded ? (
         <>
           <AuctionRecap participants={participants} board={board.data} />
@@ -705,290 +706,166 @@ export function AuctionRoute() {
         data-testid="auction-row"
         className={`grid grid-cols-1 gap-5 lg:gap-4 ${
           seated === false
-            ? 'lg:grid-cols-[14.5rem_minmax(0,1fr)]'
-            : 'lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))] lg:grid-cols-[14.5rem_minmax(0,1fr)_20.5rem]'
+            ? 'lg:grid-cols-[14.5rem_minmax(0,1fr)] lg:grid-rows-[3rem_var(--banco-h)]'
+            : 'lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))] lg:grid-cols-[14.5rem_minmax(0,1fr)_20.5rem] lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]'
         }`}
       >
-        <ParticipantsColumn participants={participants} phase={state.data?.currentPhase} />
+        <ParticipantsColumn
+          participants={participants}
+          phase={state.data?.currentPhase}
+          className={`lg:col-start-1 lg:row-start-1 ${seated === false ? 'lg:row-span-2' : 'lg:row-span-3'}`}
+        />
 
-        {/* Da lg tre righe decise in anticipo: ricerca, banco, schede. Sotto lg la
-            colonna non esiste (contents): i suoi figli stanno nella colonna sola
-            della pagina, e le schede, con order-last, tornano in fondo dopo i
-            consigli, dov'erano. */}
+        {/* La stessa selezione della tabella di fase, non un secondo percorso:
+            un giocatore scelto qui passa per setSelectedId esattamente come una
+            riga cliccata, quindi valutazione, banco e aggiudicazione si
+            comportano in tutto allo stesso modo.
+
+            Nessun riquadro attorno alla barra: il bordo del campo e' gia' un
+            contorno, e un pannello attorno ne disegnava un secondo. */}
+        {/* Mentre si cerca i risultati prendono il posto del banco: il pannello
+            occupa le righe della ricerca e del banco insieme, e la tabella
+            resta dov'e'. A riposo resta alto quanto la barra. */}
         <div
-          data-testid="auction-center"
-          className={`flex min-h-0 min-w-0 flex-col gap-4 max-lg:contents lg:grid ${
-            seated === false
-              ? 'lg:grid-rows-[3rem_var(--banco-h)]'
-              : 'lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]'
+          className={`min-h-0 lg:col-start-2 lg:row-start-1 ${
+            searchActive ? 'flex flex-1 flex-col lg:row-span-2' : ''
           }`}
         >
-          {/* La stessa selezione della tabella di fase, non un secondo percorso:
-              un giocatore scelto qui passa per setSelectedId esattamente come una
-              riga cliccata, quindi valutazione, banco e aggiudicazione si
-              comportano in tutto allo stesso modo.
+          <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} sold={sold} />
+        </div>
 
-              Nessun riquadro attorno alla barra: il bordo del campo e' gia' un
-              contorno, e un pannello attorno ne disegnava un secondo. */}
-          {/* Mentre si cerca i risultati prendono il posto del banco: il pannello
-              occupa le righe della ricerca e del banco insieme, e la tabella
-              resta dov'e'. A riposo resta alto quanto la barra. */}
-          <div className={searchActive ? 'flex min-h-0 flex-1 flex-col lg:row-span-2' : 'min-h-0'}>
-            <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} sold={sold} />
+        {/* Il banco e' un posto fisso in pagina, non un riquadro che appare e
+            scompare: sta sempre sotto la ricerca, vuoto finche' nessuno e' sul
+            banco e pieno appena si sceglie un giocatore.
+
+            L'unica eccezione e' mentre si cerca: i nomi prendono il suo posto,
+            cosi' crescono sotto la barra invece di spingere giu' mezza pagina a
+            ogni lettera. Nascosto, non svuotato — selectedId resta intatto, e
+            uscendo dalla ricerca si ritrova il lotto com'era. */}
+        {searchActive ? null : (
+        <section
+          data-testid="banco"
+          aria-labelledby={bidderPanelId}
+          className="panel flex min-h-0 flex-1 flex-col p-4 lg:col-start-2 lg:row-start-2"
+        >
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
+                c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
+                annuncerebbe — anche a chi ascolta, via aria-labelledby — una cosa
+                che non c'e', e la prima riga di contenuto lo smentirebbe subito.
+                Col lotto sul banco il titolo lo nomina, piccolo e quieto: il nome
+                grande lo porta la scheda qui sotto. */}
+            <h2
+              id={bidderPanelId}
+              className={
+                lot
+                  ? 'text-sm font-medium text-muted-foreground'
+                  : 'text-lg font-medium'
+              }
+            >
+              {panelTitle}
+            </h2>
+            {lot ? (
+              // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
+              // se e' aperto — lasciarlo acceso su un lotto che non c'e' piu'
+              // continuerebbe a suonare per nessuno.
+              // Mentre il conto corre toglierlo butta via offerta e tempo: il
+              // primo clic chiede conferma, il secondo toglie. Senza il conto
+              // aperto non c'e' niente da perdere, e basta un clic.
+              <button
+                type="button"
+                onClick={() => {
+                  if (bidderOpen && !confirmRemove) {
+                    setConfirmRemove(true);
+                    return;
+                  }
+                  setConfirmRemove(false);
+                  setBidderOpen(false);
+                  setSelectedId(null);
+                }}
+                onBlur={() => setConfirmRemove(false)}
+                className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                  confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-control-border hover:bg-line'
+                }`}
+              >
+                <RemoveIcon />
+                {confirmRemove ? "Conferma: il lotto si perde" : 'Togli dal banco'}
+              </button>
+            ) : null}
           </div>
 
-          {/* Il banco e' un posto fisso in pagina, non un riquadro che appare e
-              scompare: sta sempre sotto la ricerca, vuoto finche' nessuno e' sul
-              banco e pieno appena si sceglie un giocatore.
-
-              L'unica eccezione e' mentre si cerca: i nomi prendono il suo posto,
-              cosi' crescono sotto la barra invece di spingere giu' mezza pagina a
-              ogni lettera. Nascosto, non svuotato — selectedId resta intatto, e
-              uscendo dalla ricerca si ritrova il lotto com'era. */}
-          {searchActive ? null : (
-          <section
-            data-testid="banco"
-            aria-labelledby={bidderPanelId}
-            className="panel flex min-h-0 flex-1 flex-col p-4"
-          >
-            <div className="flex min-h-11 items-center justify-between gap-3">
-              {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
-                  c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
-                  annuncerebbe — anche a chi ascolta, via aria-labelledby — una cosa
-                  che non c'e', e la prima riga di contenuto lo smentirebbe subito.
-                  Col lotto sul banco il titolo lo nomina, piccolo e quieto: il nome
-                  grande lo porta la scheda qui sotto. */}
-              <h2
-                id={bidderPanelId}
-                className={
-                  lot
-                    ? 'text-sm font-medium text-muted-foreground'
-                    : 'text-lg font-medium'
-                }
-              >
-                {panelTitle}
-              </h2>
-              {lot ? (
-                // Toglie il giocatore dal banco: chiude anche il conto alla rovescia,
-                // se e' aperto — lasciarlo acceso su un lotto che non c'e' piu'
-                // continuerebbe a suonare per nessuno.
-                // Mentre il conto corre toglierlo butta via offerta e tempo: il
-                // primo clic chiede conferma, il secondo toglie. Senza il conto
-                // aperto non c'e' niente da perdere, e basta un clic.
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (bidderOpen && !confirmRemove) {
-                      setConfirmRemove(true);
-                      return;
-                    }
-                    setConfirmRemove(false);
-                    setBidderOpen(false);
-                    setSelectedId(null);
-                  }}
-                  onBlur={() => setConfirmRemove(false)}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                    confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-control-border hover:bg-line'
-                  }`}
-                >
-                  <RemoveIcon />
-                  {confirmRemove ? "Conferma: il lotto si perde" : 'Togli dal banco'}
-                </button>
-              ) : null}
-            </div>
-
-            {/* flex-1: la card dentro riceve un'altezza vera da riempire, ed
-                e' cosi' che distribuisce il contenuto invece di ammucchiarlo
-                in cima al riquadro. */}
-            {/* overflow-y-auto e' una valvola, non il modo normale di leggere
-                il banco: la sua altezza (--banco-h) e' tagliata sul suo stato piu'
-                alto e in condizioni normali non scorre mai. Serve a non TAGLIARE il
-                contenuto se qualcosa esce dalle misure previste — un ingrandimento
-                del browser al 150%, un carattere di sistema piu' grande. */}
-            <div data-testid="banco-content" className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
-              {lot ? (
-                // shrink-0: il lotto prende l'altezza che gli serve e non di
-                // piu'. Senza, il flex-shrink di default lo comprimerebbe per
-                // farlo entrare nell'altezza fissa del riquadro invece di
-                // lasciare scorrere il contenuto — che e' cio' che
-                // overflow-y-auto sul contenitore qui sopra serve a fare.
-                <div className="shrink-0">
-                {admin && bidderOpen && bidderSettings.data ? (
-                  // Il conto alla rovescia SOSTITUISCE la scheda di decisione, non ci sta
-                  // dentro: montato come suo figlio, rendeva nome e tetto una
-                  // seconda volta, dentro una seconda cornice. Mentre il conto
-                  // alla rovescia corre la card e' una sola, e porta i due
-                  // numeri che cambiano davvero — offerta e secondi.
-                  // key: un giocatore nuovo riparte da un conto alla rovescia
-                  // nuovo, non da quello del precedente.
-                  <BidderDialog
-                    key={lot.playerId}
-                    valuation={lot}
-                    advice={valuation.data !== undefined}
-                    participants={participants}
-                    timerSeconds={bidderSettings.data.timerSeconds}
-                    beepEnabled={bidderSettings.data.beepEnabled}
-                    error={assignError}
-                    disabled={stale}
-                    pending={assign.isPending}
-                    onAssign={assignPlayer}
-                    onClose={() => setBidderOpen(false)}
-                  />
-                ) : !valuation.data ? (
-                  <PlayerWithoutAdvice lot={lot}>{lotControls}</PlayerWithoutAdvice>
-                ) : (
-                  <PlayerDecisionCard valuation={valuation.data} stale={stale} bare me={me}>
-                    {/* Il modo di aggiudicarlo e' dell'amministratore: gli altri
-                        vedono la scheda, non i gesti del banco. */}
-                    {/* Impilati, nell'ordine in cui le cose succedono: prima
-                        si fa correre il conto alla rovescia, poi si registra a
-                        quanto e a chi e' andato. Affiancati, i due gesti si
-                        leggevano come alternative pari; incolonnati si leggono
-                        come una sequenza. */}
-                    {lotControls}
-                  </PlayerDecisionCard>
-                )}
-                </div>
-              ) : me ? (
-                // A riposo la tua squadra in numeri: crediti, posti, media per
-                // posto. Prima era una frase sola al centro di mezza pagina.
-                <MyTeamSummary
-                  me={me}
+          {/* flex-1: la card dentro riceve un'altezza vera da riempire, ed
+              e' cosi' che distribuisce il contenuto invece di ammucchiarlo
+              in cima al riquadro. */}
+          {/* overflow-y-auto e' una valvola, non il modo normale di leggere
+              il banco: la sua altezza (--banco-h) e' tagliata sul suo stato piu'
+              alto e in condizioni normali non scorre mai. Serve a non TAGLIARE il
+              contenuto se qualcosa esce dalle misure previste — un ingrandimento
+              del browser al 150%, un carattere di sistema piu' grande. */}
+          <div data-testid="banco-content" className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
+            {lot ? (
+              // shrink-0: il lotto prende l'altezza che gli serve e non di
+              // piu'. Senza, il flex-shrink di default lo comprimerebbe per
+              // farlo entrare nell'altezza fissa del riquadro invece di
+              // lasciare scorrere il contenuto — che e' cio' che
+              // overflow-y-auto sul contenitore qui sopra serve a fare.
+              <div className="shrink-0">
+              {admin && bidderOpen && bidderSettings.data ? (
+                // Il conto alla rovescia SOSTITUISCE la scheda di decisione, non ci sta
+                // dentro: montato come suo figlio, rendeva nome e tetto una
+                // seconda volta, dentro una seconda cornice. Mentre il conto
+                // alla rovescia corre la card e' una sola, e porta i due
+                // numeri che cambiano davvero — offerta e secondi.
+                // key: un giocatore nuovo riparte da un conto alla rovescia
+                // nuovo, non da quello del precedente.
+                <BidderDialog
+                  key={lot.playerId}
+                  valuation={lot}
+                  advice={valuation.data !== undefined}
                   participants={participants}
-                  phase={currentPhase}
-                  freeInPhase={phase.data?.total}
-                  board={board.data}
+                  timerSeconds={bidderSettings.data.timerSeconds}
+                  beepEnabled={bidderSettings.data.beepEnabled}
+                  error={assignError}
+                  disabled={stale}
+                  pending={assign.isPending}
+                  onAssign={assignPlayer}
+                  onClose={() => setBidderOpen(false)}
                 />
+              ) : !valuation.data ? (
+                <PlayerWithoutAdvice lot={lot}>{lotControls}</PlayerWithoutAdvice>
               ) : (
-                <p className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                  {seated === false
-                    ? 'Nessuno sul banco. Cercalo qui sopra per registrarne l’acquisto.'
-                    : 'Nessuno sul banco. Cercalo qui sopra o scegline uno dalla tabella.'}
-                </p>
+                <PlayerDecisionCard valuation={valuation.data} stale={stale} bare me={me}>
+                  {/* Il modo di aggiudicarlo e' dell'amministratore: gli altri
+                      vedono la scheda, non i gesti del banco. */}
+                  {/* Impilati, nell'ordine in cui le cose succedono: prima
+                      si fa correre il conto alla rovescia, poi si registra a
+                      quanto e a chi e' andato. Affiancati, i due gesti si
+                      leggevano come alternative pari; incolonnati si leggono
+                      come una sequenza. */}
+                  {lotControls}
+                </PlayerDecisionCard>
               )}
-            </div>
-          </section>
-          )}
-
-          {/* Le schede, terza riga della colonna centrale: prendono l'altezza che
-              il banco lascia, e la tabella scorre dentro di se' con l'intestazione
-              ferma. Sotto lg tornano in fondo alla pagina (order-last; -mt-1
-              riporta a 16px lo spazio che prima era mt-4). */}
-          {seated === false ? null : (
-            <div className="panel flex min-h-0 flex-col max-lg:order-last max-lg:-mt-1 max-lg:p-4 lg:overflow-hidden">
-              {/* La riga delle schede: le schede a sinistra, legenda e pagine a
-                  destra. Sotto lg non e' una riga (contents): le schede stanno in
-                  cima col loro filo, le pagine sotto la tabella come prima. */}
-              <div className="flex shrink-0 flex-wrap items-center gap-x-4 border-b border-line max-lg:contents lg:px-2">
-                {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
-                    limita a somigliarci: ruolo, stato e frecce sinistra/destra per
-                    spostare la selezione, come da WAI-ARIA Authoring Practices. */}
-                <div
-                  role="tablist"
-                  aria-label="Sezioni dell'asta"
-                  className="flex gap-1 max-lg:border-b max-lg:border-line"
-                >
-                  {TABS.map((tab) => (
-                    <button
-                      key={tab.key}
-                      ref={(el) => { tabRefs.current[tab.key] = el; }}
-                      type="button"
-                      role="tab"
-                      id={`tab-${tab.key}`}
-                      aria-selected={activeTab === tab.key}
-                      aria-controls={`tabpanel-${tab.key}`}
-                      tabIndex={activeTab === tab.key ? 0 : -1}
-                      onClick={() => setActiveTab(tab.key)}
-                      onKeyDown={(e) => handleTabKeyDown(e, tab.key)}
-                      className={`min-h-11 border-b-2 px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                        activeTab === tab.key
-                          ? 'border-accent text-accent'
-                          : 'border-transparent text-muted-foreground'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
-                    una pagina precedente resta scelto (valutazione e banco
-                    intatti, se aperto) anche se la sua riga scorre fuori vista
-                    sfogliando. */}
-                {activeTab === 'fase' && phase.data ? (
-                  <div className="max-lg:order-last max-xl:flex-wrap lg:ml-auto lg:flex lg:items-center lg:gap-3 lg:text-meta lg:text-muted-foreground">
-                    {/* Da xl in su la legenda sta qui, in una riga; sotto va a capo
-                        sotto le pagine. Sotto lg non c'e': la dice per intero la
-                        didascalia della tabella. */}
-                    <span className="max-xl:order-last max-xl:basis-full max-lg:hidden">
-                      in <span className="font-medium text-destructive">rosso</span> i tetti che il mercato supera
-                    </span>
-                    <PhasePager
-                      compact
-                      offset={phase.data.offset}
-                      pageSize={phase.data.pageSize}
-                      total={phase.data.total}
-                      hasPrevious={phase.data.hasPrevious}
-                      hasNext={phase.data.hasNext}
-                      onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
-                      onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
-                    />
-                  </div>
-                ) : null}
               </div>
-
-              <div
-                role="tabpanel"
-                id="tabpanel-fase"
-                aria-labelledby="tab-fase"
-                hidden={activeTab !== 'fase'}
-                className="max-lg:mt-4 lg:min-h-0 lg:flex-1"
-              >
-                {activeTab === 'fase' ? (
-                  <>
-                    {/* Bloccata mentre il conto alla rovescia corre: un lotto alla volta.
-                        Cambiare selezione con un rilancio in corso rimonterebbe
-                        BidderDialog (keyed sul playerId) su un altro giocatore,
-                        buttando via countdown, prezzo e beep senza preavviso.
-                        Abbandonare un lotto resta un gesto deliberato — si chiude
-                        il conto alla rovescia, che e' il controllo che gia' esiste per farlo. */}
-                    <PlayerTable
-                      fill
-                      sort={sort}
-                      dir={sortDir}
-                      // Cambiando ordine si torna alla prima pagina: restare alla terza
-                      // pagina di un ordine che non esiste piu' non vuol dire niente.
-                      onSort={(next, dir) => { setSort(next); setSortDir(dir); setPageOffset(0); }}
-                      rows={phase.data?.rows ?? []}
-                      selectedId={selectedId}
-                      onSelect={setSelectedId}
-                      disabled={bidderOpen}
-                    />
-                  </>
-                ) : null}
-              </div>
-
-              <div
-                role="tabpanel"
-                id="tabpanel-rose"
-                aria-labelledby="tab-rose"
-                hidden={activeTab !== 'rose'}
-                className="max-lg:mt-4 lg:min-h-0 lg:flex-1 lg:p-3"
-              >
-                {/* Montata solo quando la scheda e' quella attiva: legge /board (e
-                    le capacita' per ruolo da /state) da se', e non c'e' motivo di
-                    farlo mentre e' "Fase corrente" a essere in vista.
-                    Caso residuo dichiarato: RosterGrid porta un suo role="alert"
-                    (voidPurchase/board), separato da barAlertMessage sopra. Non e'
-                    una violazione dell'invariante "un solo alert alla volta": vive
-                    dentro il pannello della sua scheda, visibile solo quando questa
-                    e' quella attiva, quindi al massimo compaiono insieme un alert
-                    della barra (sempre visibile) e uno delle rose (visibile solo
-                    qui) — non due dalla stessa fonte, non due dallo stesso posto. */}
-                {activeTab === 'rose' ? <RosterGrid fill /> : null}
-              </div>
-            </div>
-          )}
-        </div>
+            ) : me ? (
+              // A riposo la tua squadra in numeri: crediti, posti, media per
+              // posto. Prima era una frase sola al centro di mezza pagina.
+              <MyTeamSummary
+                me={me}
+                participants={participants}
+                phase={currentPhase}
+                freeInPhase={phase.data?.total}
+                board={board.data}
+              />
+            ) : (
+              <p className="flex flex-1 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                {seated === false
+                  ? 'Nessuno sul banco. Cercalo qui sopra per registrarne l’acquisto.'
+                  : 'Nessuno sul banco. Cercalo qui sopra o scegline uno dalla tabella.'}
+              </p>
+            )}
+          </div>
+        </section>
+        )}
 
         {/* La colonna dei consigli: a riposo porta le occasioni della fase e la tua
             rosa, col lotto il perche' del prezzo e le alternative. Tutto cio' che
@@ -1007,7 +884,131 @@ export function AuctionRoute() {
             onSelect={setSelectedId}
             me={me}
             myColumn={board.data?.columns.find((c) => c.me)}
+            className="lg:col-start-3 lg:row-span-3 lg:row-start-1"
           />
+        )}
+
+        {/* Le schede, nella colonna centrale sotto il banco: prendono l'altezza che
+            il banco lascia, e la tabella scorre dentro di se' con l'intestazione
+            ferma. Nell'ordine del documento vengono dopo i consigli, come sul
+            telefono, dove stanno in fondo alla pagina.
+
+            Da lg il pannello e' una piccola griglia: in alto le schede, la legenda
+            (da xl sulla stessa riga, sotto xl a capo) e le pagine; sotto, il filo
+            e la scheda aperta. Nel documento legenda e pagine vengono dopo la
+            tabella, come sul telefono e come prima di questa griglia. -mt-1 sotto
+            lg: prima le schede stavano fuori dalla riga con mt-4, e 16px restano
+            invece dei 20 dello spazio della riga. */}
+        {seated === false ? null : (
+          <div className="panel min-h-0 max-lg:-mt-1 max-lg:p-4 lg:col-start-2 lg:row-start-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:overflow-hidden">
+            {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
+                limita a somigliarci: ruolo, stato e frecce sinistra/destra per
+                spostare la selezione, come da WAI-ARIA Authoring Practices. */}
+            <div
+              role="tablist"
+              aria-label="Sezioni dell'asta"
+              className="flex gap-1 border-b border-line lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:px-2"
+            >
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    ref={(el) => { tabRefs.current[tab.key] = el; }}
+                    type="button"
+                    role="tab"
+                    id={`tab-${tab.key}`}
+                    aria-selected={activeTab === tab.key}
+                    aria-controls={`tabpanel-${tab.key}`}
+                    tabIndex={activeTab === tab.key ? 0 : -1}
+                    onClick={() => setActiveTab(tab.key)}
+                    onKeyDown={(e) => handleTabKeyDown(e, tab.key)}
+                    className={`min-h-11 border-b-2 px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                      activeTab === tab.key
+                        ? 'border-accent text-accent'
+                        : 'border-transparent text-muted-foreground'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+            </div>
+
+            <div
+              role="tabpanel"
+              id="tabpanel-fase"
+              aria-labelledby="tab-fase"
+              hidden={activeTab !== 'fase'}
+              className="max-lg:mt-4 lg:col-span-3 lg:row-start-3 lg:min-h-0 lg:border-t lg:border-line"
+            >
+              {activeTab === 'fase' ? (
+                <>
+                  {/* Bloccata mentre il conto alla rovescia corre: un lotto alla volta.
+                      Cambiare selezione con un rilancio in corso rimonterebbe
+                      BidderDialog (keyed sul playerId) su un altro giocatore,
+                      buttando via countdown, prezzo e beep senza preavviso.
+                      Abbandonare un lotto resta un gesto deliberato — si chiude
+                      il conto alla rovescia, che e' il controllo che gia' esiste per farlo. */}
+                  <PlayerTable
+                    fill
+                    sort={sort}
+                    dir={sortDir}
+                    // Cambiando ordine si torna alla prima pagina: restare alla terza
+                    // pagina di un ordine che non esiste piu' non vuol dire niente.
+                    onSort={(next, dir) => { setSort(next); setSortDir(dir); setPageOffset(0); }}
+                    rows={phase.data?.rows ?? []}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    disabled={bidderOpen}
+                  />
+                </>
+              ) : null}
+            </div>
+
+            <div
+              role="tabpanel"
+              id="tabpanel-rose"
+              aria-labelledby="tab-rose"
+              hidden={activeTab !== 'rose'}
+              className="max-lg:mt-4 lg:col-span-3 lg:row-start-3 lg:min-h-0 lg:border-t lg:border-line lg:p-3"
+            >
+              {/* Montata solo quando la scheda e' quella attiva: legge /board (e
+                  le capacita' per ruolo da /state) da se', e non c'e' motivo di
+                  farlo mentre e' "Fase corrente" a essere in vista.
+                  Caso residuo dichiarato: RosterGrid porta un suo role="alert"
+                  (voidPurchase/board), separato da barAlertMessage sopra. Non e'
+                  una violazione dell'invariante "un solo alert alla volta": vive
+                  dentro il pannello della sua scheda, visibile solo quando questa
+                  e' quella attiva, quindi al massimo compaiono insieme un alert
+                  della barra (sempre visibile) e uno delle rose (visibile solo
+                  qui) — non due dalla stessa fonte, non due dallo stesso posto. */}
+              {activeTab === 'rose' ? <RosterGrid fill /> : null}
+            </div>
+
+            {activeTab === 'fase' && phase.data ? (
+              <>
+                {/* Sotto lg non c'e': la legenda la dice per intero la didascalia
+                    della tabella, che da lg e' solo per chi ascolta. */}
+                <span className="max-lg:hidden lg:col-span-3 lg:row-start-2 lg:px-4 lg:pb-2 lg:text-meta lg:text-muted-foreground xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:self-center xl:px-0 xl:pb-0">
+                  in <span className="font-medium text-destructive">rosso</span> i tetti che il mercato supera
+                </span>
+                {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
+                    una pagina precedente resta scelto (valutazione e banco
+                    intatti, se aperto) anche se la sua riga scorre fuori vista
+                    sfogliando. */}
+                <div className="lg:col-start-3 lg:row-start-1 lg:flex lg:items-center lg:pl-3 lg:pr-2 lg:text-muted-foreground">
+                  <PhasePager
+                    compact
+                    offset={phase.data.offset}
+                    pageSize={phase.data.pageSize}
+                    total={phase.data.total}
+                    hasPrevious={phase.data.hasPrevious}
+                    hasNext={phase.data.hasNext}
+                    onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
+                    onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
         )}
       </div>
 

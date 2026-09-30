@@ -1569,9 +1569,10 @@ describe('AuctionRoute', () => {
     const consigli = screen.getByRole('region', { name: 'I tuoi consigli' });
     const griglia = crediti.parentElement;
     expect(griglia?.className).toContain('grid-cols');
-    // Le tre colonne sono figlie della stessa griglia, nell'ordine dichiarato.
+    // Una griglia sola: crediti, ricerca, banco, consigli e schede ne sono figli
+    // diretti, e le colonne le decidono le loro classi.
     expect(consigli.parentElement).toBe(griglia);
-    expect(griglia?.children).toHaveLength(3);
+    expect(griglia?.children).toHaveLength(5);
 
     // Senza giocatore scelto la colonna mostra le occasioni della fase, non una
     // frase sola: ogni occasione mette il giocatore sul banco.
@@ -1590,7 +1591,7 @@ describe('AuctionRoute', () => {
     expect(dopo).toHaveTextContent(/Affidabilità della stima/);
     // La colonna dei consigli resta la stessa, allo stesso posto della griglia.
     expect(consigli.parentElement).toBe(griglia);
-    expect(griglia?.children).toHaveLength(3);
+    expect(griglia?.children).toHaveLength(5);
   });
 
   /**
@@ -1603,16 +1604,24 @@ describe('AuctionRoute', () => {
     renderAuction();
     const row = await screen.findByTestId('auction-row');
     expect(row.className).toContain('lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))]');
-    const center = screen.getByTestId('auction-center');
-    expect(center.className).toContain('lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]');
+    expect(row.className).toContain('lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]');
   });
 
-  // La tabella non e' piu' sotto la piega: sta nella colonna centrale, sotto il banco.
-  it('le schede stanno nella colonna centrale, sotto il banco', async () => {
+  /**
+   * Da lg le schede stanno nella colonna centrale, sotto il banco; nel documento
+   * vengono dopo i consigli, che e' anche l'ordine in cui il telefono le mostra.
+   * Chi legge in sequenza, o per titoli, le incontra dove chi guarda le vede sotto lg.
+   */
+  it('le schede stanno sotto il banco, e nel documento dopo i consigli', async () => {
     stubApi({ state: STATE });
     renderAuction();
-    const center = await screen.findByTestId('auction-center');
-    expect(within(center).getByRole('tablist', { name: "Sezioni dell'asta" })).toBeInTheDocument();
+    const tablist = await screen.findByRole('tablist', { name: "Sezioni dell'asta" });
+    const consigli = screen.getByRole('region', { name: 'I tuoi consigli' });
+    expect(consigli.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const pannello = tablist.parentElement!;
+    expect(pannello.parentElement).toBe(screen.getByTestId('auction-row'));
+    expect(pannello.className).toContain('lg:col-start-2');
+    expect(pannello.className).toContain('lg:row-start-3');
   });
 
   /**
