@@ -83,7 +83,7 @@ function ReopenIcon() {
 
 /**
  * Una cella del tabellone: il valore grande sopra, l'etichetta sotto, e — dove
- * serve — una riga di contesto in fondo (la distanza dal tetto, «sei tu»).
+ * serve — una riga di contesto in fondo («sei tu», quando sei in testa).
  *
  * <p>Vive come componente e non come tre copie di classi perche' e' esattamente
  * il punto: celle della stessa riga hanno la stessa altezza per costruzione, e
@@ -702,7 +702,7 @@ export function BidderDialog({
         {advice ? (
         <>
         <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
-          {/* Il tetto non e' piu' qui: e' salito fra i numeri della riga. Lo
+          {/* Il tetto non e' qui: e' nella riga privata sotto il tabellone. Lo
               stesso numero a due corpi diversi, in due punti del riquadro, e'
               due numeri per chi legge di fretta. */}
           <div className="flex gap-2">

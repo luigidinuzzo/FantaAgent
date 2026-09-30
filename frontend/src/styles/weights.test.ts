@@ -21,9 +21,10 @@ const SRC = new URL('..', import.meta.url).pathname;
  * esiste.
  *
  * <p>La regola: <b>un numero eroe per schermata</b>. Sul portatile e' il tetto (e,
- * mentre il conto corre, le tre letture su cui si decide); sulla proiezione sono i
- * numeri che la sala legge da lontano, dove la gerarchia e' un'altra perche' non
- * c'e' nient'altro in pagina. Tutto il resto scende di un gradino.
+ * mentre il conto corre, l'offerta: il numero su cui si decide adesso); sulla
+ * proiezione sono i numeri che la sala legge da lontano, dove la gerarchia e'
+ * un'altra perche' non c'e' nient'altro in pagina. Tutto il resto scende di un
+ * gradino.
  *
  * <p>Una voce in piu' qui e' una deroga da giustificare, non una scappatoia.
  */
