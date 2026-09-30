@@ -66,6 +66,8 @@ function jsonResponse(body: unknown, status = 200) {
 function renderRoster(
   onVoid?: (href: string) => Promise<Response>,
   state: Record<string, unknown> = STATE,
+  board: Record<string, unknown> = BOARD,
+  fill = false,
 ) {
   // Deliberatamente diverso da BOARD.auctionId ('a1'): e' esattamente lo scenario
   // del tab stantio — la finestra e' altrove, la board di QUESTA schermata resta
@@ -78,14 +80,14 @@ function renderRoster(
       return (onVoid ?? (() => Promise.resolve(new Response(null, { status: 204 }))))(href);
     }
     if (href.endsWith('/correct')) return Promise.resolve(new Response(null, { status: 204 }));
-    if (href.endsWith('/board')) return Promise.resolve(jsonResponse(BOARD));
+    if (href.endsWith('/board')) return Promise.resolve(jsonResponse(board));
     if (href.endsWith('/state')) return Promise.resolve(jsonResponse(state));
     return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
   });
   vi.stubGlobal('fetch', fetchMock);
   render(
     <QueryProvider>
-      <RosterGrid />
+      <RosterGrid fill={fill} />
     </QueryProvider>,
   );
   return fetchMock;
@@ -439,5 +441,22 @@ describe('RosterGrid', () => {
     }
     // Il nome resta testo: non e' un gesto nascosto.
     expect(screen.getByText('Sommer').closest('button')).toBeNull();
+  });
+
+  // Nel pannello delle schede, alto quanto resta: le rose scorrono nei due sensi, la
+  // tua colonna per prima e ferma a sinistra, i nomi delle squadre fermi in alto.
+  // Qui la tua e' la seconda nel tabellone: con fill passa in testa.
+  it('a riempimento la tua colonna e la prima e resta ferma a sinistra', async () => {
+    const board = { ...BOARD, columns: [BOARD.columns[1], BOARD.columns[0]] };
+    renderRoster(undefined, STATE, board, true);
+    await screen.findByText('Bastoni');
+    const columns = Array.from(document.querySelectorAll('section[aria-labelledby^="roster-"]'));
+    expect(columns[0]).toHaveAttribute('aria-labelledby', 'roster-anna');
+    expect(columns[0].className).toContain('lg:sticky');
+    expect(columns[0].className).toContain('lg:left-0');
+    expect(columns[1].className).not.toContain('lg:sticky');
+    const heading = columns[0].querySelector('h3')!;
+    expect(heading.className).toContain('lg:sticky');
+    expect(heading.className).toContain('lg:top-0');
   });
 });

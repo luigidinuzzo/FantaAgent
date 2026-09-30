@@ -67,8 +67,14 @@ function useMoreToTheRight<T extends HTMLElement>() {
  * {@code /state} la porta gia' in {@code ParticipantView.slotsByRole}. Leggerla da li'
  * (uno stesso query client, stessa chiave di cache di {@code AuctionRoute}) non
  * costa una seconda richiesta di rete: la pagina la sta gia' facendo.
+ *
+ * <p>{@code fill}: nel pannello delle schede dell'asta, da lg in su, la griglia e'
+ * alta quanto il pannello e scorre nei due sensi dentro di se'. La tua colonna va
+ * per prima e resta ferma a sinistra, i nomi delle squadre restano fermi in alto:
+ * scorrendo le rose degli altri si confrontano sempre con la tua. Senza
+ * {@code fill} (asta conclusa, chi non ha un posto) la griglia e' quella di sempre.
  */
-export function RosterGrid() {
+export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
   const board = useBoard();
   const state = useAuctionState();
   // Revoca e correzione sono dell'amministratore: gli altri vedono le rose e basta.
@@ -129,13 +135,18 @@ export function RosterGrid() {
   }
 
   const [scrollerRef, moreToTheRight] = useMoreToTheRight<HTMLDivElement>();
+  // La tua per prima solo con fill: sort e' stabile, l'ordine delle altre resta
+  // quello del tabellone.
+  const columns = fill
+    ? [...(board.data?.columns ?? [])].sort((a, b) => Number(b.me) - Number(a.me))
+    : (board.data?.columns ?? []);
 
   function toggleSection(key: string) {
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   return (
-    <div>
+    <div className={fill ? 'lg:flex lg:h-full lg:min-h-0 lg:flex-col' : undefined}>
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="sr-only">Rose squadre</h2>
 
@@ -182,24 +193,28 @@ export function RosterGrid() {
         // Quando ne restano fuori, una sfumatura sul bordo destro e una riga di
         // testo lo dicono: prima le colonne finivano tagliate a meta' senza nessun
         // segno che ce ne fossero altre.
-        <div className="relative">
+        <div className={`relative ${fill ? 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}`}>
           {moreToTheRight ? (
             <p className="mb-2 text-sm text-muted-foreground">Scorri di lato per vedere le altre squadre.</p>
           ) : null}
-        <div ref={scrollerRef} className="relative overflow-x-auto">
+        <div
+          ref={scrollerRef}
+          className={`relative overflow-x-auto ${fill ? 'lg:min-h-0 lg:flex-1 lg:overflow-auto' : ''}`}
+        >
           <div
             className="grid gap-3 pb-1"
             style={{
               // Per l'amministratore ogni riga porta due gesti, matita e ✕: la
               // colonna si allarga di quanto occupa il secondo, cosi' al nome resta
               // lo spazio di sempre invece di troncarsi alla terza lettera.
-              gridTemplateColumns: `repeat(${board.data?.columns.length ?? 0}, minmax(${admin ? '13rem' : '11rem'}, 1fr))`,
+              gridTemplateColumns: `repeat(${columns.length}, minmax(${admin ? '13rem' : '11rem'}, 1fr))`,
             }}
           >
-            {(board.data?.columns ?? []).map((column) => (
+            {columns.map((column) => (
               <RosterColumn
                 key={column.participantId}
                 column={column}
+                sticky={fill}
                 capacity={
                   state.data?.participants.find((p) => p.id === column.participantId)
                     ?.slotsByRole
@@ -351,6 +366,7 @@ function RosterColumn({
   pendingSeq,
   collapsed,
   onToggleSection,
+  sticky,
 }: {
   column: BoardColumn;
   /** Le caselle per ruolo, dalle regole di lega lette da {@code /state}. Assente
@@ -364,6 +380,8 @@ function RosterColumn({
   pendingSeq: number | null;
   collapsed: Record<string, boolean>;
   onToggleSection: (key: string) => void;
+  /** Nel pannello a riempimento: la tua colonna ferma a sinistra, il nome in alto. */
+  sticky: boolean;
 }) {
   return (
     // La larghezza la decide la griglia di RosterGrid; min-w-0 perche' un nome
@@ -371,9 +389,15 @@ function RosterColumn({
     // come nella colonna delle squadre e nella proiezione.
     <section
       aria-labelledby={`roster-${column.participantId}`}
-      className={`min-w-0 rounded-lg border p-3 ${column.me ? 'border-accent' : 'border-line'}`}
+      // Ferma a sinistra, col fondo pieno: le altre colonne le scorrono sotto.
+      className={`min-w-0 rounded-lg border p-3 ${column.me ? 'border-accent' : 'border-line'} ${
+        sticky && column.me ? 'lg:sticky lg:left-0 lg:z-10 lg:bg-surface' : ''
+      }`}
     >
-      <h3 id={`roster-${column.participantId}`} className="flex items-baseline justify-between gap-2">
+      <h3
+        id={`roster-${column.participantId}`}
+        className={`flex items-baseline justify-between gap-2 ${sticky ? 'lg:sticky lg:top-0 lg:z-[5] lg:bg-surface' : ''}`}
+      >
         <span className="truncate font-medium">{column.participantName}</span>
         {/* I crediti con la loro parola accanto: un numero nudo accanto al nome
             si capiva solo sapendolo gia'. */}

@@ -1594,28 +1594,25 @@ describe('AuctionRoute', () => {
   });
 
   /**
-   * L'altezza della riga e' decisa in anticipo, non dedotta dal contenuto — ma 39rem
-   * piu' la barra piu' i margini fanno 717px, e su un portatile da 13" le schede
-   * «Fase corrente» e «Rose squadre» nascevano fuori schermo: si finiva a scorrere
-   * durante un'asta dal vivo, che e' il momento in cui non si deve scorrere. La
-   * misura resta quella sugli schermi che la reggono, e si stringe su quelli che no.
-   * Le tre colonne scorrono gia' dentro di se': sono attrezzate per riceverne meno.
+   * La riga dell'asta e' alta quanto la finestra meno le due barre e i margini, e
+   * mai meno di 43,5rem: sotto, scorre la pagina. Il banco ha un'altezza sola,
+   * --banco-h, in ogni stato; la tabella prende cio' che resta.
    */
-  it('la riga dell asta non supera l altezza della finestra', async () => {
-    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
-    vi.stubGlobal('fetch', fullFetchMock());
+  it('la riga dell asta e alta quanto la finestra, col banco a misura fissa', async () => {
+    stubApi({ state: STATE });
+    renderAuction();
+    const row = await screen.findByTestId('auction-row');
+    expect(row.className).toContain('lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))]');
+    const center = screen.getByTestId('auction-center');
+    expect(center.className).toContain('lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]');
+  });
 
-    const { container } = render(
-      <QueryProvider>
-        <MemoryRouter><AuctionRoute /></MemoryRouter>
-      </QueryProvider>,
-    );
-
-    await screen.findByRole('region', { name: 'Crediti delle squadre' });
-    const riga = container.querySelector('[data-testid="auction-row"]')!;
-    expect(riga.className).toContain(
-      'lg:h-[min(39rem,calc(100dvh-var(--header-h)-var(--commands-h)-8.6875rem))]',
-    );
+  // La tabella non e' piu' sotto la piega: sta nella colonna centrale, sotto il banco.
+  it('le schede stanno nella colonna centrale, sotto il banco', async () => {
+    stubApi({ state: STATE });
+    renderAuction();
+    const center = await screen.findByTestId('auction-center');
+    expect(within(center).getByRole('tablist', { name: "Sezioni dell'asta" })).toBeInTheDocument();
   });
 
   /**

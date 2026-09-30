@@ -91,6 +91,11 @@ const ICON_LINK =
   'flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-control-border font-medium hover:bg-line md:px-4'
   + ' focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
+// I margini della pagina, al posto di quelli di AppShell (bleed): sotto lg gli
+// stessi di sempre, da lg 16px in alto e in basso invece di 24: sono i 16px che
+// la tabella sotto il banco guadagna in altezza a 1440x900.
+const PAGE_PADDING = 'p-4 md:p-6 lg:px-5 lg:py-4';
+
 type TabKey = 'fase' | 'rose';
 
 /** Quanto resta in vista l'avviso di un acquisto, con il suo «Annulla». */
@@ -546,12 +551,14 @@ export function AuctionRoute() {
   // direbbe una cosa falsa — la connessione c'e', e' la risposta a essere definitiva.
   if (isNotFound(state.error)) {
     return (
-      <AppShell chrome="top" trail={trail}>
-        <div className="panel mx-auto max-w-xl p-4">
-          <p role="alert" className="text-sm font-medium text-destructive">
-            Questa lega non esiste, o non ne fai parte.
-          </p>
-          <p className="mt-3 text-sm"><Link to="/" className={TEXT_LINK}>Vai alle tue leghe</Link></p>
+      <AppShell chrome="top" trail={trail} bleed>
+        <div className={PAGE_PADDING}>
+          <div className="panel mx-auto max-w-xl p-4">
+            <p role="alert" className="text-sm font-medium text-destructive">
+              Questa lega non esiste, o non ne fai parte.
+            </p>
+            <p className="mt-3 text-sm"><Link to="/" className={TEXT_LINK}>Vai alle tue leghe</Link></p>
+          </div>
         </div>
       </AppShell>
     );
@@ -561,6 +568,7 @@ export function AuctionRoute() {
     <AppShell
       chrome="top"
       trail={trail}
+      bleed
       slotActions={
         <>
           {admin ? (
@@ -623,6 +631,7 @@ export function AuctionRoute() {
         />
       }
     >
+      <div className={PAGE_PADDING}>
       {/* Nascosto alla vista, non dall'albero di accessibilita': come su
           /proiezione, chi ascolta deve avere un h1 da cui partire anche se
           chi guarda il portatile non ha bisogno di leggere la parola "Asta". */}
@@ -638,27 +647,10 @@ export function AuctionRoute() {
         </p>
       ) : null}
       {/* Tre colonne, come si sta al tavolo: a sinistra chi ha quanto, al centro
-          il giocatore su cui si sta decidendo, a destra il perche' del prezzo. In
-          fondo, fuori da questa griglia, restano le due schede — fase corrente e
-          rose. Sotto lg la griglia si srotola in una colonna sola, nell'ordine in
-          cui e' scritta: crediti, ricerca, consigli. */}
-      {/* 39rem: misurata sullo stato piu' alto del banco con otto squadre (il
-          conto che corre, con le squadre su due righe) a 1600px. Con piu' squadre o
-          su schermi piu' stretti il banco scorre dentro di se' (min-h-0 sul
-          riquadro): prima cresceva oltre la griglia e copriva la tabella sotto. */}
-      {/* Altezza DECISA, non derivata dal contenuto. Prima la riga era alta
-          quanto la sua colonna piu' alta: scegliendo un giocatore, «Perche'
-          questo prezzo» passava da due righe a cinque driver con spiegazioni e
-          si trascinava dietro il banco e le squadre, che crescevano insieme
-          a lui. La misura e' tagliata sullo stato piu' alto del BATTITORE (il
-          conto alla rovescia scaduto, con il suo modulo di aggiudicazione), cosi'
-          quella colonna non ha mai bisogno di scorrere: misurato sullo stato
-          piu' alto che il banco puo' assumere — conto alla rovescia
-          scaduto, con l'avviso di offerta oltre il tetto E un errore di
-          aggiudicazione insieme — piu' la barra di ricerca, che vive in quella
-          stessa colonna e le toglie altezza. Le altre due colonne scorrono
-          dentro di se'. Solo da lg in su: in colonna sola l'altezza torna
-          quella del contenuto. */}
+          il giocatore su cui si decide e sotto di lui le due schede — fase
+          corrente e rose —, a destra il perche' del prezzo. Sotto lg la griglia
+          si srotola in una colonna sola, nell'ordine in cui e' scritta: crediti,
+          ricerca, banco, consigli, e le schede in fondo come prima. */}
       {concluded ? (
         <>
           <AuctionRecap participants={participants} board={board.data} />
@@ -689,16 +681,16 @@ export function AuctionRoute() {
       {/* grid-cols-1 e non la colonna implicita: quella si allarga fino al
           contenuto piu' largo (la fila delle squadre sul telefono), e la pagina
           intera scorreva di lato. */}
-      {/* min(): 39rem resta la misura decisa in anticipo, ma non oltre quello che
-          la finestra ha davvero. 39rem + la barra + i margini fanno 717px, e su un
-          portatile da 13" le schede qui sotto nascevano fuori schermo — si finiva a
-          scorrere durante un'asta dal vivo, che e' il momento in cui non si deve
-          scorrere. Il chrome fisso sopra la riga e' oggi due barre, non una sola:
-          --header-h (la navigazione, 3.5rem) e --commands-h (i comandi della
-          pagina, 3.5625rem). Restano 8.6875rem per margini e la fila delle schede:
-          erano le vecchie 13rem meno la vecchia barra unica di 4.3125rem, che le
-          due barre di oggi hanno sostituito. Le tre colonne scorrono gia' dentro
-          di se': sanno riceverne meno. */}
+      {/* Da lg la riga e' alta quanto la finestra, decisa in anticipo e non dedotta
+          dal contenuto. A 1440x900: navigazione 56 + comandi 57 + margini 32 =
+          145, restano 755. Nella colonna centrale ricerca 48 + 16 + banco 380 +
+          16 = 460; la tabella prende i 295 che restano: la riga delle schede,
+          l'intestazione e le prime righe. Sotto 43,5rem (48 + 16 + 380 + 16 +
+          236) scorre la pagina, non le colonne.
+          L'altezza del banco e' --banco-h in index.css, l'unico posto in cui
+          cambiarla; le colonne laterali scorrono dentro di se'. Senza posto non
+          c'e' tabella di fase: la riga resta alta quanto il banco, e le rose
+          stanno sotto a pagina intera. */}
       {seated === false ? (
         // L'amministratore senza posto: batte l'asta, ma consigli per lui non ce
         // ne sono. La frase una volta sola, sopra; la colonna dei consigli non
@@ -708,15 +700,29 @@ export function AuctionRoute() {
           Non hai un posto in quest'asta: puoi seguirla, ma i consigli non sono disponibili.
         </p>
       ) : null}
+      {/* gap-5 sotto lg, come prima di questa griglia: il telefono ha un suo piano. */}
       <div
         data-testid="auction-row"
-        className={`grid grid-cols-1 gap-5 lg:h-[min(39rem,calc(100dvh-var(--header-h)-var(--commands-h)-8.6875rem))] ${
-          seated === false ? 'lg:grid-cols-[14rem_1fr]' : 'lg:grid-cols-[14rem_1fr_22rem]'
+        className={`grid grid-cols-1 gap-5 lg:gap-4 ${
+          seated === false
+            ? 'lg:grid-cols-[14.5rem_minmax(0,1fr)]'
+            : 'lg:h-[max(43.5rem,calc(100dvh-var(--header-h)-var(--commands-h)-2rem))] lg:grid-cols-[14.5rem_minmax(0,1fr)_20.5rem]'
         }`}
       >
         <ParticipantsColumn participants={participants} phase={state.data?.currentPhase} />
 
-        <div className="flex min-h-0 min-w-0 flex-col gap-5">
+        {/* Da lg tre righe decise in anticipo: ricerca, banco, schede. Sotto lg la
+            colonna non esiste (contents): i suoi figli stanno nella colonna sola
+            della pagina, e le schede, con order-last, tornano in fondo dopo i
+            consigli, dov'erano. */}
+        <div
+          data-testid="auction-center"
+          className={`flex min-h-0 min-w-0 flex-col gap-4 max-lg:contents lg:grid ${
+            seated === false
+              ? 'lg:grid-rows-[3rem_var(--banco-h)]'
+              : 'lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]'
+          }`}
+        >
           {/* La stessa selezione della tabella di fase, non un secondo percorso:
               un giocatore scelto qui passa per setSelectedId esattamente come una
               riga cliccata, quindi valutazione, banco e aggiudicazione si
@@ -724,12 +730,10 @@ export function AuctionRoute() {
 
               Nessun riquadro attorno alla barra: il bordo del campo e' gia' un
               contorno, e un pannello attorno ne disegnava un secondo. */}
-          {/* Mentre si cerca il pannello e' l'unica cosa in questa colonna, e
-              prende tutta l'altezza della riga: cosi' il suo bordo inferiore
-              cade sulla stessa linea di quelli dei crediti e dei consigli. A
-              riposo no — resta alto quanto la barra, ed e' il banco qui
-              sotto (flex-1) a riempire la colonna. */}
-          <div className={searchActive ? 'flex min-h-0 flex-1 flex-col' : undefined}>
+          {/* Mentre si cerca i risultati prendono il posto del banco: il pannello
+              occupa le righe della ricerca e del banco insieme, e la tabella
+              resta dov'e'. A riposo resta alto quanto la barra. */}
+          <div className={searchActive ? 'flex min-h-0 flex-1 flex-col lg:row-span-2' : 'min-h-0'}>
             <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} sold={sold} />
           </div>
 
@@ -742,7 +746,11 @@ export function AuctionRoute() {
               ogni lettera. Nascosto, non svuotato — selectedId resta intatto, e
               uscendo dalla ricerca si ritrova il lotto com'era. */}
           {searchActive ? null : (
-          <section aria-labelledby={bidderPanelId} className="panel flex min-h-0 flex-1 flex-col p-4">
+          <section
+            data-testid="banco"
+            aria-labelledby={bidderPanelId}
+            className="panel flex min-h-0 flex-1 flex-col p-4"
+          >
             <div className="flex min-h-11 items-center justify-between gap-3">
               {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
                   c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
@@ -793,11 +801,11 @@ export function AuctionRoute() {
                 e' cosi' che distribuisce il contenuto invece di ammucchiarlo
                 in cima al riquadro. */}
             {/* overflow-y-auto e' una valvola, non il modo normale di leggere
-                questa colonna: l'altezza e' tagliata sul suo stato piu' alto e
-                in condizioni normali non scorre mai. Serve a non TAGLIARE il
+                il banco: la sua altezza (--banco-h) e' tagliata sul suo stato piu'
+                alto e in condizioni normali non scorre mai. Serve a non TAGLIARE il
                 contenuto se qualcosa esce dalle misure previste — un ingrandimento
                 del browser al 150%, un carattere di sistema piu' grande. */}
-            <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div data-testid="banco-content" className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
               {lot ? (
                 // shrink-0: il lotto prende l'altezza che gli serve e non di
                 // piu'. Senza, il flex-shrink di default lo comprimerebbe per
@@ -861,6 +869,125 @@ export function AuctionRoute() {
             </div>
           </section>
           )}
+
+          {/* Le schede, terza riga della colonna centrale: prendono l'altezza che
+              il banco lascia, e la tabella scorre dentro di se' con l'intestazione
+              ferma. Sotto lg tornano in fondo alla pagina (order-last; -mt-1
+              riporta a 16px lo spazio che prima era mt-4). */}
+          {seated === false ? null : (
+            <div className="panel flex min-h-0 flex-col max-lg:order-last max-lg:-mt-1 max-lg:p-4 lg:overflow-hidden">
+              {/* La riga delle schede: le schede a sinistra, legenda e pagine a
+                  destra. Sotto lg non e' una riga (contents): le schede stanno in
+                  cima col loro filo, le pagine sotto la tabella come prima. */}
+              <div className="flex shrink-0 flex-wrap items-center gap-x-4 border-b border-line max-lg:contents lg:px-2">
+                {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
+                    limita a somigliarci: ruolo, stato e frecce sinistra/destra per
+                    spostare la selezione, come da WAI-ARIA Authoring Practices. */}
+                <div
+                  role="tablist"
+                  aria-label="Sezioni dell'asta"
+                  className="flex gap-1 max-lg:border-b max-lg:border-line"
+                >
+                  {TABS.map((tab) => (
+                    <button
+                      key={tab.key}
+                      ref={(el) => { tabRefs.current[tab.key] = el; }}
+                      type="button"
+                      role="tab"
+                      id={`tab-${tab.key}`}
+                      aria-selected={activeTab === tab.key}
+                      aria-controls={`tabpanel-${tab.key}`}
+                      tabIndex={activeTab === tab.key ? 0 : -1}
+                      onClick={() => setActiveTab(tab.key)}
+                      onKeyDown={(e) => handleTabKeyDown(e, tab.key)}
+                      className={`min-h-11 border-b-2 px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+                        activeTab === tab.key
+                          ? 'border-accent text-accent'
+                          : 'border-transparent text-muted-foreground'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
+                    una pagina precedente resta scelto (valutazione e banco
+                    intatti, se aperto) anche se la sua riga scorre fuori vista
+                    sfogliando. */}
+                {activeTab === 'fase' && phase.data ? (
+                  <div className="max-lg:order-last max-xl:flex-wrap lg:ml-auto lg:flex lg:items-center lg:gap-3 lg:text-meta lg:text-muted-foreground">
+                    {/* Da xl in su la legenda sta qui, in una riga; sotto va a capo
+                        sotto le pagine. Sotto lg non c'e': la dice per intero la
+                        didascalia della tabella. */}
+                    <span className="max-xl:order-last max-xl:basis-full max-lg:hidden">
+                      in <span className="font-medium text-destructive">rosso</span> i tetti che il mercato supera
+                    </span>
+                    <PhasePager
+                      compact
+                      offset={phase.data.offset}
+                      pageSize={phase.data.pageSize}
+                      total={phase.data.total}
+                      hasPrevious={phase.data.hasPrevious}
+                      hasNext={phase.data.hasNext}
+                      onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
+                      onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+
+              <div
+                role="tabpanel"
+                id="tabpanel-fase"
+                aria-labelledby="tab-fase"
+                hidden={activeTab !== 'fase'}
+                className="max-lg:mt-4 lg:min-h-0 lg:flex-1"
+              >
+                {activeTab === 'fase' ? (
+                  <>
+                    {/* Bloccata mentre il conto alla rovescia corre: un lotto alla volta.
+                        Cambiare selezione con un rilancio in corso rimonterebbe
+                        BidderDialog (keyed sul playerId) su un altro giocatore,
+                        buttando via countdown, prezzo e beep senza preavviso.
+                        Abbandonare un lotto resta un gesto deliberato — si chiude
+                        il conto alla rovescia, che e' il controllo che gia' esiste per farlo. */}
+                    <PlayerTable
+                      fill
+                      sort={sort}
+                      dir={sortDir}
+                      // Cambiando ordine si torna alla prima pagina: restare alla terza
+                      // pagina di un ordine che non esiste piu' non vuol dire niente.
+                      onSort={(next, dir) => { setSort(next); setSortDir(dir); setPageOffset(0); }}
+                      rows={phase.data?.rows ?? []}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      disabled={bidderOpen}
+                    />
+                  </>
+                ) : null}
+              </div>
+
+              <div
+                role="tabpanel"
+                id="tabpanel-rose"
+                aria-labelledby="tab-rose"
+                hidden={activeTab !== 'rose'}
+                className="max-lg:mt-4 lg:min-h-0 lg:flex-1 lg:p-3"
+              >
+                {/* Montata solo quando la scheda e' quella attiva: legge /board (e
+                    le capacita' per ruolo da /state) da se', e non c'e' motivo di
+                    farlo mentre e' "Fase corrente" a essere in vista.
+                    Caso residuo dichiarato: RosterGrid porta un suo role="alert"
+                    (voidPurchase/board), separato da barAlertMessage sopra. Non e'
+                    una violazione dell'invariante "un solo alert alla volta": vive
+                    dentro il pannello della sua scheda, visibile solo quando questa
+                    e' quella attiva, quindi al massimo compaiono insieme un alert
+                    della barra (sempre visibile) e uno delle rose (visibile solo
+                    qui) — non due dalla stessa fonte, non due dallo stesso posto. */}
+                {activeTab === 'rose' ? <RosterGrid fill /> : null}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* La colonna dei consigli: a riposo porta le occasioni della fase e la tua
@@ -891,105 +1018,7 @@ export function AuctionRoute() {
         <div className="panel mt-4 p-4">
           <RosterGrid />
         </div>
-      ) : (
-      <div className="panel mt-4 p-4">
-        {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
-            limita a somigliarci: ruolo, stato e frecce sinistra/destra per
-            spostare la selezione, come da WAI-ARIA Authoring Practices. */}
-        <div
-          role="tablist"
-          aria-label="Sezioni dell'asta"
-          className="flex gap-1 border-b border-line"
-        >
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              ref={(el) => { tabRefs.current[tab.key] = el; }}
-              type="button"
-              role="tab"
-              id={`tab-${tab.key}`}
-              aria-selected={activeTab === tab.key}
-              aria-controls={`tabpanel-${tab.key}`}
-              tabIndex={activeTab === tab.key ? 0 : -1}
-              onClick={() => setActiveTab(tab.key)}
-              onKeyDown={(e) => handleTabKeyDown(e, tab.key)}
-              className={`min-h-11 border-b-2 px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                activeTab === tab.key
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-muted-foreground'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div
-          role="tabpanel"
-          id="tabpanel-fase"
-          aria-labelledby="tab-fase"
-          hidden={activeTab !== 'fase'}
-          className="mt-4"
-        >
-          {activeTab === 'fase' ? (
-            <>
-              {/* Bloccata mentre il conto alla rovescia corre: un lotto alla volta.
-                  Cambiare selezione con un rilancio in corso rimonterebbe
-                  BidderDialog (keyed sul playerId) su un altro giocatore,
-                  buttando via countdown, prezzo e beep senza preavviso.
-                  Abbandonare un lotto resta un gesto deliberato — si chiude
-                  il conto alla rovescia, che e' il controllo che gia' esiste per farlo. */}
-              <PlayerTable
-                sort={sort}
-                dir={sortDir}
-                // Cambiando ordine si torna alla prima pagina: restare alla terza
-                // pagina di un ordine che non esiste piu' non vuol dire niente.
-                onSort={(next, dir) => { setSort(next); setSortDir(dir); setPageOffset(0); }}
-                rows={phase.data?.rows ?? []}
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                disabled={bidderOpen}
-              />
-              {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
-                  una pagina precedente resta scelto (valutazione e banco
-                  intatti, se aperto) anche se la sua riga scorre fuori vista
-                  sfogliando. */}
-              {phase.data ? (
-                <PhasePager
-                  offset={phase.data.offset}
-                  pageSize={phase.data.pageSize}
-                  total={phase.data.total}
-                  hasPrevious={phase.data.hasPrevious}
-                  hasNext={phase.data.hasNext}
-                  onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
-                  onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
-                />
-              ) : null}
-            </>
-          ) : null}
-        </div>
-
-        <div
-          role="tabpanel"
-          id="tabpanel-rose"
-          aria-labelledby="tab-rose"
-          hidden={activeTab !== 'rose'}
-          className="mt-4"
-        >
-          {/* Montata solo quando la scheda e' quella attiva: legge /board (e
-              le capacita' per ruolo da /state) da se', e non c'e' motivo di
-              farlo mentre e' "Fase corrente" a essere in vista.
-              Caso residuo dichiarato: RosterGrid porta un suo role="alert"
-              (voidPurchase/board), separato da barAlertMessage sopra. Non e'
-              una violazione dell'invariante "un solo alert alla volta": vive
-              dentro il pannello della sua scheda, visibile solo quando questa
-              e' quella attiva, quindi al massimo compaiono insieme un alert
-              della barra (sempre visibile) e uno delle rose (visibile solo
-              qui) — non due dalla stessa fonte, non due dallo stesso posto. */}
-          {activeTab === 'rose' ? <RosterGrid /> : null}
-        </div>
-      </div>
-      )}
+      ) : null}
       </>
       )}
 
@@ -1017,6 +1046,7 @@ export function AuctionRoute() {
           </div>
         </div>
       ) : null}
+      </div>
     </AppShell>
   );
 }

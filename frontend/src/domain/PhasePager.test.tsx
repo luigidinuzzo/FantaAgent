@@ -69,4 +69,12 @@ describe('PhasePager', () => {
     expect(onPrevious).toHaveBeenCalledTimes(1);
     expect(onNext).toHaveBeenCalledTimes(1);
   });
+
+  // Nella riga delle schede: due frecce e il conteggio, stessi nomi per chi ascolta.
+  it('compatto: due frecce con lo stesso nome dei bottoni di sempre', () => {
+    render(<PhasePager compact offset={0} pageSize={25} total={40} hasPrevious={false} hasNext onPrevious={() => {}} onNext={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Pagina successiva' })).toHaveTextContent('›');
+    expect(screen.getByRole('button', { name: 'Pagina precedente' })).toBeDisabled();
+    expect(screen.getByText('1–25 di 40')).toBeInTheDocument();
+  });
 });

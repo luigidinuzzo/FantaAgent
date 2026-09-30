@@ -285,4 +285,15 @@ describe('PlayerTable', () => {
     expect(screen.queryByText(/dal più quotato/)).not.toBeInTheDocument();
     expect(screen.getByText(/da chi gioca di più/)).toBeInTheDocument();
   });
+
+  // Dentro il pannello delle schede la tabella scorre da se', e l'intestazione resta
+  // ferma in alto: con cinque righe in vista, senza intestazione non si saprebbe
+  // quale colonna e' il tetto. Solo da lg in su: sotto, la tabella resta com'era.
+  it('a riempimento scorre dentro di se con l intestazione ferma', () => {
+    render(<PlayerTable fill rows={ROWS} selectedId={null} onSelect={() => {}} />);
+    const region = screen.getByRole('region');
+    expect(region.className).toContain('lg:h-full');
+    expect(region.className).toContain('lg:overflow-auto');
+    screen.getAllByRole('columnheader').forEach((th) => expect(th.className).toContain('lg:sticky'));
+  });
 });

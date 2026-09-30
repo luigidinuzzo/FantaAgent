@@ -34,14 +34,16 @@ const ORDER_PHRASE: Record<PhaseSort, Record<SortDir, string>> = {
   },
 };
 
-// NOTA per chi ci tornera': l'intestazione NON e' ferma allo scorrimento, e
-// renderla tale non e' una riga di CSS. Il contenitore qui sotto ha
-// `overflow-x-auto`, e questo fa calcolare anche `overflow-y` come `auto`: da
-// quel momento un `position: sticky` qui dentro si ancora a QUEL riquadro, non
-// alla finestra — e quel riquadro non scorre in verticale, quindi la classe non
-// farebbe niente. Perche' funzioni, la tabella deve diventare la propria area di
-// scorrimento, con un'altezza decisa in anticipo come le colonne dell'asta. E'
-// una scelta di impaginazione, non una rifinitura.
+// L'intestazione ferma allo scorrimento c'e' solo con `fill`, da lg in su: li' la
+// tabella e' la propria area di scorrimento, alta quanto il pannello delle schede
+// che la contiene, e `position: sticky` si ancora a lei. Senza `fill` il
+// contenitore ha `overflow-x-auto`, che fa calcolare anche `overflow-y` come
+// `auto`: sticky si ancorerebbe a un riquadro che in verticale non scorre, e non
+// farebbe niente.
+
+// Le intestazioni ferme in alto con `fill`: il fondo pieno copre le righe che ci
+// scorrono sotto.
+const STICKY_TH = 'lg:sticky lg:top-0 lg:z-10 lg:bg-surface';
 
 /**
  * La freccia del verso, accanto alla colonna ordinata. Tratto vettoriale, mai
@@ -68,6 +70,7 @@ export function PlayerTable({
   sort = 'quotazione',
   dir = 'desc',
   onSort,
+  fill = false,
 }: {
   rows: PhaseRowView[];
   selectedId: string | null;
@@ -93,8 +96,16 @@ export function PlayerTable({
    * di un clic.
    */
   disabled?: boolean;
+  /**
+   * Da lg in su la tabella riempie il pannello delle schede dell'asta e scorre
+   * dentro di se', con l'intestazione ferma. La legenda visibile passa nella riga
+   * delle schede, quindi la didascalia resta solo per chi ascolta. Sotto lg la
+   * tabella e' quella di sempre.
+   */
+  fill?: boolean;
 }) {
   const lockedHintId = useId();
+  const th = fill ? STICKY_TH : '';
 
   if (rows.length === 0) {
     // Uno schermo vuoto e' un invito ad agire, non un errore muto.
@@ -112,16 +123,22 @@ export function PlayerTable({
       role="region"
       tabIndex={0}
       aria-labelledby={CAPTION_ID}
-      className="relative overflow-x-auto rounded-lg border border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      // Con fill, da lg, il pannello delle schede fa gia' da cornice: niente bordo.
+      className={`relative overflow-x-auto rounded-lg border border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+        fill ? 'lg:h-full lg:overflow-auto lg:rounded-none lg:border-0' : ''
+      }`}
     >
-      <table className="w-full border-collapse text-sm">
+      <table className={`w-full border-collapse text-sm ${fill ? 'lg:text-body' : ''}`}>
         {/* Visibile, non piu' sr-only: accanto, «Occasioni della fase» dichiara il
             proprio criterio e mostra altri nomi, e senza il suo questa tabella
             sembrava contraddirla — i consigliati non erano in cima e non si capiva
             perche'. L'ordine non e' casuale: e' quello in cui i giocatori vengono
             chiamati in asta e in cui l'occhio li cerca sul listone. Detto una volta
             in testa, le due liste smettono di sembrare in disaccordo. */}
-        <caption id={CAPTION_ID} className="px-3 pb-2 pt-1 text-left text-sm text-muted-foreground">
+        <caption
+          id={CAPTION_ID}
+          className={`px-3 pb-2 pt-1 text-left text-sm text-muted-foreground ${fill ? 'lg:sr-only' : ''}`}
+        >
           {`Giocatori liberi nella fase corrente, ${ORDER_PHRASE[sort][dir]}.`}
           {/* Cosa vogliono dire i tre stati della colonna «Il tuo tetto». Il
               colore da solo non e' informazione, e qui non lo era nemmeno per chi
@@ -137,17 +154,17 @@ export function PlayerTable({
             {/* Parole intere, non sigle: «Sq», «Quot», «FM attesa» si capivano solo
                 da chi le aveva scritte. Sul telefono restano le tre colonne che
                 servono a decidere; la squadra va sotto il nome. */}
-            <th scope="col" className={`${CELL_X} py-2 font-normal`}>Giocatore</th>
-            <th scope="col" className={`${CELL_X} py-2 font-normal max-sm:hidden`}>Squadra</th>
-            <SortableHeader column="quotazione" label="Quotazione" sort={sort} dir={dir} onSort={onSort} />
+            <th scope="col" className={`${CELL_X} py-2 font-normal ${th}`}>Giocatore</th>
+            <th scope="col" className={`${CELL_X} py-2 font-normal max-sm:hidden ${th}`}>Squadra</th>
+            <SortableHeader column="quotazione" label="Quotazione" sort={sort} dir={dir} onSort={onSort} sticky={fill} />
             {/* Non ordinabile, e non per dimenticanza: il tetto nasce da una
                 valutazione completa per riga, e metterci in fila l'intera fase
                 costerebbe secondi a ogni pagina chiesta. La stessa domanda —
                 «dove conviene guardare» — ha gia' la sua risposta in «Occasioni
                 della fase», detto nella legenda qui sopra. */}
-            <th scope="col" className={`${CELL_X} py-2 text-right font-normal`}>Il tuo tetto</th>
-            <SortableHeader column="fantamedia" label="Fantamedia attesa" sort={sort} dir={dir} onSort={onSort} hideOnPhone />
-            <SortableHeader column="titolarita" label="Titolarità" sort={sort} dir={dir} onSort={onSort} hideOnPhone />
+            <th scope="col" className={`${CELL_X} py-2 text-right font-normal ${th}`}>Il tuo tetto</th>
+            <SortableHeader column="fantamedia" label="Fantamedia attesa" sort={sort} dir={dir} onSort={onSort} sticky={fill} hideOnPhone />
+            <SortableHeader column="titolarita" label="Titolarità" sort={sort} dir={dir} onSort={onSort} sticky={fill} hideOnPhone />
           </tr>
         </thead>
         <tbody>
@@ -205,8 +222,11 @@ export function PlayerTable({
                   // quasi meta' delle righe, e in rosso quella parola sovrastava i
                   // numeri accanto — che sono l'unica cosa su cui si agisce. Dove
                   // non c'e' niente da fare, non c'e' nessuno da avvisare.
+                  // Con fill il tetto raggiungibile e' in grassetto: e' il numero su
+                  // cui si decide, e nella tabella sotto il banco va trovato a colpo
+                  // d'occhio fra quotazione e fantamedia.
                   className={`tnum ${CELL_X} py-2 text-right ${
-                    row.maxBid === 0 ? 'text-muted-foreground' : above ? 'text-destructive' : ''
+                    row.maxBid === 0 ? 'text-muted-foreground' : above ? 'text-destructive' : fill ? 'lg:font-bold' : ''
                   }`}
                 >
                   {/* Tetto zero non e' un prezzo basso: e' l'assenza di un prezzo —
@@ -255,16 +275,18 @@ export function PlayerTable({
  * parte dal suo verso naturale, il decrescente — la quotazione piu' alta, la
  * fantamedia migliore, chi gioca di piu'.
  */
-function SortableHeader({ column, label, sort, dir, onSort, hideOnPhone = false }: {
+function SortableHeader({ column, label, sort, dir, onSort, hideOnPhone = false, sticky = false }: {
   column: PhaseSort;
   label: string;
   sort: PhaseSort;
   dir: SortDir;
   onSort?: (sort: PhaseSort, dir: SortDir) => void;
   hideOnPhone?: boolean;
+  /** Ferma in alto, come le altre intestazioni della tabella a riempimento. */
+  sticky?: boolean;
 }) {
   const active = sort === column;
-  const cell = `${CELL_X} py-2 text-right font-normal ${hideOnPhone ? 'max-sm:hidden' : ''}`;
+  const cell = `${CELL_X} py-2 text-right font-normal ${hideOnPhone ? 'max-sm:hidden' : ''} ${sticky ? STICKY_TH : ''}`;
 
   if (!onSort) {
     return <th scope="col" className={cell}>{label}</th>;

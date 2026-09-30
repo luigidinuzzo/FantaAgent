@@ -73,6 +73,13 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   --commands-h: 3.5625rem;
 }
 
+/* L'altezza del banco dell'asta, uguale in ogni stato: a riposo, col lotto, col
+   conto che corre, a tempo scaduto. Presa dallo stato piu' alto misurato su uno
+   screenshot vero (docs/superpowers/decisions): e' l'unico posto in cui cambiarla. */
+:root {
+  --banco-h: 23.75rem;
+}
+
 /* L'erba a strisce (PitchGrass): due token in un gradiente ripetuto, dodici
    strisce da un lato all'altro. Le strisce di taglio corrono di traverso:
    verticali sugli schermi orizzontali, orizzontali su quelli verticali. Vive
