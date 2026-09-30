@@ -56,12 +56,15 @@ export function PhaseTargets({
   framed?: boolean;
 }) {
   const shown = excludeId === undefined ? targets : targets.filter((t) => t.id !== excludeId);
+  // Senza cornice propria sta dentro «I tuoi consigli», il cui titolo e' un h2:
+  // il suo e' un livello sotto, come quello della tua rosa accanto.
+  const Heading = bare || !framed ? 'h3' : 'h2';
   return (
     <section
       aria-labelledby={HEADING_ID}
       className={bare || !framed ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col p-5'}
     >
-      {/* Nel banco il titolo non arretra: e' la via d'uscita dal lotto aperto, non
+      {/* Col lotto, nella colonna dei consigli, il titolo non arretra: e' la via d'uscita dal lotto aperto, non
           una nota a pie' di pagina. Il criterio gli sta accanto sulla stessa riga —
           dice perche' proprio questi, e non costa una riga a nessuno. */}
       <div className="flex shrink-0 flex-wrap items-baseline gap-x-2">
@@ -69,12 +72,12 @@ export function PhaseTargets({
             accessibile della sezione, che deve restare il nome corto con cui la si
             chiama — «Invece di lui», non «Invece di lui i portieri liberi che
             rendono di piu'». */}
-        <h2
+        <Heading
           id={HEADING_ID}
           className={`text-sm ${bare ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}
         >
           {bare ? 'Invece di lui' : 'Occasioni della fase'}
-        </h2>
+        </Heading>
         {bare ? (
           <p className="text-sm text-muted-foreground">
             {phase ? `i ${ROLE_NAME_PLURAL[phase]} liberi che rendono di più` : 'i liberi che rendono di più'}
@@ -109,7 +112,8 @@ export function PhaseTargets({
         </p>
       ) : (
         <ol
-          // Nel banco: tutte le occasioni affiancate, e NIENTE scorrimento.
+          // Col titolo «Invece di lui» (bare) e non impilate: tutte le occasioni
+          // affiancate, e NIENTE scorrimento.
           //
           // Il difetto che questo chiude: l'elenco era alto una riga sola e il
           // contenuto tre — cinque occasioni, due visibili, tre dietro uno
@@ -119,8 +123,9 @@ export function PhaseTargets({
           // (limit=5), quindi ci stanno tutte in una riga e non c'e' niente da
           // nascondere.
           //
-          // Nella colonna dei consigli resta un elenco alto quanto la colonna:
-          // li' lo spazio e' stretto e alto, ed e' l'unica cosa in scena.
+          // Impilate, col lotto nella colonna dei consigli: una pillola per riga,
+          // perche' la colonna e' stretta e alta. A riposo, sotto il titolo
+          // «Occasioni della fase», resta un elenco che scorre dentro di se'.
           className={`mt-3 ${
             bare
               ? stacked
@@ -138,9 +143,9 @@ export function PhaseTargets({
                 // Il nome comincia col nome visibile (chi comanda a voce dice quello), poi
                 // i numeri detti per esteso: il «·» e il segno non si leggono bene.
                 aria-label={`${t.name}, ${t.team}: mercato ${t.expectedPrice}, tetto ${t.maxBid}, margine ${signed(t.margin)}`}
-                // Nel banco e' una pillola col contorno, come i bottoni squadra del
-                // conto alla rovescia: prima erano righe separate da un filetto, e si
-                // leggevano come testo invece che come qualcosa da premere.
+                // Col lotto, nella colonna dei consigli, e' una pillola col contorno,
+                // come i bottoni squadra del tempo scaduto: prima erano righe separate
+                // da un filetto, e si leggevano come testo invece che come qualcosa da premere.
                 className={
                   bare && stacked
                     ? 'flex min-h-11 w-full min-w-0 items-baseline gap-3 rounded-lg border border-control-border px-3 py-2 text-left hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent'

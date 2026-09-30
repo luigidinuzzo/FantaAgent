@@ -105,7 +105,10 @@ describe('MyTeamSummary', () => {
       ],
     };
     render(<MyTeamSummary me={ME} board={board} />);
-    expect(within(screen.getByTestId('recent-list')).getAllByRole('listitem').length).toBeLessThanOrEqual(4);
+    const items = within(screen.getByTestId('recent-list')).getAllByRole('listitem');
+    expect(items.length).toBeLessThanOrEqual(4);
+    // Il piu' recente per primo: seq 5, l'ultimo battuto.
+    expect(items[0]).toHaveTextContent('Hernandez');
   });
 
   it('dice crediti, posti liberi e la media per posto arrotondata per difetto', () => {

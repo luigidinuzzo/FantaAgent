@@ -234,8 +234,8 @@ export function AuctionRoute() {
       }))),
   );
   // Non piu' solo a banco vuoto: con un lotto aperto le stesse occasioni sono la
-  // via d'uscita — «invece di lui, questi» — e stanno dentro il banco, sotto i
-  // controlli. Spente solo ad asta finita, dove non c'e' piu' niente da scegliere.
+  // via d'uscita — «invece di lui, questi» — e stanno nella colonna dei consigli,
+  // accanto al banco. Spente solo ad asta finita, dove non c'e' piu' niente da scegliere.
   const targets = useTargets(!concluded && advised);
   // L'acquisto dell'avviso non e' piu' sul tabellone: e' stato annullato altrove
   // (dalle rose, da un'altra finestra). L'avviso se ne va con lui: il suo «Annulla»
@@ -624,7 +624,8 @@ export function AuctionRoute() {
       ) : null}
       {/* Tre colonne, come si sta al tavolo: a sinistra chi ha quanto, al centro
           il giocatore su cui si decide e sotto di lui le due schede — fase
-          corrente e rose —, a destra il perche' del prezzo. Una griglia sola, i
+          corrente e rose —, a destra i consigli: a riposo le occasioni della
+          fase e la tua rosa, col lotto il perche' del prezzo e le alternative. Una griglia sola, i
           figli messi a posto per riga e colonna: nel documento restano
           nell'ordine del telefono — crediti, ricerca, banco, consigli, schede —
           che e' quello in cui sotto lg la griglia si srotola in una colonna. */}
@@ -832,11 +833,10 @@ export function AuctionRoute() {
                 <PlayerDecisionCard valuation={valuation.data} stale={stale} bare hideHeader me={me}>
                   {/* Il modo di aggiudicarlo e' dell'amministratore: gli altri
                       vedono la scheda, non i gesti del banco. */}
-                  {/* Impilati, nell'ordine in cui le cose succedono: prima
-                      si fa correre il conto alla rovescia, poi si registra a
-                      quanto e a chi e' andato. Affiancati, i due gesti si
-                      leggevano come alternative pari; incolonnati si leggono
-                      come una sequenza. */}
+                  {/* I due gesti su una riga sola, alla stessa altezza: a
+                      sinistra, in oro e piu' largo, il conto alla rovescia, che
+                      e' quello che si usa di piu'; accanto l'aggiudicazione
+                      diretta, per il giocatore che nessuno contende. */}
                   {lotControls}
                 </PlayerDecisionCard>
               )}

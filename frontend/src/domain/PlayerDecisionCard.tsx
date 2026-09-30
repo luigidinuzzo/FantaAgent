@@ -33,9 +33,10 @@ export function PlayerDecisionCard({
   valuation: ValuationResponse;
   stale: boolean;
   /**
-   * La tua squadra, per dire quanto puoi offrire PER QUESTO lotto. Opzionale: la
-   * proiezione monta la stessa scheda senza sapere chi guarda, e senza {@code me}
-   * la colonna semplicemente non c'e'.
+   * La tua squadra, per dire quanto puoi offrire PER QUESTO lotto. Opzionale:
+   * finche' lo stato dell'asta non e' arrivato non si sa ancora chi guarda, e
+   * senza {@code me} la colonna semplicemente non c'e'. La proiezione non monta
+   * questa scheda (no-restricted-imports in .oxlintrc.json).
    */
   me?: ParticipantView;
   /**

@@ -50,7 +50,7 @@ describe('PhaseSwitcher', () => {
   });
 
   /**
-   * Le fasi non correnti arretrano per taglia e per contorno, MAI per opacita'.
+   * Le fasi non correnti arretrano per fondo e per filetto, MAI per opacita'.
    *
    * <p>Misurato con lo stesso metodo di contrast.test.ts: smorzate al 40% le
    * lettere dei ruoli scendono fra 2,1 e 2,6 contro 1 sul fondo dei pannelli,

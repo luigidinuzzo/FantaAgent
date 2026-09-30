@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ParticipantView, TargetView, ValuationResponse } from '../api/types';
 import { AdviceColumn } from './AdviceColumn';
@@ -49,7 +49,7 @@ describe('AdviceColumn', () => {
   it('a riposo: le occasioni della fase e la tua rosa', () => {
     renderColumn();
     expect(screen.getByRole('heading', { name: 'Occasioni della fase' })).toBeInTheDocument();
-    expect(screen.getByRole('list', { name: 'La tua rosa' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'La tua rosa' })).getByRole('list')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Perché questo prezzo' })).toBeNull();
   });
 
@@ -59,7 +59,24 @@ describe('AdviceColumn', () => {
     const alternatives = screen.getByRole('region', { name: 'Invece di lui' });
     expect(within(alternatives).getByRole('button', { name: /Zielinski/ })).toBeInTheDocument();
     expect(within(alternatives).queryByRole('button', { name: /Mkhitaryan/ })).toBeNull();
-    expect(screen.queryByRole('list', { name: 'La tua rosa' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'La tua rosa' })).toBeNull();
+  });
+
+  // Il titolo della colonna e' un h2: cio' che ci sta dentro e' un livello sotto,
+  // come «La tua rosa». Un h2 dentro un h2 diceva a chi naviga per titoli che le
+  // occasioni erano una colonna a se', accanto ai consigli invece che dentro.
+  it('i titoli dentro la colonna sono di terzo livello', () => {
+    renderColumn();
+    expect(screen.getByRole('heading', { name: 'Occasioni della fase', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'La tua rosa', level: 3 })).toBeInTheDocument();
+    cleanup();
+    renderColumn({ selectedId: 'c9', valuation: VALUATION });
+    expect(screen.getByRole('heading', { name: 'Perché questo prezzo', level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Invece di lui', level: 3 })).toBeInTheDocument();
+    cleanup();
+    renderColumn({ selectedId: 'c9', valuation: null });
+    expect(screen.getByRole('heading', { name: 'Perché questo prezzo', level: 3 })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['I tuoi consigli']);
   });
 
   // Un lotto alla volta: col conto avviato le alternative restano da leggere, ma

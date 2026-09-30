@@ -67,11 +67,14 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
    c'e', e' della pagina che la chiede. */
 :root {
   --header-h: 3.5rem;
-  /* La barra dei comandi (AppShell, slotActions) all'asta: misurata su uno
-     screenshot vero, 59px — il controllo delle fasi (bersagli di 44px col suo
-     bordo) piu' py-1.5 e il bordo inferiore di 1px. min-h-14 da solo diceva 57, e
-     la pagina scorreva di 2px. E' della pagina che la chiede: la sottrae chi ne
-     ha bisogno per non finire fuori dalla finestra, non AppShell stesso. */
+  /* La barra dei comandi (AppShell, slotActions) all'asta, come la vede il
+     banditore: misurata su uno screenshot vero, 59px — il controllo delle fasi,
+     46px (bersagli di 44px col suo bordo), piu' py-1.5 e il bordo inferiore di
+     1px. min-h-14 da solo diceva 57, e la pagina scorreva di 2px. Chi non batte
+     vede al suo posto una pillola di 44px: la barra e' 2px piu' bassa di cosi', e
+     quei 2px restano vuoti in fondo alla pagina, senza danno. E' della pagina
+     che la chiede: la sottrae chi ne ha bisogno per non finire fuori dalla
+     finestra, non AppShell stesso. */
   --commands-h: 3.6875rem;
 }
 

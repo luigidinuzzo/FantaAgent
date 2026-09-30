@@ -23,6 +23,9 @@ export function AnalysisPanel({
    * una seconda cornice concentrica dello stesso colore, che sarebbe solo rumore. */
   bare?: boolean;
 }) {
+  // Senza cornice sta dentro «I tuoi consigli», il cui titolo e' un h2: il suo e'
+  // un livello sotto.
+  const Heading = bare ? 'h3' : 'h2';
   // Senza giocatore scelto la colonna non cambia forma: resta lo stesso
   // pannello, con lo stesso titolo e la stessa altezza, e dentro l'invito a
   // sceglierne uno. Prima qui compariva un riquadro tratteggiato diverso da
@@ -30,9 +33,9 @@ export function AnalysisPanel({
   if (!valuation) {
     return (
       <section aria-labelledby={HEADING_ID} className={bare ? 'flex flex-col' : 'panel flex flex-col p-5'}>
-        <h2 id={HEADING_ID} className="text-sm font-medium text-muted-foreground">
+        <Heading id={HEADING_ID} className="text-sm font-medium text-muted-foreground">
           Perché questo prezzo
-        </h2>
+        </Heading>
         <p className="mt-3 text-sm text-muted-foreground">
           Cerca un giocatore o scegline uno dalla tabella per vedere quanto conviene spendere.
         </p>
@@ -59,9 +62,9 @@ export function AnalysisPanel({
       aria-labelledby={HEADING_ID}
       className={bare ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col p-5'}
     >
-      <h2 id={HEADING_ID} className="shrink-0 text-sm font-medium text-muted-foreground">
+      <Heading id={HEADING_ID} className="shrink-0 text-sm font-medium text-muted-foreground">
         Perché questo prezzo
-      </h2>
+      </Heading>
 
       {/* Il limite di budget non e' piu' qui.
 

@@ -15,7 +15,7 @@ export function MyRoster({ me, column }: { me: ParticipantView; column: BoardCol
   return (
     <section aria-labelledby="my-roster-title" className="shrink-0">
       <h3 id="my-roster-title" className="text-meta font-semibold text-muted-foreground">La tua rosa</h3>
-      <ul aria-label="La tua rosa" className="mt-1 divide-y divide-line">
+      <ul className="mt-1 divide-y divide-line">
         {ROLES.map((role) => {
           const bought = column?.byRole[role] ?? [];
           // Mai meno dei presi: una correzione a meta' asta non deve far leggere «4 di 3».

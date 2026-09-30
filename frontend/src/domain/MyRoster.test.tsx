@@ -21,16 +21,18 @@ const COLUMN: BoardColumn = {
 describe('MyRoster', () => {
   it('una riga per ruolo, con i posti occupati su quelli che ha', () => {
     render(<MyRoster me={ME} column={COLUMN} />);
-    const rows = within(screen.getByRole('list', { name: 'La tua rosa' })).getAllByRole('listitem');
+    const rows = within(within(screen.getByRole('region', { name: 'La tua rosa' })).getByRole('list')).getAllByRole('listitem');
     expect(rows).toHaveLength(4);
     expect(rows[0]).toHaveTextContent('3 di 3');
     expect(rows[2]).toHaveTextContent('1 di 8');
     expect(rows[3]).toHaveTextContent('0 di 6');
+    // Il nome e' della sezione: ripeterlo sull'elenco lo faceva leggere due volte.
+    expect(screen.queryByRole('list', { name: 'La tua rosa' })).toBeNull();
   });
 
   it('dice chi hai preso e a quanto, e quando non hai ancora nessuno', () => {
     render(<MyRoster me={ME} column={COLUMN} />);
-    const rows = within(screen.getByRole('list', { name: 'La tua rosa' })).getAllByRole('listitem');
+    const rows = within(within(screen.getByRole('region', { name: 'La tua rosa' })).getByRole('list')).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('Maignan 32 · Skorupski 15 · Audero 7');
     expect(rows[1]).toHaveTextContent('ancora nessuno');
   });
@@ -39,7 +41,7 @@ describe('MyRoster', () => {
   // riempire, invece di una colonna vuota.
   it('senza tabellone resta la rosa coi suoi posti', () => {
     render(<MyRoster me={ME} column={undefined} />);
-    const rows = within(screen.getByRole('list', { name: 'La tua rosa' })).getAllByRole('listitem');
+    const rows = within(within(screen.getByRole('region', { name: 'La tua rosa' })).getByRole('list')).getAllByRole('listitem');
     expect(rows[0]).toHaveTextContent('0 di 3');
   });
 });
