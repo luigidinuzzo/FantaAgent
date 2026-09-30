@@ -95,9 +95,9 @@ describe('palette Club Notturno', () => {
 
   /**
    * Le coppie qui sopra verificano i TOKEN. Ma una classe puo' smorzare un token
-   * con un'opacita' — `text-muted-foreground/80` — e quel testo non e' piu' il
-   * colore verificato: e' la sua miscela col fondo. `muted-foreground` passa a
-   * 5.34:1, all'80% scende a 3.99 e non arriva piu' alla soglia del testo piccolo.
+   * con un'opacita' — `text-destructive/80` — e quel testo non e' piu' il colore
+   * verificato: e' la sua miscela col fondo. `destructive` passa a 5.59:1, all'80%
+   * scende a 3.98 e non arriva piu' alla soglia del testo piccolo.
    *
    * <p>Questo test non elenca le occorrenze: le CERCA nel sorgente. Una nuova
    * scritta smorzata scritta fra sei mesi viene presa senza che nessuno si ricordi
