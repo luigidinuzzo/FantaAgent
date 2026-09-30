@@ -1,24 +1,6 @@
 import type { ValuationResponse } from '../api/types';
 
 const HEADING_ID = 'analysis-panel-heading';
-const STARS = 5;
-
-/** Una stella, tratto vettoriale: mai un'emoji. Decorativa — il fatto lo dice
- * il testo di {@code role="img"} del contenitore, non questa singola stella. */
-function Star({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 20 20"
-      className={`h-4 w-4 ${filled ? 'fill-accent text-accent' : 'fill-none text-muted-foreground'}`}
-      stroke="currentColor"
-      strokeWidth="1.25"
-      strokeLinejoin="round"
-    >
-      <path d="M10 2.2l2.47 5 5.53.8-4 3.9.94 5.5L10 14.7l-4.94 2.7.94-5.5-4-3.9 5.53-.8z" />
-    </svg>
-  );
-}
 
 /**
  * Perche' questo prezzo: il tetto duro, la confidenza e i driver della
@@ -33,14 +15,21 @@ function Star({ filled }: { filled: boolean }) {
  * <p>Non e' una live region: l'unico {@code role="status"} della pagina resta
  * {@code AuctionAnnouncer}, e una seconda competerebbe con quella.
  */
-export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | null }) {
+export function AnalysisPanel({
+  valuation, bare = false,
+}: {
+  valuation: ValuationResponse | null;
+  /** Dentro la colonna «I tuoi consigli», che porta gia' cornice e titolo: senza
+   * una seconda cornice concentrica dello stesso colore, che sarebbe solo rumore. */
+  bare?: boolean;
+}) {
   // Senza giocatore scelto la colonna non cambia forma: resta lo stesso
   // pannello, con lo stesso titolo e la stessa altezza, e dentro l'invito a
   // sceglierne uno. Prima qui compariva un riquadro tratteggiato diverso da
   // tutto il resto: sembrava un guasto, non un invito.
   if (!valuation) {
     return (
-      <section aria-labelledby={HEADING_ID} className="panel flex flex-col p-5">
+      <section aria-labelledby={HEADING_ID} className={bare ? 'flex flex-col' : 'panel flex flex-col p-5'}>
         <h2 id={HEADING_ID} className="text-sm font-medium text-muted-foreground">
           Perché questo prezzo
         </h2>
@@ -68,7 +57,7 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
     // che qui si vuole impedire.
     <section
       aria-labelledby={HEADING_ID}
-      className="panel flex min-h-0 flex-col p-5"
+      className={bare ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col p-5'}
     >
       <h2 id={HEADING_ID} className="shrink-0 text-sm font-medium text-muted-foreground">
         Perché questo prezzo
@@ -87,23 +76,11 @@ export function AnalysisPanel({ valuation }: { valuation: ValuationResponse | nu
           d'occhio la decisione che stava spiegando. Ora il pannello si apre con
           quanto ci si puo' fidare della stima, che e' la sua prima domanda. */}
       <div className="mt-3 flex shrink-0 flex-wrap items-end gap-6">
-        {/* Le stelle sono un'immagine: il nome accessibile del contenitore
-            dice la confidenza a parole, per chi non le vede. "3" letto da un
-            sintetizzatore non e' una confidenza, e' un numero nudo — la
-            frase qui e' cio' che rende l'informazione la stessa per tutti. */}
-        {/* Con la parola sotto: le stelle da sole non dicevano cosa misurassero. */}
-        <div className="flex flex-col gap-1">
-          <div
-            role="img"
-            aria-label={`affidabilità della stima: ${valuation.confidenceStars} su 5`}
-            className="flex items-center gap-0.5"
-          >
-            {Array.from({ length: STARS }, (_, i) => (
-              <Star key={i} filled={i < valuation.confidenceStars} />
-            ))}
-          </div>
-          <span aria-hidden="true" className="text-sm text-muted-foreground">affidabilità della stima</span>
-        </div>
+        {/* A parole, non in stelle: cinque stelle erano un indicatore da leggere e
+            da tradurre, e «3» detto da un sintetizzatore non era una confidenza. */}
+        <p data-testid="confidence" className="text-sm">
+          Affidabilità della stima: <span className="tnum font-semibold">{valuation.confidenceStars} su 5</span>
+        </p>
       </div>
 
       {/* I driver scorrono dentro il pannello: sono da uno a cinque, con

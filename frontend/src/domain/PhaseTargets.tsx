@@ -19,7 +19,7 @@ const HEADING_ID = 'phase-targets-heading';
  * la colonna non cambia forma mentre i dati arrivano.
  */
 export function PhaseTargets({
-  phase, targets, loading, failed = false, disabled, onSelect, bare = false, stacked = false, excludeId,
+  phase, targets, loading, failed = false, disabled, onSelect, bare = false, stacked = false, excludeId, framed = true,
 }: {
   phase: Role | undefined;
   targets: TargetView[];
@@ -29,22 +29,18 @@ export function PhaseTargets({
   disabled: boolean;
   onSelect: (playerId: string) => void;
   /**
-   * Dentro il banco, sotto i controlli del lotto. Senza cornice propria — il
-   * riquadro del banco porta gia' bordo, fondo e titolo, e due cornici
-   * concentriche dello stesso colore sono solo rumore — e con un titolo che dice
-   * un'altra cosa: li' non e' l'elenco delle occasioni della fase, e' la via
-   * d'uscita dal lotto aperto.
-   *
-   * <p>Riempie il vuoto piu' grande della schermata: con un giocatore sul banco,
-   * sotto «Avvia il conto alla rovescia» restavano trecento pixel di niente,
-   * proprio nel punto in cui si decide se spingere o lasciare.
+   * Nella colonna «I tuoi consigli», col lotto sul banco: senza cornice propria —
+   * la colonna porta gia' bordo, fondo e titolo, e due cornici concentriche dello
+   * stesso colore sono solo rumore — e con un titolo che dice un'altra cosa: li'
+   * non e' l'elenco delle occasioni della fase, e' la via d'uscita dal lotto
+   * aperto.
    */
   bare?: boolean;
   /**
-   * Nel banco, una sotto l'altra invece che affiancate, ognuna con squadra e
-   * mercato. Per chi non batte l'asta: sotto la scheda non ci sono il conto alla
-   * rovescia e l'aggiudicazione, e una sola fila di pillole lasciava vuoto un
-   * terzo del banco. Restano pillole col contorno, non righe di elenco.
+   * Nella colonna dei consigli, una sotto l'altra invece che affiancate, ognuna
+   * con squadra e mercato: la colonna e' stretta e alta, non larga come il banco
+   * dove stava prima — una sola fila di pillole ci sarebbe entrata a stento.
+   * Restano pillole col contorno, non righe di elenco.
    */
   stacked?: boolean;
   /**
@@ -52,12 +48,18 @@ export function PhaseTargets({
    * prenderebbe il posto di una vera.
    */
   excludeId?: string;
+  /**
+   * Falsa dentro la colonna «I tuoi consigli», che porta gia' cornice e titolo: una
+   * seconda cornice concentrica dello stesso colore sarebbe solo rumore. Vera per
+   * chi non la passa: il componente resta quello di sempre, con la sua cornice.
+   */
+  framed?: boolean;
 }) {
   const shown = excludeId === undefined ? targets : targets.filter((t) => t.id !== excludeId);
   return (
     <section
       aria-labelledby={HEADING_ID}
-      className={bare ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col p-5'}
+      className={bare || !framed ? 'flex min-h-0 flex-col' : 'panel flex min-h-0 flex-col p-5'}
     >
       {/* Nel banco il titolo non arretra: e' la via d'uscita dal lotto aperto, non
           una nota a pie' di pagina. Il criterio gli sta accanto sulla stessa riga —

@@ -27,6 +27,8 @@ const PILLS = new Map([
   ['routes/LeagueRulesRoute.tsx', 1],
   // Il pallino del ruolo in ogni fase del controllo segmentato.
   ['domain/PhaseSwitcher.tsx', 1],
+  // Il distintivo «Solo tu»: un'etichetta.
+  ['domain/OnlyYouBadge.tsx', 1],
 ]);
 
 function sources(dir: string, found: string[] = []): string[] {

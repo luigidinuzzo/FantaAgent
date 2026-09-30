@@ -51,14 +51,19 @@ describe('AnalysisPanel', () => {
   });
 
   /**
-   * Le stelle sono un'immagine. Cosa misurano deve arrivare anche a chi non le vede,
-   * e "3" letto da un sintetizzatore non e' un'affidabilita': serve la frase. Chi
-   * guarda legge la stessa parola sotto le stelle.
+   * Le stelle erano un'immagine da leggere e da tradurre: "3" letto da un
+   * sintetizzatore non e' un'affidabilita', ed erano un indicatore in piu' sopra il
+   * numero che il testo gia' dice. La frase a parole basta, per tutti allo stesso modo.
    */
-  it('dice l affidabilita della stima a parole, non solo in stelle', () => {
-    render(<AnalysisPanel valuation={{ ...VALUATION, confidenceStars: 3 }} />);
-    expect(screen.getByRole('img', { name: /affidabilità della stima: 3 su 5/i })).toBeInTheDocument();
-    expect(screen.getByText('affidabilità della stima')).toBeVisible();
+  it('dice l affidabilita della stima a parole, senza stelle', () => {
+    const { container } = render(<AnalysisPanel valuation={VALUATION} />);
+    expect(screen.getByTestId('confidence')).toHaveTextContent('Affidabilità della stima: 4 su 5');
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it('senza cornice dentro la colonna dei consigli', () => {
+    const { container } = render(<AnalysisPanel valuation={VALUATION} bare />);
+    expect(container.firstElementChild?.className).not.toContain('panel');
   });
 
   it('spiega i driver, saltando quelli senza spiegazione', () => {

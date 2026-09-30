@@ -632,8 +632,9 @@ describe('AuctionRoute', () => {
     await userEvent.click(open);
     expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
 
-    // Quello della TABELLA: «Giocatore Due» compare anche fra le alternative in
-    // fondo al banco, che col conto aperto sono spente per la stessa ragione.
+    // Quello della TABELLA: «Giocatore Due» compare anche fra le alternative
+    // nella colonna dei consigli, disabilitate col conto aperto per la stessa
+    // ragione.
     const otherRow = screen.getByRole('button', { name: /^Valuta Giocatore Due/ });
     expect(otherRow).toBeDisabled();
     expect(otherRow).toHaveAccessibleDescription(/conto alla rovescia/i);
@@ -1561,16 +1562,20 @@ describe('AuctionRoute', () => {
       </QueryProvider>,
     );
 
+    // I tuoi consigli sono ORA una colonna sola, col suo distintivo «Solo tu»:
+    // le occasioni della fase e «Perche' questo prezzo» sono il suo contenuto,
+    // non due pannelli diversi della griglia.
     const crediti = await screen.findByRole('region', { name: 'Crediti delle squadre' });
-    const occasioni = screen.getByRole('region', { name: 'Occasioni della fase' });
+    const consigli = screen.getByRole('region', { name: 'I tuoi consigli' });
     const griglia = crediti.parentElement;
     expect(griglia?.className).toContain('grid-cols');
     // Le tre colonne sono figlie della stessa griglia, nell'ordine dichiarato.
-    expect(occasioni.parentElement).toBe(griglia);
+    expect(consigli.parentElement).toBe(griglia);
     expect(griglia?.children).toHaveLength(3);
 
     // Senza giocatore scelto la colonna mostra le occasioni della fase, non una
     // frase sola: ogni occasione mette il giocatore sul banco.
+    const occasioni = within(consigli).getByRole('region', { name: 'Occasioni della fase' });
     expect(await within(occasioni).findByRole('button', { name: /^Giocatore Uno, AAA: mercato 10, tetto 50/ }))
       .toBeInTheDocument();
 
@@ -1578,12 +1583,13 @@ describe('AuctionRoute', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
     await screen.findByRole('button', { name: 'Aggiudica direttamente' });
     expect(screen.getByRole('region', { name: 'Crediti delle squadre' })).toBeInTheDocument();
-    const dopo = screen.getByRole('region', { name: 'Perché questo prezzo' });
-    expect(dopo.parentElement).toBe(griglia);
+    const dopo = within(consigli).getByRole('region', { name: 'Perché questo prezzo' });
     // «mai oltre» non c'e' piu': era hardCap con un secondo nome, e vive nella
     // scheda del lotto come «puoi offrire». Scelto un giocatore il pannello si
     // popola comunque — con quanto ci si puo' fidare della stima.
-    expect(dopo).toHaveTextContent(/affidabilità della stima/);
+    expect(dopo).toHaveTextContent(/Affidabilità della stima/);
+    // La colonna dei consigli resta la stessa, allo stesso posto della griglia.
+    expect(consigli.parentElement).toBe(griglia);
     expect(griglia?.children).toHaveLength(3);
   });
 
@@ -1707,11 +1713,11 @@ describe('AuctionRoute', () => {
   });
 
   /**
-   * Il vuoto piu' grande della schermata: con un giocatore sul banco, sotto i
-   * controlli restavano trecento pixel di niente — proprio nel punto in cui si
-   * decide se spingere o lasciare.
+   * Le alternative sono uscite dal banco e vivono nella colonna «I tuoi
+   * consigli», che col lotto sul banco cede il posto a «Perche' questo prezzo»
+   * al perche' del prezzo e a loro — non sono piu' un pezzo del banco.
    */
-  it('col lotto aperto il banco offre le alternative, senza riproporre il lotto stesso', async () => {
+  it('col lotto aperto la colonna dei consigli offre le alternative, senza riproporre il lotto stesso', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -1723,8 +1729,11 @@ describe('AuctionRoute', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
     const banco = await screen.findByRole('region', { name: /Sul banco/ });
+    const consigli = screen.getByRole('region', { name: 'I tuoi consigli' });
 
-    const alternative = await within(banco).findByRole('region', { name: 'Invece di lui' });
+    const alternative = await within(consigli).findByRole('region', { name: 'Invece di lui' });
+    // Non sono piu' dentro il banco: sono nella colonna dei consigli.
+    expect(within(banco).queryByRole('region', { name: 'Invece di lui' })).not.toBeInTheDocument();
     // Il lotto sul banco sarebbe un'alternativa a se stesso.
     expect(within(alternative).queryByRole('button', { name: /Giocatore Uno/ })).not.toBeInTheDocument();
     // E sceglierne una e' lo stesso gesto di una riga della tabella.
@@ -1733,13 +1742,12 @@ describe('AuctionRoute', () => {
   });
 
   /**
-   * Avviato il conto, le alternative non ci sono PROPRIO: non spente, non
-   * smorzate — via. Un lotto alla volta e' aperto, e un elenco di altri giocatori
-   * in scena mentre si rilancia e' un invito a un gesto che non si puo' fare,
-   * oltre che rumore nel momento di massima attenzione. Visibili e schiarite
-   * dicevano «potresti, ma no»: qui non c'e' nessun potresti.
+   * Un lotto alla volta e' aperto: col conto avviato le alternative restano da
+   * leggere — non spariscono, non e' piu' il banco a deciderne la sorte — ma non
+   * si scelgono, perche' cambiare giocatore sotto un rilancio in corso
+   * butterebbe via offerta e tempo.
    */
-  it('avviato il conto le alternative spariscono, non restano schiarite', async () => {
+  it('avviato il conto le alternative restano nella colonna dei consigli, ma non si scelgono', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     vi.stubGlobal('fetch', fullFetchMock());
 
@@ -1755,7 +1763,8 @@ describe('AuctionRoute', () => {
     await userEvent.click(avvia);
 
     await screen.findByRole('region', { name: /Sul banco/ });
-    expect(screen.queryByRole('region', { name: 'Invece di lui' })).not.toBeInTheDocument();
+    const alternative = screen.getByRole('region', { name: 'Invece di lui' });
+    within(alternative).getAllByRole('button').forEach((b) => expect(b).toBeDisabled());
   });
 
   /**

@@ -17,11 +17,10 @@ import {
   useVoidPurchase,
 } from '../api/hooks';
 import type { PhaseSort, PublicBidderResponse, Role, SortDir, ValuationResponse } from '../api/types';
-import { AnalysisPanel } from '../domain/AnalysisPanel';
+import { AdviceColumn } from '../domain/AdviceColumn';
 import { AuctionRecap } from '../domain/AuctionRecap';
 import { TEXT_LINK } from '../domain/AuthForm';
 import { MyTeamSummary } from '../domain/MyTeamSummary';
-import { PhaseTargets } from '../domain/PhaseTargets';
 import type { SoldPlayer } from '../domain/PlayerSearchBox';
 import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } from '../domain/AuctionAnnouncer';
 import { BidderDialog } from '../domain/BidderDialog';
@@ -808,10 +807,10 @@ export function AuctionRoute() {
             <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto">
               {lot ? (
                 // shrink-0: il lotto prende l'altezza che gli serve e non di
-                // piu'. Prima il conto alla rovescia era alto quanto il riquadro
-                // (h-full) e la scheda lo riempiva con flex-1: l'elenco delle
-                // alternative qui sotto restava senza un pixel, e di lui si
-                // vedeva solo la linea di separazione appoggiata al fondo.
+                // piu'. Senza, il flex-shrink di default lo comprimerebbe per
+                // farlo entrare nell'altezza fissa del riquadro invece di
+                // lasciare scorrere il contenuto — che e' cio' che
+                // overflow-y-auto sul contenitore qui sopra serve a fare.
                 <div className="shrink-0">
                 {admin && bidderOpen && bidderSettings.data ? (
                   // Il conto alla rovescia SOSTITUISCE la scheda di decisione, non ci sta
@@ -866,72 +865,29 @@ export function AuctionRoute() {
                     : 'Nessuno sul banco. Cercalo qui sopra o scegline uno dalla tabella.'}
                 </p>
               )}
-
-              {/* Le alternative, in fondo al banco: e' il punto in cui si decide
-                  se spingere o lasciare.
-
-                  Sta FUORI dallo scambio fra conto alla rovescia e scheda, e vale
-                  per entrambi: il banco ha la stessa forma nei due stati, e con il
-                  conto avviato — dove i bottoni delle altre squadre non ci sono
-                  piu' — restavano centocinquanta pixel di vuoto proprio mentre si
-                  decide se continuare a rilanciare. Col conto aperto sono da
-                  leggere e non da scegliere (disabled): un lotto alla volta e'
-                  aperto, e cambiare giocatore sotto un rilancio in corso
-                  butterebbe via offerta e tempo.
-
-                  Le stesse occasioni della colonna dei consigli, che col lotto
-                  aperto cede il posto a «Perche' questo prezzo»: non sono mai in
-                  scena due volte insieme. Senza il lotto stesso, che sarebbe
-                  un'alternativa a se'. Senza cornice propria, perche' il banco ne
-                  porta gia' una.
-
-                  min-h-0: l'elenco scorre dentro lo spazio che avanza, non allunga
-                  il riquadro. L'altezza del banco resta quella decisa in anticipo. */}
-              {/* Solo a conto FERMO. Avviato il conto — corra o sia scaduto — le
-                  alternative non ci sono proprio: non spente, non smorzate, via.
-                  Un lotto alla volta e' aperto, e un elenco di altri giocatori in
-                  scena mentre si rilancia e' l'invito a un gesto che non si puo'
-                  fare, oltre che rumore nel momento di massima attenzione.
-                  Schiarite dicevano «potresti, ma no»; qui non c'e' nessun
-                  potresti. */}
-              {valuation.data && !bidderOpen ? (
-                <div className="mt-6 flex shrink-0 flex-col border-t border-line pt-4">
-                  <PhaseTargets
-                    bare
-                    stacked={!admin}
-                    excludeId={valuation.data.playerId}
-                    phase={state.data?.currentPhase}
-                    targets={targets.data ?? []}
-                    loading={targets.isLoading}
-                    failed={targets.isError}
-                    disabled={false}
-                    onSelect={setSelectedId}
-                  />
-                </div>
-              ) : null}
             </div>
           </section>
           )}
         </div>
 
-        {/* I consigli: AnalysisPanel mostra maxBid, hardCap e i driver — esattamente
-            la classe di dati che la proiezione non puo' mostrare (vedi
-            no-restricted-imports in .oxlintrc.json). Senza un giocatore scelto la
-            colonna non sparisce e non cambia forma: lo stesso pannello, con lo
-            stesso titolo, porta l'invito a sceglierne uno. */}
-        {/* Senza un giocatore scelto, le occasioni della fase: dove conviene
-            guardare, invece di una colonna vuota che invita a scegliere. */}
-        {seated === false ? null : selectedId === null ? (
-          <PhaseTargets
+        {/* La colonna dei consigli: a riposo porta le occasioni della fase e la tua
+            rosa, col lotto il perche' del prezzo e le alternative. Tutto cio' che
+            mostra e' cio' che la proiezione non puo' mostrare (vedi
+            no-restricted-imports in .oxlintrc.json) — resta lo stesso pannello, con
+            lo stesso titolo, sia a riposo sia col lotto sul banco. */}
+        {seated === false ? null : (
+          <AdviceColumn
             phase={currentPhase}
             targets={targets.data ?? []}
-            loading={targets.isLoading}
-            failed={targets.isError}
-            disabled={bidderOpen}
+            targetsLoading={targets.isLoading}
+            targetsFailed={targets.isError}
+            selectedId={selectedId}
+            valuation={valuation.data ?? null}
+            bidderOpen={bidderOpen}
             onSelect={setSelectedId}
+            me={me}
+            myColumn={board.data?.columns.find((c) => c.me)}
           />
-        ) : (
-          <AnalysisPanel valuation={valuation.data ?? null} />
         )}
       </div>
 
