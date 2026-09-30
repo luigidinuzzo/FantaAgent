@@ -106,10 +106,11 @@ describe('LeagueRulesRoute', () => {
     expect(screen.queryByLabelText('Parti da')).not.toBeInTheDocument();
   });
 
-  it('la freccia riporta alla pagina della lega', async () => {
+  it('il percorso riporta alla pagina della lega', async () => {
     stubRules(RULES);
     renderRules();
-    expect(await screen.findByRole('link', { name: 'Torna alla lega' })).toHaveAttribute('href', '/leghe/l1');
+    const trail = await screen.findByRole('navigation', { name: 'Percorso' });
+    expect(within(trail).getByRole('link', { name: 'Lega' })).toHaveAttribute('href', '/leghe/l1');
   });
 
   it('chi non e\' amministratore legge le regole ma non le cambia', async () => {

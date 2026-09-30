@@ -18,7 +18,7 @@ export function ProfileRoute() {
   const errors = fieldErrors(rename.error);
 
   return (
-    <AppShell chrome="top">
+    <AppShell chrome="top" trail={[{ label: 'Le mie leghe', to: '/' }, { label: 'Il tuo profilo' }]}>
       <PageFrame>
       {/* Due soli pannelli, corti: senza centrarli restava un vuoto enorme sotto,
           specie sulle finestre larghe. Il contenitore e' alto quanto la finestra,

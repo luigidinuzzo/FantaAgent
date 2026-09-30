@@ -26,10 +26,11 @@ export function LeagueRoute() {
   const auctions = useLeagueAuctions(leagueId);
   const createAuction = useCreateAuction(leagueId);
   const admin = league.data?.admin ?? false;
+  const trail = [{ label: 'Le mie leghe', to: '/' }, { label: league.data?.name ?? 'Lega' }];
 
   if (league.isError) {
     return (
-      <AppShell chrome="top">
+      <AppShell chrome="top" trail={trail}>
         <PageFrame>
           <div className="grid flex-1 place-items-center">
             <p role="alert" className="panel max-w-xl p-4 text-sm font-medium text-destructive">
@@ -53,7 +54,7 @@ export function LeagueRoute() {
   const loaded = league.data && !league.isPlaceholderData ? league.data : null;
 
   return (
-    <AppShell chrome="top">
+    <AppShell chrome="top" trail={trail}>
       <PageFrame>
         <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Colonna sinistra: la lega e le sue aste, la ragione per cui si apre

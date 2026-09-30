@@ -48,7 +48,7 @@ export function LeaguesRoute() {
   const empty = leagues.isSuccess && cards.length === 0 && pending.length === 0;
 
   return (
-    <AppShell chrome="top">
+    <AppShell chrome="top" trail={[{ label: 'Le mie leghe' }]}>
       <PageFrame>
         <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Sul computer la colonna e' alta quanto i pannelli accanto e non di piu'

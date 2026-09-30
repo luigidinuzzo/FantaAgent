@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { BackLink } from '../domain/BackLink';
 import { PageFrame } from '../domain/PageFrame';
 import { userMessage } from '../api/client';
 import { useLeague, useLeagueAuctions, useSaveSeats, useSeats, useUpdateAuction } from '../api/leagues';
@@ -40,10 +39,16 @@ export function AuctionSettingsRoute() {
   const [beep, setBeep] = useState<boolean | null>(null);
 
   const card = auctions.data?.find((a) => a.id === auctionId);
+  const trail = [
+    { label: 'Le mie leghe', to: '/' },
+    { label: league.data?.name ?? 'Lega', to: `/leghe/${leagueId}` },
+    { label: card?.name ?? 'Asta', to: `/leghe/${leagueId}/aste/${auctionId}` },
+    { label: 'Impostazioni' },
+  ];
 
   if (league.isError || auctions.isError || seats.isError || (auctions.data && !card)) {
     return (
-      <AppShell chrome="top">
+      <AppShell chrome="top" trail={trail}>
       <PageFrame>
         <p role="alert" className="panel mx-auto max-w-xl p-4 text-sm font-medium text-destructive">
           {userMessage(league.error ?? seats.error ?? auctions.error,
@@ -54,7 +59,7 @@ export function AuctionSettingsRoute() {
     );
   }
   if (!league.data || !seats.data || !card) {
-    return <AppShell chrome="top"><PageFrame><span /></PageFrame></AppShell>;
+    return <AppShell chrome="top" trail={trail}><PageFrame><span /></PageFrame></AppShell>;
   }
 
   const admin = league.data.admin;
@@ -91,14 +96,13 @@ export function AuctionSettingsRoute() {
     : null;
 
   return (
-    <AppShell chrome="top">
+    <AppShell chrome="top" trail={trail}>
       <PageFrame>
       {/* Una colonna sola, turno sopra e banditore sotto: affiancato, il banditore
           (tre controlli) lasciava una colonna mezza vuota accanto al turno. */}
       <div className="mx-auto w-full max-w-3xl">
         {/* Testata in un pannello, come nelle altre pagine. */}
         <section className="panel flex items-center gap-4 p-5 md:p-6">
-          <BackLink to={`/leghe/${leagueId}/aste/${auctionId}`} label="Torna all'asta" />
           <div className="min-w-0">
             <h1 className="w-exp truncate text-2xl font-semibold">{card.name}</h1>
             <p className="text-sm text-muted-foreground">Impostazioni dell&apos;asta</p>

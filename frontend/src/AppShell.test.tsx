@@ -34,12 +34,12 @@ describe('AppShell', () => {
     expect(screen.getByRole('banner')).toHaveTextContent('FantaAgent');
   });
 
-  /** Su una pagina lunga la barra non esce dallo schermo: resta ferma in cima. */
-  it('la barra resta ferma in cima mentre la pagina scorre', () => {
+  /** Su una pagina lunga le barre non escono dallo schermo: restano ferme in cima, insieme. */
+  it('le barre restano ferme in cima mentre la pagina scorre', () => {
     render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
-    const header = screen.getByRole('banner');
-    expect(header.className).toContain('sticky');
-    expect(header.className).toContain('top-0');
+    const bars = screen.getByRole('banner').parentElement;
+    expect(bars?.className).toContain('sticky');
+    expect(bars?.className).toContain('top-0');
   });
 
   /**
@@ -59,29 +59,48 @@ describe('AppShell', () => {
     expect(screen.getByRole('banner')).toHaveTextContent('in diretta');
   });
 
-  /**
-   * Una barra sola su tutte le pagine: marchio e «Le mie leghe», entrambi verso la
-   * home, e niente elenco di sezioni. Le altre destinazioni hanno la loro porta
-   * altrove — /impostazioni dall'ingranaggio, /proiezione dal suo pulsante.
-   */
-  it('porta il marchio e «Le mie leghe», entrambi verso la home, e nient altro', () => {
+  it('senza percorso porta solo il marchio, verso la home', () => {
     render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
-
     const links = screen.getAllByRole('link');
-    expect(links).toHaveLength(2);
-    links.forEach((l) => expect(l).toHaveAttribute('href', '/'));
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', '/');
     expect(within(links[0]).getByTestId('wordmark')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Le mie leghe' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
-  it('sulla home «Le mie leghe» dice di essere la pagina corrente', () => {
-    const { unmount } = render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>, '/'));
-    expect(screen.getByRole('link', { name: 'Le mie leghe' })).toHaveAttribute('aria-current', 'page');
-    unmount();
+  const TRAIL = [
+    { label: 'Le mie leghe', to: '/' },
+    { label: 'Lega del Bar', to: '/leghe/l1' },
+    { label: 'Asta estiva' },
+  ];
 
-    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>, '/leghe/l1'));
-    expect(screen.getByRole('link', { name: 'Le mie leghe' })).not.toHaveAttribute('aria-current');
+  /**
+   * Il percorso dice dove si e' e come si torna indietro, un passo alla volta. I
+   * passi prima sono collegamenti; l'ultimo e' la pagina in cui ci si trova, e lo
+   * dice a chi ascolta.
+   */
+  it('il percorso elenca i passi: gli altri sono collegamenti, l ultimo e la pagina corrente', () => {
+    render(withRouter(<AppShell chrome="top" trail={TRAIL}><p>x</p></AppShell>));
+    const nav = screen.getByRole('navigation', { name: 'Percorso' });
+    expect(within(nav).getByRole('link', { name: 'Le mie leghe' })).toHaveAttribute('href', '/');
+    expect(within(nav).getByRole('link', { name: 'Lega del Bar' })).toHaveAttribute('href', '/leghe/l1');
+    expect(within(nav).queryByRole('link', { name: 'Asta estiva' })).toBeNull();
+    expect(within(nav).getByText('Asta estiva')).toHaveAttribute('aria-current', 'page');
+  });
+
+  /** Sul telefono non c'e' posto per tutto il percorso: resta il passo da cui si viene. */
+  it('sul telefono del percorso resta solo il passo precedente', () => {
+    render(withRouter(<AppShell chrome="top" trail={TRAIL}><p>x</p></AppShell>));
+    const nav = screen.getByRole('navigation', { name: 'Percorso' });
+    const item = (text: string) => within(nav).getByText(text).closest('li');
+    expect(item('Le mie leghe')?.className).toContain('max-sm:hidden');
+    expect(item('Lega del Bar')?.className).not.toContain('max-sm:hidden');
+    expect(item('Asta estiva')?.className).toContain('max-sm:hidden');
+  });
+
+  it('la proiezione non ha percorso, nemmeno se glielo si passa', () => {
+    render(withRouter(<AppShell chrome="none" trail={TRAIL}><p>x</p></AppShell>));
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
   it('il nome e\' il logo, porta alla home e resta una parola sola per chi ascolta', () => {
@@ -92,16 +111,22 @@ describe('AppShell', () => {
   });
 
   /**
-   * Sul telefono le azioni vanno tutte su una seconda riga a tutta larghezza,
-   * invece di andare a capo dove capita e allungare la barra su tre righe.
+   * I comandi della schermata hanno una barra loro, sotto quella di navigazione:
+   * nella stessa riga di marchio, percorso e profilo non c'era posto, e sul
+   * telefono andavano a capo su tre righe.
    */
-  it('sul telefono le azioni della barra stanno su una riga loro, a tutta larghezza', () => {
-    const { container } = render(withRouter(
+  it('i comandi della schermata stanno in una barra loro, fuori da quella di navigazione', () => {
+    render(withRouter(
       <AppShell chrome="top" slotActions={<button type="button">azione</button>}><p>x</p></AppShell>,
     ));
-    const group = screen.getByRole('button', { name: 'azione' }).parentElement;
-    expect(group?.className).toContain('max-sm:w-full');
-    expect(container.querySelector('header')?.className).toContain('flex-wrap');
+    const commands = screen.getByRole('group', { name: 'Comandi della pagina' });
+    expect(within(commands).getByRole('button', { name: 'azione' })).toBeInTheDocument();
+    expect(within(screen.getByRole('banner')).queryByRole('button', { name: 'azione' })).toBeNull();
+  });
+
+  it('senza comandi la seconda barra non c e', () => {
+    render(withRouter(<AppShell chrome="top"><p>x</p></AppShell>));
+    expect(screen.queryByRole('group', { name: 'Comandi della pagina' })).toBeNull();
   });
 
   it('con chrome=none (proiezione) non mostra nessun link, nemmeno il nome', () => {

@@ -62,11 +62,11 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   animation: row-enter 320ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
 }
 
-/* L'altezza della barra in alto (AppShell): py-3 attorno a controlli da 44px, piu'
-   il bordo. Serve a chi deve sapere dove comincia il contenuto rispetto alla
-   finestra. */
+/* L'altezza della barra di navigazione (AppShell): 56px. Serve a chi deve sapere
+   dove comincia il contenuto rispetto alla finestra. La barra dei comandi, dove
+   c'e', e' della pagina che la chiede. */
 :root {
-  --header-h: 4.3125rem;
+  --header-h: 3.5rem;
 }
 
 .pitch-grass {

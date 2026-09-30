@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { BackLink } from '../domain/BackLink';
 import { PageFrame } from '../domain/PageFrame';
 import { fieldErrors, userMessage } from '../api/client';
 import { IMPORT_FILES, useImportAuction, useImportPreview, useLeague } from '../api/leagues';
@@ -59,8 +58,14 @@ export function ImportRoute() {
     });
   }
 
+  const trail = [
+    { label: 'Le mie leghe', to: '/' },
+    { label: league.data?.name ?? 'Lega', to: `/leghe/${leagueId}` },
+    { label: "Importa un'asta" },
+  ];
+
   return (
-    <AppShell chrome="top">
+    <AppShell chrome="top" trail={trail}>
       <PageFrame>
       {/* Come ProfileRoute: senza centrare, un modulo corto come questo lascia un
           vuoto enorme sotto sulle finestre larghe. Il contenitore e' alto quanto
@@ -70,7 +75,6 @@ export function ImportRoute() {
           {/* Testata e scelta della cartella nello stesso pannello. */}
           <section className="panel p-6">
             <div className="flex items-center gap-4">
-              <BackLink to={`/leghe/${leagueId}`} label="Torna alla lega" />
               <h1 className="w-exp text-2xl font-semibold">Importa un'asta</h1>
             </div>
             <p className="mt-4 text-sm">

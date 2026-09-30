@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { PageFrame } from '../domain/PageFrame';
 import { ProblemError, userMessage } from '../api/client';
-import { useLeagueRules, useSaveLeagueRules } from '../api/leagues';
+import { useLeagueName, useLeagueRules, useSaveLeagueRules } from '../api/leagues';
 import type { SaveLeagueRulesRequest, SettingsErrors } from '../api/types';
 import { FieldErrors } from '../domain/FieldErrors';
 import { LeagueRulesFieldset } from '../domain/LeagueRulesFieldset';
@@ -142,6 +142,12 @@ export function LeagueRulesRoute() {
   const { leagueId = '' } = useParams();
   const rules = useLeagueRules(leagueId);
   const save = useSaveLeagueRules(leagueId);
+  const leagueName = useLeagueName(leagueId);
+  const trail = [
+    { label: 'Le mie leghe', to: '/' },
+    { label: leagueName ?? 'Lega', to: `/leghe/${leagueId}` },
+    { label: 'Regole' },
+  ];
   const bidTimerErrorId = useId();
   const bidTimerId = useId();
   const bidderGroupErrorId = useId();
@@ -169,7 +175,7 @@ export function LeagueRulesRoute() {
 
   if (rules.isError) {
     return (
-      <AppShell chrome="top">
+      <AppShell chrome="top" trail={trail}>
       <PageFrame>
         <h1 className="sr-only">{TITLE}</h1>
         <p role="alert" className="panel mx-auto max-w-xl p-4 text-sm font-medium text-destructive">
@@ -185,7 +191,7 @@ export function LeagueRulesRoute() {
     // quanto la finestra — con la frase in mezzo: un pannellino piccolo che un attimo
     // dopo diventa quello grande fa sembrare che la pagina cambi due volte.
     return (
-      <AppShell chrome="top">
+      <AppShell chrome="top" trail={trail}>
       <PageFrame>
         <h1 className="sr-only">{TITLE}</h1>
         <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
@@ -320,7 +326,7 @@ export function LeagueRulesRoute() {
   );
 
   return (
-    <AppShell chrome="top">
+    <AppShell chrome="top" trail={trail}>
       <PageFrame>
       {/* Due colonne da lg in su: a sinistra l'indice delle sezioni, fermo mentre il
           modulo scorre; a destra il modulo. Da tablet in su la pagina non scorre: il
@@ -356,17 +362,6 @@ export function LeagueRulesRoute() {
         <div className="panel flex min-h-0 min-w-0 flex-col">
           <div className="px-5 pt-5 sm:px-8 sm:pt-8">
             <div className="relative flex items-center justify-center">
-              {/* Si torna alla lega, da cui si e' arrivati: «Le mie leghe» nella barra
-                  porta un passo piu' indietro. */}
-              <Link
-                to={`/leghe/${leagueId}`}
-                aria-label="Torna alla lega"
-                className="absolute left-0 flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-control-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </Link>
               <h1 className="w-exp text-xl font-semibold sm:text-2xl">{TITLE}</h1>
             </div>
             {/* Una volta sola, in testa: vale per tutto quello che sta sotto. */}

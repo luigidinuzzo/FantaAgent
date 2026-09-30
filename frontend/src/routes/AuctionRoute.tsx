@@ -3,6 +3,7 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { auctionContext, isNotFound, userMessage } from '../api/client';
+import { useLeagueName } from '../api/leagues';
 import {
   useAssign,
   useAuctionState,
@@ -84,10 +85,11 @@ function SettingsIcon() {
   );
 }
 
-// Bersaglio 44x44 garantito (min-h-11 min-w-11, non dedotto dall'auto-layout),
-// condiviso dai due link icona della barra superiore.
+// Bersaglio 44x44 garantito, condiviso dai due collegamenti della barra dei
+// comandi. Da tablet in su portano il nome accanto all'icona: tre tondi uguali
+// non dicevano quale fosse la proiezione e quale le impostazioni.
 const ICON_LINK =
-  'flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-control-border'
+  'flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border border-control-border font-medium hover:bg-line md:px-4'
   + ' focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent';
 
 type TabKey = 'fase' | 'rose';
@@ -202,6 +204,12 @@ export function AuctionRoute() {
   }, []);
 
   const state = useAuctionState();
+  const leagueName = useLeagueName(leagueId);
+  const trail = [
+    { label: 'Le mie leghe', to: '/' },
+    { label: leagueName ?? 'Lega', to: `/leghe/${leagueId}` },
+    { label: state.data?.auctionName ?? 'Asta' },
+  ];
   // Solo l'amministratore scrive nel registro; gli altri seguono l'asta e vedono i
   // propri consigli. Finche' lo stato non e' arrivato, niente comandi: meglio un
   // istante senza pulsanti che un pulsante che risponde "non puoi".
@@ -546,7 +554,7 @@ export function AuctionRoute() {
   // direbbe una cosa falsa — la connessione c'e', e' la risposta a essere definitiva.
   if (isNotFound(state.error)) {
     return (
-      <AppShell chrome="top">
+      <AppShell chrome="top" trail={trail}>
         <div className="panel mx-auto max-w-xl p-4">
           <p role="alert" className="text-sm font-medium text-destructive">
             Questa lega non esiste, o non ne fai parte.
@@ -560,6 +568,7 @@ export function AuctionRoute() {
   return (
     <AppShell
       chrome="top"
+      trail={trail}
       slotActions={
         <>
           {admin ? (
@@ -577,32 +586,41 @@ export function AuctionRoute() {
               Fase: {ROLE_NAME_PLURAL[state.data.currentPhase]}
             </span>
           ) : null}
-          {/* Product gap (revisione finale): non esisteva nessun modo di
-              raggiungere /proiezione dall'applicazione — bisognava digitare
-              l'indirizzo a mano. target="_blank": va aperta in una seconda
-              finestra, sul secondo schermo, non al posto di questa. */}
-          <a
-            href={`/leghe/${leagueId}/aste/${auctionId}/proiezione`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={ICON_LINK}
-          >
-            <ProjectionIcon />
-            <span className="sr-only">Apri la proiezione sul secondo schermo</span>
-          </a>
-          {admin ? (
-            <UndoLastButton
-              canUndo={state.data?.canUndo ?? false}
-              onUndo={undo}
-              pending={undoLast.isPending}
-            />
-          ) : null}
-          {/* L'ingranaggio porta dove si cambia qualcosa: per l'amministratore le
-              impostazioni di quest'asta, per gli altri la lega. */}
-          <Link to={gear.to} className={ICON_LINK}>
-            <SettingsIcon />
-            <span className="sr-only">{gear.label}</span>
-          </Link>
+          <span className="flex items-center gap-2 sm:ml-auto">
+            {/* Product gap (revisione finale): non esisteva nessun modo di
+                raggiungere /proiezione dall'applicazione — bisognava digitare
+                l'indirizzo a mano. target="_blank": va aperta in una seconda
+                finestra, sul secondo schermo, non al posto di questa. */}
+            <a
+              href={`/leghe/${leagueId}/aste/${auctionId}/proiezione`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={ICON_LINK}
+            >
+              <ProjectionIcon />
+              {/* Lo spazio sta fra i due span, nello stesso sottoalbero di entrambi:
+                  messo in testa al secondo, il calcolo del nome accessibile lo
+                  rifila e le due parti si saldano. */}
+              <span>
+                <span className="max-md:sr-only">Apri la proiezione</span>
+                {' '}
+                <span className="sr-only">sul secondo schermo</span>
+              </span>
+            </a>
+            {admin ? (
+              <UndoLastButton
+                canUndo={state.data?.canUndo ?? false}
+                onUndo={undo}
+                pending={undoLast.isPending}
+              />
+            ) : null}
+            {/* L'ingranaggio porta dove si cambia qualcosa: per l'amministratore le
+                impostazioni di quest'asta, per gli altri la lega. */}
+            <Link to={gear.to} className={ICON_LINK}>
+              <SettingsIcon />
+              <span className="max-md:sr-only">{gear.label}</span>
+            </Link>
+          </span>
         </>
       }
       slotStatus={

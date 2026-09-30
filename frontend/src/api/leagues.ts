@@ -54,6 +54,18 @@ export function useLeague(id: string) {
   });
 }
 
+/**
+ * Il nome della lega se e' gia' noto — dalla sua pagina o dall'elenco — senza
+ * chiederlo. Serve al percorso nella barra delle pagine che della lega non leggono
+ * altro: un'etichetta non vale una chiamata in piu'. Chi arriva su una di quelle
+ * pagine ricaricando non lo trova, e il percorso dice «Lega».
+ */
+export function useLeagueName(id: string): string | undefined {
+  const client = useQueryClient();
+  return client.getQueryData<LeagueDetail>(LEAGUE_KEYS.one(id))?.name
+    ?? client.getQueryData<LeagueCard[]>(LEAGUE_KEYS.all)?.find((l) => l.id === id)?.name;
+}
+
 export function useRenameLeague(id: string) {
   const client = useQueryClient();
   return useMutation({
