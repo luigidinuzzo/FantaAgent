@@ -123,6 +123,28 @@ function renderProjection() {
 describe('ProjectionRoute', () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("su un'asta che non esiste, o di una lega di cui non si fa parte, lo dice e smette di chiedere", async () => {
+    setAuctionContext({ leagueId: 'l1', auctionId: 'a1' });
+    const fetchMock = vi.fn(() => Promise.resolve(new Response(
+      JSON.stringify({ type: 'https://fantaagent.local/problems/unknown-league', detail: 'lega l1 sconosciuta' }),
+      { status: 404, headers: { 'content-type': 'application/problem+json' } },
+    )));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderProjection();
+      expect(await screen.findByText('Questa lega non esiste, o non ne fai parte.')).toBeInTheDocument();
+      expect(screen.queryByText(/Connessione persa/)).not.toBeInTheDocument();
+      // Resta la proiezione: niente controlli, nemmeno un collegamento.
+      expect(screen.queryAllByRole('link')).toHaveLength(0);
+      const before = fetchMock.mock.calls.length;
+      await act(async () => { vi.advanceTimersByTime(20_000); });
+      expect(fetchMock.mock.calls.length).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('non offre nessuna azione: si guarda soltanto', () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
     stubFetch();

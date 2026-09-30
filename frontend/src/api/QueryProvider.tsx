@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { ProblemError } from './client';
+import { isNotFound, ProblemError } from './client';
 
 /** Le pagine dove un 401 e' la normalita', non una sessione scaduta. */
 const PUBLIC_PATHS = ['/accedi', '/registrati', '/password-dimenticata', '/nuova-password',
@@ -30,9 +30,12 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             // continuo, e un intervallo piu' fitto interrogherebbe il server
             // senza che nulla sia successo.
             staleTime: 5_000,
-            refetchInterval: 5_000,
+            // Un 404 non cambia fra cinque secondi: la lega o l'asta non c'e', o
+            // non se ne fa parte. Continuare a chiedere terrebbe la schermata a
+            // interrogare il server per sempre, senza che nulla possa cambiare.
+            refetchInterval: (query) => (isNotFound(query.state.error) ? false : 5_000),
             refetchOnWindowFocus: true,
-            retry: 1,
+            retry: (failures, error) => !isNotFound(error) && failures < 1,
           },
           // Nessun tentativo automatico sulle scritture: un acquisto ripetuto
           // dalla libreria e' un acquisto che l'utente non ha chiesto. La chiave

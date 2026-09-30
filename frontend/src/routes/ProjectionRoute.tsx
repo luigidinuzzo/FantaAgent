@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { AppShell } from '../AppShell';
+import { isNotFound } from '../api/client';
 import { useAuctionState, useBoard, usePublicBidder } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
 import type { BidBroadcast } from '../domain/bidChannel';
@@ -98,6 +99,20 @@ export function ProjectionRoute() {
   // ascolto" solo se si e' sentito qualcosa di recente — non solo se
   // qualcosa potrebbe in teoria arrivare.
   const canReceive = hasChannel && !isStale({ updatedAt: lastHeardAt, isError: false, now });
+
+  // Dopo tutti gli hook, come sulla schermata dell'asta: un 404 e' definitivo, e
+  // lo si dice invece di restare coi tabelloni in caricamento e «Connessione persa».
+  // Niente collegamento: la proiezione resta senza controlli.
+  if (isNotFound(state.error) || isNotFound(board.error)) {
+    return (
+      <AppShell chrome="none">
+        <h1 className="sr-only">Proiezione</h1>
+        <p role="alert" className="panel mx-auto max-w-xl rounded-xl p-5 text-lg text-destructive">
+          Questa lega non esiste, o non ne fai parte.
+        </p>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
-import { auctionContext, userMessage } from '../api/client';
+import { auctionContext, isNotFound, userMessage } from '../api/client';
 import {
   useAssign,
   useAuctionState,
@@ -13,10 +13,12 @@ import {
   useTargets,
   useUndoLast,
   useValuation,
+  useVoidPurchase,
 } from '../api/hooks';
 import type { PhaseSort, PublicBidderResponse, Role, SortDir, ValuationResponse } from '../api/types';
 import { AnalysisPanel } from '../domain/AnalysisPanel';
 import { AuctionRecap } from '../domain/AuctionRecap';
+import { TEXT_LINK } from '../domain/AuthForm';
 import { MyTeamSummary } from '../domain/MyTeamSummary';
 import { PhaseTargets } from '../domain/PhaseTargets';
 import type { SoldPlayer } from '../domain/PlayerSearchBox';
@@ -161,8 +163,10 @@ export function AuctionRoute() {
   // «Togli dal banco» col conto aperto chiede conferma: vero dopo il primo clic.
   const [confirmRemove, setConfirmRemove] = useState(false);
   // L'ultimo acquisto confermato, mostrato in basso per qualche secondo con la
-  // possibilita' di annullarlo. null quando non c'e' niente da mostrare.
-  const [sale, setSale] = useState<{ seq: number; player: string; buyer: string; price: number } | null>(null);
+  // possibilita' di annullarlo. null quando non c'e' niente da mostrare. Porta
+  // l'asta e il numero dell'acquisto: «Annulla» revoca QUELLO, non l'ultimo.
+  const [sale, setSale] = useState<
+    { auctionId: string; seq: number; player: string; buyer: string; price: number } | null>(null);
   const bidderHintId = useId();
   const bidderPanelId = useId();
   // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
@@ -241,6 +245,15 @@ export function AuctionRoute() {
   // via d'uscita — «invece di lui, questi» — e stanno dentro il banco, sotto i
   // controlli. Spente solo ad asta finita, dove non c'e' piu' niente da scegliere.
   const targets = useTargets(!concluded && advised);
+  // L'acquisto dell'avviso non e' piu' sul tabellone: e' stato annullato altrove
+  // (dalle rose, da un'altra finestra). L'avviso se ne va con lui: il suo «Annulla»
+  // non avrebbe piu' niente da revocare.
+  useEffect(() => {
+    if (!sale || !board.data) return;
+    const present = board.data.columns.some((c) =>
+      (Object.keys(c.byRole) as Role[]).some((role) => c.byRole[role].some((slot) => slot.seq === sale.seq)));
+    if (!present) setSale(null);
+  }, [board.data, sale]);
 
   // Senza un posto i consigli non esistono: il server risponderebbe no-seat, e
   // la schermata lo dice gia' a parole invece di chiederli.
@@ -249,6 +262,7 @@ export function AuctionRoute() {
   const assign = useAssign();
   const changePhase = useChangePhase();
   const undoLast = useUndoLast();
+  const voidSale = useVoidPurchase();
   // timerSeconds e beepEnabled sono preferenze dell'asta, non della
   // valutazione: oggi l'unico endpoint che le espone e' /board/bidder/{id}
   // (Task 3), costruito per la proiezione. E' un prestito, non la sede
@@ -298,6 +312,9 @@ export function AuctionRoute() {
   const undoError = undoLast.error
     ? userMessage(undoLast.error, "L'annullamento non è riuscito. Riprova.")
     : null;
+  const voidSaleError = voidSale.error
+    ? userMessage(voidSale.error, "L'annullamento non è riuscito. Riprova.")
+    : null;
 
   // Un solo alert, mai due insieme: stessa disciplina di HomeRoute
   // (mutationErrorMessage ?? loadErrorMessage). Le tre mutazioni che questa
@@ -309,7 +326,9 @@ export function AuctionRoute() {
   // renderizzato da BidPanel/BidderDialog (il suo posto attuale, dentro la
   // card di decisione); barAlertMessage e' il canale per le due mutazioni
   // della barra, che non rendono piu' un role="alert" proprio.
-  const barAlertMessage = changePhaseError ?? undoError;
+  // L'annullamento dall'avviso dell'acquisto e' un quarto gesto della stessa
+  // famiglia, e passa dallo stesso canale.
+  const barAlertMessage = changePhaseError ?? undoError ?? voidSaleError;
 
   // L'annuncio si compone DOPO la conferma del server, dallo stato appena
   // riletto: e' la stessa disciplina del bottone, detta a parole. Comporlo dai
@@ -372,6 +391,7 @@ export function AuctionRoute() {
     // errore di aggiudicazione (o al suo successo), violando "un solo alert".
     changePhase.reset();
     undoLast.reset();
+    voidSale.reset();
     assign.mutate(
       {
         playerId: lot!.playerId,
@@ -385,7 +405,9 @@ export function AuctionRoute() {
         onSuccess: (done, sent) => {
           if (!done) return;
           const buyer = participants.find((p) => p.id === done.participantId);
-          setSale({ seq: done.seq, player: sent.playerName, buyer: buyer?.name ?? '', price: done.price });
+          setSale({
+            auctionId, seq: done.seq, player: sent.playerName, buyer: buyer?.name ?? '', price: done.price,
+          });
           // Il lotto e' chiuso: lascia il banco. Senza questo il giocatore
           // restava in scena come scheda di decisione anche dopo essere stato
           // venduto, con «Avvia il conto alla rovescia» ancora acceso — un gesto
@@ -416,6 +438,7 @@ export function AuctionRoute() {
     // appeso non deve restare in scena insieme all'esito di questo gesto.
     assign.reset();
     undoLast.reset();
+    voidSale.reset();
     changePhase.mutate(role, {
       onSuccess: () => setAnnouncement(phaseChangedMessage(role)),
     });
@@ -424,7 +447,25 @@ export function AuctionRoute() {
   function undo() {
     assign.reset();
     changePhase.reset();
+    voidSale.reset();
+    // L'ultimo acquisto puo' essere proprio quello dell'avviso: l'avviso se ne va,
+    // o il suo «Annulla» resterebbe in vista per un acquisto gia' revocato.
+    setSale(null);
     undoLast.mutate(undefined, {
+      onSuccess: () => setAnnouncement(undoMessage()),
+    });
+  }
+
+  // «Annulla» sull'avviso revoca l'acquisto dell'avviso, per numero: void-last
+  // revocherebbe l'ultimo ANCORA VALIDO, che — se quello dell'avviso e' gia' stato
+  // annullato — e' un altro acquisto, e il registro non si riscrive. Se nel
+  // frattempo e' stato revocato, il server risponde purchase-already-revoked.
+  function voidSaleNow(target: { auctionId: string; seq: number }) {
+    assign.reset();
+    changePhase.reset();
+    undoLast.reset();
+    setSale(null);
+    voidSale.mutate(target, {
       onSuccess: () => setAnnouncement(undoMessage()),
     });
   }
@@ -499,6 +540,22 @@ export function AuctionRoute() {
   )}
   </div>
   ) : null;
+
+  // Dopo tutti gli hook: un 404 dallo stato vuol dire che l'asta non c'e' piu', o che
+  // chi guarda non fa (piu') parte della lega. Lo scheletro con «Connessione persa»
+  // direbbe una cosa falsa — la connessione c'e', e' la risposta a essere definitiva.
+  if (isNotFound(state.error)) {
+    return (
+      <AppShell chrome="top">
+        <div className="panel mx-auto max-w-xl rounded-xl p-4">
+          <p role="alert" className="text-sm font-medium text-destructive">
+            Questa lega non esiste, o non ne fai parte.
+          </p>
+          <p className="mt-3 text-sm"><Link to="/" className={TEXT_LINK}>Vai alle tue leghe</Link></p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell
@@ -980,8 +1037,8 @@ export function AuctionRoute() {
             </p>
             <button
               type="button"
-              onClick={() => { undo(); setSale(null); }}
-              disabled={undoLast.isPending}
+              onClick={() => voidSaleNow(sale)}
+              disabled={voidSale.isPending || undoLast.isPending}
               className="min-h-11 rounded-full border border-line-strong px-4 font-medium hover:bg-line disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               Annulla

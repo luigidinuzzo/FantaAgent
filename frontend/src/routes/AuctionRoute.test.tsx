@@ -177,6 +177,56 @@ function alwaysReadOrReject(href: string): Promise<Response> {
   if (href.includes('/players/targets')) return Promise.resolve(jsonResponse(TARGETS));
   return Promise.reject(new Error(`URL non prevista nel test: ${href}`));
 }
+/**
+ * L'asta dopo un acquisto (seq 9, Giocatore Uno ad Anna per 12): il tabellone lo
+ * contiene finche' una revoca — per numero o l'ultima — non lo toglie. Registra
+ * ogni revoca, per dire QUALE acquisto e' stato revocato.
+ */
+function saleApi() {
+  const voids: string[] = [];
+  let bought = false;
+  const base = fullFetchMock({
+    purchase: { seq: 9, playerId: 'p1', participantId: 'anna', price: 12 },
+    state: { ...STATE, canUndo: true },
+  });
+  const board = () => ({
+    auctionId: 'a1', currentPhase: 'P',
+    columns: [{
+      participantId: 'anna', participantName: 'Anna', me: true, budgetRemaining: bought ? 288 : 300,
+      slotsRemaining: bought ? 24 : 25,
+      byRole: { P: bought ? [{ seq: 9, playerName: 'Giocatore Uno', price: 12 }] : [], D: [], C: [], A: [] },
+    }],
+  });
+  const fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const href = typeof input === 'string' ? input : input.toString();
+    if (href.includes('/purchases/void-last')) {
+      voids.push('void-last');
+      bought = false;
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    if (/\/purchases\/\d+\/void$/.test(href)) {
+      voids.push(href);
+      bought = false;
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }
+    if (href.endsWith('/purchases')) bought = true;
+    if (href.endsWith('/board')) return Promise.resolve(jsonResponse(board()));
+    return base(input, init);
+  });
+  return { fetch, voids };
+}
+
+/** L'avviso dell'acquisto: il testo e' spezzato fra piu' elementi, e va letto intero. */
+function saleToast() {
+  return screen.queryByText((_, el) => el?.tagName === 'P' && el.textContent === 'Giocatore Uno a Anna per 12');
+}
+
+async function buyGiocatoreUno() {
+  await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+  await screen.findByRole('button', { name: 'Aggiudica direttamente' });
+  await assignDirect('12');
+  await screen.findByText((_, el) => el?.tagName === 'P' && el.textContent === 'Giocatore Uno a Anna per 12');
+}
 const TARGETS = [
   { id: 'p1', name: 'Giocatore Uno', team: 'AAA', role: 'P', listPrice: 1,
     maxBid: 50, expectedPrice: 10, margin: 40, worthPursuing: true },
@@ -1855,34 +1905,75 @@ describe('AuctionRoute', () => {
    */
   it('dopo un aggiudicazione mostra cosa e stato registrato, con Annulla', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
-    const writes: unknown[] = [];
-    const base = fullFetchMock({
-      purchase: { seq: 9, playerId: 'p1', participantId: 'anna', price: 12 },
-    });
-    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-      const href = typeof input === 'string' ? input : input.toString();
-      if (href.includes('/purchases/void-last')) {
-        writes.push('void');
-        return Promise.resolve(new Response(null, { status: 204 }));
-      }
-      return base(input, init);
-    }));
+    const api = saleApi();
+    vi.stubGlobal('fetch', api.fetch);
+    renderAuction();
 
-    render(
-      <QueryProvider>
-        <MemoryRouter><AuctionRoute /></MemoryRouter>
-      </QueryProvider>,
-    );
-
-    await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
-    await screen.findByRole('button', { name: 'Aggiudica direttamente' });
-    await assignDirect('12');
-
-    const toast = await screen.findByText((_, el) => el?.tagName === 'P' && el.textContent === 'Giocatore Uno a Anna per 12');
-    expect(toast).toBeInTheDocument();
+    await buyGiocatoreUno();
     await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
-    await waitFor(() => expect(writes).toContain('void'));
-    expect(screen.queryByText('Giocatore Uno a Anna per 12')).not.toBeInTheDocument();
+    // Revoca QUESTO acquisto, per numero: non «l'ultimo», che potrebbe essere un altro.
+    await waitFor(() => expect(api.voids).toEqual(['/api/leagues/default/auctions/a1/purchases/9/void']));
+    await waitFor(() => expect(saleToast()).not.toBeInTheDocument());
+  });
+
+  /**
+   * L'avviso resta in basso qualche secondo; nel frattempo l'acquisto puo' essere gia'
+   * stato annullato dall'intestazione. «Annulla» sull'avviso chiamava void-last, e
+   * revocava cosi' l'acquisto PRECEDENTE: un evento sbagliato nel registro.
+   */
+  it("annullato dall'intestazione, l'avviso sparisce e non revoca un altro acquisto", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const api = saleApi();
+    vi.stubGlobal('fetch', api.fetch);
+    renderAuction();
+
+    await buyGiocatoreUno();
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla ultimo acquisto' }));
+    await waitFor(() => expect(api.voids).toEqual(['void-last']));
+    const popup = screen.queryByRole('button', { name: 'Annulla' });
+    if (popup) await userEvent.click(popup);
+    await waitFor(() => expect(saleToast()).not.toBeInTheDocument());
+    expect(api.voids).toEqual(['void-last']);
+  });
+
+  it("annullato dalle rose, l'avviso sparisce: il tabellone non ha piu' quell'acquisto", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const api = saleApi();
+    vi.stubGlobal('fetch', api.fetch);
+    renderAuction();
+
+    await buyGiocatoreUno();
+    await userEvent.click(screen.getByRole('tab', { name: 'Rose squadre' }));
+    await userEvent.click(await screen.findByRole('button', { name: "Annulla l'acquisto di Giocatore Uno" }));
+    await waitFor(() => expect(saleToast()).not.toBeInTheDocument());
+    expect(api.voids).toEqual(['/api/leagues/default/auctions/a1/purchases/9/void']);
+  });
+
+  /**
+   * Chi non fa parte della lega, chi ne e' stato tolto o chi apre un'asta eliminata
+   * riceve 404 dallo stato: la schermata lo dice e smette di chiedere, invece di
+   * mostrare lo scheletro vuoto con «Connessione persa» e interrogare per sempre.
+   */
+  it("su un'asta che non esiste, o di una lega di cui non si fa parte, lo dice e smette di chiedere", async () => {
+    setAuctionContext({ leagueId: 'l1', auctionId: 'a1' });
+    const fetchMock = vi.fn((_input: RequestInfo | URL) => Promise.resolve(new Response(
+      JSON.stringify({ type: 'https://fantaagent.local/problems/unknown-auction', detail: 'asta a1 sconosciuta' }),
+      { status: 404, headers: { 'content-type': 'application/problem+json' } },
+    )));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderAuction();
+      expect(await screen.findByText('Questa lega non esiste, o non ne fai parte.')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Vai alle tue leghe' })).toHaveAttribute('href', '/');
+      expect(screen.queryByText(/Connessione persa/)).not.toBeInTheDocument();
+      const stateCalls = () => fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/state')).length;
+      const before = stateCalls();
+      await act(async () => { vi.advanceTimersByTime(20_000); });
+      expect(stateCalls()).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   describe("per chi non e' amministratore", () => {

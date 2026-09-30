@@ -75,6 +75,15 @@ export function userMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * Un 404 da una domanda di lega o d'asta: la lega o l'asta non esiste piu', o chi
+ * guarda non ne fa (piu') parte. Il server risponde allo stesso modo nei due casi
+ * apposta, e l'interfaccia non ha niente da riprovare: lo dice e smette di chiedere.
+ */
+export function isNotFound(error: unknown): boolean {
+  return error instanceof ProblemError && error.status === 404;
+}
+
 let context = { leagueId: '', auctionId: '' };
 
 export function setAuctionContext(next: { leagueId: string; auctionId: string }) {
@@ -182,7 +191,7 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T | null
  * <p>Esiste per la revoca di un acquisto dal riepilogo (task 13): {@code seq} e'
  * un numero PER REGISTRO, e la risposta del tabellone porta gia' l'{@code
  * auctionId} a cui appartiene. Indirizzarla con {@link apiPost} — che risolve
- * sempre sul letterale {@link AuctionGuard#CURRENT} o sull'ultima asta selezionata
+ * sempre sull'asta del {@link context}, cioe' quella dell'indirizzo della finestra
  * — significherebbe che una schermata di riepilogo lasciata aperta su un'asta,
  * mentre da un'altra finestra si passa a un'asta diversa, spedirebbe quel {@code
  * seq} al registro sbagliato: la guardia lato server lo respinge con 404
