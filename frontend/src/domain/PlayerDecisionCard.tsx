@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ParticipantView, ValuationResponse } from '../api/types';
 import { roleFull } from './bidRules';
+import { OnlyYouBadge } from './OnlyYouBadge';
 import { RoleBadge } from './RoleBadge';
 import { ROLE_NAME_PLURAL } from './roles';
 
@@ -95,7 +96,10 @@ export function PlayerDecisionCard({
         <span className="flex shrink-0 self-center">
           <RoleBadge role={valuation.role} />
         </span>
-        <p className="shrink-0 text-sm text-muted-foreground">{valuation.team}</p>
+        <p className="shrink-0 text-sm text-muted-foreground">
+          {valuation.team} · quotazione{' '}
+          <span data-testid="list-price" className="tnum">{valuation.listPrice}</span>
+        </p>
       </header>
 
       {/* In alto, non centrato: i prezzi si leggono subito sotto il nome, e i
@@ -107,6 +111,11 @@ export function PlayerDecisionCard({
           "Lascia", per esempio). */}
       <div className="flex flex-1 flex-col gap-6 pt-5">
         <div className={dimmed}>
+          {/* I numeri sotto sono quelli che decidono, e li vede solo chi
+              guarda questa schermata: la proiezione, sulla parete, mostra
+              solo rose e crediti a tutta la sala. Il distintivo lo dice
+              prima di leggerli, non dopo. */}
+          <div className="mb-3"><OnlyYouBadge label="Lo vedi solo tu" /></div>
           {/* Una colonna per voce, valore sopra ed etichetta sotto: la stessa
               disciplina con cui il conto alla rovescia mostra secondi e offerta mentre
               il conto corre, cosi' le due facce dello stesso riquadro si
@@ -118,10 +127,11 @@ export function PlayerDecisionCard({
               elemento di un elenco invece che come il nome del numero grande, e
               quale fosse il tetto non si capiva.
 
-              I quattro numeri sono crediti sullo stesso asse, in ordine di
-              racconto: dove ti fermi, quanto vale di listino, quanto lo paghera'
-              il tavolo, quanto ci guadagni. */}
-          <dl className="grid w-fit grid-cols-[auto_auto_auto_auto_auto] items-baseline gap-x-8">
+              I tre numeri sono crediti sullo stesso asse, in ordine di
+              racconto: dove ti fermi, quanto lo paghera' il tavolo, quanto ci
+              guadagni. La quotazione di listino non e' qui: e' un dato del
+              giocatore, come la squadra, e sta nella testata. */}
+          <dl className="grid w-fit grid-cols-[auto_auto_auto_auto] items-baseline gap-x-8">
             {/* dt PRIMA del suo dd nel sorgente, come vuole una lista di
                 definizioni: e' anche l'ordine in cui conviene sentirli letti —
                 «il tuo tetto, quaranta». Che l'etichetta appaia SOTTO il numero
@@ -135,7 +145,7 @@ export function PlayerDecisionCard({
             <dd className="col-start-1 row-start-1 flex items-baseline gap-x-4">
               <span
                 data-testid="max-bid"
-                className={`tnum w-exp text-[64px] font-extrabold leading-[0.82] tracking-tight ${
+                className={`tnum w-exp text-[80px] font-extrabold leading-[0.82] tracking-tight ${
                   // Su "Lascia" il tetto non e' un traguardo, e' un muro: l'oro
                   // e' il colore del via in tutta l'applicazione, e lasciarlo
                   // qui invitava a rilanciare fin la' proprio dove si dice di
@@ -152,42 +162,27 @@ export function PlayerDecisionCard({
               </span>
             </dd>
 
-            {/* La quotazione di listino: l'unico numero della valutazione che
-                non compare ne' qui ne' nel pannello dei consigli, che tiene il
-                limite «mai oltre», l'affidabilita' della stima e i driver. Da' un metro a «mercato»:
-                sapere che il tavolo pagherà 29 non dice se è caro finche' non si
-                sa da quanto si parte. */}
             <dt className="col-start-2 row-start-2 mt-2 text-sm text-muted-foreground">
-              quotazione
-            </dt>
-            <dd
-              data-testid="list-price"
-              className="tnum w-exp col-start-2 row-start-1 text-3xl font-semibold leading-none text-muted-foreground"
-            >
-              {valuation.listPrice}
-            </dd>
-
-            <dt className="col-start-3 row-start-2 mt-2 text-sm text-muted-foreground">
               mercato
             </dt>
             <dd
               data-testid="expected-price"
-              className="tnum w-exp col-start-3 row-start-1 text-3xl font-semibold leading-none"
+              className="tnum w-exp col-start-2 row-start-1 text-3xl font-semibold leading-none"
             >
               {valuation.expectedPrice}
             </dd>
 
-            <dt className="col-start-4 row-start-2 mt-2 text-sm text-muted-foreground">
+            <dt className="col-start-3 row-start-2 mt-2 text-sm text-muted-foreground">
               margine
             </dt>
             <dd
               data-testid="margin"
-              className={`tnum w-exp col-start-4 row-start-1 text-3xl font-semibold leading-none ${verdictColor}`}
+              className={`tnum w-exp col-start-3 row-start-1 text-3xl font-semibold leading-none ${verdictColor}`}
             >
               {signed(valuation.margin)}
             </dd>
 
-            {/* Il quinto numero non riguarda il giocatore ma te: quanto puoi
+            {/* Il quarto numero non riguarda il giocatore ma te: quanto puoi
                 davvero mettere su QUESTO lotto — i crediti meno un credito per
                 ogni altro posto che ti resta da riempire. Sta qui e non fra i
                 tuoi numeri a riposo perche' col lotto sul banco quelli non sono
@@ -198,7 +193,7 @@ export function PlayerDecisionCard({
                 E' valuation.hardCap, non un ricalcolo locale: il server applica
                 gia' la stessa formula (Squad.maxSpendableNow), e riscriverla qui
                 significherebbe tenerne due allineate a mano. Viene cosi' dallo
-                stesso scatto degli altri quattro numeri della riga — uno fresco
+                stesso scatto degli altri tre numeri della riga — uno fresco
                 dentro un blocco segnato come stantio discorderebbe dai vicini
                 proprio quando si guarda se fidarsene.
 
@@ -208,18 +203,18 @@ export function PlayerDecisionCard({
                 un trattino. */}
             {me ? (
               <>
-                {/* Separato con una linea dai tre che lo precedono: quotazione,
-                    mercato e margine parlano del GIOCATORE, questo parla di TE.
-                    Quattro numeri in fila allo stesso corpo si leggevano come un
-                    elenco solo, e l'occhio li sommava. */}
-                <dt className="col-start-5 row-start-2 mt-2 border-l border-line pl-8 text-sm text-muted-foreground">
+                {/* Separato con una linea dai due che lo precedono: mercato e
+                    margine parlano del GIOCATORE, questo parla di TE. Numeri in
+                    fila allo stesso corpo si leggevano come un elenco solo, e
+                    l'occhio li sommava. */}
+                <dt className="col-start-4 row-start-2 mt-2 border-l border-line pl-8 text-sm text-muted-foreground">
                   {roleFull(me, valuation.role)
                     ? `${ROLE_NAME_PLURAL[valuation.role]} al completo`
                     : 'puoi offrire'}
                 </dt>
                 <dd
                   data-testid="affordable"
-                  className="tnum w-exp col-start-5 row-start-1 border-l border-line pl-8 text-3xl font-semibold leading-none"
+                  className="tnum w-exp col-start-4 row-start-1 border-l border-line pl-8 text-3xl font-semibold leading-none"
                 >
                   {roleFull(me, valuation.role) ? '—' : valuation.hardCap}
                 </dd>

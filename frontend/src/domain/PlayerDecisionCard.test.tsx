@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { ParticipantView, ValuationResponse } from '../api/types';
 import { PlayerDecisionCard } from './PlayerDecisionCard';
@@ -86,14 +86,18 @@ describe('PlayerDecisionCard', () => {
   });
 
   /**
-   * La quotazione di listino da' un metro a «mercato»: 38 non dice se e' caro
-   * finche' non si sa da quanto si parte. E' l'unico numero della valutazione
-   * che non compare nel pannello dei consigli (tetto duro, confidenza, driver),
-   * quindi qui non duplica niente.
+   * La quotazione e' un dato del giocatore, come la squadra: sta nella testata,
+   * e fra i numeri grandi restano quelli su cui si decide.
    */
-  it('mostra la quotazione di listino accanto al mercato', () => {
+  it('la quotazione sta nella testata, accanto alla squadra', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
-    expect(screen.getByTestId('list-price')).toHaveTextContent('20');
+    const header = screen.getByRole('heading', { name: VALUATION.name }).closest('header')!;
+    expect(within(header).getByTestId('list-price')).toHaveTextContent(String(VALUATION.listPrice));
+  });
+
+  it('dice che i numeri li vedi solo tu', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
+    expect(screen.getByText('Lo vedi solo tu')).toBeInTheDocument();
   });
 
   /**
@@ -107,15 +111,14 @@ describe('PlayerDecisionCard', () => {
     const lista = container.querySelector('dl')!;
     const voci = [...lista.children].map((el) => el.textContent?.trim());
 
-    // dt seguito dal suo dd, nell'ordine in cui si leggono ad alta voce.
+    // dt seguito dal suo dd, nell'ordine in cui si leggono ad alta voce. La
+    // quotazione non e' piu' qui: e' nella testata, accanto alla squadra.
     expect(voci[0]).toBe('il tuo tetto, fin qui conviene');
     expect(voci[1]).toContain('47');
-    expect(voci[2]).toBe('quotazione');
-    expect(voci[3]).toBe('20');
-    expect(voci[4]).toBe('mercato');
-    expect(voci[5]).toBe('38');
-    expect(voci[6]).toBe('margine');
-    expect(voci[7]).toBe('+9');
+    expect(voci[2]).toBe('mercato');
+    expect(voci[3]).toBe('38');
+    expect(voci[4]).toBe('margine');
+    expect(voci[5]).toBe('+9');
   });
 
   it('quando non conviene mostra Lascia e la ragione', () => {

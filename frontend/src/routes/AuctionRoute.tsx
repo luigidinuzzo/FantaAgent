@@ -26,7 +26,7 @@ import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } f
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
-import { BID_CONTROL_H } from '../domain/controls';
+import { BUTTON_SECONDARY, CONTROL_H } from '../domain/controls';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PhasePager } from '../domain/PhasePager';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
@@ -482,7 +482,7 @@ export function AuctionRoute() {
   // scheda di decisione quando c'e', sotto i dati pubblici del giocatore quando
   // chi batte l'asta non vi ha un posto.
   const lotControls = lot && admin ? (
-  <div className="flex flex-col items-start gap-4">
+  <div className="flex flex-wrap items-center gap-3">
   {/* Avvia il conto alla rovescia per il lotto conteso: BidPanel resta
       la via diretta per un giocatore che nessuno contende,
       questo e' l'altra via alla STESSA mutazione (assignPlayer),
@@ -490,21 +490,16 @@ export function AuctionRoute() {
       non sono arrivate: aprire subito significherebbe mostrare
       un timer finto, e questa migrazione non finge mai un dato
       che non ha ancora. */}
-  {/* L'oro, e il bersaglio piu' largo della riga: battere un
-      lotto E' il prodotto, e questo bottone era una pillola di
-      contorno in fondo a sinistra mentre il pieno stava su
-      «Aggiudica». La gerarchia diceva il contrario di quello
-      che si fa al tavolo. */}
+  {/* Sulla stessa riga dell'aggiudicazione diretta, alla stessa altezza
+      (56px, CONTROL_H): e' l'oro e la larghezza a dire quale dei due gesti
+      si usa di piu', non la statura del bottone. Battere un lotto E' il
+      prodotto, quindi resta il pieno, il colore e il posto migliore nella riga. */}
   <button
     type="button"
     onClick={() => setBidderOpen(true)}
     disabled={!bidderSettings.data}
     aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
-    // Su una riga tutta sua e alla taglia dei bersagli del
-    // rilancio (BID_CONTROL_H, 64px): e' l'azione principale
-    // del lotto, e ora ha la larghezza della barra «Rilancia
-    // +1» che prendera' il suo posto appena il conto parte.
-    className={`${BID_CONTROL_H} w-full max-w-[31rem] rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+    className={`${CONTROL_H} min-w-[16rem] max-w-[28rem] flex-1 rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
   >
     Avvia il conto alla rovescia
   </button>
@@ -520,7 +515,9 @@ export function AuctionRoute() {
       prezzo e squadra precompilati, un clic sbagliato registrava
       un acquisto vero; ora si apre solo se la si chiede, e non
       propone niente. key: un giocatore nuovo riparte da campi
-      vuoti. */}
+      vuoti. Sulla stessa riga del bottone d'oro, alla stessa altezza
+      (56px): e' il contorno, non il colore, a dire che si usa meno spesso.
+      BidPanel, che prende il suo posto, va a capo da solo per flex-wrap. */}
   {directFor === lot.playerId ? (
     <BidPanel
       key={lot.playerId}
@@ -536,11 +533,7 @@ export function AuctionRoute() {
       type="button"
       aria-expanded={false}
       onClick={() => setDirectFor(lot.playerId)}
-      // Una pillola col contorno, non un testo sottolineato:
-      // tutto cio' che si preme in questa applicazione e' una
-      // pillola, e un link sottolineato in mezzo ai bottoni si
-      // leggeva come un corpo estraneo.
-      className="min-h-11 rounded-lg border border-control-border px-5 text-sm font-medium text-muted-foreground hover:bg-line hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      className={`${CONTROL_H} ${BUTTON_SECONDARY} px-5 text-muted-foreground hover:text-foreground`}
     >
       Aggiudica direttamente
     </button>
