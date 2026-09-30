@@ -1,5 +1,6 @@
 package com.fantaagent.adapter.in.api.auth;
 
+import com.fantaagent.adapter.in.security.AppUserPrincipal;
 import com.fantaagent.application.port.out.Mailer;
 import com.fantaagent.testsupport.ApiFixture;
 import jakarta.servlet.http.Cookie;
@@ -9,6 +10,10 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.session.FindByIndexNameSessionRepository;
+import org.springframework.session.Session;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,11 +21,16 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.jayway.jsonpath.JsonPath;
+
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -40,6 +50,9 @@ class AuthApiTest {
 
     @MockitoBean
     private Mailer mailer;
+
+    @Autowired
+    private FindByIndexNameSessionRepository<? extends Session> sessions;
 
     private MockMvc mvc;
     private String email;
@@ -248,5 +261,61 @@ class AuthApiTest {
     @Test
     void laSaluteDellAppRestaPubblica() throws Exception {
         mvc.perform(get("/actuator/health")).andExpect(status().isOk());
+    }
+
+    /**
+     * La posta che non parte (SMTP giu', credenziali scadute) non deve far fallire la
+     * registrazione DOPO aver creato l'account: il 500 porterebbe a riprovare, e il
+     * secondo tentativo risponderebbe «esiste gia' un account».
+     */
+    @Test
+    void unaPostaCheNonParteNonFallisceLaRegistrazione() throws Exception {
+        doThrow(new MailSendException("smtp non raggiungibile")).when(mailer).send(anyString(), anyString(), anyString());
+
+        Cookie session = ApiFixture.register(mvc, email, "Anna");
+
+        mvc.perform(get("/api/me").cookie(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value(email));
+        mvc.perform(post("/api/me/verification").with(csrf()).cookie(session))
+                .andExpect(status().isNoContent());
+    }
+
+    /** Stessa risposta per chiunque, anche quando la posta non parte: niente 500 da distinguere. */
+    @Test
+    void unaPostaCheNonParteNonCambiaLaRispostaDelRecupero() throws Exception {
+        ApiFixture.register(mvc, email, "Anna");
+        mvc.perform(post("/api/auth/verify").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"%s\"}".formatted(lastToken())))
+                .andExpect(status().isNoContent());
+        doThrow(new MailSendException("smtp non raggiungibile")).when(mailer).send(anyString(), anyString(), anyString());
+
+        mvc.perform(post("/api/auth/password/forgot").with(csrf()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\"}".formatted(email)))
+                .andExpect(status().isNoContent());
+    }
+
+    /**
+     * La sessione si salva nel database: l'impronta Argon2 della password non ci deve
+     * finire. Serve solo a verificare la password, e dopo l'accesso non serve piu'.
+     */
+    @Test
+    void laSessioneNonConservaLImprontaDellaPassword() throws Exception {
+        ApiFixture.register(mvc, email, "Anna");
+        Cookie session = ApiFixture.login(mvc, email);
+        String id = JsonPath.read(mvc.perform(get("/api/me").cookie(session))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        Map<String, ? extends Session> saved = sessions.findByPrincipalName(id);
+        assertThat(saved).isNotEmpty();
+        saved.values().forEach(s -> {
+            SecurityContext ctx = s.getAttribute("SPRING_SECURITY_CONTEXT");
+            AppUserPrincipal principal = (AppUserPrincipal) ctx.getAuthentication().getPrincipal();
+            assertThat(principal.id()).hasToString(id);
+            assertThat(principal.passwordHash()).isNull();
+            assertThat(principal.getAuthorities()).isEmpty();
+            assertThat(ctx.getAuthentication().isAuthenticated()).isTrue();
+        });
     }
 }

@@ -18,6 +18,15 @@ import java.util.UUID;
 public record AppUserPrincipal(UUID id, String email, String displayName, String passwordHash)
         implements UserDetails {
 
+    /**
+     * Lo stesso utente senza l'impronta della password: e' questa copia che va nella
+     * sessione, che si salva nel database. L'impronta serve solo a verificare la
+     * password all'accesso, e dopo non deve restare in giro.
+     */
+    public AppUserPrincipal withoutPassword() {
+        return new AppUserPrincipal(id, email, displayName, null);
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();

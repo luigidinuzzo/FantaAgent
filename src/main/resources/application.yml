@@ -17,6 +17,14 @@ spring:
     jdbc:
       # Lo schema lo crea Flyway (V2__sessioni.sql), non Spring Session all'avvio.
       initialize-schema: never
+  # Un server di posta che non risponde non deve tenere ferma una registrazione: senza
+  # questi limiti JavaMail aspetterebbe all'infinito. La posta che non parte si scrive
+  # nel log e la richiesta riesce comunque (AccountService#deliver).
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   servlet:
     multipart:
       # Il registro di un'asta intera sta in qualche centinaio di KB.

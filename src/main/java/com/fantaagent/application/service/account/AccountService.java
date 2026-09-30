@@ -27,6 +27,8 @@ import java.util.UUID;
  */
 public class AccountService {
 
+    private static final System.Logger LOG = System.getLogger(AccountService.class.getName());
+
     static final Duration VERIFY_TTL = Duration.ofDays(7);
     static final Duration RESET_TTL = Duration.ofHours(1);
     static final int MAX_NAME = 40;
@@ -103,7 +105,7 @@ public class AccountService {
                 .filter(UserAccount::emailVerified)
                 .ifPresent(user -> {
                     String token = issue(user.id(), UserToken.Purpose.RESET_PASSWORD, RESET_TTL);
-                    mailer.send(user.email(), "Nuova password per FantaAgent",
+                    deliver(user.email(), "Nuova password per FantaAgent",
                             "Ciao " + user.displayName() + ",\n\n"
                             + "per scegliere una nuova password apri questo link:\n"
                             + publicUrl + "/nuova-password?token=" + token + "\n\n"
@@ -130,11 +132,30 @@ public class AccountService {
 
     private void sendVerification(UserAccount user) {
         String token = issue(user.id(), UserToken.Purpose.VERIFY_EMAIL, VERIFY_TTL);
-        mailer.send(user.email(), "Conferma il tuo indirizzo su FantaAgent",
+        deliver(user.email(), "Conferma il tuo indirizzo su FantaAgent",
                 "Ciao " + user.displayName() + ",\n\n"
                 + "per confermare il tuo indirizzo apri questo link:\n"
                 + publicUrl + "/verifica-email?token=" + token + "\n\n"
                 + "Il link vale 7 giorni. Se non ti sei registrato tu, ignora questo messaggio.\n");
+    }
+
+    /**
+     * La posta e' un di piu', mai la condizione per riuscire: un server di posta che
+     * non risponde non deve far fallire una registrazione DOPO aver creato l'account
+     * (il nuovo tentativo risponderebbe «esiste gia' un account»), ne' cambiare la
+     * risposta del recupero password, che deve essere la stessa per chiunque. Il link
+     * si puo' richiedere di nuovo; l'errore resta nel log per chi gestisce il servizio.
+     *
+     * <p>Qui e non in un decoratore del {@link Mailer}: e' una regola del servizio, e
+     * cosi' vale per qualunque {@code Mailer} gli si dia. Il corpo non va nel log: porta
+     * il link, che vale come una password.
+     */
+    private void deliver(String to, String subject, String body) {
+        try {
+            mailer.send(to, subject, body);
+        } catch (RuntimeException e) {
+            LOG.log(System.Logger.Level.WARNING, "email non spedita a " + to + " («" + subject + "»)", e);
+        }
     }
 
     private String issue(UUID userId, UserToken.Purpose purpose, Duration ttl) {

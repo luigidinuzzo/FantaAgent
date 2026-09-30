@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 public class LeagueAuctionService {
 
     static final int MAX_NAME = 60;
+    /** I posti sotto cui un'asta non si legge piu': le regole ne vogliono almeno due. */
+    private static final int MIN_SEATS = 2;
 
     private final AuctionRepository auctions;
     private final LeagueRepository leagues;
@@ -196,7 +198,12 @@ public class LeagueAuctionService {
                 // Stesso motivo di replaceSeats: il lock impedisce che questa rimozione e un
                 // acquisto sulla stessa asta si scavalchino.
                 auctions.lockForWrite(auctionId);
-                if (!LogSummary.anyPurchase(stores.open(auctionId, access.userId()).load())) {
+                // Il posto resta anche se l'asta, senza di lui, avrebbe un posto solo: le
+                // regole ne vogliono almeno due, e da li' ogni lettura dell'asta
+                // fallirebbe. Chi esce dalla lega esce comunque; i posti li sistema
+                // l'amministratore dalle impostazioni dell'asta.
+                boolean wouldBeAlone = auctions.seats(auctionId).size() <= MIN_SEATS;
+                if (!wouldBeAlone && !LogSummary.anyPurchase(stores.open(auctionId, access.userId()).load())) {
                     auctions.removeSeat(auctionId, userId);
                 }
             }

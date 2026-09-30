@@ -158,7 +158,9 @@ Il passo che segue questo sotto-progetto. Quello che serve:
    degli inviti).
 3. **`server.forward-headers-strategy=native` dietro un proxy.** Senza, il limite ai
    tentativi di accesso vede un solo indirizzo, quello del proxy, e blocca tutti
-   insieme.
+   insieme. E con un proxy che termina il TLS l'app crede di rispondere in http: il
+   cookie `XSRF-TOKEN` uscirebbe senza il flag `Secure`, che prende solo quando la
+   richiesta risulta https (`X-Forwarded-Proto` letto grazie a questa impostazione).
 4. **Un SMTP vero** per verifica dell'indirizzo e recupero della password, con un
    mittente (`FANTAAGENT_MAIL_FROM`) che abbia SPF e DKIM del dominio.
 5. **Backup giornaliero del database.** Con i file è sparita anche la copia del

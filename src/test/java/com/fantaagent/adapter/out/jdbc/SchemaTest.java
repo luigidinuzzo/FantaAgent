@@ -95,4 +95,27 @@ class SchemaTest {
         assertThatThrownBy(() -> TestRows.user(jdbc, "ADMIN@example.com"))
                 .isInstanceOf(DuplicateKeyException.class);
     }
+
+    /**
+     * «Le mie leghe» e la chiusura dei link di un utente cercano per utente: la chiave
+     * di league_member comincia dalla lega, e user_token non ne ha una per utente.
+     */
+    @Test
+    void leRicerchePerUtenteHannoUnIndice() {
+        assertThat(indexedColumns("league_member")).contains("user_id");
+        assertThat(indexedColumns("user_token")).contains("user_id");
+    }
+
+    /** Le colonne che aprono un indice della tabella: sono quelle che l'indice aiuta a cercare. */
+    private java.util.List<String> indexedColumns(String table) {
+        return jdbc.sql("""
+                        SELECT a.attname
+                        FROM pg_index i
+                        JOIN pg_class t ON t.oid = i.indrelid
+                        JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = i.indkey[0]
+                        WHERE t.relname = :t
+                        """)
+                .param("t", table)
+                .query(String.class).list();
+    }
 }

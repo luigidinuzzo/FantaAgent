@@ -167,6 +167,27 @@ class LeagueAuctionServiceTest {
         assertThatThrownBy(() -> world.as(admin, bruno)).isInstanceOf(NotLeagueMemberException.class);
     }
 
+    /**
+     * Un'asta vive con almeno due posti: togliendo il secondo resterebbe con uno solo,
+     * e da li' ogni lettura dell'asta fallirebbe. Il posto resta; l'amministratore lo
+     * sistema dalle impostazioni dell'asta.
+     */
+    @Test
+    void chiEsceLasciaIlPostoSeLAstaResterebbeConUnoSolo() {
+        AuctionRecord pair = world.auctions.create(admin, "In due");
+        world.auctions.replaceSeats(admin, pair.id(), List.of(
+                new SeatRequest(admin.userId(), "anna FC", "A"),
+                new SeatRequest(bruno, "bruno FC", "B")));
+        AuctionRecord three = world.auctions.create(admin, "In tre");
+
+        world.auctions.removeMember(admin, bruno);
+
+        assertThat(world.auctions.seats(admin, pair.id())).extracting(Seat::userId)
+                .containsExactly(admin.userId(), bruno);
+        assertThat(world.auctions.seats(admin, three.id())).extracting(Seat::userId)
+                .containsExactly(admin.userId(), carla);
+    }
+
     @Test
     void lAmministratoreToglieUnMembroMaNonSeStesso() {
         world.auctions.removeMember(admin, carla);

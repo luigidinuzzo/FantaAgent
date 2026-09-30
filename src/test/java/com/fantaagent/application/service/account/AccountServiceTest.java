@@ -145,4 +145,25 @@ class AccountServiceTest {
         assertThatThrownBy(() -> accounts.resetPassword(mailer.lastToken(), "adesso va bene"))
                 .isInstanceOf(InvalidTokenException.class);
     }
+
+    /**
+     * La posta e' un di piu': se non parte, l'account resta creato e la richiesta
+     * riesce. Un'eccezione qui, dopo l'inserimento, diventava un 500 con l'account
+     * gia' salvato — e il nuovo tentativo un «esiste gia' un account».
+     */
+    @Test
+    void unaPostaCheNonParteNonFermaRegistrazioneReinvioERecupero() {
+        JdbcClient jdbc = JdbcClient.create(SharedPostgres.migratedDatabase());
+        AccountService broken = new AccountService(new JdbcUserRepository(jdbc), new JdbcUserTokenRepository(jdbc),
+                hasher, new PasswordPolicy(Set.of()), (to, subject, body) -> {
+                    throw new IllegalStateException("smtp non raggiungibile");
+                }, clock, "https://fanta.example");
+
+        UserAccount user = broken.register("anna@example.com", GOOD, "Anna");
+
+        assertThat(broken.byId(user.id()).email()).isEqualTo("anna@example.com");
+        broken.resendVerification(user.id());
+        jdbc.sql("UPDATE app_user SET email_verified_at = now() WHERE id = ?").param(user.id()).update();
+        broken.requestPasswordReset("anna@example.com");
+    }
 }

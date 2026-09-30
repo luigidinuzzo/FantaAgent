@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -134,14 +135,18 @@ public class AuthApi {
      */
     private AppUserPrincipal signIn(String email, String password,
                                     HttpServletRequest request, HttpServletResponse response) {
-        Authentication auth = authentication.authenticate(UsernamePasswordAuthenticationToken
+        Authentication verified = authentication.authenticate(UsernamePasswordAuthenticationToken
                 .unauthenticated(email == null ? "" : email.trim(), password == null ? "" : password));
+        // Nella sessione (salvata nel database) va l'utente senza l'impronta della
+        // password: serviva solo a verificarla, adesso. Nessun ruolo, come prima.
+        AppUserPrincipal principal = ((AppUserPrincipal) verified.getPrincipal()).withoutPassword();
+        Authentication auth = UsernamePasswordAuthenticationToken.authenticated(principal, null, List.of());
         request.getSession(true);
         request.changeSessionId();
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(auth);
         SecurityContextHolder.setContext(context);
         contexts.saveContext(context, request, response);
-        return (AppUserPrincipal) auth.getPrincipal();
+        return principal;
     }
 }
