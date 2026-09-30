@@ -1365,6 +1365,31 @@ describe('AuctionRoute', () => {
       return offset === '25' ? PAGE2 : PAGE1;
     }
 
+    /**
+     * Le pagine stanno nella riga delle schede, sopra la tabella: anche nel
+     * documento vengono prima di lei. Messe dopo, chi usa la tastiera o ascolta
+     * le raggiungeva solo dopo aver attraversato l'intera tabella.
+     */
+    it('le pagine vengono prima della tabella anche nell ordine del documento', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+        const href = typeof input === 'string' ? input : input.toString();
+        if (href.includes('/players/phase')) return Promise.resolve(jsonResponse(pageFromHref(href)));
+        if (href.endsWith('/state')) return Promise.resolve(jsonResponse(STATE));
+        return alwaysReadOrReject(href);
+      }));
+
+      render(
+        <QueryProvider>
+          <MemoryRouter><AuctionRoute /></MemoryRouter>
+        </QueryProvider>,
+      );
+
+      const next = await screen.findByRole('button', { name: 'Pagina successiva' });
+      const tabella = within(screen.getByRole('tabpanel')).getByRole('region');
+      expect(next.compareDocumentPosition(tabella) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('un secondo giocatore ranked oltre la prima pagina e ora raggiungibile sfogliando', async () => {
       setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
       const fetchMock = vi.fn((input: RequestInfo | URL) => {

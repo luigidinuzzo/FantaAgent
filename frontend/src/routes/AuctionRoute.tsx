@@ -895,8 +895,9 @@ export function AuctionRoute() {
 
             Da lg il pannello e' una piccola griglia: in alto le schede, la legenda
             (da xl sulla stessa riga, sotto xl a capo) e le pagine; sotto, il filo
-            e la scheda aperta. Nel documento legenda e pagine vengono dopo la
-            tabella, come sul telefono e come prima di questa griglia. -mt-1 sotto
+            e la scheda aperta. Nel documento l'ordine e' lo stesso che si vede —
+            schede, legenda, pagine, tabella —: chi usa la tastiera o ascolta
+            raggiunge le pagine prima di attraversare la tabella. -mt-1 sotto
             lg: prima le schede stavano fuori dalla riga con mt-4, e 16px restano
             invece dei 20 dello spazio della riga. */}
         {seated === false ? null : (
@@ -931,6 +932,32 @@ export function AuctionRoute() {
                   </button>
                 ))}
             </div>
+
+            {activeTab === 'fase' && phase.data ? (
+              <>
+                {/* Sotto lg non c'e': la legenda la dice per intero la didascalia
+                    della tabella, che da lg e' solo per chi ascolta. */}
+                <span className="max-lg:hidden lg:col-span-3 lg:row-start-2 lg:px-4 lg:pb-2 lg:text-meta lg:text-muted-foreground xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:self-center xl:px-0 xl:pb-0">
+                  in <span className="font-medium text-destructive">rosso</span> i tetti che il mercato supera
+                </span>
+                {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
+                    una pagina precedente resta scelto (valutazione e banco
+                    intatti, se aperto) anche se la sua riga scorre fuori vista
+                    sfogliando. */}
+                <div className="lg:col-start-3 lg:row-start-1 lg:flex lg:items-center lg:pl-3 lg:pr-2 lg:text-muted-foreground">
+                  <PhasePager
+                    compact
+                    offset={phase.data.offset}
+                    pageSize={phase.data.pageSize}
+                    total={phase.data.total}
+                    hasPrevious={phase.data.hasPrevious}
+                    hasNext={phase.data.hasNext}
+                    onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
+                    onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
+                  />
+                </div>
+              </>
+            ) : null}
 
             <div
               role="tabpanel"
@@ -982,32 +1009,6 @@ export function AuctionRoute() {
                   qui) — non due dalla stessa fonte, non due dallo stesso posto. */}
               {activeTab === 'rose' ? <RosterGrid fill /> : null}
             </div>
-
-            {activeTab === 'fase' && phase.data ? (
-              <>
-                {/* Sotto lg non c'e': la legenda la dice per intero la didascalia
-                    della tabella, che da lg e' solo per chi ascolta. */}
-                <span className="max-lg:hidden lg:col-span-3 lg:row-start-2 lg:px-4 lg:pb-2 lg:text-meta lg:text-muted-foreground xl:col-span-1 xl:col-start-2 xl:row-start-1 xl:self-center xl:px-0 xl:pb-0">
-                  in <span className="font-medium text-destructive">rosso</span> i tetti che il mercato supera
-                </span>
-                {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
-                    una pagina precedente resta scelto (valutazione e banco
-                    intatti, se aperto) anche se la sua riga scorre fuori vista
-                    sfogliando. */}
-                <div className="lg:col-start-3 lg:row-start-1 lg:flex lg:items-center lg:pl-3 lg:pr-2 lg:text-muted-foreground">
-                  <PhasePager
-                    compact
-                    offset={phase.data.offset}
-                    pageSize={phase.data.pageSize}
-                    total={phase.data.total}
-                    hasPrevious={phase.data.hasPrevious}
-                    hasNext={phase.data.hasNext}
-                    onPrevious={() => setPageOffset((o) => Math.max(0, o - phase.data!.pageSize))}
-                    onNext={() => setPageOffset((o) => o + phase.data!.pageSize)}
-                  />
-                </div>
-              </>
-            ) : null}
           </div>
         )}
       </div>
