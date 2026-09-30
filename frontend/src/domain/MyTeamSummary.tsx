@@ -159,7 +159,7 @@ export function MyTeamSummary({
                 <span aria-hidden="true"><RoleBadge role={p.role} /></span>
                 <span className="flex min-w-0 flex-1 flex-col leading-tight">
                   <span className="truncate font-medium">{p.playerName}</span>
-                  <span className={`truncate text-xs ${p.mine ? 'text-accent' : 'text-muted-foreground'}`}>
+                  <span className={`truncate text-meta ${p.mine ? 'text-accent' : 'text-muted-foreground'}`}>
                     {p.mine ? 'a te' : `a ${p.buyer}`}
                   </span>
                 </span>
@@ -193,7 +193,7 @@ function Figure({ label, value, note, size = 'lg', testId }: {
     <div className="flex flex-col-reverse justify-end gap-1">
       <dt className="text-sm text-muted-foreground">
         {label}
-        {note ? <span className="block text-xs text-muted-foreground">{note}</span> : null}
+        {note ? <span className="block text-meta text-muted-foreground">{note}</span> : null}
       </dt>
       <dd
         data-testid={testId}

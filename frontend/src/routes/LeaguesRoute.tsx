@@ -111,10 +111,10 @@ function LeagueRow({ league }: { league: LeagueCard }) {
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{league.name}</span>
           <span className="block truncate text-sm">{league.teamName}</span>
-          <span className="block truncate text-xs text-muted-foreground">{facts}</span>
+          <span className="block truncate text-meta text-muted-foreground">{facts}</span>
         </span>
         {requests > 0 ? (
-          <span className="shrink-0 rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-on-accent">
+          <span className="shrink-0 rounded-full bg-accent px-2.5 py-0.5 text-meta font-semibold text-on-accent">
             {plural(requests, 'richiesta', 'richieste')}
           </span>
         ) : null}
@@ -132,7 +132,7 @@ function PendingRow({ request }: { request: MyJoinRequest }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{request.leagueName}</span>
         <span className="block truncate text-sm">{request.teamName}</span>
-        <span className="block truncate text-xs text-muted-foreground">
+        <span className="block truncate text-meta text-muted-foreground">
           {withdraw.isError
             ? <span role="alert" className="font-medium text-destructive">Non sono riuscito a ritirarla. Riprova.</span>
             : 'Richiesta inviata, in attesa'}
@@ -187,7 +187,7 @@ function FirstSteps() {
       <ol aria-label="Come si comincia" className="grid gap-4 text-sm text-muted-foreground">
         {FIRST_STEPS.map((step, i) => (
           <li key={step} className="flex items-baseline gap-3">
-            <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full border border-line-strong text-xs font-semibold text-foreground">
+            <span aria-hidden="true" className="grid size-6 shrink-0 place-items-center rounded-full border border-line-strong text-meta font-semibold text-foreground">
               {i + 1}
             </span>
             {step}

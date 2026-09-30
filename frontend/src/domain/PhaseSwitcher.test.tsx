@@ -44,7 +44,7 @@ describe('PhaseSwitcher', () => {
     const corrente = screen.getByRole('button', { name: /difensori, fase corrente/i });
     const altra = screen.getByRole('button', { name: /^attaccanti$/i });
     expect(corrente.querySelector('span')?.className).toContain('text-2xl');
-    expect(altra.querySelector('span')?.className).toContain('text-xs');
+    expect(altra.querySelector('span')?.className).toContain('text-meta');
   });
 
   /**

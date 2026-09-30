@@ -55,7 +55,7 @@ const PRIMARY_RAISE = 1;
  * tre copie della stessa riga di classi divergono alla prima modifica.
  */
 const KEY_CAP =
-  'tnum rounded-md border border-line-strong bg-surface-raised px-2 py-0.5 text-xs font-medium text-foreground';
+  'tnum rounded-md border border-line-strong bg-surface-raised px-2 py-0.5 text-meta font-medium text-foreground';
 
 /** I due salti rapidi sotto la barra: a voce si grida «venti!», e con un tasto
  *  solo costerebbero cinque o dieci pressioni della barra spaziatrice. */
@@ -595,10 +595,10 @@ export function BidderDialog({
                 <span className="flex w-full items-baseline gap-2">
                   <span className="truncate font-semibold">{p.name}</span>
                   {i < 9 ? (
-                    <span aria-hidden="true" className={`tnum ml-auto text-xs ${picked ? '' : 'text-muted-foreground'}`}>{i + 1}</span>
+                    <span aria-hidden="true" className={`tnum ml-auto text-meta ${picked ? '' : 'text-muted-foreground'}`}>{i + 1}</span>
                   ) : null}
                 </span>
-                <span className={`tnum text-xs ${picked ? '' : 'text-muted-foreground'}`}>
+                <span className={`tnum text-meta ${picked ? '' : 'text-muted-foreground'}`}>
                   {picked ? 'se lo prende' : note}
                 </span>
               </button>

@@ -36,7 +36,7 @@ export function ParticipantsColumn({ participants, phase }: {
     >
       {/* Cosa misura il numero, detto una volta in testa alla colonna: prima era
           un numero nudo accanto al nome, e si capiva solo sapendolo gia'. */}
-      <div aria-hidden="true" className="mb-2 flex justify-between px-3 text-xs font-medium text-muted-foreground">
+      <div aria-hidden="true" className="mb-2 flex justify-between px-3 text-meta font-medium text-muted-foreground">
         <span>Squadra</span>
         <span>Crediti</span>
       </div>
@@ -74,7 +74,7 @@ export function ParticipantsColumn({ participants, phase }: {
                 lo ha rifiutato, ed e' la risposta giusta: e' testo che informa,
                 non decorazione. */}
             {phase ? (
-              <span className={`tnum truncate text-xs ${needed(p, phase) === 0 ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>
+              <span className={`tnum truncate text-meta ${needed(p, phase) === 0 ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>
                 {needed(p, phase) === 0
                   ? `${ROLE_NAME_PLURAL[phase]} al completo`
                   : `cerca ${needed(p, phase)} ${needed(p, phase) === 1 ? ROLE_NAME_SINGULAR[phase] : ROLE_NAME_PLURAL[phase]}`}

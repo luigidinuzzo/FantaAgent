@@ -379,7 +379,7 @@ function RosterColumn({
             si capiva solo sapendolo gia'. */}
         <span className="shrink-0 whitespace-nowrap">
           <span className={`tnum w-exp font-medium ${column.me ? 'text-accent' : ''}`}>{column.budgetRemaining}</span>
-          <span className="text-xs text-muted-foreground"> crediti</span>
+          <span className="text-meta text-muted-foreground"> crediti</span>
           <span className="sr-only"> residui</span>
         </span>
       </h3>
@@ -389,7 +389,7 @@ function RosterColumn({
       <table className="mt-3 w-full table-fixed text-sm">
         <caption className="sr-only">Rosa di {column.participantName}</caption>
         <thead>
-          <tr className="text-left text-xs text-muted-foreground">
+          <tr className="text-left text-meta text-muted-foreground">
             <th scope="col">Giocatore</th>
             <th scope="col" className="w-9 text-right">Prezzo</th>
             {/* Senza gesti per chi non e' amministratore: la colonna della ✕ non

@@ -234,7 +234,7 @@ export function PlayerSearchBox({
                 indovinare il senso. Nascoste a chi ascolta: ogni riga e' un
                 bottone che dice gia' nome, squadra e prezzo. */}
             {data && data.length > 0 ? (
-              <div aria-hidden="true" className="-mb-3 flex shrink-0 items-center gap-3 border-b border-line-strong px-2 pb-2 text-xs font-medium text-muted-foreground">
+              <div aria-hidden="true" className="-mb-3 flex shrink-0 items-center gap-3 border-b border-line-strong px-2 pb-2 text-meta font-medium text-muted-foreground">
                 <span className="w-6 shrink-0" />
                 <span className="min-w-0 max-w-64 flex-1">Giocatore</span>
                 <span className="w-20 shrink-0">Squadra</span>

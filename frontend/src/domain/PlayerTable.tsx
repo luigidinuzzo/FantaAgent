@@ -184,7 +184,7 @@ export function PlayerTable({
                   >
                     <span className="flex flex-col py-1">
                       <span>{row.name}</span>
-                      <span className="text-xs text-muted-foreground sm:hidden">{row.team}</span>
+                      <span className="text-meta text-muted-foreground sm:hidden">{row.team}</span>
                     </span>
                   </button>
                 </td>

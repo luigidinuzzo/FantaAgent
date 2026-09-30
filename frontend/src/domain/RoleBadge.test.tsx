@@ -30,7 +30,7 @@ describe('RoleBadge', () => {
    */
   it('senza size resta alla taglia di sempre (md, predefinita)', () => {
     const { container } = render(<RoleBadge role="D" />);
-    expect(container.firstElementChild?.className).toContain('text-xs');
+    expect(container.firstElementChild?.className).toContain('text-meta');
   });
 
   it('con size="lg" ingrandisce il testo, senza cambiare lettera, nome o colore', () => {

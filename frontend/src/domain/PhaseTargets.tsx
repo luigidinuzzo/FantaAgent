@@ -153,7 +153,7 @@ export function PhaseTargets({
                   // anche squadra e mercato.
                   <>
                     <span className="shrink-0 font-semibold">{t.name}</span>
-                    <span className="tnum min-w-0 truncate text-xs text-muted-foreground">
+                    <span className="tnum min-w-0 truncate text-meta text-muted-foreground">
                       {`${t.team} · mercato ${t.expectedPrice} · tetto ${t.maxBid}`}
                     </span>
                     <span className={`tnum ml-auto shrink-0 font-semibold ${t.margin >= 0 ? 'text-accent' : 'text-destructive'}`}>
@@ -171,7 +171,7 @@ export function PhaseTargets({
                         {signed(t.margin)}
                       </span>
                     </span>
-                    <span className="tnum truncate text-xs text-muted-foreground">
+                    <span className="tnum truncate text-meta text-muted-foreground">
                       {`tetto ${t.maxBid}`}
                     </span>
                   </>
@@ -180,7 +180,7 @@ export function PhaseTargets({
                     <span aria-hidden="true"><RoleBadge role={t.role} /></span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate font-medium">{t.name}</span>
-                      <span className="tnum truncate text-xs text-muted-foreground">
+                      <span className="tnum truncate text-meta text-muted-foreground">
                         {`${t.team} · mercato ${t.expectedPrice} · tetto ${t.maxBid}`}
                       </span>
                     </span>

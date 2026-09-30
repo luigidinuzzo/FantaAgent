@@ -13,7 +13,7 @@ const LETTER_CLASS: Record<Role, string> = {
  * scatola fissa invece del padding del pieno — la scatola che la contiene.
  */
 const SIZE_TEXT_CLASS: Record<'md' | 'lg', string> = {
-  md: 'text-xs',
+  md: 'text-meta',
   lg: 'text-2xl',
 };
 

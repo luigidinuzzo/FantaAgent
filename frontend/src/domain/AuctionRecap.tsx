@@ -80,7 +80,7 @@ export function AuctionRecap({ participants, board }: {
               <span aria-hidden="true"><RoleBadge role={p.role} /></span>
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate font-medium">{p.playerName}</span>
-                <span className="truncate text-xs text-muted-foreground">{p.buyer}</span>
+                <span className="truncate text-meta text-muted-foreground">{p.buyer}</span>
               </span>
               <span className="tnum w-exp shrink-0 text-xl font-semibold text-accent">
                 {`${p.price} `}
