@@ -12,10 +12,15 @@ const FIELDS = ['name', 'teamName'];
  * Crea una lega, in una finestra sopra la home. Riuscita, porta alla lega nuova.
  * L'iniziale non si chiede: la sceglie il server (vedi {@code LeagueService.initialOr}).
  */
-export function CreateLeagueDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreateLeagueDialog({ open, onClose, returnFocusRef }: {
+  open: boolean;
+  onClose: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+}) {
   const nameRef = useRef<HTMLInputElement>(null);
   return (
-    <Modal open={open} titleId="create-league-title" title="Crea una lega" onClose={onClose} initialFocusRef={nameRef}>
+    <Modal open={open} titleId="create-league-title" title="Crea una lega" onClose={onClose} initialFocusRef={nameRef}
+      returnFocusRef={returnFocusRef}>
       <CreateLeagueForm nameRef={nameRef} onCreated={onClose} />
     </Modal>
   );
@@ -25,9 +30,10 @@ export function CreateLeagueDialog({ open, onClose }: { open: boolean; onClose: 
  * Il modulo vive dentro la finestra: chiusa, la finestra non c'e' e il modulo con
  * lei, e riaprendola si ricomincia da campi vuoti e senza l'errore di prima.
  *
- * <p>Alto quanto il suo stato piu' alto (min-h-[22rem]): un errore sotto i campi
- * occupa lo spazio che c'era gia', il bottone resta in fondo e la finestra non
- * cresce.
+ * <p>Da sm alto quanto il suo stato piu' alto (min-h-[22rem]): un errore sotto i
+ * campi occupa lo spazio che c'era gia', il bottone resta in fondo e la finestra
+ * non cresce. Sul telefono la finestra e' tutto lo schermo e il bottone segue i
+ * campi: in fondo lascerebbe una fascia vuota fra loro.
  */
 function CreateLeagueForm({ nameRef, onCreated }: {
   nameRef: RefObject<HTMLInputElement | null>;
@@ -42,7 +48,7 @@ function CreateLeagueForm({ nameRef, onCreated }: {
 
   return (
     <form
-      className="flex min-h-[22rem] flex-1 flex-col"
+      className="flex flex-col sm:min-h-[22rem] sm:flex-1"
       onSubmit={(e) => {
         e.preventDefault();
         create.mutate({ name, teamName }, {
@@ -58,7 +64,7 @@ function CreateLeagueForm({ nameRef, onCreated }: {
       <TextField id="league-team" label="La tua squadra" value={teamName} onChange={setTeamName}
         errors={errors.teamName} />
       {message ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{message}</p> : null}
-      <div className="mt-auto pt-6">
+      <div className="pt-6 sm:mt-auto">
         <button type="submit" disabled={create.isPending} className={`w-full ${BUTTON_PRIMARY}`}>
           {create.isPending ? 'Creo…' : 'Crea la lega'}
         </button>

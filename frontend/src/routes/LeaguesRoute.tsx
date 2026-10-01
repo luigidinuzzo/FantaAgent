@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { userMessage } from '../api/client';
@@ -28,6 +28,13 @@ export function LeaguesRoute() {
   const auctions = useMyAuctions();
   const requests = useMyJoinRequests();
   const [dialog, setDialog] = useState<'create' | 'join' | null>(null);
+  // Il bottone che ha aperto la finestra, per riportarci il fuoco alla chiusura:
+  // in Safari un clic non da' il fuoco al bottone, e la finestra non puo' saperlo.
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const openDialog = (kind: 'create' | 'join') => (e: MouseEvent<HTMLButtonElement>) => {
+    opener.current = e.currentTarget;
+    setDialog(kind);
+  };
   const [allConcluded, setAllConcluded] = useState(false);
 
   const live = (auctions.data ?? []).filter((a) => a.status !== 'CONCLUDED');
@@ -51,15 +58,15 @@ export function LeaguesRoute() {
         <PageHeader
           title="Le tue aste"
           actions={<>
-            <button type="button" className={BUTTON_SECONDARY} onClick={() => setDialog('create')}>Crea una lega</button>
-            <button type="button" className={BUTTON_SECONDARY} onClick={() => setDialog('join')}>Unisciti a una lega</button>
+            <button type="button" className={HEADER_BUTTON} onClick={openDialog('create')}>Crea una lega</button>
+            <button type="button" className={HEADER_BUTTON} onClick={openDialog('join')}>Unisciti a una lega</button>
           </>}
         />
         {errorMessage ? (
           <p role={dialog ? undefined : 'alert'} className="mb-6 text-sm font-medium text-destructive">{errorMessage}</p>
         ) : null}
         {leagues.isSuccess && requests.isSuccess && !hasLeagues ? (
-          <NoLeagues onCreate={() => setDialog('create')} onJoin={() => setDialog('join')} />
+          <NoLeagues onCreate={openDialog('create')} onJoin={openDialog('join')} />
         ) : (
           <>
             <section aria-labelledby="live-title" className="mb-8">
@@ -105,12 +112,15 @@ export function LeaguesRoute() {
             </section>
           </>
         )}
-        <CreateLeagueDialog open={dialog === 'create'} onClose={() => setDialog(null)} />
-        <JoinLeagueDialog open={dialog === 'join'} onClose={() => setDialog(null)} />
+        <CreateLeagueDialog open={dialog === 'create'} onClose={() => setDialog(null)} returnFocusRef={opener} />
+        <JoinLeagueDialog open={dialog === 'join'} onClose={() => setDialog(null)} returnFocusRef={opener} />
       </PageFrame>
     </AppShell>
   );
 }
+
+/** Sul telefono i due bottoni stanno a meta' larghezza: testo piu' piccolo, su una riga. */
+const HEADER_BUTTON = `${BUTTON_SECONDARY} max-sm:px-3 max-sm:text-sm`;
 
 const ROW = 'flex min-h-16 items-center gap-4 px-5 py-3';
 const ROW_LINK = `${ROW} hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent`;
@@ -157,7 +167,10 @@ function ConcludedAuctions({ auctions, hidden, onShowAll }: {
  * strade dell'intestazione ripetute in grande. Crearne una e' il passo che fa
  * cominciare, per questo l'oro.
  */
-function NoLeagues({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => void }) {
+function NoLeagues({ onCreate, onJoin }: {
+  onCreate: (e: MouseEvent<HTMLButtonElement>) => void;
+  onJoin: (e: MouseEvent<HTMLButtonElement>) => void;
+}) {
   return (
     <section aria-labelledby="no-leagues-title" className="panel p-6">
       <h2 id="no-leagues-title" className="w-exp text-xl font-bold">Non sei ancora in nessuna lega</h2>
@@ -172,7 +185,11 @@ function NoLeagues({ onCreate, onJoin }: { onCreate: () => void; onJoin: () => v
   );
 }
 
-/** Nome e squadra, e sotto i numeri della lega. Le richieste da decidere, a destra. */
+/**
+ * Nome e squadra, e sotto i numeri della lega. Le richieste da decidere, a destra.
+ * I testi vanno a capo fra le parole, mai troncati: distinguono due leghe simili
+ * (§3.2). break-words spezza solo una parola piu' larga della riga intera.
+ */
 function LeagueRow({ league }: { league: LeagueCard }) {
   const requests = league.pendingRequests;
   const facts = [
@@ -185,9 +202,9 @@ function LeagueRow({ league }: { league: LeagueCard }) {
       <Link to={`/leghe/${league.id}`} className={ROW_LINK}>
         <Crest id={league.id} name={league.name} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-semibold">{league.name}</span>
-          <span className="block truncate text-sm">{league.teamName}</span>
-          <span className="block truncate text-meta text-muted-foreground">{facts}</span>
+          <span className="block break-words font-semibold">{league.name}</span>
+          <span className="block break-words text-sm">{league.teamName}</span>
+          <span className="block text-meta text-muted-foreground">{facts}</span>
         </span>
         {/* Un avviso, non un'azione: contorno oro, non il pieno del bottone della pagina. */}
         {requests > 0 ? (
@@ -207,9 +224,9 @@ function PendingRow({ request }: { request: MyJoinRequest }) {
     <li className={ROW}>
       <Crest id={request.leagueId} name={request.leagueName} muted />
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-semibold">{request.leagueName}</span>
-        <span className="block truncate text-sm">{request.teamName}</span>
-        <span className="block truncate text-meta text-muted-foreground">
+        <span className="block break-words font-semibold">{request.leagueName}</span>
+        <span className="block break-words text-sm">{request.teamName}</span>
+        <span className="block text-meta text-muted-foreground">
           {withdraw.isError
             ? <span role="alert" className="font-medium text-destructive">Non sono riuscito a ritirarla. Riprova.</span>
             : 'Richiesta inviata, in attesa'}

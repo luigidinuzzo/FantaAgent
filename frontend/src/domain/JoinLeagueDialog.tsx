@@ -17,13 +17,18 @@ const ACTION = `w-40 shrink-0 text-sm ${BUTTON_SECONDARY}`;
  * <p>La finestra ha l'altezza dello stato con piu' risultati: l'area dei risultati
  * e' alta sei righe (24rem) in ogni stato — prima di scrivere, mentre cerca, senza
  * risultati, con la richiesta da mandare — e oltre le sei righe scorre dentro. Sul
- * telefono la finestra e' tutto lo schermo e l'area prende l'altezza che resta.
+ * telefono l'area e' alta cinque righe (20rem), fissa anch'essa: cosi' il link
+ * d'invito sta nello schermo anche a 360x740.
  */
-export function JoinLeagueDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function JoinLeagueDialog({ open, onClose, returnFocusRef }: {
+  open: boolean;
+  onClose: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+}) {
   const searchRef = useRef<HTMLInputElement>(null);
   return (
     <Modal open={open} titleId="join-league-title" title="Unisciti a una lega" onClose={onClose}
-      initialFocusRef={searchRef}>
+      initialFocusRef={searchRef} returnFocusRef={returnFocusRef}>
       <JoinLeagueBody searchRef={searchRef} />
     </Modal>
   );
@@ -47,7 +52,7 @@ function JoinLeagueBody({ searchRef }: { searchRef: RefObject<HTMLInputElement |
   const tooShort = text.trim().length < MIN_SEARCH;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex flex-col">
       <label htmlFor="league-search" className="block text-sm font-medium">Cerca la lega</label>
       <input
         ref={searchRef}
@@ -61,7 +66,7 @@ function JoinLeagueBody({ searchRef }: { searchRef: RefObject<HTMLInputElement |
       />
       <div
         data-testid="join-results"
-        className="mt-4 box-content h-[24rem] overflow-y-auto rounded-lg border border-line max-sm:h-auto max-sm:min-h-32 max-sm:flex-1 max-sm:basis-0"
+        className="mt-4 box-content h-[24rem] overflow-y-auto rounded-lg border border-line max-sm:h-[20rem]"
       >
         {chosen ? (
           <RequestForm

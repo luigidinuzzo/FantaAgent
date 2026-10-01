@@ -89,6 +89,9 @@ describe('JoinLeagueDialog', () => {
     const area = screen.getByTestId('join-results');
     expect(area.className).toContain('h-[24rem]');
     expect(area.className).toContain('overflow-y-auto');
+    // Sul telefono un'altezza fissa anch'essa (cinque righe), non quella che resta.
+    expect(area.className).toContain('max-sm:h-[20rem]');
+    expect(area.className).not.toContain('flex-1');
   });
 
   it('il link d invito sta separato, sotto i risultati', () => {

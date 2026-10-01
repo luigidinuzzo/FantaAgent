@@ -8,13 +8,21 @@ import { RemoveIcon } from './RemoveIcon';
  * il fuoco torna a chi l'ha aperta. Sotto sm a tutto schermo; da sm
  * larga 32rem. L'altezza la decide chi la usa, sul suo stato piu' alto.
  */
-export function Modal({ open, titleId, title, onClose, children, initialFocusRef, className = '' }: {
+export function Modal({
+  open, titleId, title, onClose, children, initialFocusRef, returnFocusRef, className = '',
+}: {
   open: boolean;
   titleId: string;
   title: string;
   onClose: () => void;
   children: ReactNode;
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /**
+   * Dove torna il fuoco alla chiusura: il bottone che l'ha aperta. Senza, quello
+   * che aveva il fuoco all'apertura — che in Safari, dove un clic non da' il fuoco
+   * a un bottone, e' il body.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -22,8 +30,10 @@ export function Modal({ open, titleId, title, onClose, children, initialFocusRef
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog || !open) return;
-    // Chi l'ha aperta, da ricordare prima che il fuoco entri nella finestra.
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Chi l'ha aperta, da ricordare prima che il fuoco entri nella finestra: chi
+    // la usa lo dice (returnFocusRef), se no chi aveva il fuoco.
+    const opener = returnFocusRef?.current
+      ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     if (!dialog.open) dialog.showModal();
     initialFocusRef?.current?.focus();
     return () => {
@@ -32,7 +42,7 @@ export function Modal({ open, titleId, title, onClose, children, initialFocusRef
       // e il browser lascerebbe il fuoco sul body: lo si riporta a mano.
       if (opener?.isConnected) opener.focus();
     };
-  }, [open, initialFocusRef]);
+  }, [open, initialFocusRef, returnFocusRef]);
 
   if (!open) return null;
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -239,5 +239,49 @@ describe('LeaguesRoute', () => {
       )).toHaveLength(2);
     }, { timeout: 3000 });
     expect(screen.getAllByRole('alert', { hidden: true })).toHaveLength(1);
+  });
+
+  it('sul telefono i bottoni dell intestazione stanno su una riga: testo piu piccolo, meno margine', async () => {
+    home();
+    renderLeagues();
+    const group = await screen.findByRole('group', { name: 'Azioni della pagina' });
+    for (const button of within(group).getAllByRole('button')) {
+      expect(button.className).toContain('max-sm:text-sm');
+      expect(button.className).toContain('max-sm:px-3');
+    }
+  });
+
+  it('i nomi di lega e squadra non si troncano, vanno a capo', async () => {
+    home({ requests: [{ leagueId: 'l7', leagueName: 'Lega dei Cugini', teamName: 'Longobarda', requestedAt: '2026-09-30T10:00:00Z' }] });
+    renderLeagues();
+    for (const text of ['Lega del Bar', 'Anna FC', 'Lega dei Cugini', 'Longobarda']) {
+      expect((await screen.findByText(text)).className).not.toContain('truncate');
+    }
+  });
+
+  // Safari non da' il fuoco a un bottone cliccato (fireEvent.click fa lo stesso):
+  // il fuoco torna comunque al bottone che ha aperto la finestra.
+  it.each([
+    ['Crea una lega', 'Crea una lega'],
+    ['Unisciti a una lega', 'Unisciti a una lega'],
+  ])('chiusa %s, il fuoco torna al bottone dell intestazione', async (button, title) => {
+    home();
+    renderLeagues();
+    const group = await screen.findByRole('group', { name: 'Azioni della pagina' });
+    const opener = within(group).getByRole('button', { name: button });
+    fireEvent.click(opener);
+    expect(opener).not.toHaveFocus();
+    fireEvent.click(within(screen.getByRole('dialog', { name: title })).getByRole('button', { name: 'Chiudi' }));
+    expect(opener).toHaveFocus();
+  });
+
+  it('senza leghe, chiusa la finestra il fuoco torna al bottone grande che l ha aperta', async () => {
+    home({ leagues: [] });
+    renderLeagues();
+    const empty = await screen.findByRole('region', { name: 'Non sei ancora in nessuna lega' });
+    const opener = within(empty).getByRole('button', { name: 'Unisciti a una lega' });
+    fireEvent.click(opener);
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+    expect(opener).toHaveFocus();
   });
 });

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Modal } from './Modal';
 
@@ -62,6 +62,29 @@ describe('Modal', () => {
     screen.getByLabelText('Nome').focus();
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+  });
+
+  // Safari non da' il fuoco a un bottone cliccato: activeElement e' il body, e la
+  // finestra deve sapere da chi le dice dove tornare.
+  it('con returnFocusRef il fuoco torna li anche se il clic non l ha dato al bottone', () => {
+    function Opener() {
+      const [open, setOpen] = useState(false);
+      const back = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button ref={back} type="button" onClick={() => setOpen(true)}>Crea una lega</button>
+          <Modal open={open} titleId="t" title="Crea una lega" onClose={() => setOpen(false)} returnFocusRef={back}>
+            <input aria-label="Nome" />
+          </Modal>
+        </>
+      );
+    }
+    render(<Opener />);
+    const opener = screen.getByRole('button', { name: 'Crea una lega' });
+    fireEvent.click(opener);
+    expect(opener).not.toHaveFocus();
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(opener).toHaveFocus();
   });
 });
