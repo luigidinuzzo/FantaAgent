@@ -381,7 +381,11 @@ describe('ProjectionRoute', () => {
 
     const anna = await screen.findByRole('region', { name: 'Anna' });
     const fila = anna.parentElement as HTMLElement;
-    expect(fila.style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))');
+    // Una fila sola da md (il proiettore); sotto, su un telefono, due squadre per
+    // riga: undici colonne in 390px non si leggono e la pagina scorreva di lato.
+    expect(fila.style.getPropertyValue('--board-cols')).toBe('1');
+    expect(fila.className).toContain('grid-cols-2');
+    expect(fila.className).toContain('md:grid-cols-[repeat(var(--board-cols),minmax(0,1fr))]');
     expect(await screen.findByText('1 di 3')).toBeInTheDocument();
     expect(screen.getByText('1 di 8')).toBeInTheDocument();
     // 3 + 8 + 8 + 6 posti, due presi: ventitre righe vuote.
@@ -402,5 +406,17 @@ describe('ProjectionRoute', () => {
     expect(name.className).not.toContain('truncate');
     expect(name.className).toContain('line-clamp-2');
     expect(name.className).toContain('min-h-[2.1em]');
+  });
+
+  // Sul telefono la colonna e' larga meta' schermo: con i crediti accanto il nome
+  // si spezzava a meta' parola («Longob/arda»). Sotto md i crediti vanno sotto e
+  // il nome va a capo solo fra le parole.
+  it('sul telefono il nome della squadra non si spezza a meta parola', async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    stubFetch();
+    renderProjection();
+    const name = await screen.findByRole('heading', { name: 'Anna', level: 3 });
+    expect(name.className).toContain('max-md:[overflow-wrap:normal]');
+    expect(name.parentElement!.className).toContain('max-md:flex-col');
   });
 });

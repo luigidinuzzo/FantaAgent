@@ -26,6 +26,12 @@ function ago(ms: number): string {
   return `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
 }
 
+function lostPhrase(updatedAt: number | undefined, now: number): string {
+  return `Connessione persa, ultimo dato ${
+    updatedAt === undefined ? 'mai ricevuto' : `${ago(now - updatedAt)} fa`
+  }`;
+}
+
 export function ConnectionStatus({
   updatedAt,
   isError,
@@ -38,7 +44,8 @@ export function ConnectionStatus({
   /**
    * Sul telefono la testata ha posto per il pallino, non per la parola: da
    * connessione viva «In diretta» resta solo per chi ascolta. Persa, la frase
-   * resta intera a ogni misura: e' l'avviso che conta.
+   * intera porterebbe la testata su due righe: sotto sm la dice ConnectionLost,
+   * sotto la testata, e qui resta il pallino.
    */
   compact?: boolean;
 }) {
@@ -64,13 +71,35 @@ export function ConnectionStatus({
           stale ? 'bg-accent' : 'bg-positive'
         }`}
       />
-      <span className={compact && !stale ? 'max-sm:sr-only' : undefined}>
-        {stale
-          ? `Connessione persa, ultimo dato ${
-              updatedAt === undefined ? 'mai ricevuto' : `${ago(now - updatedAt)} fa`
-            }`
-          : 'In diretta'}
+      <span className={compact ? (stale ? 'max-sm:hidden' : 'max-sm:sr-only') : undefined}>
+        {stale ? lostPhrase(updatedAt, now) : 'In diretta'}
       </span>
+    </p>
+  );
+}
+
+/**
+ * L'avviso di ConnectionStatus compatto, sotto sm, a tutta larghezza sotto la
+ * testata. Nascosto (non sr-only) da sm in su, dove la frase sta nella testata:
+ * chi ascolta la sente una volta sola. Come ConnectionStatus, non e' una live
+ * region.
+ */
+export function ConnectionLost({
+  updatedAt,
+  isError,
+  now,
+}: {
+  updatedAt: number | undefined;
+  isError: boolean;
+  now: number;
+}) {
+  if (!isStale({ updatedAt, isError, now })) return null;
+  return (
+    <p
+      data-testid="connection-lost"
+      className="mb-3 rounded-lg border border-accent/40 px-3 py-2 text-sm text-accent sm:hidden"
+    >
+      {lostPhrase(updatedAt, now)}
     </p>
   );
 }

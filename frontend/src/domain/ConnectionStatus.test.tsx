@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ConnectionStatus, STALE_AFTER_MS, isStale } from './ConnectionStatus';
+import { ConnectionLost, ConnectionStatus, STALE_AFTER_MS, isStale } from './ConnectionStatus';
 
 const NOW = 1_700_000_000_000;
 
@@ -35,9 +35,28 @@ describe('ConnectionStatus', () => {
     expect(screen.getByText('In diretta').className).toContain('max-sm:sr-only');
   });
 
-  it('compatto ma con la connessione persa: la frase resta intera', () => {
+  // Persa, la frase intera non sta nella testata del telefono: la porterebbe su
+  // due righe. Sotto sm la dice la riga sotto la testata (ConnectionLost), e qui
+  // resta il pallino; da sm la frase torna qui. Mai due volte alla stessa misura.
+  it('compatto ma con la connessione persa: la frase sparisce sotto sm, resta da sm', () => {
     render(<ConnectionStatus compact updatedAt={NOW - 60_000} isError={false} now={NOW} />);
-    expect(screen.getByText(/Connessione persa/).className).not.toContain('sr-only');
+    const phrase = screen.getByText(/Connessione persa/);
+    expect(phrase.className).toContain('max-sm:hidden');
+    expect(phrase.className).not.toContain('sr-only');
+  });
+
+  it('la riga del telefono dice la stessa frase, solo sotto sm', () => {
+    render(<ConnectionLost updatedAt={NOW - 72_000} isError={false} now={NOW} />);
+    const line = screen.getByTestId('connection-lost');
+    expect(line).toHaveTextContent('Connessione persa, ultimo dato 1 min 12 s fa');
+    expect(line.className).toContain('sm:hidden');
+    expect(line).not.toHaveAttribute('role');
+    expect(line).not.toHaveAttribute('aria-live');
+  });
+
+  it('la riga del telefono non c e finche la connessione e viva', () => {
+    render(<ConnectionLost updatedAt={NOW - 2_000} isError={false} now={NOW} />);
+    expect(screen.queryByTestId('connection-lost')).not.toBeInTheDocument();
   });
 
   it('quando e stantio dice da quanto', () => {

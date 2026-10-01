@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, type CSSProperties } from 'react';
 import { AppShell } from '../AppShell';
 import { isNotFound } from '../api/client';
 import { useAuctionState, useBoard, usePublicBidder } from '../api/hooks';
@@ -31,7 +31,7 @@ const ROLE_BORDER: Record<Role, string> = {
  * si scorre. Ogni riga prende la stessa parte di altezza (flex-1), quindi le
  * colonne restano allineate riga per riga da una squadra all'altra.
  */
-const LINE = 'flex min-h-0 flex-1 items-center gap-2 text-[clamp(0.75rem,1.6vh,1.4rem)] leading-none';
+const LINE = 'flex min-h-0 max-md:min-h-6 flex-1 items-center gap-2 text-[clamp(0.75rem,1.6vh,1.4rem)] leading-none';
 
 /**
  * La schermata proiettata: mostra e basta.
@@ -156,7 +156,7 @@ export function ProjectionRoute() {
           lotto prende il suo posto in cima e il tabellone si stringe. */}
       <section
         aria-labelledby="projection-board-heading"
-        className={`flex min-h-0 flex-col ${bidding && canReceive ? 'mt-4 h-[calc(100dvh-26rem)]' : 'h-[calc(100dvh-6.5rem)]'}`}
+        className={`flex min-h-0 flex-col ${bidding && canReceive ? 'mt-4 md:h-[calc(100dvh-26rem)]' : 'md:h-[calc(100dvh-6.5rem)]'}`}
       >
         <h2 id="projection-board-heading" className="sr-only">Tabelloni</h2>
         {board.isLoading ? (
@@ -171,10 +171,12 @@ export function ProjectionRoute() {
           <EmptyState>Nessun partecipante in questa lega.</EmptyState>
         ) : (
           // Tutte le squadre in una fila sola, qualunque sia il loro numero: con
-          // tre colonne per riga se ne vedevano tre su otto.
+          // tre colonne per riga se ne vedevano tre su otto. Sotto md (un
+          // telefono, non un proiettore) due per riga e la pagina scorre in
+          // verticale: undici colonne in 390px non si leggevano e uscivano di lato.
           <div
-            className="grid min-h-0 flex-1 gap-3"
-            style={{ gridTemplateColumns: `repeat(${board.data!.columns.length}, minmax(0, 1fr))` }}
+            className="grid min-h-0 flex-1 grid-cols-2 gap-3 md:grid-cols-[repeat(var(--board-cols),minmax(0,1fr))]"
+            style={{ '--board-cols': String(board.data!.columns.length) } as CSSProperties}
           >
             {board.data!.columns.map((c) => (
               <BoardTeam key={c.participantId} column={c} slots={slotsOf(c.participantId)} />
@@ -202,17 +204,19 @@ function BoardTeam({ column: c, slots }: {
     >
       {/* items-start: col nome su due righe, i crediti restano in cima invece di
           scendere sulla seconda. */}
-      <header className="flex shrink-0 items-start justify-between gap-2 border-b border-line-strong pb-2">
+      {/* Sotto md la colonna e' larga meta' telefono: i crediti vanno sotto il
+          nome, e il nome ha tutta la larghezza per andare a capo fra le parole. */}
+      <header className="flex shrink-0 items-start justify-between gap-2 border-b border-line-strong pb-2 max-md:flex-col max-md:gap-1">
         {/* Due righe al massimo, e sempre il posto di due (2,1em a interlinea 1,05):
             un nome corto non accorcia la sua intestazione, e le righe dei
             giocatori restano allineate da una squadra all'altra. */}
         <h3
           id={headingId}
-          className="w-exp line-clamp-2 min-h-[2.1em] break-words text-[clamp(1rem,2.4vh,2rem)] font-extrabold leading-[1.05]"
+          className="w-exp line-clamp-2 min-h-[2.1em] break-words text-[clamp(1rem,2.4vh,2rem)] font-extrabold leading-[1.05] max-md:text-lg max-md:[overflow-wrap:normal]"
         >
           {c.participantName}
         </h3>
-        <p className="flex shrink-0 flex-col items-end leading-none">
+        <p className="flex shrink-0 flex-col items-end leading-none max-md:flex-row max-md:items-baseline max-md:gap-1">
           <span className={`tnum w-exp text-[clamp(1rem,2.4vh,2rem)] font-extrabold ${c.me ? 'text-accent' : ''}`}>
             {c.budgetRemaining}
           </span>

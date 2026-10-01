@@ -26,7 +26,7 @@ import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } f
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
 import { CommandsMenu } from '../domain/CommandsMenu';
-import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
+import { ConnectionLost, ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { BUTTON_SECONDARY, CONTROL_H } from '../domain/controls';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PhasePager } from '../domain/PhasePager';
@@ -694,6 +694,13 @@ export function AuctionRoute() {
           chi guarda il portatile non ha bisogno di leggere la parola "Asta". */}
       <h1 className="sr-only">Asta</h1>
       <AuctionAnnouncer message={announcement} />
+      {/* Sul telefono la testata tiene il pallino: la frase della connessione
+          persa sta qui, a tutta larghezza, la prima cosa sotto la testata. */}
+      <ConnectionLost
+        updatedAt={state.dataUpdatedAt || undefined}
+        isError={state.isError}
+        now={now}
+      />
       {barAlertMessage ? (
         // Canale unico per changePhase e undoLast (vedi barAlertMessage
         // sopra): al massimo un role="alert" da queste due fonti, non uno
