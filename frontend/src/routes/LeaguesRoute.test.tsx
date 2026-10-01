@@ -284,4 +284,56 @@ describe('LeaguesRoute', () => {
     fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
     expect(opener).toHaveFocus();
   });
+
+  it('con le aste che non arrivano non dice «Nessuna asta in corso»', async () => {
+    const problem = () => json({
+      type: 'https://fantaagent.local/problems/service-unavailable',
+      detail: 'Il servizio non risponde in questo momento. Riprova fra poco.',
+    }, 503);
+    home({ more: { 'GET /api/auctions': problem } });
+    renderLeagues();
+    expect(await screen.findByRole('alert', {}, { timeout: 3000 }))
+      .toHaveTextContent('Il servizio non risponde in questo momento.');
+    expect(screen.queryByText('Nessuna asta in corso')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: "Prepara un'asta" })).not.toBeInTheDocument();
+  });
+
+  it('mentre le aste arrivano non dice «Nessuna asta in corso»', async () => {
+    // Le aste non rispondono mai: tutto il resto si'.
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => (url === '/api/auctions'
+      ? new Promise(() => {})
+      : Promise.resolve(url === '/api/leagues' ? json([BAR]) : url === '/api/me' ? json(ME) : json([])))));
+    renderLeagues();
+    await screen.findByRole('link', { name: /Lega del Bar/ });
+    expect(screen.queryByText('Nessuna asta in corso')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: "Prepara un'asta" })).not.toBeInTheDocument();
+  });
+
+  it('Mostra tutte porta il fuoco alla prima conclusa che era nascosta', async () => {
+    home({ auctions: [
+      auction('c1', 'CONCLUDED', '2026-04-12T21:00:00Z'),
+      auction('c2', 'CONCLUDED', '2026-03-12T21:00:00Z'),
+      auction('c3', 'CONCLUDED', '2026-02-12T21:00:00Z'),
+      auction('c4', 'CONCLUDED', '2026-01-12T21:00:00Z'),
+    ] });
+    renderLeagues();
+    await userEvent.click(await screen.findByRole('button', { name: 'Mostra tutte' }));
+    expect(screen.getByRole('link', { name: /Asta c4/ })).toHaveFocus();
+  });
+
+  it('con un errore di pagina gia\' detto, quello del ritiro non si annuncia', async () => {
+    const problem = () => json({
+      type: 'https://fantaagent.local/problems/service-unavailable',
+      detail: 'Il servizio non risponde in questo momento. Riprova fra poco.',
+    }, 503);
+    home({
+      requests: [{ leagueId: 'l7', leagueName: 'Lega dei Cugini', teamName: 'Anna FC', requestedAt: '2026-09-30T10:00:00Z' }],
+      more: { 'GET /api/auctions': problem, 'DELETE /api/join-requests/l7': problem },
+    });
+    renderLeagues();
+    await screen.findByRole('alert', {}, { timeout: 3000 });
+    await userEvent.click(screen.getByRole('button', { name: 'Ritira la richiesta per Lega dei Cugini' }));
+    expect(await screen.findByText('Non sono riuscito a ritirarla. Riprova.')).toBeInTheDocument();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
 });

@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { userMessage } from '../api/client';
@@ -80,14 +80,14 @@ export function LeaguesRoute() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {live.map((a, i) => <MyAuctionCard key={a.id} auction={a} primary={i === 0} />)}
                 </div>
-              ) : (
+              ) : auctions.isSuccess ? (
                 <div className="panel flex min-h-16 flex-wrap items-center justify-between gap-3 px-5 py-3">
                   <p className="text-sm text-muted-foreground">Nessuna asta in corso</p>
                   {firstAdminLeague ? (
                     <Link to={`/leghe/${firstAdminLeague.id}`} className={BUTTON_SECONDARY}>Prepara un&apos;asta</Link>
                   ) : null}
                 </div>
-              )}
+              ) : null}
             </section>
             {concluded.length > 0 ? (
               <ConcludedAuctions
@@ -106,7 +106,9 @@ export function LeaguesRoute() {
               {hasLeagues ? (
                 <ul aria-label="Leghe" className="divide-y divide-line border-t border-line">
                   {cards.map((league) => <LeagueRow key={league.id} league={league} />)}
-                  {pending.map((request) => <PendingRow key={request.leagueId} request={request} />)}
+                  {pending.map((request) => (
+                    <PendingRow key={request.leagueId} request={request} quiet={errorMessage !== null} />
+                  ))}
                 </ul>
               ) : null}
             </section>
@@ -135,13 +137,23 @@ function ConcludedAuctions({ auctions, hidden, onShowAll }: {
   hidden: number;
   onShowAll: () => void;
 }) {
+  // «Mostra tutte» sparisce col clic: il fuoco va alla prima riga che era nascosta,
+  // da dove si continua a leggere.
+  const firstHidden = useRef<HTMLAnchorElement>(null);
+  const expanding = useRef(false);
+  useEffect(() => {
+    if (!expanding.current || !firstHidden.current) return;
+    expanding.current = false;
+    firstHidden.current.focus();
+  });
   return (
     <section aria-labelledby="done-title" className="panel mb-8 overflow-hidden">
       <h2 id="done-title" className="w-exp px-5 pb-4 pt-5 text-xl font-bold">Concluse</h2>
       <ul aria-label="Aste concluse" className="divide-y divide-line border-t border-line">
-        {auctions.map((a) => (
+        {auctions.map((a, i) => (
           <li key={a.id}>
-            <Link to={`/leghe/${a.leagueId}/aste/${a.id}`} className={ROW_LINK}>
+            <Link to={`/leghe/${a.leagueId}/aste/${a.id}`} className={ROW_LINK}
+              ref={i === CONCLUDED_SHOWN ? firstHidden : undefined}>
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold">{a.name}</span>
                 <span className="block text-sm text-muted-foreground">{a.leagueName}</span>
@@ -155,7 +167,8 @@ function ConcludedAuctions({ auctions, hidden, onShowAll }: {
       </ul>
       {hidden > 0 ? (
         <div className="border-t border-line px-5 py-3">
-          <button type="button" onClick={onShowAll} className={BUTTON_SECONDARY}>Mostra tutte</button>
+          <button type="button" className={BUTTON_SECONDARY}
+            onClick={() => { expanding.current = true; onShowAll(); }}>Mostra tutte</button>
         </div>
       ) : null}
     </section>
@@ -217,8 +230,12 @@ function LeagueRow({ league }: { league: LeagueCard }) {
   );
 }
 
-/** Una lega in cui si e' chiesto di entrare: sta nell'elenco finche' l'amministratore non decide. */
-function PendingRow({ request }: { request: MyJoinRequest }) {
+/**
+ * Una lega in cui si e' chiesto di entrare: sta nell'elenco finche' l'amministratore
+ * non decide. Con un errore di pagina gia' annunciato (quiet) il proprio si legge
+ * senza annunciarsi: un solo alert per schermata.
+ */
+function PendingRow({ request, quiet }: { request: MyJoinRequest; quiet: boolean }) {
   const withdraw = useWithdrawJoin();
   return (
     <li className={ROW}>
@@ -228,7 +245,7 @@ function PendingRow({ request }: { request: MyJoinRequest }) {
         <span className="block break-words text-sm">{request.teamName}</span>
         <span className="block text-meta text-muted-foreground">
           {withdraw.isError
-            ? <span role="alert" className="font-medium text-destructive">Non sono riuscito a ritirarla. Riprova.</span>
+            ? <span role={quiet ? undefined : 'alert'} className="font-medium text-destructive">Non sono riuscito a ritirarla. Riprova.</span>
             : 'Richiesta inviata, in attesa'}
         </span>
       </span>
