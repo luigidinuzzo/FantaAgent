@@ -153,10 +153,17 @@ describe('ImportRoute', () => {
     const steps = screen.getByRole('list', { name: 'Passaggi' });
     expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(
       [expect.stringContaining('Scegli la cartella'), expect.stringContaining('Abbina i partecipanti')]);
-    expect(screen.getByTestId('import-step-2')).toHaveAttribute('aria-disabled', 'true');
+    // Spento a vista, non con aria-disabled: un <li> non e' un controllo, e prima della
+    // cartella il passaggio non ne ha. Lo dice la frase, i controlli arrivano dopo.
+    const step2 = screen.getByTestId('import-step-2');
+    expect(step2).not.toHaveAttribute('aria-disabled');
+    expect(step2.className).toContain('text-muted-foreground');
+    expect(within(step2).queryByRole('combobox')).toBeNull();
+    expect(within(step2).queryByRole('button')).toBeNull();
     await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
     await screen.findByText('Asta del 2025');
-    expect(screen.getByTestId('import-step-2')).toHaveAttribute('aria-disabled', 'false');
+    expect(step2).not.toHaveAttribute('aria-disabled');
+    expect(step2.className).not.toContain('text-muted-foreground');
   });
 
   it('prima della scelta spiega cosa deve contenere la cartella', () => {

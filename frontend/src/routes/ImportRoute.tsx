@@ -113,7 +113,7 @@ export function ImportRoute() {
                   </p>
                 ) : null}
               </li>
-              <li data-testid="import-step-2" aria-disabled={!ready} className={ready ? '' : 'text-muted-foreground'}>
+              <li data-testid="import-step-2" className={ready ? '' : 'text-muted-foreground'}>
                 <Step n={2} title="Abbina i partecipanti" />
                 {ready ? (
                   <>
