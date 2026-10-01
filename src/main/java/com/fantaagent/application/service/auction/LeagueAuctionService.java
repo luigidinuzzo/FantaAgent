@@ -104,6 +104,35 @@ public class LeagueAuctionService {
         return List.copyOf(cards);
     }
 
+    /**
+     * Le aste in cui l'utente ha un posto, in tutte le leghe che gli passano: per la
+     * home. Le piu' recenti prima; un'asta senza eventi oltre l'avvio conta la sua
+     * creazione.
+     */
+    public List<MyAuction> mine(List<LeagueAccess> accesses) {
+        List<MyAuction> out = new ArrayList<>();
+        for (LeagueAccess access : accesses) {
+            String me = access.userId().toString();
+            for (AuctionRecord a : auctions.byLeague(access.leagueId())) {
+                List<Seat> seats = auctions.seats(a.id());
+                if (seats.stream().noneMatch(s -> s.userId().equals(access.userId()))) continue;
+                List<AuctionEvent> events = stores.open(a.id(), access.userId()).load();
+                int slotsPerTeam = a.rules().slots().values().stream().mapToInt(Integer::intValue).sum();
+                int purchases = LogSummary.purchases(events);
+                Instant last = LogSummary.lastWritten(events);
+                out.add(new MyAuction(a.id(), access.leagueId(), access.league().name(), a.name(),
+                        AuctionStatus.of(purchases, seats.size() * slotsPerTeam),
+                        LogSummary.phase(events, phases.getFirst()),
+                        a.rules().budget() - LogSummary.spentBy(events, me),
+                        slotsPerTeam - LogSummary.playersOf(events, me).size(),
+                        last != null ? last : a.createdAt(),
+                        access.isAdmin()));
+            }
+        }
+        out.sort(java.util.Comparator.comparing(MyAuction::lastActivity).reversed());
+        return List.copyOf(out);
+    }
+
     /** @throws AuctionNotFoundException se non esiste, e' cancellata o e' di un'altra lega */
     public AuctionRecord find(LeagueAccess access, UUID auctionId) {
         return auctions.byId(auctionId)
