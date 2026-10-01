@@ -21,6 +21,9 @@ import { PageHeader } from '../domain/PageHeader';
 
 const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
 
+/** Quanto resta «Copiato» sul bottone del link. */
+const COPIED_MS = 2000;
+
 const SECONDARY_BUTTON = BUTTON_SECONDARY;
 
 export function LeagueRoute() {
@@ -50,9 +53,10 @@ export function LeagueRoute() {
   }
 
   // Un solo role="alert" per schermata: quello delle aste, che stanno in cima, ha la
-  // precedenza; gli inviti mostrano comunque il loro messaggio, ma senza annunciarlo.
-  // Gli errori di rinomina, eliminazione e rimozione stanno nelle loro modali, che
-  // rendono inerte il resto della pagina.
+  // precedenza sulle richieste. Con la finestra degli inviti aperta l'alert e' suo
+  // (il suo errore e' il gesto piu' recente): i messaggi della pagina restano
+  // visibili senza annunciarsi, come nella home. Gli errori di rinomina,
+  // eliminazione e rimozione stanno nelle loro modali, che rendono inerte il resto.
   const auctionsAlert = auctions.isError
     || (createAuction.isError && Object.keys(fieldErrors(createAuction.error)).length === 0);
   // Mentre si carica (o finche' arrivano i membri, se nome e ruolo li ha gia' dati
@@ -84,15 +88,15 @@ export function LeagueRoute() {
             tutta larghezza. I membri sotto, a tutta larghezza in piu' colonne; gli
             inviti in una finestra dall'intestazione. Sul telefono lo stesso ordine. */}
         <div className={`grid grid-cols-1 items-start gap-6 ${hasRequests ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
-          <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
-          {hasRequests ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
+          <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} quiet={inviting} />
+          {hasRequests ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert || inviting} /> : null}
         </div>
         <div className="mt-6">
           <MembersPanel league={loaded} />
         </div>
         {admin ? (
           <InvitesDialog leagueId={leagueId} open={inviting} onClose={() => setInviting(false)}
-            returnFocusRef={inviteButton} quiet={auctionsAlert} />
+            returnFocusRef={inviteButton} />
         ) : null}
       </PageFrame>
     </AppShell>
@@ -128,10 +132,12 @@ const ROW = 'flex min-h-16 items-center gap-3 px-5 py-3 md:px-6';
  * lui, «Nuova asta» apre il campo del nome in cima all'elenco: l'unico oro della
  * pagina, e solo mentre il campo e' aperto.
  */
-function AuctionsPanel({ leagueId, admin, create }: {
+function AuctionsPanel({ leagueId, admin, create, quiet }: {
   leagueId: string;
   admin: boolean;
   create: ReturnType<typeof useCreateAuction>;
+  /** Una finestra della pagina ha l'alert: il messaggio resta, senza annunciarsi. */
+  quiet: boolean;
 }) {
   const auctions = useLeagueAuctions(leagueId);
   const update = useUpdateAuction(leagueId);
@@ -175,7 +181,9 @@ function AuctionsPanel({ leagueId, admin, create }: {
         ) : null}
       </div>
       {createMessage || listMessage ? (
-        <p role="alert" className="px-5 pb-4 text-sm font-medium text-destructive md:px-6">{createMessage ?? listMessage}</p>
+        <p role={quiet ? undefined : 'alert'} className="px-5 pb-4 text-sm font-medium text-destructive md:px-6">
+          {createMessage ?? listMessage}
+        </p>
       ) : null}
       {admin && creating ? (
         <form className="flex flex-wrap items-end gap-3 border-t border-line px-5 pb-5 pt-4 md:px-6"
@@ -423,29 +431,36 @@ function LeaveLeagueDialog({ leagueName, leaving, pending, error, onConfirm, onC
  * un'impronta. Chi l'ha perso ne crea un altro, e ritira il vecchio se teme che sia
  * finito a chi non doveva.
  */
-function InvitesDialog({ leagueId, open, onClose, returnFocusRef, quiet }: {
+function InvitesDialog({ leagueId, open, onClose, returnFocusRef }: {
   leagueId: string;
   open: boolean;
   onClose: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
-  quiet: boolean;
 }) {
   // Alta quanto il suo stato piu' alto (link appena creato e link attivi): crearne
   // uno non la fa crescere sotto il dito.
   return (
     <Modal open={open} titleId="invites-title" title="Inviti" onClose={onClose}
       returnFocusRef={returnFocusRef} className="sm:min-h-[30rem]">
-      <InvitesContent leagueId={leagueId} quiet={quiet} />
+      <InvitesContent leagueId={leagueId} />
     </Modal>
   );
 }
 
 /** Il contenuto della finestra degli inviti: si monta, e chiede gli inviti, solo quando si apre. */
-function InvitesContent({ leagueId, quiet }: { leagueId: string; quiet: boolean }) {
+function InvitesContent({ leagueId }: { leagueId: string }) {
   const invites = useInvites(leagueId, true);
   const create = useCreateInvite(leagueId);
   const revoke = useRevokeInvite(leagueId);
   const link = create.data?.link;
+  // «Copiato» al posto di «Copia» per un momento: la conferma sta nel bottone, che
+  // ha una larghezza fissa e non si sposta.
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), COPIED_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   return (
     <div>
@@ -462,9 +477,9 @@ function InvitesContent({ leagueId, quiet }: { leagueId: string; quiet: boolean 
           <div className="mt-2 flex gap-2">
             <input id="invite-link" readOnly value={link} onFocus={(e) => e.target.select()}
               className="min-h-11 min-w-0 flex-1 rounded-lg border border-control-border bg-surface px-4 text-sm" />
-            <button type="button" className={SECONDARY_BUTTON}
-              onClick={() => { void navigator.clipboard?.writeText(link); }}>
-              Copia
+            <button type="button" className={`w-28 shrink-0 ${SECONDARY_BUTTON}`}
+              onClick={() => { void navigator.clipboard?.writeText(link).then(() => setCopied(true)); }}>
+              {copied ? 'Copiato' : 'Copia'}
             </button>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -473,7 +488,7 @@ function InvitesContent({ leagueId, quiet }: { leagueId: string; quiet: boolean 
         </div>
       ) : null}
       {create.isError || revoke.isError ? (
-        <p role={quiet ? undefined : 'alert'} className="mt-4 text-sm font-medium text-destructive">
+        <p role="alert" className="mt-4 text-sm font-medium text-destructive">
           {userMessage(create.error ?? revoke.error, 'Operazione non riuscita. Riprova fra poco.')}
         </p>
       ) : null}
@@ -485,6 +500,7 @@ function InvitesContent({ leagueId, quiet }: { leagueId: string; quiet: boolean 
               <li key={invite.id} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
                 <span>Creato il {DATE.format(new Date(invite.createdAt))}, vale fino al {DATE.format(new Date(invite.expiresAt))}</span>
                 <button type="button" className={SECONDARY_BUTTON} disabled={revoke.isPending}
+                  aria-label={`Ritira il link creato il ${DATE.format(new Date(invite.createdAt))}`}
                   onClick={() => revoke.mutate(invite.id)}>
                   Ritira
                 </button>

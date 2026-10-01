@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -155,7 +155,7 @@ describe('LeagueRoute', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Invita' }));
     const dialog = screen.getByRole('dialog', { name: 'Inviti' });
     expect(await within(dialog).findByText('Creato il 25 settembre, vale fino al 9 ottobre')).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Ritira' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Ritira il link creato il 25 settembre' })).toBeInTheDocument();
   });
 
   it('elenca le aste con lo stato, la fase e i crediti che restano', async () => {
@@ -358,5 +358,42 @@ describe('LeagueRoute', () => {
     await screen.findByRole('heading', { level: 2, name: 'Richieste di ingresso' });
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
     expect(headings).toEqual(['Aste', 'Richieste di ingresso', 'Membri']);
+  });
+
+  it('Copia dice «Copiato» per un momento, senza cambiare larghezza', async () => {
+    const user = userEvent.setup();
+    stub(true, {
+      'POST /api/leagues/l1/invites': () => json({
+        id: 'i1', link: 'https://fanta.example/invito/abc', expiresAt: '2026-10-12T20:00:00Z',
+      }, 201),
+    });
+    renderLeague();
+    await user.click(await screen.findByRole('button', { name: 'Invita' }));
+    const dialog = screen.getByRole('dialog', { name: 'Inviti' });
+    await user.click(within(dialog).getByRole('button', { name: 'Crea un link d\'invito' }));
+    const copy = await within(dialog).findByRole('button', { name: 'Copia' });
+    expect(copy.className).toContain('w-28');
+    await user.click(copy);
+    expect(copy).toHaveTextContent('Copiato');
+    expect(copy).not.toHaveAttribute('role');
+    expect(await navigator.clipboard.readText()).toBe('https://fanta.example/invito/abc');
+    await waitFor(() => expect(copy).toHaveTextContent(/^Copia$/), { timeout: 3000 });
+  });
+
+  it('con la finestra degli inviti aperta gli avvisi della pagina tacciono, il suo no', async () => {
+    const problem = () => json({
+      type: 'https://fantaagent.local/problems/service-unavailable',
+      detail: 'Il servizio non risponde in questo momento. Riprova fra poco.',
+    }, 503);
+    stub(true, { 'GET /api/leagues/l1/auctions': problem, 'POST /api/leagues/l1/invites': problem });
+    renderLeague();
+    const pageAlert = await screen.findByRole('alert', {}, { timeout: 3000 });
+    await userEvent.click(screen.getByRole('button', { name: 'Invita' }));
+    expect(pageAlert).not.toHaveAttribute('role');
+    const dialog = screen.getByRole('dialog', { name: 'Inviti' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Crea un link d\'invito' }));
+    const dialogAlert = await within(dialog).findByRole('alert');
+    expect(dialogAlert).toHaveTextContent('Il servizio non risponde');
+    expect(screen.getAllByRole('alert', { hidden: true })).toEqual([dialogAlert]);
   });
 });
