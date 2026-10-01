@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { PageFrame } from '../domain/PageFrame';
-import { userMessage } from '../api/client';
+import { fieldErrors, userMessage } from '../api/client';
 import { useLeague, useLeagueAuctions, useSaveSeats, useSeats, useUpdateAuction } from '../api/leagues';
 import type { SeatInput, SeatsView } from '../api/types';
 import { StepperField } from '../domain/StepperField';
@@ -41,11 +41,30 @@ const toInputs = (view: SeatsView): SeatInput[] =>
 
 const sameOrder = (a: SeatInput[], b: SeatInput[]) => JSON.stringify(a) === JSON.stringify(b);
 
-/** Quale scrittura non e' andata, detto in una frase sola per la barra. */
-function failureMessage(seatsFailed: boolean, bidderFailed: boolean): string | null {
-  if (seatsFailed && bidderFailed) return 'Turno e banditore non sono stati salvati. Riprova.';
-  if (seatsFailed) return 'Il turno non è stato salvato. Riprova.';
-  if (bidderFailed) return 'Il banditore non è stato salvato. Riprova.';
+type Outcome = PromiseSettledResult<unknown>;
+
+/**
+ * Il motivo di un rifiuto, se e' scritto per chi gioca: gli errori dei campi, o la
+ * frase del problema. Null quando non c'e' niente di utile da dire.
+ */
+function reasonOf(reason: unknown): string | null {
+  return Object.values(fieldErrors(reason)).flat().join(' ') || userMessage(reason, '') || null;
+}
+
+/**
+ * Quale scrittura non e' andata, e perche', per la barra. Senza un motivo da dire
+ * resta la frase di ripiego su quale delle due.
+ */
+function failureMessage(seats: Outcome, bidder: Outcome): string | null {
+  const seatsReason = seats.status === 'rejected' ? reasonOf(seats.reason) : null;
+  const bidderReason = bidder.status === 'rejected' ? reasonOf(bidder.reason) : null;
+  if (seats.status === 'rejected' && bidder.status === 'rejected') {
+    if (!seatsReason && !bidderReason) return 'Turno e banditore non sono stati salvati. Riprova.';
+    return [seatsReason ?? 'Il turno non è stato salvato. Riprova.',
+      bidderReason ?? 'Il banditore non è stato salvato. Riprova.'].join(' ');
+  }
+  if (seats.status === 'rejected') return seatsReason ?? 'Il turno non è stato salvato. Riprova.';
+  if (bidder.status === 'rejected') return bidderReason ?? 'Il banditore non è stato salvato. Riprova.';
   return null;
 }
 
@@ -74,6 +93,15 @@ export function AuctionSettingsRoute() {
   const [timer, setTimer] = useState<number | null>(null);
   const [beep, setBeep] = useState<boolean | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Le frecce del turno, per riga. Uno spostamento che porta la riga in cima o in
+  // fondo spegne la freccia premuta: il fuoco passa all'altra della stessa riga.
+  const arrows = useRef(new Map<string, HTMLButtonElement>());
+  const focusArrow = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusArrow.current) return;
+    arrows.current.get(focusArrow.current)?.focus();
+    focusArrow.current = null;
+  });
 
   const card = auctions.data?.find((a) => a.id === auctionId);
   const trail = [
@@ -137,6 +165,8 @@ export function AuctionSettingsRoute() {
     const [item] = next.splice(index, 1);
     next.splice(index + by, 0, item);
     change(next);
+    if (index + by === 0) focusArrow.current = `${item.userId}:giu`;
+    else if (index + by === next.length - 1) focusArrow.current = `${item.userId}:su`;
   }
 
   function edit(index: number, patch: Partial<SeatInput>) {
@@ -161,7 +191,7 @@ export function AuctionSettingsRoute() {
         .then(() => { setTimer(null); setBeep(null); })
       : null;
     const [seatsResult, bidderResult] = await Promise.allSettled([writeSeats, writeBidder]);
-    setSaveError(failureMessage(seatsResult.status === 'rejected', bidderResult.status === 'rejected'));
+    setSaveError(failureMessage(seatsResult, bidderResult));
   }
 
   return (
@@ -205,8 +235,10 @@ export function AuctionSettingsRoute() {
                   {admin ? (
                     <span className="flex gap-2">
                       <button type="button" className={ARROW} disabled={i === 0} onClick={() => move(i, -1)}
+                        ref={(el) => { if (el) arrows.current.set(`${s.userId}:su`, el); else arrows.current.delete(`${s.userId}:su`); }}
                         aria-label={`Sposta su ${s.teamName}`}><span aria-hidden="true">↑</span></button>
                       <button type="button" className={ARROW} disabled={i === order.length - 1}
+                        ref={(el) => { if (el) arrows.current.set(`${s.userId}:giu`, el); else arrows.current.delete(`${s.userId}:giu`); }}
                         onClick={() => move(i, 1)} aria-label={`Sposta giù ${s.teamName}`}>
                         <span aria-hidden="true">↓</span>
                       </button>

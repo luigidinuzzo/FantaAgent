@@ -229,4 +229,47 @@ describe('AuctionSettingsRoute', () => {
     expect(down.className).toContain('size-11');
     expect(down.closest('li')?.className).toContain('min-h-14');
   });
+
+  const P = 'https://fantaagent.local/problems/';
+  it.each([
+    ['meno di due posti', 409, { type: `${P}not-enough-members`, detail: 'Servono almeno 2 membri nella lega.' },
+      'Servono almeno 2 membri nella lega.'],
+    ['posti bloccati', 409, { type: `${P}seats-locked`, detail: "L'asta è iniziata: i posti non si cambiano più." },
+      "L'asta è iniziata: i posti non si cambiano più."],
+    ['scrittura concorrente', 409, { type: `${P}concurrent-write`, detail: 'Qualcun altro ha scritto nello stesso istante: riprova.' },
+      'Qualcun altro ha scritto nello stesso istante: riprova.'],
+    ['iniziale doppia', 422, { type: `${P}invalid-league`, detail: 'Alcuni dati non sono validi.',
+      errors: { seats: ['Due posti non possono avere la stessa iniziale: A.'] } },
+      'Due posti non possono avere la stessa iniziale: A.'],
+  ])('il motivo del rifiuto del turno arriva alla barra: %s', async (_, status, body, said) => {
+    stub(true, true, { 'PUT /api/leagues/l1/auctions/a1/seats': () => json(body, status) });
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Sposta giù Anna FC' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salva' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(said);
+  });
+
+  it('il motivo del rifiuto del banditore arriva alla barra', async () => {
+    stub(true, true, {
+      'PATCH /api/leagues/l1/auctions/a1': () => json({ type: `${P}invalid-settings`, detail: 'Il conto alla rovescia va da 1 a 120 secondi.' }, 422),
+    });
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Un secondo in più' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salva' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Il conto alla rovescia va da 1 a 120 secondi.');
+  });
+
+  it('spostata in cima, il fuoco passa alla freccia giu\' della stessa riga', async () => {
+    stub(true);
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Sposta su Bruno FC' }));
+    expect(screen.getByRole('button', { name: 'Sposta giù Bruno FC' })).toHaveFocus();
+  });
+
+  it('spostata in fondo, il fuoco passa alla freccia su della stessa riga', async () => {
+    stub(true);
+    renderSettings();
+    await userEvent.click(await screen.findByRole('button', { name: 'Sposta giù Anna FC' }));
+    expect(screen.getByRole('button', { name: 'Sposta su Anna FC' })).toHaveFocus();
+  });
 });
