@@ -18,6 +18,7 @@ import com.fantaagent.domain.player.Role;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,16 +91,11 @@ public class LeagueAuctionService {
 
     public List<AuctionCard> list(LeagueAccess access) {
         List<AuctionCard> cards = new ArrayList<>();
-        String me = access.userId().toString();
         for (AuctionRecord a : auctions.byLeague(access.leagueId())) {
-            List<AuctionEvent> events = stores.open(a.id(), access.userId()).load();
-            List<Seat> seats = auctions.seats(a.id());
-            int slotsPerTeam = a.rules().slots().values().stream().mapToInt(Integer::intValue).sum();
-            boolean seated = seats.stream().anyMatch(s -> s.userId().equals(access.userId()));
-            cards.add(new AuctionCard(a.id(), a.name(), a.createdAt(), LogSummary.lastWritten(events),
-                    LogSummary.purchases(events), LogSummary.phase(events, phases.getFirst()),
-                    seats.size(), a.rules().budget(), seats.size() * slotsPerTeam,
-                    seated ? a.rules().budget() - LogSummary.spentBy(events, me) : null, a.bidder()));
+            Totals t = totals(access, a);
+            cards.add(new AuctionCard(a.id(), a.name(), a.createdAt(), t.lastWritten(), t.purchases(), t.phase(),
+                    t.teams(), a.rules().budget(), t.totalSlots(), t.seated() ? t.budgetRemaining() : null,
+                    a.bidder()));
         }
         return List.copyOf(cards);
     }
@@ -112,25 +108,43 @@ public class LeagueAuctionService {
     public List<MyAuction> mine(List<LeagueAccess> accesses) {
         List<MyAuction> out = new ArrayList<>();
         for (LeagueAccess access : accesses) {
-            String me = access.userId().toString();
             for (AuctionRecord a : auctions.byLeague(access.leagueId())) {
-                List<Seat> seats = auctions.seats(a.id());
-                if (seats.stream().noneMatch(s -> s.userId().equals(access.userId()))) continue;
-                List<AuctionEvent> events = stores.open(a.id(), access.userId()).load();
-                int slotsPerTeam = a.rules().slots().values().stream().mapToInt(Integer::intValue).sum();
-                int purchases = LogSummary.purchases(events);
-                Instant last = LogSummary.lastWritten(events);
+                Totals t = totals(access, a);
+                if (!t.seated()) continue;
                 out.add(new MyAuction(a.id(), access.leagueId(), access.league().name(), a.name(),
-                        AuctionStatus.of(purchases, seats.size() * slotsPerTeam),
-                        LogSummary.phase(events, phases.getFirst()),
-                        a.rules().budget() - LogSummary.spentBy(events, me),
-                        slotsPerTeam - LogSummary.playersOf(events, me).size(),
-                        last != null ? last : a.createdAt(),
+                        AuctionStatus.of(t.purchases(), t.totalSlots()), t.phase(), t.budgetRemaining(),
+                        t.slotsRemaining(), t.lastWritten() != null ? t.lastWritten() : a.createdAt(),
                         access.isAdmin()));
             }
         }
-        out.sort(java.util.Comparator.comparing(MyAuction::lastActivity).reversed());
+        out.sort(Comparator.comparing(MyAuction::lastActivity).reversed());
         return List.copyOf(out);
+    }
+
+    /**
+     * I conti di un'asta per chi guarda, comuni all'elenco della lega e alla home.
+     * {@code budgetRemaining} e {@code slotsRemaining} sono di chi guarda, e hanno
+     * senso solo se {@code seated}.
+     */
+    private record Totals(boolean seated, int teams, int totalSlots, int purchases, Role phase,
+                          Instant lastWritten, int budgetRemaining, int slotsRemaining) {
+    }
+
+    /**
+     * Rilegge il registro dell'asta. Misurato con 30 aste da 300 eventi (vedi
+     * {@code MyAuctionsTimingTest}): la home resta sotto i 20 ms con un pool di
+     * connessioni, e somme fatte dal database non andavano piu' veloci.
+     */
+    private Totals totals(LeagueAccess access, AuctionRecord a) {
+        List<Seat> seats = auctions.seats(a.id());
+        boolean seated = seats.stream().anyMatch(s -> s.userId().equals(access.userId()));
+        String me = access.userId().toString();
+        int slotsPerTeam = a.rules().slots().values().stream().mapToInt(Integer::intValue).sum();
+        List<AuctionEvent> events = stores.open(a.id(), access.userId()).load();
+        return new Totals(seated, seats.size(), seats.size() * slotsPerTeam, LogSummary.purchases(events),
+                LogSummary.phase(events, phases.getFirst()), LogSummary.lastWritten(events),
+                a.rules().budget() - LogSummary.spentBy(events, me),
+                slotsPerTeam - LogSummary.playersOf(events, me).size());
     }
 
     /** @throws AuctionNotFoundException se non esiste, e' cancellata o e' di un'altra lega */
