@@ -110,7 +110,7 @@ export function LeaguesRoute() {
                     <PendingRow key={request.leagueId} request={request} quiet={errorMessage !== null} />
                   ))}
                 </ul>
-              ) : null}
+              ) : leagues.isPending ? <LeagueRowsPlaceholder /> : null}
             </section>
           </>
         )}
@@ -227,6 +227,28 @@ function LeagueRow({ league }: { league: LeagueCard }) {
         ) : null}
       </Link>
     </li>
+  );
+}
+
+/**
+ * Mentre le leghe arrivano: due righe della stessa altezza di quelle vere — stemma
+ * da 44px e tre righe di testo da 24, 20 e 18px — perche' all'arrivo la pagina non
+ * salti.
+ */
+function LeagueRowsPlaceholder() {
+  return (
+    <ul aria-hidden="true" className="divide-y divide-line border-t border-line">
+      {[0, 1].map((i) => (
+        <li key={i} className={ROW}>
+          <span className="size-11 shrink-0 rounded-lg bg-line" />
+          <span className="min-w-0 flex-1">
+            <span className="block h-6 py-1"><span className="block h-full w-40 max-w-full rounded bg-line" /></span>
+            <span className="block h-5 py-1"><span className="block h-full w-28 rounded bg-line" /></span>
+            <span className="block h-[1.125rem] py-1"><span className="block h-full w-36 rounded bg-line" /></span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

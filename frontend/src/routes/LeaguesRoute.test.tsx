@@ -309,6 +309,24 @@ describe('LeaguesRoute', () => {
     expect(screen.queryByRole('link', { name: "Prepara un'asta" })).not.toBeInTheDocument();
   });
 
+  it('mentre le leghe arrivano, righe segnaposto alte come quelle vere', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => (url === '/api/leagues'
+      ? new Promise(() => {})
+      : Promise.resolve(url === '/api/me' ? json(ME) : json([])))));
+    renderLeagues();
+    const section = (await screen.findByRole('heading', { name: 'Le tue leghe' })).closest('section')!;
+    const rows = section.querySelectorAll('ul[aria-hidden="true"] > li');
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      // La riga vera: py-3 intorno a stemma da 44px e tre righe di testo (24 + 20 + 18).
+      expect(row.className).toContain('min-h-16');
+      expect(row.className).toContain('py-3');
+      expect(row.querySelector('.size-11')).not.toBeNull();
+      expect([...row.querySelector('.flex-1')!.children].map((l) => l.className.match(/\bh-\S+/)?.[0]))
+        .toEqual(['h-6', 'h-5', 'h-[1.125rem]']);
+    }
+  });
+
   it('Mostra tutte porta il fuoco alla prima conclusa che era nascosta', async () => {
     home({ auctions: [
       auction('c1', 'CONCLUDED', '2026-04-12T21:00:00Z'),
