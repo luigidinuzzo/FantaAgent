@@ -58,12 +58,12 @@ describe('ParticipantsColumn', () => {
    * erano otto cornici in piu' da leggere. La tua riga si riconosce dal fondo e dal
    * filetto oro a sinistra, oltre che a parole.
    */
-  it('da schermo largo le squadre sono righe di un pannello solo, la tua col filetto oro', () => {
+  it('le squadre sono righe a ogni misura di un pannello solo, la tua col filetto oro', () => {
     render(<ParticipantsColumn participants={[ANNA, CARLA]} phase="C" />);
     const rows = screen.getAllByRole('listitem');
-    rows.forEach((row) => expect(row.className).toContain('lg:border-b'));
+    rows.forEach((row) => expect(row.className).toContain('border-b'));
     const mine = rows.find((row) => row.getAttribute('data-me') === 'true')!;
-    expect(mine.className).toContain('lg:border-l-accent');
+    expect(mine.className).toContain('border-l-accent');
     expect(mine.className).toContain('bg-surface-raised');
   });
 
@@ -71,23 +71,24 @@ describe('ParticipantsColumn', () => {
   it('il nome della squadra va su due righe invece di troncarsi', () => {
     render(<ParticipantsColumn participants={[ANNA, CARLA]} phase="C" />);
     const name = screen.getAllByRole('listitem')[0].querySelector('[data-testid="team-name"]')!;
-    expect(name.className).toContain('lg:line-clamp-2');
+    expect(name.className).toContain('line-clamp-2');
     expect(name.className).not.toMatch(/(^| )truncate( |$)/);
   });
 
   /**
-   * Il piano vale da `lg` in su: sotto, il telefono resta come prima di questo
-   * piano. Il bordo e il peso dei crediti che cambiavano senza prefisso
-   * accendevano la card anche sul telefono, dove nessuna riga si divide
-   * l'altezza di niente.
+   * Le righe valgono a ogni misura: sul telefono le squadre hanno una vista tutta
+   * loro, non c'e' piu' la fila di card che scorre di lato.
    */
-  it('sotto lg il bordo e i crediti restano quelli di prima del piano', () => {
+  it('le righe valgono a ogni misura: nessuna classe della fila di card sotto lg', () => {
     render(<ParticipantsColumn participants={[ANNA, CARLA]} phase="C" />);
     const carlaRow = screen.getByTestId('manager-carla');
-    expect(carlaRow.className).toContain('max-lg:border-panel-border');
+    expect(carlaRow.className).toContain('border-l-transparent');
+    expect(carlaRow.className).not.toContain('max-lg:');
     const carlaBudget = screen.getByTestId('budget-carla');
-    expect(carlaBudget.className).toContain('text-muted-foreground');
-    expect(carlaBudget.className).toContain('lg:font-semibold');
-    expect(carlaBudget.className).not.toMatch(/(^| )font-semibold( |$)/);
+    expect(carlaBudget.className).toContain('text-foreground');
+    expect(carlaBudget.className).not.toContain('text-muted-foreground');
+    expect(carlaBudget.className).toMatch(/(^| )font-semibold( |$)/);
+    expect(screen.getAllByTestId('team-name')[0].className).not.toContain('max-lg:truncate');
+    expect(screen.getByRole('list').className).not.toContain('max-lg:');
   });
 });

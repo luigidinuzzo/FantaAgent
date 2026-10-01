@@ -4,6 +4,7 @@ import { useAuctionState, useBoard, useCorrectPurchase, useVoidPurchase } from '
 import type { BoardColumn, Role } from '../api/types';
 import { CorrectPurchaseDialog } from './CorrectPurchaseDialog';
 import type { CorrectablePurchase } from './CorrectPurchaseDialog';
+import { FIELD } from './controls';
 import { ROLE_NAME_PLURAL_CAPITALIZED, ROLES } from './roles';
 
 /**
@@ -73,6 +74,9 @@ function useMoreToTheRight<T extends HTMLElement>() {
  * per prima e resta ferma a sinistra, i nomi delle squadre restano fermi in alto:
  * scorrendo le rose degli altri si confrontano sempre con la tua. Senza
  * {@code fill} (asta conclusa, chi non ha un posto) la griglia e' quella di sempre.
+ *
+ * <p>Con {@code fill}, sul telefono, otto colonne una accanto all'altra non si
+ * leggono: una squadra alla volta, scelta da un selettore, la tua per prima.
  */
 export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
   const board = useBoard();
@@ -141,6 +145,14 @@ export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
     ? [...(board.data?.columns ?? [])].sort((a, b) => Number(b.me) - Number(a.me))
     : (board.data?.columns ?? []);
 
+  // Sul telefono, con fill, la squadra in vista: la tua finche' non se ne sceglie
+  // un'altra (le colonne sono gia' ordinate con la tua in testa). Se la scelta non
+  // e' piu' nel tabellone si torna alla prima, invece di mostrare nessuna rosa.
+  const [chosen, setChosen] = useState<string | null>(null);
+  const shownId = columns.some((c) => c.participantId === chosen)
+    ? chosen
+    : columns[0]?.participantId;
+
   function toggleSection(key: string) {
     setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
   }
@@ -194,15 +206,34 @@ export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
         // testo lo dicono: prima le colonne finivano tagliate a meta' senza nessun
         // segno che ce ne fossero altre.
         <div className={`relative ${fill ? 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}`}>
+          {fill && columns.length > 0 ? (
+            <div className="mb-3 flex flex-col gap-1 lg:hidden">
+              <label htmlFor="roster-team-select" className="text-meta font-medium text-muted-foreground">Squadra</label>
+              <select
+                id="roster-team-select"
+                className={FIELD}
+                value={shownId ?? ""}
+                onChange={(e) => setChosen(e.target.value)}
+              >
+                {columns.map((c) => (
+                  <option key={c.participantId} value={c.participantId}>
+                    {c.participantName}{c.me ? ' (tu)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           {moreToTheRight ? (
-            <p className="mb-2 text-sm text-muted-foreground">Scorri di lato per vedere le altre squadre.</p>
+            <p className={`mb-2 text-sm text-muted-foreground ${fill ? 'max-lg:hidden' : ''}`}>Scorri di lato per vedere le altre squadre.</p>
           ) : null}
         <div
           ref={scrollerRef}
           className={`relative overflow-x-auto ${fill ? 'lg:min-h-0 lg:flex-1 lg:overflow-auto' : ''}`}
         >
           <div
-            className="grid gap-3 pb-1"
+            // Con fill sul telefono una colonna sola: le tracce delle colonne
+            // nascoste, rimaste nel template, farebbero scorrere la pagina su vuoto.
+            className={`grid gap-3 pb-1 ${fill ? 'max-lg:grid-cols-1!' : ''}`}
             style={{
               // Per l'amministratore ogni riga porta due gesti, matita e ✕: la
               // colonna si allarga di quanto occupa il secondo, cosi' al nome resta
@@ -215,6 +246,7 @@ export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
                 key={column.participantId}
                 column={column}
                 sticky={fill}
+                hiddenOnPhone={fill && column.participantId !== shownId}
                 capacity={
                   state.data?.participants.find((p) => p.id === column.participantId)
                     ?.slotsByRole
@@ -232,7 +264,7 @@ export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
           {moreToTheRight ? (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-surface to-transparent"
+              className={`pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-surface to-transparent ${fill ? 'max-lg:hidden' : ''}`}
             />
           ) : null}
         </div>
@@ -367,6 +399,7 @@ function RosterColumn({
   collapsed,
   onToggleSection,
   sticky,
+  hiddenOnPhone,
 }: {
   column: BoardColumn;
   /** Le caselle per ruolo, dalle regole di lega lette da {@code /state}. Assente
@@ -382,6 +415,8 @@ function RosterColumn({
   onToggleSection: (key: string) => void;
   /** Nel pannello a riempimento: la tua colonna ferma a sinistra, il nome in alto. */
   sticky: boolean;
+  /** Sul telefono, con fill, le squadre non scelte dal selettore non si vedono. */
+  hiddenOnPhone: boolean;
 }) {
   return (
     // La larghezza la decide la griglia di RosterGrid; min-w-0 perche' un nome
@@ -390,7 +425,7 @@ function RosterColumn({
     <section
       aria-labelledby={`roster-${column.participantId}`}
       // Ferma a sinistra, col fondo pieno: le altre colonne le scorrono sotto.
-      className={`min-w-0 rounded-lg border p-3 ${column.me ? 'border-accent' : 'border-line'} ${
+      className={`min-w-0 rounded-lg border p-3 ${hiddenOnPhone ? 'max-lg:hidden' : ''} ${column.me ? 'border-accent' : 'border-line'} ${
         sticky && column.me ? 'lg:sticky lg:left-0 lg:z-10 lg:bg-surface' : ''
       }`}
     >

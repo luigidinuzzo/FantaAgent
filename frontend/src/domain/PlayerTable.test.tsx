@@ -16,6 +16,13 @@ const ROWS: PhaseRowView[] = [
 ];
 
 describe('PlayerTable', () => {
+  it('sul telefono sotto il nome ci sono squadra e titolarita', () => {
+    render(<PlayerTable rows={ROWS} selectedId={null} onSelect={() => {}} />);
+    const first = screen.getAllByRole('button', { name: /^Valuta / })[0];
+    expect(first).toHaveTextContent(`${ROWS[0].team} · ${Math.round(ROWS[0].titolaritaPercent)}% titolare`);
+    expect(first.className).toContain('max-lg:min-h-14');
+  });
+
   /**
    * A bloccare la selezione e' il conto alla rovescia in corso — un lotto alla
    * volta — e l'avviso deve nominare quello: «il battitore» non e' un controllo

@@ -459,4 +459,31 @@ describe('RosterGrid', () => {
     expect(heading.className).toContain('lg:sticky');
     expect(heading.className).toContain('lg:top-0');
   });
+
+  // Sul telefono otto colonne una accanto all'altra non si leggono: una squadra
+  // alla volta, scelta da un selettore, la tua per prima.
+  it('a riempimento sul telefono una squadra alla volta, scelta dal selettore', async () => {
+    // La tua e' la seconda nel tabellone: il selettore parte da lei lo stesso.
+    const board = { ...BOARD, columns: [BOARD.columns[1], BOARD.columns[0]] };
+    renderRoster(undefined, STATE, board, true);
+    const select = await screen.findByLabelText('Squadra');
+    const visibleColumns = () =>
+      [...document.querySelectorAll('section[aria-labelledby^="roster-"]')]
+        .filter((c) => !c.className.includes('max-lg:hidden'));
+    expect(visibleColumns()).toHaveLength(1);
+    expect(visibleColumns()[0].getAttribute('aria-labelledby')).toBe(`roster-${(select as HTMLSelectElement).value}`);
+    expect((select as HTMLSelectElement).value).toBe('anna');
+    expect((select as HTMLSelectElement).options[0].value).toBe('anna');
+    await userEvent.selectOptions(select, 'bruno');
+    expect(visibleColumns()).toHaveLength(1);
+    expect(visibleColumns()[0].getAttribute('aria-labelledby')).toBe('roster-bruno');
+  });
+
+  it('senza riempimento niente selettore e tutte le colonne restano', async () => {
+    renderRoster();
+    await screen.findByText('Bastoni');
+    expect(screen.queryByLabelText('Squadra')).toBeNull();
+    const columns = document.querySelectorAll('section[aria-labelledby^="roster-"]');
+    columns.forEach((c) => expect(c.className).not.toContain('max-lg:hidden'));
+  });
 });

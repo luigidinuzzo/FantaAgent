@@ -199,11 +199,11 @@ export function PlayerTable({
                     aria-label={accessibleLabel}
                     disabled={disabled}
                     aria-describedby={disabled ? lockedHintId : undefined}
-                    className={`${CELL_X} flex min-h-11 w-full items-center text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50`}
+                    className={`${CELL_X} flex min-h-11 w-full items-center text-left max-lg:min-h-14 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50`}
                   >
                     <span className="flex flex-col py-1">
                       <span>{row.name}</span>
-                      <span className="text-meta text-muted-foreground sm:hidden">{row.team}</span>
+                      <span className="text-meta text-muted-foreground sm:hidden">{row.team} · {Math.round(row.titolaritaPercent)}% titolare</span>
                     </span>
                   </button>
                 </td>

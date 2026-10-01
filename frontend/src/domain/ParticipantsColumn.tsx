@@ -17,8 +17,8 @@ import { ROLE_NAME_PLURAL, ROLE_NAME_SINGULAR } from './roles';
  * ascolta la riconosce dal testo, perche' un colore non entra nell'albero di
  * accessibilita' e {@code data-me} e' un data-*, non un attributo ARIA.
  *
- * <p>Da schermo largo le squadre sono righe di un pannello solo, e il nome va
- * su due righe invece di troncarsi.
+ * <p>Le squadre sono righe di un pannello solo a ogni misura, e il nome va su due
+ * righe invece di troncarsi.
  */
 export function ParticipantsColumn({ participants, phase, className = '' }: {
   participants: ParticipantView[];
@@ -37,35 +37,35 @@ export function ParticipantsColumn({ participants, phase, className = '' }: {
     // al proprio contenuto.
     <section
       aria-label="Crediti delle squadre"
-      className={`panel flex min-h-0 min-w-0 flex-col max-lg:p-3 lg:overflow-hidden ${className}`}
+      className={`panel flex min-h-0 min-w-0 flex-col overflow-hidden ${className}`}
     >
-      <div aria-hidden="true" className="flex justify-between px-3 text-meta font-medium text-muted-foreground max-lg:mb-2 lg:shrink-0 lg:min-h-11 lg:items-center lg:border-b lg:border-line lg:px-4">
+      <div aria-hidden="true" className="flex shrink-0 min-h-11 items-center justify-between border-b border-line px-4 text-meta font-medium text-muted-foreground">
         <span>Squadra</span>
         <span>Crediti</span>
       </div>
-      {/* Sul telefono una fila che scorre di lato, alta una riga, come prima. Da
-          schermo largo una colonna di righe che si dividono l'altezza del pannello:
-          con otto squadre ognuna prende un ottavo, con dodici la lista scorre. */}
-      <ul className="relative flex min-h-0 flex-1 gap-1.5 overflow-x-auto pb-1 max-lg:flex-row lg:flex-col lg:gap-0 lg:overflow-y-auto lg:overflow-x-visible lg:pb-0">
+      {/* Una colonna di righe a ogni misura (sul telefono le squadre hanno una
+          vista tutta loro): si dividono l'altezza del pannello, con otto squadre
+          ognuna prende un ottavo, con dodici la lista scorre. */}
+      <ul className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-visible">
         {participants.map((p) => (
           <li
             key={p.id}
             data-testid={`manager-${p.id}`}
             data-me={p.me}
-            className={`flex flex-col gap-0.5 max-lg:shrink-0 max-lg:rounded-lg max-lg:border max-lg:px-3 max-lg:py-2 lg:min-h-16 lg:flex-1 lg:justify-center lg:border-b lg:border-l-[3px] lg:border-b-line lg:px-4 lg:last:border-b-0 ${
+            className={`flex min-h-16 flex-1 flex-col justify-center gap-0.5 border-b border-l-[3px] border-b-line px-4 last:border-b-0 ${
               p.me
-                ? 'bg-surface-raised max-lg:border-accent lg:border-l-accent'
-                : 'max-lg:border-panel-border lg:border-l-transparent'
+                ? 'bg-surface-raised border-l-accent'
+                : 'border-l-transparent'
             }`}
           >
-            <span className="flex items-baseline justify-between gap-3 lg:items-start">
-              <span data-testid="team-name" className="font-medium max-lg:truncate lg:line-clamp-2 lg:leading-tight">
+            <span className="flex items-baseline items-start justify-between gap-3">
+              <span data-testid="team-name" className="font-medium line-clamp-2 leading-tight">
                 {p.name}
                 {p.me ? <span className="sr-only">, sei tu</span> : null}
               </span>
               <span
                 data-testid={`budget-${p.id}`}
-                className={`tnum shrink-0 font-medium lg:text-lg lg:font-semibold ${p.me ? 'text-accent' : 'text-muted-foreground lg:text-foreground'}`}
+                className={`tnum shrink-0 text-lg font-semibold ${p.me ? 'text-accent' : 'text-foreground'}`}
               >
                 {p.budgetRemaining}
                 <span className="sr-only"> crediti</span>
