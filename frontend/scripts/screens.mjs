@@ -452,6 +452,12 @@ for (const { viewport: vp, tag } of SIZES) {
   });
   await user.page.keyboard.press('Escape');
   await shot(user.page, `09-lega-${tag}`, '/leghe/L1');
+  // Senza richieste d'ingresso le aste vanno a tutta larghezza.
+  await shot(user.page, `09f-lega-senza-richieste-${tag}`, null, async (p) => {
+    await p.route('**/api/leagues/L1/join-requests', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+    await p.goto(BASE + '/leghe/L1', { waitUntil: 'networkidle' });
+  });
+  await user.page.unroute('**/api/leagues/L1/join-requests');
   await shot(user.page, `09b-lega-nuova-asta-${tag}`, null, async (p) => {
     await p.getByRole('button', { name: 'Nuova asta' }).click();
   });

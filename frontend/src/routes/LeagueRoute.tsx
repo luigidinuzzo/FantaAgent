@@ -86,7 +86,8 @@ export function LeagueRoute() {
             tutta larghezza. I membri sotto, a tutta larghezza in piu' colonne; gli
             inviti in una finestra dall'intestazione. Sul telefono lo stesso ordine. */}
         <div className={`grid grid-cols-1 items-start gap-6 ${hasRequests ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
-          <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} quiet={inviting} />
+          <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} quiet={inviting}
+            wide={!hasRequests} />
           {hasRequests ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert || inviting} /> : null}
         </div>
         <div className="mt-6">
@@ -130,12 +131,17 @@ const ROW = 'flex min-h-16 items-center gap-3 px-5 py-3 md:px-6';
  * lui, «Nuova asta» apre il campo del nome in cima all'elenco: l'unico oro della
  * pagina, e solo mentre il campo e' aperto.
  */
-function AuctionsPanel({ leagueId, admin, create, quiet }: {
+function AuctionsPanel({ leagueId, admin, create, quiet, wide }: {
   leagueId: string;
   admin: boolean;
   create: ReturnType<typeof useCreateAuction>;
   /** Una finestra della pagina ha l'alert: il messaggio resta, senza annunciarsi. */
   quiet: boolean;
+  /**
+   * A tutta larghezza (nessuna richiesta accanto): da xl le righe in due colonne,
+   * perche' «Entra» resti vicino al nome come quando il pannello e' largo due terzi.
+   */
+  wide: boolean;
 }) {
   const auctions = useLeagueAuctions(leagueId);
   const update = useUpdateAuction(leagueId);
@@ -211,7 +217,8 @@ function AuctionsPanel({ leagueId, admin, create, quiet }: {
         </p>
       ) : null}
       {auctions.data && auctions.data.length > 0 ? (
-        <ul aria-label="Aste" className="divide-y divide-line border-t border-line">
+        <ul aria-label="Aste" className={`border-t border-line [&>li+li]:border-t [&>li]:border-line ${
+          wide ? 'xl:grid xl:grid-cols-2 xl:[&>li:nth-child(2)]:border-t-0' : ''}`}>
           {auctions.data.map((a) => {
             const status = auctionStatus(a);
             const detail = [
