@@ -77,8 +77,9 @@ describe('ImportRoute', () => {
   /**
    * Sul telefono a 360px «Atletico Ma Non Troppo · Diego» non stava nella tendina:
    * il riquadro degli abbinamenti perde i margini di lato e la tendina un po' del
-   * suo, cosi' il nome scelto si legge intero; l'anello del fuoco va dentro il bordo. Il testo resta a 16px: piu'
-   * piccolo, Safari ingrandirebbe la pagina al tocco.
+   * suo, cosi' il nome scelto si legge intero; l'anello del fuoco va dentro il
+   * bordo. Il testo resta a 16px: piu' piccolo, Safari ingrandirebbe la pagina al
+   * tocco.
    */
   it('sul telefono la tendina ha tutta la larghezza del riquadro', async () => {
     stub();
@@ -129,7 +130,8 @@ describe('ImportRoute', () => {
   it('una cartella senza asta lo dice', async () => {
     stub();
     renderImport();
-    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), [new File(['x'], 'foto.jpg')]);
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }),
+      [new File(['x'], 'foto.jpg')]);
     expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
   });
 
@@ -140,7 +142,8 @@ describe('ImportRoute', () => {
     await userEvent.upload(input, FILES);
     expect(await screen.findByText('Asta del 2025')).toBeInTheDocument();
 
-    await userEvent.upload(screen.getByLabelText('Scegli la cartella', { selector: 'input' }), [new File(['x'], 'foto.jpg')]);
+    await userEvent.upload(screen.getByLabelText('Scegli la cartella', { selector: 'input' }),
+      [new File(['x'], 'foto.jpg')]);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
     expect(screen.queryByText('Asta del 2025')).not.toBeInTheDocument();
