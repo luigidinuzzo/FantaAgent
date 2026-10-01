@@ -8,7 +8,8 @@ import { CreateLeagueDialog } from '../domain/CreateLeagueDialog';
 import { Crest } from '../domain/Crest';
 import { JoinLeagueDialog } from '../domain/JoinLeagueDialog';
 import { BUTTON_PRIMARY, BUTTON_SECONDARY } from '../domain/controls';
-import { MyAuctionCard } from '../domain/MyAuctionCard';
+import { AuctionStatusPill } from '../domain/AuctionStatusPill';
+import { FeaturedAuction } from '../domain/FeaturedAuction';
 import { PageFrame } from '../domain/PageFrame';
 import { PageHeader } from '../domain/PageHeader';
 
@@ -20,7 +21,9 @@ const CONCLUDED_SHOWN = 3;
  * sotto le concluse, poi le leghe. Crearne una o entrarci sono gesti rari: due
  * bottoni normali nell'intestazione, che aprono una finestra.
  *
- * <p>L'oro e' uno solo: «Entra nell'asta» dell'asta toccata per ultima. Senza aste
+ * <p>Un'asta in evidenza, la toccata per ultima fra le non concluse, e le altre in
+ * righe: niente griglia di schede, che con quattro o cinque aste lasciava l'ultima
+ * fila corta. L'oro e' uno solo: «Entra nell'asta» di quella in evidenza. Senza aste
  * in corso non c'e' oro; senza leghe e' «Crea una lega» nello stato vuoto.
  */
 export function LeaguesRoute() {
@@ -72,14 +75,9 @@ export function LeaguesRoute() {
             <section aria-labelledby="live-title" className="mb-8">
               <h2 id="live-title" className="sr-only">Aste in corso e da iniziare</h2>
               {auctions.isPending ? (
-                <div aria-hidden="true" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <div className="panel min-h-52" />
-                  <div className="panel min-h-52 max-md:hidden" />
-                </div>
+                <div aria-hidden="true" className="panel min-h-[12.875rem] md:min-h-[9.125rem]" />
               ) : live.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {live.map((a, i) => <MyAuctionCard key={a.id} auction={a} primary={i === 0} />)}
-                </div>
+                <FeaturedAuction auction={live[0]!} />
               ) : auctions.isSuccess ? (
                 <div className="panel flex min-h-16 flex-wrap items-center justify-between gap-3 px-5 py-3">
                   <p className="text-sm text-muted-foreground">Nessuna asta in corso</p>
@@ -89,6 +87,7 @@ export function LeaguesRoute() {
                 </div>
               ) : null}
             </section>
+            {live.length > 1 ? <OtherAuctions auctions={live.slice(1)} /> : null}
             {concluded.length > 0 ? (
               <ConcludedAuctions
                 auctions={allConcluded ? concluded : concluded.slice(0, CONCLUDED_SHOWN)}
@@ -130,6 +129,39 @@ const ROW_LINK = `${ROW} hover:bg-surface-raised focus-visible:outline focus-vis
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 
 const DAY = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/**
+ * Le altre aste non concluse, sotto quella in evidenza: righe compatte, come le
+ * concluse. Nome e lega vanno a capo fra le parole; sul telefono lo stato scende
+ * sotto il nome, perche' il testo abbia la riga.
+ */
+function OtherAuctions({ auctions }: { auctions: MyAuction[] }) {
+  return (
+    <section aria-labelledby="others-title" className="panel mb-8 overflow-hidden">
+      <h2 id="others-title" className="w-exp px-5 pb-4 pt-5 text-xl font-bold">Altre aste</h2>
+      <ul aria-label="Altre aste" className="divide-y divide-line border-t border-line">
+        {auctions.map((a) => (
+          <li key={a.id}
+            className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-5 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <span className="min-w-0 break-words">
+              <span className="font-semibold">{a.name}</span>
+              <span className="text-sm text-muted-foreground max-sm:block">
+                <span className="max-sm:hidden"> · </span>{a.leagueName}
+              </span>
+            </span>
+            <span className="max-sm:col-start-1 max-sm:row-start-2 max-sm:justify-self-start">
+              <AuctionStatusPill status={a.status} />
+            </span>
+            <Link to={`/leghe/${a.leagueId}/aste/${a.id}`} aria-label={`Entra nell'asta ${a.name}`}
+              className={`max-sm:col-start-2 max-sm:row-span-2 max-sm:row-start-1 ${BUTTON_SECONDARY}`}>
+              Entra
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 
 /** Le concluse, compatte: la riga apre l'asta, che da conclusa mostra il riepilogo. */
 function ConcludedAuctions({ auctions, hidden, onShowAll }: {

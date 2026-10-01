@@ -127,16 +127,21 @@ const leagues = [
   { id: 'L2', name: 'Fantaufficio', admin: false, teamName: 'Scarsenal', initial: 'S', members: 10, auctions: 1, pendingRequests: 0 },
   { id: 'L3', name: 'Calcetto del giovedì', admin: false, teamName: 'Dinamo Spritz', initial: 'D', members: 6, auctions: 2, pendingRequests: 0 },
 ];
-// Le aste di tutte le leghe, per la home: due in corso, una da iniziare, quattro
-// concluse (piu' delle tre che si vedono prima di «Mostra tutte»).
+// Le aste di tutte le leghe, per la home: una in corso e quattro da iniziare (come
+// i dati veri: quattro o cinque aste aperte), quattro concluse (piu' delle tre che
+// si vedono prima di «Mostra tutte»).
 const myAuctions = [
   { id: 'A1', leagueId: 'L1', leagueName: 'Lega dei Colizzati', name: 'Asta estiva 2026', status: 'IN_PROGRESS',
     phase: 'C', budgetRemaining: participants[0].budgetRemaining, slotsRemaining: participants[0].slotsRemaining,
     lastActivity: '2026-09-28T21:10:00Z', admin: true },
-  { id: 'A5', leagueId: 'L3', leagueName: 'Calcetto del giovedì', name: 'Asta del giovedì', status: 'IN_PROGRESS',
-    phase: 'D', budgetRemaining: 214, slotsRemaining: 17, lastActivity: '2026-09-26T22:40:00Z', admin: false },
+  { id: 'A5', leagueId: 'L3', leagueName: 'Calcetto del giovedì', name: 'Asta del giovedì', status: 'NOT_STARTED',
+    phase: 'P', budgetRemaining: 500, slotsRemaining: 25, lastActivity: '2026-09-26T22:40:00Z', admin: false },
   { id: 'A6', leagueId: 'L2', leagueName: 'Fantaufficio', name: 'Asta di settembre', status: 'NOT_STARTED',
     phase: 'P', budgetRemaining: 500, slotsRemaining: 25, lastActivity: '2026-09-20T09:00:00Z', admin: false },
+  { id: 'A10', leagueId: 'L2', leagueName: 'Fantaufficio', name: 'Asta del venerdì dopo il lavoro', status: 'NOT_STARTED',
+    phase: 'P', budgetRemaining: 500, slotsRemaining: 25, lastActivity: '2026-09-18T18:00:00Z', admin: false },
+  { id: 'A11', leagueId: 'L3', leagueName: 'Calcetto del giovedì', name: 'Asta di prova', status: 'NOT_STARTED',
+    phase: 'P', budgetRemaining: 500, slotsRemaining: 25, lastActivity: '2026-09-15T20:00:00Z', admin: false },
   { id: 'A2', leagueId: 'L1', leagueName: 'Lega dei Colizzati', name: 'Asta di riparazione', status: 'CONCLUDED',
     phase: 'A', budgetRemaining: 12, slotsRemaining: 0, lastActivity: '2026-01-12T22:00:00Z', admin: true },
   { id: 'A7', leagueId: 'L3', leagueName: 'Calcetto del giovedì', name: 'Asta estiva 2025', status: 'CONCLUDED',

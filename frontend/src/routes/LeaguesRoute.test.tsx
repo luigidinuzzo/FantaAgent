@@ -84,18 +84,48 @@ describe('LeaguesRoute', () => {
     expect(await screen.findByRole('button', { name: 'Ritira la richiesta per Lega dei Cugini' })).toBeInTheDocument();
   });
 
-  it('in cima le aste in corso e da iniziare, la piu recente con l oro', async () => {
+  it('in evidenza l asta piu recente, con l unico oro; le altre in righe con Entra normale', async () => {
     home({ auctions: [
       auction('a1', 'IN_PROGRESS', '2026-09-30T21:00:00Z'),
-      auction('a2', 'IN_PROGRESS', '2026-09-20T21:00:00Z'),
+      auction('a2', 'NOT_STARTED', '2026-09-20T21:00:00Z'),
       auction('a3', 'CONCLUDED', '2026-01-12T21:00:00Z'),
     ] });
     renderLeagues();
-    const cards = await screen.findAllByRole('article');
-    expect(cards).toHaveLength(2);
-    expect(within(cards[0]!).getByRole('heading', { name: 'Asta a1' })).toBeInTheDocument();
-    expect(within(cards[0]!).getByRole('link', { name: /Entra nell'asta/ }).className).toContain('bg-accent');
-    expect(within(cards[1]!).getByRole('link', { name: /Entra nell'asta/ }).className).not.toContain('bg-accent');
+    const featured = await screen.findByRole('article');
+    expect(within(featured).getByRole('heading', { name: 'Asta a1' })).toBeInTheDocument();
+    expect(within(featured).getByRole('link', { name: "Entra nell'asta Asta a1" }).className).toContain('bg-accent');
+    const others = screen.getByRole('list', { name: 'Altre aste' });
+    const rows = within(others).getAllByRole('listitem');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('Asta a2');
+    expect(rows[0]).toHaveTextContent('Lega del Bar');
+    expect(rows[0]).toHaveTextContent('Da iniziare');
+    const enter = within(rows[0]!).getByRole('link', { name: "Entra nell'asta Asta a2" });
+    expect(enter).toHaveTextContent(/^Entra$/);
+    expect(enter.className).not.toContain('bg-accent');
+    expect(rows[0]!.className).toContain('min-h-16');
+    expect(document.querySelectorAll('.bg-accent')).toHaveLength(1);
+  });
+
+  it('con una sola asta in corso niente «Altre aste»', async () => {
+    home({ auctions: [auction('a1', 'IN_PROGRESS', '2026-09-30T21:00:00Z')] });
+    renderLeagues();
+    await screen.findByRole('article');
+    expect(screen.queryByRole('heading', { name: 'Altre aste' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Altre aste' })).not.toBeInTheDocument();
+  });
+
+  it('con cinque aste in corso una in evidenza e quattro righe, nessuna griglia di schede', async () => {
+    home({ auctions: [
+      auction('a1', 'IN_PROGRESS', '2026-09-30T21:00:00Z'),
+      ...['a2', 'a3', 'a4', 'a5'].map((id, i) => auction(id, 'NOT_STARTED', `2026-09-2${i}T21:00:00Z`)),
+    ] });
+    renderLeagues();
+    expect(await screen.findAllByRole('article')).toHaveLength(1);
+    expect(within(screen.getByRole('list', { name: 'Altre aste' })).getAllByRole('listitem')).toHaveLength(4);
+    const live = screen.getByRole('heading', { name: 'Aste in corso e da iniziare' }).closest('section')!;
+    expect(live.querySelector('[class*="grid-cols"]')).toBeNull();
+    expect(document.querySelector('main [class*="md:grid-cols-2"]')).toBeNull();
   });
 
   it('le concluse in un elenco compatto, tre al massimo con Mostra tutte', async () => {
@@ -171,7 +201,7 @@ describe('LeaguesRoute', () => {
       auction('a2', 'NOT_STARTED', '2026-09-20T21:00:00Z'),
     ] });
     renderLeagues();
-    await screen.findAllByRole('article');
+    await screen.findByRole('article');
     expect(document.querySelectorAll('.bg-accent').length).toBe(1);
   });
 

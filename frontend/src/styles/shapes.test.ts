@@ -22,7 +22,7 @@ const PILLS = new Map([
   // Il conteggio delle richieste da decidere.
   ['routes/LeaguesRoute.tsx', 1],
   // Lo stato di un'asta nella home: «In corso», «Da iniziare».
-  ['domain/MyAuctionCard.tsx', 1],
+  ['domain/AuctionStatusPill.tsx', 1],
   // L'iniziale di un membro.
   ['routes/LeagueRoute.tsx', 1],
   // La riga dello scheletro mentre le regole si caricano.
