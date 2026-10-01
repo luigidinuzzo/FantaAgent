@@ -21,7 +21,7 @@ import { PageHeader } from '../domain/PageHeader';
 
 const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
 
-/** Quanto resta «Copiato» sul bottone del link. */
+/** Quanto restano «Copiato» o «Non copiato» sul bottone del link. */
 const COPIED_MS = 2000;
 
 export function LeagueRoute() {
@@ -460,14 +460,22 @@ function InvitesContent({ leagueId }: { leagueId: string }) {
   const create = useCreateInvite(leagueId);
   const revoke = useRevokeInvite(leagueId);
   const link = create.data?.link;
-  // «Copiato» al posto di «Copia» per un momento: la conferma sta nel bottone, che
-  // ha una larghezza fissa e non si sposta.
-  const [copied, setCopied] = useState(false);
+  // «Copiato» al posto di «Copia» per un momento, o «Non copiato» se il browser non
+  // lascia scrivere negli appunti (allora si copia dal campo, gia' selezionabile):
+  // l'esito sta nel bottone, che ha una larghezza fissa e non si sposta.
+  const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
   useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), COPIED_MS);
+    if (copied === 'idle') return;
+    const timer = setTimeout(() => setCopied('idle'), COPIED_MS);
     return () => clearTimeout(timer);
   }, [copied]);
+  const copy = (text: string) => {
+    if (!navigator.clipboard) {
+      setCopied('failed');
+      return;
+    }
+    navigator.clipboard.writeText(text).then(() => setCopied('done'), () => setCopied('failed'));
+  };
 
   return (
     <div>
@@ -484,9 +492,8 @@ function InvitesContent({ leagueId }: { leagueId: string }) {
           <div className="mt-2 flex gap-2">
             <input id="invite-link" readOnly value={link} onFocus={(e) => e.target.select()}
               className="min-h-11 min-w-0 flex-1 rounded-lg border border-control-border bg-surface px-4 text-sm" />
-            <button type="button" className={`w-28 shrink-0 ${BUTTON_SECONDARY}`}
-              onClick={() => { void navigator.clipboard?.writeText(link).then(() => setCopied(true)); }}>
-              {copied ? 'Copiato' : 'Copia'}
+            <button type="button" className={`w-32 shrink-0 ${BUTTON_SECONDARY}`} onClick={() => copy(link)}>
+              {copied === 'done' ? 'Copiato' : copied === 'failed' ? 'Non copiato' : 'Copia'}
             </button>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">

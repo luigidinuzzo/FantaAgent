@@ -395,11 +395,30 @@ describe('LeagueRoute', () => {
     const dialog = screen.getByRole('dialog', { name: 'Inviti' });
     await user.click(within(dialog).getByRole('button', { name: 'Crea un link d\'invito' }));
     const copy = await within(dialog).findByRole('button', { name: 'Copia' });
-    expect(copy.className).toContain('w-28');
+    expect(copy.className).toContain('w-32');
     await user.click(copy);
     expect(copy).toHaveTextContent('Copiato');
     expect(copy).not.toHaveAttribute('role');
     expect(await navigator.clipboard.readText()).toBe('https://fanta.example/invito/abc');
+    await waitFor(() => expect(copy).toHaveTextContent(/^Copia$/), { timeout: 3000 });
+  });
+
+  it('se la copia non riesce Copia dice «Non copiato», nella stessa larghezza', async () => {
+    const user = userEvent.setup();
+    stub(true, {
+      'POST /api/leagues/l1/invites': () => json({
+        id: 'i1', link: 'https://fanta.example/invito/abc', expiresAt: '2026-10-12T20:00:00Z',
+      }, 201),
+    });
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('negato'));
+    renderLeague();
+    await user.click(await screen.findByRole('button', { name: 'Invita' }));
+    const dialog = screen.getByRole('dialog', { name: 'Inviti' });
+    await user.click(within(dialog).getByRole('button', { name: 'Crea un link d\'invito' }));
+    const copy = await within(dialog).findByRole('button', { name: 'Copia' });
+    await user.click(copy);
+    await waitFor(() => expect(copy).toHaveTextContent('Non copiato'));
+    expect(copy.className).toContain('w-32');
     await waitFor(() => expect(copy).toHaveTextContent(/^Copia$/), { timeout: 3000 });
   });
 
