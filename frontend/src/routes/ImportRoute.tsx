@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { PageFrame } from '../domain/PageFrame';
+import { PageHeader } from '../domain/PageHeader';
+import { FolderPicker } from '../domain/FolderPicker';
+import { BUTTON_PRIMARY, FIELD } from '../domain/controls';
 import { fieldErrors, userMessage } from '../api/client';
 import { IMPORT_FILES, useImportAuction, useImportPreview, useLeague } from '../api/leagues';
 import type { MemberView } from '../api/types';
@@ -23,6 +26,7 @@ export function ImportRoute() {
   const [files, setFiles] = useState<File[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [noAuction, setNoAuction] = useState(false);
+  const [folder, setFolder] = useState<string | null>(null);
 
   const members = league.data?.members ?? [];
   const participants = preview.data?.participants ?? [];
@@ -37,8 +41,9 @@ export function ImportRoute() {
         || userMessage(doImport.error ?? preview.error, 'L\'importazione non è riuscita. Riprova.')
       : null;
 
-  function choose(list: FileList | null) {
-    const picked = Array.from(list ?? []);
+  function choose(list: FileList) {
+    const picked = Array.from(list);
+    setFolder(picked[0]?.webkitRelativePath?.split('/')[0] || 'Cartella scelta');
     if (!picked.some((f) => f.name === 'events.jsonl')) {
       // Una cartella diversa scelta dopo un'anteprima valida: si riparte da zero,
       // altrimenti restano in giro l'anteprima e gli abbinamenti di prima, col
@@ -64,75 +69,87 @@ export function ImportRoute() {
     { label: "Importa un'asta" },
   ];
 
+  const ready = Boolean(preview.data);
+
   return (
     <AppShell chrome="top" trail={trail}>
       <PageFrame>
-      {/* Come ProfileRoute: senza centrare, un modulo corto come questo lascia un
-          vuoto enorme sotto sulle finestre larghe. Il contenitore e' alto quanto
-          la finestra, e il modulo sta in mezzo. */}
-      <div className="flex flex-1 items-center justify-center">
         <div className="mx-auto w-full max-w-3xl">
-          {/* Testata e scelta della cartella nello stesso pannello. */}
-          <section className="panel p-6">
-            <div className="flex items-center gap-4">
-              <h1 className="w-exp text-2xl font-semibold">Importa un'asta</h1>
-            </div>
-            <p className="mt-4 text-sm">
-              Scegli la cartella di un'asta giocata con la versione di FantaAgent installata sul tuo computer.
-              Poi abbina ogni partecipante a un membro della lega.
-            </p>
-            <label htmlFor="import-folder" className="mt-4 block text-sm font-medium">Scegli la cartella dell'asta</label>
-            <input id="import-folder" type="file" multiple
-              {...{ webkitdirectory: '', directory: '' }}
-              onChange={(e) => choose(e.target.files)}
-              className="mt-2 block min-h-11 text-sm" />
-            {alert ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{alert}</p> : null}
-            {preview.isPending ? (
-              <p role="status" className="mt-4 text-sm text-muted-foreground">Leggo l'asta…</p>
-            ) : null}
-          </section>
-          {preview.data ? (
-            <section className="panel mt-4 p-6">
-              <h2 className="w-exp text-lg font-semibold">{preview.data.name}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{preview.data.purchases} acquisti</p>
-              <table aria-label="Abbinamenti" className="mt-4 w-full text-sm">
-                <thead>
-                  <tr><th className="py-2 text-left">Nell'asta</th><th className="py-2 text-left">Membro della lega</th></tr>
-                </thead>
-                <tbody>
-                  {participants.map((p) => (
-                    <tr key={p.id} className="border-t border-line">
-                      <td className="py-2">{p.name} <span className="text-muted-foreground">· {p.initial}</span></td>
-                      <td className="py-2">
-                        <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
-                          onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
-                          className="min-h-11 w-full rounded-lg border border-control-border bg-surface px-3">
-                          <option value="">Scegli…</option>
-                          {members.map((m) => (
-                            <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!complete ? (
+          <PageHeader title="Importa un'asta" context="Porta qui un'asta giocata con FantaAgent sul computer." />
+          {/* Il riquadro ha da subito l'altezza del passaggio piu' alto: scegliere la
+              cartella non sposta niente. */}
+          <section data-testid="import-box" className="panel min-h-[55rem] p-5 md:p-6">
+            <ol aria-label="Passaggi" className="space-y-8">
+              <li>
+                <Step n={1} title="Scegli la cartella" />
+                <p className="mt-3 text-sm">
+                  Serve la cartella di un'asta giocata con FantaAgent sul tuo computer: dentro ci sono le
+                  mosse dell'asta e l'elenco dei partecipanti.
+                </p>
+                <div className="mt-4">
+                  <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
+                </div>
+                {alert ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{alert}</p> : null}
+                {preview.isPending ? (
+                  <p role="status" className="mt-4 text-sm text-muted-foreground">Leggo l'asta…</p>
+                ) : null}
+                {preview.data ? (
+                  <p className="mt-4 text-sm">
+                    <span className="font-medium">{preview.data.name}</span>
+                    <span className="text-muted-foreground"> · {preview.data.purchases} acquisti</span>
+                  </p>
+                ) : null}
+              </li>
+              <li data-testid="import-step-2" aria-disabled={!ready}
+                className={ready ? '' : 'text-muted-foreground'}>
+                <Step n={2} title="Abbina i partecipanti" />
+                {/* La zona degli abbinamenti ha la stessa altezza prima e dopo la scelta:
+                    con tanti partecipanti scorre dentro, la pagina non si sposta. */}
+                <div className="mt-3 h-[29rem] overflow-y-auto rounded-lg border border-line p-4">
+                  {ready ? (
+                    <ul aria-label="Abbinamenti" className="grid gap-x-4 gap-y-3 md:grid-cols-2">
+                      {participants.map((p) => (
+                        <li key={p.id}>
+                          <span className="mb-1 block text-sm">{p.name} <span className="text-muted-foreground">· {p.initial}</span></span>
+                          <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
+                            onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
+                            className={`${FIELD} min-h-11`}>
+                            <option value="">Scegli…</option>
+                            {members.map((m) => (
+                              <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>
+                            ))}
+                          </select>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="grid h-full place-items-center text-center text-sm">Dopo aver scelto la cartella, ogni partecipante dell'asta va a un membro della lega.</p>
+                  )}
+                </div>
                 <p className="mt-3 text-sm text-muted-foreground">
                   Ogni partecipante va a un membro diverso. Chi non è ancora nella lega va invitato prima.
                 </p>
-              ) : null}
-              <button type="button" disabled={!complete || doImport.isPending}
-                onClick={() => doImport.mutate({ files, mapping },
-                  { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
-                className="mt-6 min-h-11 rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
-                {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
-              </button>
-            </section>
-          ) : null}
+                <button type="button" disabled={!ready || !complete || doImport.isPending}
+                  onClick={() => doImport.mutate({ files, mapping },
+                    { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
+                  className={`${BUTTON_PRIMARY} mt-6 px-5`}>
+                  {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
+                </button>
+              </li>
+            </ol>
+          </section>
         </div>
-      </div>
       </PageFrame>
     </AppShell>
+  );
+}
+
+function Step({ n, title }: { n: number; title: string }) {
+  return (
+    <h2 className="flex items-center gap-3 text-lg font-semibold">
+      <span aria-hidden="true"
+        className="grid size-8 shrink-0 place-items-center rounded-lg border border-control-border text-sm font-semibold">{n}</span>
+      {title}
+    </h2>
   );
 }

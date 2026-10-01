@@ -59,10 +59,10 @@ describe('ImportRoute', () => {
     const fetchMock = stub();
     const router = renderImport();
 
-    await userEvent.upload(await screen.findByLabelText('Scegli la cartella dell\'asta'), FILES);
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
     expect(await screen.findByText('Asta del 2025')).toBeInTheDocument();
 
-    const table = screen.getByRole('table', { name: 'Abbinamenti' });
+    const table = screen.getByRole('list', { name: 'Abbinamenti' });
     expect(within(table).getByLabelText('Membro per Marco')).toHaveValue('u2');
     await userEvent.selectOptions(within(table).getByLabelText('Membro per Io'), 'u1');
     await userEvent.click(screen.getByRole('button', { name: 'Importa l\'asta' }));
@@ -77,7 +77,7 @@ describe('ImportRoute', () => {
   it('non importa finche\' manca un abbinamento', async () => {
     stub();
     renderImport();
-    await userEvent.upload(await screen.findByLabelText('Scegli la cartella dell\'asta'), FILES);
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
     await screen.findByText('Asta del 2025');
     expect(screen.getByRole('button', { name: 'Importa l\'asta' })).toBeDisabled();
   });
@@ -85,7 +85,7 @@ describe('ImportRoute', () => {
   it('due partecipanti allo stesso membro: pulsante spento', async () => {
     stub();
     renderImport();
-    await userEvent.upload(await screen.findByLabelText('Scegli la cartella dell\'asta'), FILES);
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
     await screen.findByText('Asta del 2025');
     await userEvent.selectOptions(await screen.findByLabelText('Membro per Io'), 'u2');
     await userEvent.selectOptions(screen.getByLabelText('Membro per Marco'), 'u2');
@@ -95,14 +95,14 @@ describe('ImportRoute', () => {
   it('una cartella senza asta lo dice', async () => {
     stub();
     renderImport();
-    await userEvent.upload(await screen.findByLabelText('Scegli la cartella dell\'asta'), [new File(['x'], 'foto.jpg')]);
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), [new File(['x'], 'foto.jpg')]);
     expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
   });
 
   it('una cartella senza asta scelta dopo una valida cancella l\'anteprima precedente', async () => {
     stub();
     renderImport();
-    const input = await screen.findByLabelText('Scegli la cartella dell\'asta');
+    const input = await screen.findByLabelText('Scegli la cartella', { selector: 'input' });
     await userEvent.upload(input, FILES);
     expect(await screen.findByText('Asta del 2025')).toBeInTheDocument();
 
@@ -110,7 +110,8 @@ describe('ImportRoute', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
     expect(screen.queryByText('Asta del 2025')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Importa l\'asta' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Abbinamenti' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Importa l\'asta' })).toBeDisabled();
   });
 
   it('se le rose non coincidono lo dice e non va avanti', async () => {
@@ -119,9 +120,43 @@ describe('ImportRoute', () => {
       detail: 'Le rose ricostruite non coincidono con quelle dell\'asta originale: l\'importazione è stata annullata.',
     }, 409));
     renderImport();
-    await userEvent.upload(await screen.findByLabelText('Scegli la cartella dell\'asta'), FILES);
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
     await userEvent.selectOptions(await screen.findByLabelText('Membro per Io'), 'u1');
     await userEvent.click(screen.getByRole('button', { name: 'Importa l\'asta' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('non coincidono');
+  });
+
+  it('due passaggi numerati, il secondo spento finche non c e una cartella', async () => {
+    stub();
+    renderImport();
+    const steps = screen.getByRole('list', { name: 'Passaggi' });
+    expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(
+      [expect.stringContaining('Scegli la cartella'), expect.stringContaining('Abbina i partecipanti')]);
+    expect(screen.getByTestId('import-step-2')).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
+    await screen.findByText('Asta del 2025');
+    expect(screen.getByTestId('import-step-2')).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('prima della scelta spiega cosa deve contenere la cartella', () => {
+    stub();
+    renderImport();
+    expect(screen.getByText(/cartella di un'asta giocata con FantaAgent/)).toBeInTheDocument();
+  });
+
+  it('il riquadro ha da subito l altezza del passaggio piu alto', () => {
+    stub();
+    renderImport();
+    expect(screen.getByTestId('import-box').className).toContain('min-h-[55rem]');
+  });
+
+  it('Importa l asta e l unico oro', async () => {
+    stub();
+    renderImport();
+    const container = document.body;
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
+    await screen.findByText('Asta del 2025');
+    expect(container.querySelectorAll('.bg-accent')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Importa l\'asta' }).className).toContain('bg-accent');
   });
 });

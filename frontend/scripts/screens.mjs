@@ -5,7 +5,9 @@
 //
 // Il filtro delle chiamate guarda il percorso, non '**/api/**': quello prenderebbe
 // anche i moduli che Vite serve da /src/api/, e la pagina resterebbe bianca.
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { resolve } from 'node:path';
 import { chromium, webkit } from '@playwright/test';
 
@@ -189,6 +191,10 @@ function respond(method, path, query, authed) {
       { id: 'L2', name: 'Fantaufficio Bar', adminName: 'Sara', members: 10, status: 'MEMBER' },
     ]);
   }
+  if (path === '/api/leagues/L1/imports/preview' && method === 'POST') {
+    return J({ name: 'Asta di settembre 2026', purchases: 187,
+      participants: PEOPLE.map((name, i) => ({ id: `p${i}`, name, initial: name[0] })) });
+  }
   let m = path.match(/^\/api\/leagues\/([^/]+)(\/.*)?$/);
   if (!m) { unknown.add(`${method} ${path}`); return J({ detail: 'x' }, 404); }
   const rest = m[2] ?? '';
@@ -301,6 +307,13 @@ async function open(viewport, authed) {
     return route.fulfill({ status: r.status, contentType: 'application/json', body: JSON.stringify(r.body) });
   });
   return { context, page };
+}
+
+/** Una cartella d'asta finta, perche' il campo della cartella accetta solo un percorso. */
+async function mkAstaDir() {
+  const dir = mkdtempSync(join(tmpdir(), 'asta-'));
+  writeFileSync(join(dir, 'events.jsonl'), '{}');
+  return dir;
 }
 
 async function shot(page, name, path, after) {
@@ -422,7 +435,14 @@ for (const { viewport: vp, tag } of SIZES) {
     await user.page.keyboard.press('Escape');
   }
   await shot(user.page, `10-regole-lega-${tag}`, '/leghe/L1/regole');
-  await shot(user.page, `11-importa-${tag}`, '/leghe/L1/importa');
+  await shot(user.page, `11-importa-${tag}`, '/leghe/L1/importa', async (p) => {
+    console.log(`   importa vuoto: riquadro ${Math.round((await p.getByTestId('import-box').boundingBox()).height)}px`);
+  });
+  await shot(user.page, `11b-importa-abbina-${tag}`, '/leghe/L1/importa', async (p) => {
+    await p.locator('#import-folder').setInputFiles(await mkAstaDir());
+    await p.getByRole('list', { name: 'Abbinamenti' }).waitFor();
+    console.log(`   importa: riquadro ${Math.round((await p.getByTestId('import-box').boundingBox()).height)}px`);
+  });
   await shot(user.page, `12-profilo-${tag}`, '/profilo');
   await shot(user.page, `15-impostazioni-asta-${tag}`, '/leghe/L1/aste/A1/impostazioni');
   await shot(user.page, `16-proiezione-${tag}`, '/leghe/L1/aste/A1/proiezione');
