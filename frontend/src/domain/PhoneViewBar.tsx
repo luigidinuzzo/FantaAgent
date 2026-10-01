@@ -18,11 +18,14 @@ export function PhoneViewBar({
   view,
   onChange,
   controls,
+  className = '',
 }: {
   view: PhoneView;
   onChange: (view: PhoneView) => void;
   /** L'id dell'elemento che ogni vista mostra, per aria-controls. */
   controls: Record<PhoneView, string>;
+  /** Classi di chi la monta: i margini negativi che la portano da bordo a bordo. */
+  className?: string;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<PhoneView, HTMLButtonElement | null>>({
@@ -54,7 +57,7 @@ export function PhoneViewBar({
   }
 
   return (
-    <div className="lg:hidden sticky bottom-0 z-30 border-t border-panel-border bg-bar">
+    <div className={`lg:hidden sticky bottom-0 z-30 border-t border-panel-border bg-bar ${className}`}>
       <div ref={listRef} role="tablist" aria-label="Viste dell'asta" className="grid grid-cols-4">
         {PHONE_VIEWS.map(({ key, label }) => {
           const selected = view === key;

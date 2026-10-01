@@ -142,7 +142,10 @@ export function PlayerDecisionCard({
               racconto: dove ti fermi, quanto lo paghera' il tavolo, quanto ci
               guadagni. La quotazione di listino non e' qui: e' un dato del
               giocatore, come la squadra, e sta nella testata. */}
-          <dl className="grid w-fit grid-cols-[auto_auto_auto_auto] items-baseline gap-x-8">
+          {/* Sotto sm la riga dei quattro numeri usciva dal riquadro del
+              telefono: il tetto resta su una riga sua, intera, e mercato,
+              margine e quanto puoi offrire stanno in tre colonne sotto. */}
+          <dl className="grid w-fit grid-cols-[auto_auto_auto_auto] items-baseline gap-x-8 max-sm:w-full max-sm:grid-cols-3 max-sm:gap-x-4">
             {/* dt PRIMA del suo dd nel sorgente, come vuole una lista di
                 definizioni: e' anche l'ordine in cui conviene sentirli letti —
                 «il tuo tetto, quaranta». Che l'etichetta appaia SOTTO il numero
@@ -150,10 +153,10 @@ export function PlayerDecisionCard({
             {/* «il tuo tetto» resta il nome breve, lo stesso della tabella e del
                 banco; accanto, cosa vuol dire. Il limite assoluto, a destra, si
                 chiama «mai oltre»: due «tetti» non dicevano quale valesse. */}
-            <dt className="col-start-1 row-start-2 mt-2 text-sm text-muted-foreground">
+            <dt className="col-start-1 row-start-2 mt-2 text-sm text-muted-foreground max-sm:col-span-3">
               il tuo tetto, fin qui conviene
             </dt>
-            <dd className="col-start-1 row-start-1 flex items-baseline gap-x-4">
+            <dd className="col-start-1 row-start-1 flex items-baseline gap-x-4 max-sm:col-span-3">
               <span
                 data-testid="max-bid"
                 className={`tnum w-exp text-[80px] font-extrabold leading-[0.82] tracking-tight ${
@@ -173,22 +176,22 @@ export function PlayerDecisionCard({
               </span>
             </dd>
 
-            <dt className="col-start-2 row-start-2 mt-2 text-sm text-muted-foreground">
+            <dt className="col-start-2 row-start-2 mt-2 text-sm text-muted-foreground max-sm:col-start-1 max-sm:row-start-4">
               mercato
             </dt>
             <dd
               data-testid="expected-price"
-              className="tnum w-exp col-start-2 row-start-1 text-3xl font-semibold leading-none"
+              className="tnum w-exp col-start-2 row-start-1 text-3xl font-semibold leading-none max-sm:col-start-1 max-sm:row-start-3 max-sm:mt-5"
             >
               {valuation.expectedPrice}
             </dd>
 
-            <dt className="col-start-3 row-start-2 mt-2 text-sm text-muted-foreground">
+            <dt className="col-start-3 row-start-2 mt-2 text-sm text-muted-foreground max-sm:col-start-2 max-sm:row-start-4">
               margine
             </dt>
             <dd
               data-testid="margin"
-              className={`tnum w-exp col-start-3 row-start-1 text-3xl font-semibold leading-none ${verdictColor}`}
+              className={`tnum w-exp col-start-3 row-start-1 text-3xl font-semibold leading-none max-sm:col-start-2 max-sm:row-start-3 max-sm:mt-5 ${verdictColor}`}
             >
               {signed(valuation.margin)}
             </dd>
@@ -218,14 +221,14 @@ export function PlayerDecisionCard({
                     margine parlano del GIOCATORE, questo parla di TE. Numeri in
                     fila allo stesso corpo si leggevano come un elenco solo, e
                     l'occhio li sommava. */}
-                <dt className="col-start-4 row-start-2 mt-2 border-l border-line pl-8 text-sm text-muted-foreground">
+                <dt className="col-start-4 row-start-2 mt-2 border-l border-line pl-8 text-sm text-muted-foreground max-sm:col-start-3 max-sm:row-start-4 max-sm:pl-4">
                   {roleFull(me, valuation.role)
                     ? `${ROLE_NAME_PLURAL[valuation.role]} al completo`
                     : 'puoi offrire'}
                 </dt>
                 <dd
                   data-testid="affordable"
-                  className="tnum w-exp col-start-4 row-start-1 border-l border-line pl-8 text-3xl font-semibold leading-none"
+                  className="tnum w-exp col-start-4 row-start-1 border-l border-line pl-8 text-3xl font-semibold leading-none max-sm:col-start-3 max-sm:row-start-3 max-sm:mt-5 max-sm:pl-4"
                 >
                   {roleFull(me, valuation.role) ? '—' : valuation.hardCap}
                 </dd>

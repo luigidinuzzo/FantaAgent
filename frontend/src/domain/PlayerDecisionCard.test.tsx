@@ -72,6 +72,21 @@ describe('PlayerDecisionCard', () => {
     expect(screen.getByText('difensori al completo')).toBeInTheDocument();
   });
 
+  // Sul telefono la riga dei quattro numeri usciva dal riquadro: sotto sm il tetto
+  // resta da solo, e gli altri tre stanno in tre colonne sotto di lui.
+  it('sotto sm il tetto su una riga sua, gli altri tre numeri in tre colonne sotto', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} me={ME} />);
+    const dl = screen.getByTestId('max-bid').closest('dl')!;
+    expect(dl.className).toContain('max-sm:grid-cols-3');
+    expect(dl.className).toContain('max-sm:w-full');
+    expect(screen.getByTestId('max-bid').closest('dd')!.className).toContain('max-sm:col-span-3');
+    for (const [id, col] of [['expected-price', 1], ['margin', 2], ['affordable', 3]] as const) {
+      const dd = screen.getByTestId(id);
+      expect(dd.className).toContain('max-sm:row-start-3');
+      expect(dd.className).toContain(`max-sm:col-start-${col}`);
+    }
+  });
+
   it('mostra il tetto come numero dominante', () => {
     render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
     const maxBid = screen.getByTestId('max-bid');

@@ -680,7 +680,7 @@ export function AuctionRoute() {
           corrente e rose —, a destra i consigli: a riposo le occasioni della
           fase e la tua rosa, col lotto il perche' del prezzo e le alternative. Una griglia sola, i
           figli messi a posto per riga e colonna: nel documento restano
-          nell'ordine crediti, ricerca, banco, consigli, schede. Sotto lg ogni
+          nell'ordine ricerca, crediti, banco, consigli, schede. Sotto lg ogni
           sezione appartiene a una delle viste del telefono e le altre sono
           nascoste: si vede la ricerca, poi le sezioni della vista scelta,
           nell'ordine del documento. */}
@@ -756,13 +756,6 @@ export function AuctionRoute() {
             : 'lg:h-[max(calc(var(--banco-h)+19.75rem),calc(100dvh-var(--header-h)-var(--commands-h)-2rem))] lg:grid-cols-[14.5rem_minmax(0,1fr)_20.5rem] lg:grid-rows-[3rem_var(--banco-h)_minmax(14.75rem,1fr)]'
         }`}
       >
-        <ParticipantsColumn
-          id={teamsId}
-          participants={participants}
-          phase={state.data?.currentPhase}
-          className={`lg:col-start-1 lg:row-start-1 ${seated === false ? 'lg:row-span-2' : 'lg:row-span-3'} ${shownOnPhone('squadre')}`}
-        />
-
         {/* La stessa selezione della tabella di fase, non un secondo percorso:
             un giocatore scelto qui passa per selectPlayer esattamente come una
             riga cliccata, quindi valutazione, banco e aggiudicazione si
@@ -782,6 +775,17 @@ export function AuctionRoute() {
         >
           <PlayerSearchBox onSelect={selectPlayer} onActiveChange={setSearchActive} sold={sold} />
         </div>
+
+        {/* Dopo la ricerca nel documento: sul telefono, nella vista Squadre, la
+            ricerca resta in cima come nelle altre viste. Da lg il posto lo
+            decidono le classi della griglia, e la colonna non ha controlli che
+            cambino l'ordine della tastiera. */}
+        <ParticipantsColumn
+          id={teamsId}
+          participants={participants}
+          phase={state.data?.currentPhase}
+          className={`lg:col-start-1 lg:row-start-1 ${seated === false ? 'lg:row-span-2' : 'lg:row-span-3'} ${shownOnPhone('squadre')}`}
+        />
 
         {/* Il banco e' un posto fisso in pagina, non un riquadro che appare e
             scompare: sta sempre sotto la ricerca, vuoto finche' nessuno e' sul
@@ -813,7 +817,9 @@ export function AuctionRoute() {
             {lot ? (
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span id={bancoPrefixId} className="sr-only">Sul banco ·</span>
-                <h2 id={bidderPanelId} className="w-exp min-w-0 truncate text-2xl font-semibold">
+                {/* Va a capo invece di troncarsi: sul telefono, accanto a «Togli
+                    dal banco», un nome lungo finiva in «Carnesecc…». */}
+                <h2 id={bidderPanelId} className="w-exp min-w-0 break-words text-2xl font-semibold">
                   {lot.name}
                 </h2>
                 {/* La pillola centrata sull'altezza del nome: sulla linea di base
@@ -1011,8 +1017,10 @@ export function AuctionRoute() {
                 {/* Cambiare pagina non tocca selectedId: un giocatore scelto in
                     una pagina precedente resta scelto (valutazione e banco
                     intatti, se aperto) anche se la sua riga scorre fuori vista
-                    sfogliando. */}
-                <div className="lg:col-start-3 lg:row-start-1 lg:flex lg:items-center lg:pl-3 lg:pr-2 lg:text-muted-foreground">
+                    sfogliando. Sotto lg le frecce stanno in cima al pannello, con
+                    12px sotto; senza pagine da voltare il contenitore e' vuoto e
+                    sparisce, cosi' non lascia spazio. */}
+                <div className="max-lg:mb-3 max-lg:empty:hidden lg:col-start-3 lg:row-start-1 lg:flex lg:items-center lg:pl-3 lg:pr-2 lg:text-muted-foreground">
                   <PhasePager
                     compact
                     offset={phase.data.offset}
@@ -1032,7 +1040,7 @@ export function AuctionRoute() {
               id="tabpanel-fase"
               aria-labelledby="tab-fase"
               hidden={activeTab !== 'fase'}
-              className="max-lg:mt-4 lg:col-span-3 lg:row-start-3 lg:min-h-0 lg:border-t lg:border-line"
+              className="lg:col-span-3 lg:row-start-3 lg:min-h-0 lg:border-t lg:border-line"
             >
               {activeTab === 'fase' ? (
                 <>
@@ -1063,7 +1071,7 @@ export function AuctionRoute() {
               id="tabpanel-rose"
               aria-labelledby="tab-rose"
               hidden={activeTab !== 'rose'}
-              className="max-lg:mt-4 lg:col-span-3 lg:row-start-3 lg:min-h-0 lg:border-t lg:border-line lg:p-3"
+              className="lg:col-span-3 lg:row-start-3 lg:min-h-0 lg:border-t lg:border-line lg:p-3"
             >
               {/* Montata solo quando la scheda e' quella attiva: legge /board (e
                   le capacita' per ruolo da /state) da se', e non c'e' motivo di
@@ -1083,6 +1091,9 @@ export function AuctionRoute() {
 
       {phoneViews ? (
         <PhoneViewBar
+          // Da bordo a bordo e fino in fondo: i margini negativi annullano quelli
+          // della pagina (p-4, da md p-6), che la barra non deve avere.
+          className="-mx-4 -mb-4 md:-mx-6 md:-mb-6"
           view={phoneView}
           onChange={changePhoneView}
           controls={{

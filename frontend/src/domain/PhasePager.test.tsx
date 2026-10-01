@@ -73,7 +73,10 @@ describe('PhasePager', () => {
   // Nella riga delle schede: due frecce e il conteggio, stessi nomi per chi ascolta.
   it('compatto: due frecce con lo stesso nome dei bottoni di sempre', () => {
     render(<PhasePager compact offset={0} pageSize={25} total={40} hasPrevious={false} hasNext onPrevious={() => {}} onNext={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Pagina successiva' })).toHaveTextContent('›');
+    // Le frecce a ogni misura: sotto lg le parole intere mandavano il controllo su due righe.
+    expect(screen.getByRole('button', { name: 'Pagina successiva' }).textContent).toBe('›');
+    expect(screen.getByRole('button', { name: 'Pagina precedente' }).textContent).toBe('‹');
+    expect(screen.getByRole('navigation').className).not.toContain('mt-3');
     expect(screen.getByRole('button', { name: 'Pagina precedente' })).toBeDisabled();
     expect(screen.getByText('1–25 di 40')).toBeInTheDocument();
   });

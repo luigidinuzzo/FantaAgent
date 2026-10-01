@@ -23,6 +23,13 @@ describe('PhoneViewBar', () => {
     expect(screen.getByRole('tablist', { name: "Viste dell'asta" }).parentElement?.className).toContain('lg:hidden');
   });
 
+  it('chi la monta le aggiunge classi, per annullare i margini della pagina', () => {
+    render(<PhoneViewBar view="banco" onChange={() => {}} controls={CONTROLS} className="-mx-4" />);
+    const bar = screen.getByRole('tablist', { name: "Viste dell'asta" }).parentElement!;
+    expect(bar.className).toContain('-mx-4');
+    expect(bar.className).toContain('lg:hidden');
+  });
+
   it('le frecce scelgono la vista vicina e ci portano il fuoco', async () => {
     const onChange = vi.fn();
     const { rerender } = render(<PhoneViewBar view="banco" onChange={onChange} controls={CONTROLS} />);

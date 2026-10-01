@@ -2102,6 +2102,44 @@ describe('AuctionRoute', () => {
       expect(strip.className).toContain('lg:hidden');
     });
 
+    it('la ricerca viene prima delle squadre, anche nella vista Squadre', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      const crediti = await screen.findByRole('region', { name: 'Crediti delle squadre' });
+      const ricerca = screen.getByRole('searchbox', { name: /cerca giocatore/i });
+      expect(ricerca.compareDocumentPosition(crediti) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('la barra delle viste va da bordo a bordo, fino in fondo alla pagina', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      const bar = (await screen.findByRole('tablist', { name: "Viste dell'asta" })).parentElement!;
+      // Annulla i margini della pagina (p-4, da md p-6) ai lati e sotto.
+      expect(bar.className).toContain('-mx-4');
+      expect(bar.className).toContain('md:-mx-6');
+      expect(bar.className).toContain('-mb-4');
+      expect(bar.className).toContain('md:-mb-6');
+    });
+
+    it('nelle viste Giocatori e Rose nessuno spazio vuoto in cima al pannello', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      await screen.findByRole('tablist', { name: "Viste dell'asta" });
+      expect(document.getElementById('tabpanel-fase')!.className).not.toContain('max-lg:mt-4');
+      expect(document.getElementById('tabpanel-rose')!.className).not.toContain('max-lg:mt-4');
+    });
+
+    it('il nome del giocatore sul banco si legge intero: va a capo, non si tronca', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      await userEvent.click(await screen.findByRole('button', { name: 'Valuta Giocatore Uno' }));
+      const banco = await screen.findByRole('region', { name: 'Sul banco · Giocatore Uno' });
+      const nome = within(banco).getByRole('heading', { level: 2, name: 'Giocatore Uno' });
+      expect(nome.className).not.toContain('truncate');
+      expect(nome.className).not.toContain('line-clamp');
+      expect(nome.className).toContain('break-words');
+    });
+
     it('il banditore ha il menu «Comandi»; chi non lo e no', async () => {
       stubApi({ state: STATE });
       renderAuction();
