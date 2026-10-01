@@ -138,8 +138,9 @@ function AuctionsPanel({ leagueId, admin, create, quiet, wide }: {
   /** Una finestra della pagina ha l'alert: il messaggio resta, senza annunciarsi. */
   quiet: boolean;
   /**
-   * A tutta larghezza (nessuna richiesta accanto): da xl le righe in due colonne,
-   * perche' «Entra» resti vicino al nome come quando il pannello e' largo due terzi.
+   * A tutta larghezza (nessuna richiesta accanto): nome e bottoni di ogni riga in un
+   * gruppo largo al piu' 48rem, perche' «Entra» resti vicino al nome come quando il
+   * pannello e' largo due terzi. I divisori restano a tutta larghezza.
    */
   wide: boolean;
 }) {
@@ -217,8 +218,7 @@ function AuctionsPanel({ leagueId, admin, create, quiet, wide }: {
         </p>
       ) : null}
       {auctions.data && auctions.data.length > 0 ? (
-        <ul aria-label="Aste" className={`border-t border-line [&>li+li]:border-t [&>li]:border-line ${
-          wide ? 'xl:grid xl:grid-cols-2 xl:[&>li:nth-child(2)]:border-t-0' : ''}`}>
+        <ul aria-label="Aste" className="divide-y divide-line border-t border-line">
           {auctions.data.map((a) => {
             const status = auctionStatus(a);
             const detail = [
@@ -228,22 +228,24 @@ function AuctionsPanel({ leagueId, admin, create, quiet, wide }: {
             ].filter(Boolean).join(' · ');
             return (
               <li key={a.id} className={ROW}>
-                <span className="min-w-0 flex-1">
-                  <span className="block break-words font-semibold">{a.name}</span>
-                  <span className="block text-sm text-muted-foreground">{detail}</span>
-                </span>
-                <Link to={`/leghe/${leagueId}/aste/${a.id}`} aria-label={`Entra in ${a.name}`}
-                  className={`shrink-0 ${BUTTON_SECONDARY}`}>
-                  Entra
-                </Link>
-                {admin ? (
-                  <AuctionAdminMenu
-                    settingsHref={`/leghe/${leagueId}/aste/${a.id}/impostazioni`}
-                    onRename={() => setRenaming({ id: a.id, label: a.name })}
-                    onDelete={() => setDeleting({ id: a.id, label: a.name })}
-                    label={a.name}
-                  />
-                ) : null}
+                <div className={`flex min-w-0 flex-1 items-center gap-3 ${wide ? 'max-w-[48rem]' : ''}`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words font-semibold">{a.name}</span>
+                    <span className="block text-sm text-muted-foreground">{detail}</span>
+                  </span>
+                  <Link to={`/leghe/${leagueId}/aste/${a.id}`} aria-label={`Entra in ${a.name}`}
+                    className={`shrink-0 ${BUTTON_SECONDARY}`}>
+                    Entra
+                  </Link>
+                  {admin ? (
+                    <AuctionAdminMenu
+                      settingsHref={`/leghe/${leagueId}/aste/${a.id}/impostazioni`}
+                      onRename={() => setRenaming({ id: a.id, label: a.name })}
+                      onDelete={() => setDeleting({ id: a.id, label: a.name })}
+                      label={a.name}
+                    />
+                  ) : null}
+                </div>
               </li>
             );
           })}

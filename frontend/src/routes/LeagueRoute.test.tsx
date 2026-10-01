@@ -174,27 +174,29 @@ describe('LeagueRoute', () => {
     expect(done).toHaveTextContent('Conclusa · ti restano 3 crediti');
   });
 
-  // Senza richieste le aste vanno a tutta larghezza: da xl in due colonne, perche'
-  // «Entra» resti vicino al nome invece che a 1300px di distanza.
-  it('senza richieste, da xl le aste stanno in due colonne', async () => {
+  // Senza richieste le aste vanno a tutta larghezza: una colonna sola (niente
+  // ultima fila zoppa), e nome e bottoni stanno in un gruppo largo al piu' 48rem,
+  // perche' «Entra» resti vicino al nome invece che a 1300px di distanza.
+  it('senza richieste, nome e bottoni di ogni asta stanno in 48rem', async () => {
     const second = { ...AUCTION, id: 'a2', name: 'Asta di riparazione' };
     stub(true, { 'GET /api/leagues/l1/auctions': () => json([AUCTION, second]) });
     renderLeague();
-    const wide = await screen.findByRole('list', { name: 'Aste' });
-    expect(wide.className).toContain('xl:grid-cols-2');
-    // Il divisore sotto l'intestazione e' della lista; fra le righe e' delle righe,
-    // e in due colonne la seconda della prima fila non ne ha.
-    expect(wide.className).toContain('xl:[&>li:nth-child(2)]:border-t-0');
+    const list = await screen.findByRole('list', { name: 'Aste' });
+    expect(list.className).not.toMatch(/grid-cols/);
+    const entra = within(list).getByRole('link', { name: 'Entra in Asta estiva 2026' });
+    expect(entra.parentElement!.className).toContain('max-w-[48rem]');
+    expect(entra.parentElement!.textContent).toContain('Asta estiva 2026');
   });
 
-  it('con le richieste le aste restano in una colonna', async () => {
+  it('con le richieste i bottoni restano al bordo del pannello', async () => {
     stub(true, {
       'GET /api/leagues/l1/auctions': () => json([AUCTION]),
       'GET /api/leagues/l1/join-requests': () => json([REQUEST]),
     });
     renderLeague();
     await screen.findByRole('list', { name: 'Richieste di ingresso' });
-    expect(screen.getByRole('list', { name: 'Aste' }).className).not.toContain('xl:grid-cols-2');
+    const entra = within(screen.getByRole('list', { name: 'Aste' })).getByRole('link', { name: 'Entra in Asta estiva 2026' });
+    expect(entra.parentElement!.className).not.toContain('max-w-[48rem]');
   });
 
   it('ogni asta ha Entra e il menu', async () => {
