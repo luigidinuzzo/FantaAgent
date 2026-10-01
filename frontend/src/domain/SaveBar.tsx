@@ -1,0 +1,42 @@
+import { BUTTON_PRIMARY, BUTTON_SECONDARY } from './controls';
+
+/** L'altezza della barra e lo spazio che il contenuto lascia sotto di se'. */
+export const SAVE_BAR_H = 'h-18';
+export const SAVE_BAR_SPACE = 'pb-24';
+
+/**
+ * L'unica barra di salvataggio delle impostazioni: ferma in fondo alla finestra,
+ * sempre della stessa altezza. Senza modifiche dice «Tutto salvato» e non ha
+ * niente da premere; con modifiche offre «Annulla» e il salvataggio (l'oro della
+ * pagina). Un errore di salvataggio e' l'unico role="alert" della pagina.
+ */
+export function SaveBar({ dirty, pending, error, saveLabel, onSave, onReset }: {
+  dirty: boolean;
+  pending: boolean;
+  error: string | null;
+  saveLabel: string;
+  onSave: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <div className={`fixed inset-x-0 bottom-0 z-20 ${SAVE_BAR_H} border-t border-panel-border bg-bar pb-[env(safe-area-inset-bottom)]`}>
+      <div className="mx-auto flex h-full max-w-[96rem] items-center gap-3 px-4 md:px-6">
+        <p className="min-w-0 flex-1 truncate text-sm">
+          {error ? (
+            <span role="alert" className="font-medium text-destructive">{error}</span>
+          ) : (
+            <span className={dirty ? 'text-foreground' : 'text-muted-foreground'}>
+              {dirty ? 'Modifiche non salvate' : 'Tutto salvato'}
+            </span>
+          )}
+        </p>
+        <button type="button" disabled={!dirty || pending} onClick={onReset} className={BUTTON_SECONDARY}>
+          Annulla
+        </button>
+        <button type="button" disabled={!dirty || pending} onClick={onSave} className={`${BUTTON_PRIMARY} px-5`}>
+          {pending ? 'Salvo…' : saveLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
