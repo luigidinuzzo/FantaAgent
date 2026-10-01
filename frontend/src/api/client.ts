@@ -251,3 +251,18 @@ export function fieldErrors(error: unknown): Record<string, string[]> {
   }
   return {};
 }
+
+/**
+ * Il messaggio sotto un modulo, o null. Gli errori dei campi che il modulo mostra
+ * stanno sotto i campi; quelli di un campo che il modulo non ha (l'iniziale, che non
+ * si chiede piu') si dicono qui, invece di sparire: un rifiuto senza una parola
+ * lascia chi ha premuto il bottone a chiedersi se l'ha premuto.
+ */
+export function formMessage(error: unknown, shown: string[], fallback: string): string | null {
+  if (!error) return null;
+  const errors = fieldErrors(error);
+  const keys = Object.keys(errors);
+  if (keys.length === 0) return userMessage(error, fallback);
+  const orphans = keys.filter((k) => !shown.includes(k)).flatMap((k) => errors[k] ?? []);
+  return orphans.length > 0 ? orphans.join(' ') : null;
+}

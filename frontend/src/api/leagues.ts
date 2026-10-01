@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, apiUpload } from './client';
 import type {
   BidderSettings, CreatedInvite, ImportPreview, ImportResult, InvitePreview, InviteView, JoinRequestView,
-  LeagueAuctionCard, LeagueCard, LeagueDetail, LeagueMatch, MyJoinRequest, LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
+  LeagueAuctionCard, LeagueCard, LeagueDetail, LeagueMatch, MyAuction, MyJoinRequest, LeagueRulesResponse, SaveLeagueRulesRequest, SeatInput, SeatsView,
 } from './types';
 
 const path = (id: string) => `/api/leagues/${encodeURIComponent(id)}`;
@@ -18,6 +18,7 @@ export const LEAGUE_KEYS = {
   joinRequests: (id: string) => ['leagues', id, 'join-requests'] as const,
   search: (text: string) => ['league-search', text] as const,
   myRequests: ['my-join-requests'] as const,
+  myAuctions: ['my-auctions'] as const,
 };
 
 /** Le leghe cambiano quando qualcuno entra o ne crea una: niente interrogazioni periodiche. */
@@ -27,12 +28,23 @@ export function useLeagues() {
   return useQuery({ queryKey: LEAGUE_KEYS.all, queryFn: () => api<LeagueCard[]>('/api/leagues'), ...STILL });
 }
 
+/**
+ * Le tue aste in tutte le leghe, per la home. Cambiano quando si compra: si
+ * rileggono tornando sulla pagina, non a intervalli.
+ */
+export function useMyAuctions() {
+  return useQuery({ queryKey: LEAGUE_KEYS.myAuctions, queryFn: () => api<MyAuction[]>('/api/auctions'), ...STILL });
+}
+
 export function useCreateLeague() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (body: { name: string; teamName: string }) =>
       api<LeagueDetail>('/api/leagues', { method: 'POST', body }),
-    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+    ]),
   });
 }
 
@@ -117,7 +129,10 @@ export function useAcceptInvite(token: string) {
   return useMutation({
     mutationFn: (body: { teamName: string }) =>
       api<LeagueCard>(`/api/invites/${encodeURIComponent(token)}/accept`, { method: 'POST', body }),
-    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+    ]),
   });
 }
 
@@ -193,6 +208,7 @@ export function useDecideJoin(leagueId: string) {
       client.invalidateQueries({ queryKey: LEAGUE_KEYS.joinRequests(leagueId) }),
       client.invalidateQueries({ queryKey: LEAGUE_KEYS.one(leagueId), exact: true }),
       client.invalidateQueries({ queryKey: LEAGUE_KEYS.all, exact: true }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
     ]),
   });
 }
@@ -209,7 +225,10 @@ export function useCreateAuction(leagueId: string) {
   return useMutation({
     mutationFn: (name: string) =>
       api<LeagueAuctionCard>(`${path(leagueId)}/auctions`, { method: 'POST', body: { name } }),
-    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+    ]),
   });
 }
 
@@ -218,7 +237,10 @@ export function useUpdateAuction(leagueId: string) {
   return useMutation({
     mutationFn: ({ auctionId, ...body }: { auctionId: string; name?: string; bidder?: BidderSettings }) =>
       api<null>(`${path(leagueId)}/auctions/${encodeURIComponent(auctionId)}`, { method: 'PATCH', body }),
-    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+    ]),
   });
 }
 
@@ -227,7 +249,10 @@ export function useDeleteAuction(leagueId: string) {
   return useMutation({
     mutationFn: (auctionId: string) =>
       api<null>(`${path(leagueId)}/auctions/${encodeURIComponent(auctionId)}`, { method: 'DELETE' }),
-    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+    ]),
   });
 }
 
@@ -260,7 +285,10 @@ export function useRemoveMember(leagueId: string) {
     // Non si aspetta il ricaricamento: chi ha appena lasciato la lega non puo' piu'
     // rileggerla (404, piu' un tentativo), e aspettarlo lo terrebbe su una pagina
     // d'errore per un secondo prima di portarlo all'elenco delle leghe.
-    onSuccess: () => { void client.invalidateQueries({ queryKey: LEAGUE_KEYS.all }); },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: LEAGUE_KEYS.all });
+      void client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions });
+    },
   });
 }
 
@@ -310,6 +338,9 @@ export function useImportAuction(leagueId: string) {
       form.append('mapping', new Blob([JSON.stringify(mapping)], { type: 'application/json' }));
       return apiUpload<ImportResult>(`${path(leagueId)}/imports`, form);
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+    ]),
   });
 }

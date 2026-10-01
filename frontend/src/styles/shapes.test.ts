@@ -19,8 +19,10 @@ const PILLS = new Map([
   ['domain/RoleBadge.tsx', 1],
   // Il pallino dello stato della connessione.
   ['domain/ConnectionStatus.tsx', 1],
-  // Il conteggio delle richieste da decidere, e il numero dei passi «come si comincia».
-  ['routes/LeaguesRoute.tsx', 2],
+  // Il conteggio delle richieste da decidere.
+  ['routes/LeaguesRoute.tsx', 1],
+  // Lo stato di un'asta nella home: «In corso», «Da iniziare».
+  ['domain/MyAuctionCard.tsx', 1],
   // L'iniziale di un membro.
   ['routes/LeagueRoute.tsx', 1],
   // La riga dello scheletro mentre le regole si caricano.

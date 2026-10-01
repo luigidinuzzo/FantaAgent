@@ -222,6 +222,24 @@ export interface LeagueCard {
   pendingRequests: number;
 }
 
+/**
+ * Un'asta in cui ho un posto, di una qualunque delle mie leghe: la home le
+ * mostra tutte insieme. Specchio di {@code MyAuctionView}.
+ */
+export interface MyAuction {
+  id: string;
+  leagueId: string;
+  leagueName: string;
+  name: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'CONCLUDED';
+  phase: Role;
+  budgetRemaining: number;
+  slotsRemaining: number;
+  lastActivity: string;
+  /** Vero se amministro la lega dell'asta. */
+  admin: boolean;
+}
+
 /** Una lega trovata cercandone il nome. Specchio di {@code LeagueDtos.LeagueMatchView}. */
 export interface LeagueMatch {
   id: string;

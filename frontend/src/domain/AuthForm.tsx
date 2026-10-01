@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { HalfPitch } from './HalfPitch';
 import { Wordmark } from './Wordmark';
 import { FieldErrors } from './FieldErrors';
@@ -61,7 +61,7 @@ export function AuthLayout({ title, children }: { title: string; children: React
 }
 
 export function TextField({
-  id, label, type = 'text', autoComplete, value, onChange, errors = [], hint,
+  id, label, type = 'text', autoComplete, value, onChange, errors = [], hint, ref,
 }: {
   id: string;
   label: string;
@@ -71,6 +71,8 @@ export function TextField({
   onChange: (value: string) => void;
   errors?: string[];
   hint?: string;
+  /** Per chi deve dargli il fuoco, come la finestra che si apre. */
+  ref?: Ref<HTMLInputElement>;
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorsId = errors.length > 0 ? `${id}-errors` : undefined;
@@ -79,6 +81,7 @@ export function TextField({
     <div className="mt-4 first:mt-0">
       <label htmlFor={id} className="block text-sm font-medium">{label}</label>
       <input
+        ref={ref}
         id={id}
         type={type}
         autoComplete={autoComplete}

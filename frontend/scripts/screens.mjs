@@ -125,6 +125,25 @@ const leagues = [
   { id: 'L2', name: 'Fantaufficio', admin: false, teamName: 'Scarsenal', initial: 'S', members: 10, auctions: 1, pendingRequests: 0 },
   { id: 'L3', name: 'Calcetto del giovedì', admin: false, teamName: 'Dinamo Spritz', initial: 'D', members: 6, auctions: 2, pendingRequests: 0 },
 ];
+// Le aste di tutte le leghe, per la home: due in corso, una da iniziare, quattro
+// concluse (piu' delle tre che si vedono prima di «Mostra tutte»).
+const myAuctions = [
+  { id: 'A1', leagueId: 'L1', leagueName: 'Lega dei Colizzati', name: 'Asta estiva 2026', status: 'IN_PROGRESS',
+    phase: 'C', budgetRemaining: participants[0].budgetRemaining, slotsRemaining: participants[0].slotsRemaining,
+    lastActivity: '2026-09-28T21:10:00Z', admin: true },
+  { id: 'A5', leagueId: 'L3', leagueName: 'Calcetto del giovedì', name: 'Asta del giovedì', status: 'IN_PROGRESS',
+    phase: 'D', budgetRemaining: 214, slotsRemaining: 17, lastActivity: '2026-09-26T22:40:00Z', admin: false },
+  { id: 'A6', leagueId: 'L2', leagueName: 'Fantaufficio', name: 'Asta di settembre', status: 'NOT_STARTED',
+    phase: 'P', budgetRemaining: 500, slotsRemaining: 25, lastActivity: '2026-09-20T09:00:00Z', admin: false },
+  { id: 'A2', leagueId: 'L1', leagueName: 'Lega dei Colizzati', name: 'Asta di riparazione', status: 'CONCLUDED',
+    phase: 'A', budgetRemaining: 12, slotsRemaining: 0, lastActivity: '2026-01-12T22:00:00Z', admin: true },
+  { id: 'A7', leagueId: 'L3', leagueName: 'Calcetto del giovedì', name: 'Asta estiva 2025', status: 'CONCLUDED',
+    phase: 'A', budgetRemaining: 3, slotsRemaining: 0, lastActivity: '2025-09-14T23:00:00Z', admin: false },
+  { id: 'A8', leagueId: 'L2', leagueName: 'Fantaufficio', name: 'Asta 2025', status: 'CONCLUDED',
+    phase: 'A', budgetRemaining: 0, slotsRemaining: 0, lastActivity: '2025-09-02T22:30:00Z', admin: false },
+  { id: 'A9', leagueId: 'L1', leagueName: 'Lega dei Colizzati', name: 'Asta estiva 2025', status: 'CONCLUDED',
+    phase: 'A', budgetRemaining: 7, slotsRemaining: 0, lastActivity: '2025-08-30T23:30:00Z', admin: true },
+];
 const rules = {
   bidder, canEdit: true, rules: { budget: 500, slots: SLOTS },
   scoring: {
@@ -162,6 +181,7 @@ function respond(method, path, query, authed) {
     return J([{ leagueId: 'L9', leagueName: 'Serie Zeta', teamName: 'Longobarda', requestedAt: '2026-09-27T10:00:00Z' }]);
   }
   if (path === '/api/leagues') return J(leagues);
+  if (path === '/api/auctions') return J(myAuctions);
   if (path === '/api/leagues/search') {
     return J([
       { id: 'L7', name: 'Lega Bar Sport', adminName: 'Paolo', members: 9, status: 'NONE' },
@@ -347,10 +367,16 @@ for (const { viewport: vp, tag } of SIZES) {
 
   const user = await open(vp, true);
   await shot(user.page, `08-le-mie-leghe-${tag}`, '/');
-  await shot(user.page, `08b-le-mie-leghe-ricerca-${tag}`, null, async (p) => {
-    await p.getByLabel('Cerca la lega').fill('lega bar');
+  await shot(user.page, `08c-crea-lega-${tag}`, null, async (p) => {
+    await p.getByRole('button', { name: 'Crea una lega' }).first().click();
+  });
+  await user.page.keyboard.press('Escape');
+  await shot(user.page, `08d-unisciti-${tag}`, null, async (p) => {
+    await p.getByRole('button', { name: 'Unisciti a una lega' }).first().click();
+    await p.getByLabel('Cerca la lega').fill('bar');
     await p.waitForTimeout(600);
   });
+  await user.page.keyboard.press('Escape');
   await shot(user.page, `09-lega-${tag}`, '/leghe/L1');
   await shot(user.page, `10-regole-lega-${tag}`, '/leghe/L1/regole');
   await shot(user.page, `11-importa-${tag}`, '/leghe/L1/importa');
