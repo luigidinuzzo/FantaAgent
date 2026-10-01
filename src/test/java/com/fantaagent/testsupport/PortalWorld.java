@@ -33,19 +33,32 @@ public final class PortalWorld {
     public static final ObjectMapper JSON = JsonMapper.builder().addModule(new JavaTimeModule()).build();
     public static final List<Role> PHASES = List.of(Role.P, Role.D, Role.C, Role.A);
 
-    public final DataSource ds = SharedPostgres.migratedDatabase();
-    public final JdbcClient jdbc = JdbcClient.create(ds);
+    public final DataSource ds;
+    public final JdbcClient jdbc;
     public final MutableClock clock = new MutableClock(Instant.parse("2026-09-28T20:00:00Z"));
-    public final SpringTransactions tx =
-            new SpringTransactions(new TransactionTemplate(new DataSourceTransactionManager(ds)));
-    public final JdbcLeagueRepository leagueRepository = new JdbcLeagueRepository(jdbc, JSON);
-    public final JdbcAuctionRepository auctionRepository = new JdbcAuctionRepository(jdbc, JSON);
-    public final JdbcAuctionEventStores stores = new JdbcAuctionEventStores(jdbc, JSON);
+    public final SpringTransactions tx;
+    public final JdbcLeagueRepository leagueRepository;
+    public final JdbcAuctionRepository auctionRepository;
+    public final JdbcAuctionEventStores stores;
     public final PlayerCatalog catalog = Fixtures.catalog();
-    public final LeagueService leagues =
-            new LeagueService(leagueRepository, Fixtures.template(), tx, clock);
-    public final LeagueAuctionService auctions =
-            new LeagueAuctionService(auctionRepository, leagueRepository, stores, tx, clock, PHASES);
+    public final LeagueService leagues;
+    public final LeagueAuctionService auctions;
+
+    public PortalWorld() {
+        this(SharedPostgres.migratedDatabase());
+    }
+
+    /** Su un DataSource scelto da chi chiama, gia' migrato: per misurare con un pool come in produzione. */
+    public PortalWorld(DataSource ds) {
+        this.ds = ds;
+        this.jdbc = JdbcClient.create(ds);
+        this.tx = new SpringTransactions(new TransactionTemplate(new DataSourceTransactionManager(ds)));
+        this.leagueRepository = new JdbcLeagueRepository(jdbc, JSON);
+        this.auctionRepository = new JdbcAuctionRepository(jdbc, JSON);
+        this.stores = new JdbcAuctionEventStores(jdbc, JSON);
+        this.leagues = new LeagueService(leagueRepository, Fixtures.template(), tx, clock);
+        this.auctions = new LeagueAuctionService(auctionRepository, leagueRepository, stores, tx, clock, PHASES);
+    }
 
     public UUID user(String name) {
         return TestRows.user(jdbc, name + "@example.com");
