@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { PageFrame } from '../domain/PageFrame';
@@ -6,25 +6,61 @@ import { userMessage } from '../api/client';
 import { useLeague, useLeagueAuctions, useSaveSeats, useSeats, useUpdateAuction } from '../api/leagues';
 import type { SeatInput, SeatsView } from '../api/types';
 import { StepperField } from '../domain/StepperField';
-import { BUTTON_PRIMARY, BUTTON_SECONDARY } from '../domain/controls';
+import { BUTTON_SECONDARY, FOCUS_RING } from '../domain/controls';
+import { SaveBar } from '../domain/SaveBar';
+import { SettingsLayout, type SettingsSection } from '../domain/SettingsLayout';
 
 const BUTTON = `min-w-11 ${BUTTON_SECONDARY}`;
-const PRIMARY = BUTTON_PRIMARY;
+/** Le frecce del turno: 44px per lato, la freccia sola dentro. */
+const ARROW = `${BUTTON_SECONDARY} size-11 px-0`;
+
+const SECTIONS: SettingsSection[] = [
+  { id: 'sezione-turno', label: 'Turno di chiamata', shortLabel: 'Turno' },
+  { id: 'sezione-banditore', label: 'Banditore' },
+];
+/** Chi non amministra legge solo il turno: il banditore non lo riguarda. */
+const READ_ONLY_SECTIONS = SECTIONS.slice(0, 1);
+
+const CONTEXT = "Impostazioni dell'asta";
+
+/** Lo spazio sopra una sezione quando ci porta l'indice, come nelle regole della lega. */
+const ANCHOR = 'scroll-mt-[calc(var(--header-h)+4rem)]';
+
+/** Una sezione: riquadro, titolo, e l'ancora dell'indice. */
+function SettingsPanel({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-titolo`} className={`panel ${ANCHOR} p-5 md:p-6`}>
+      <h2 id={`${id}-titolo`} className="w-exp text-lg font-semibold">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
 const toInputs = (view: SeatsView): SeatInput[] =>
   view.seats.map((s) => ({ userId: s.userId, teamName: s.teamName, initial: s.initial }));
 
+const sameOrder = (a: SeatInput[], b: SeatInput[]) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Quale scrittura non e' andata, detto in una frase sola per la barra. */
+function failureMessage(seatsFailed: boolean, bidderFailed: boolean): string | null {
+  if (seatsFailed && bidderFailed) return 'Turno e banditore non sono stati salvati. Riprova.';
+  if (seatsFailed) return 'Il turno non è stato salvato. Riprova.';
+  if (bidderFailed) return 'Il banditore non è stato salvato. Riprova.';
+  return null;
+}
+
 /**
  * Le impostazioni di un'asta: il turno di chiamata e il banditore.
  *
- * <p>Il turno si modifica tutto in bozza e parte con un solo «Salva il turno»: il
- * server riceve l'elenco nell'ordine a schermo, e o lo accetta intero o lo rifiuta.
- * Finche' l'asta non e' iniziata si cambiano anche squadre, iniziali e chi ha un
- * posto; dal primo acquisto solo l'ordine, perche' una rosa pagata appartiene a quel
- * posto.
+ * <p>Si modifica tutto in bozza e parte con un solo «Salva» nella barra in fondo:
+ * salva cio' che e' cambiato, il turno, il banditore o entrambi, e se una delle due
+ * scritture non va la barra dice quale. Il turno arriva al server nell'ordine a
+ * schermo, e o lo accetta intero o lo rifiuta. Finche' l'asta non e' iniziata si
+ * cambiano anche squadre, iniziali e chi ha un posto; dal primo acquisto solo
+ * l'ordine, perche' una rosa pagata appartiene a quel posto.
  *
- * <p>Chi non e' amministratore vede il turno in sola lettura: e' utile sapere quando
- * tocca a sé chiamare.
+ * <p>Chi non e' amministratore vede il turno in sola lettura, senza barra: e' utile
+ * sapere quando tocca a sé chiamare.
  */
 export function AuctionSettingsRoute() {
   const { leagueId = '', auctionId = '' } = useParams();
@@ -37,6 +73,7 @@ export function AuctionSettingsRoute() {
   const [draft, setDraft] = useState<SeatInput[] | null>(null);
   const [timer, setTimer] = useState<number | null>(null);
   const [beep, setBeep] = useState<boolean | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const card = auctions.data?.find((a) => a.id === auctionId);
   const trail = [
@@ -59,22 +96,40 @@ export function AuctionSettingsRoute() {
     );
   }
   if (!league.data || !seats.data || !card) {
-    return <AppShell chrome="top" trail={trail}><PageFrame><span /></PageFrame></AppShell>;
+    // La stessa cornice della schermata pronta, con la frase nella prima sezione:
+    // un attimo dopo si riempie, non cambia forma.
+    return (
+      <AppShell chrome="top" trail={trail}>
+      <PageFrame>
+        <SettingsLayout title={card?.name ?? 'Asta'} context={CONTEXT} sections={SECTIONS} ready={false}>
+          <SettingsPanel id={SECTIONS[0].id} title={SECTIONS[0].label}>
+            <p className="mt-4 flex min-h-48 items-center text-sm text-muted-foreground">Carico il turno di chiamata…</p>
+          </SettingsPanel>
+          <SettingsPanel id={SECTIONS[1].id} title={SECTIONS[1].label}><div className="mt-4 min-h-24" /></SettingsPanel>
+        </SettingsLayout>
+      </PageFrame>
+      </AppShell>
+    );
   }
 
   const admin = league.data.admin;
   const locked = seats.data.locked;
-  const order = draft ?? toInputs(seats.data);
+  const saved = toInputs(seats.data);
+  const order = draft ?? saved;
   const members = league.data.members;
   const seatedIds = new Set(order.map((s) => s.userId));
   const missing = members.filter((m) => !seatedIds.has(m.userId));
   const nameOf = (userId: string) => members.find((m) => m.userId === userId)?.displayName ?? '';
   const seconds = timer ?? card.bidder.bidTimerSeconds;
   const beepOn = beep ?? card.bidder.beepEnabled;
+  // Un valore riportato com'era non e' una modifica: si confronta con quanto e' salvato.
+  const orderDirty = draft !== null && !sameOrder(draft, saved);
+  const bidderDirty = seconds !== card.bidder.bidTimerSeconds || beepOn !== card.bidder.beepEnabled;
+  const pending = save.isPending || update.isPending;
 
   function change(next: SeatInput[]) {
     setDraft(next);
-    save.reset();
+    setSaveError(null);
   }
 
   function move(index: number, by: -1 | 1) {
@@ -88,29 +143,41 @@ export function AuctionSettingsRoute() {
     change(order.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   }
 
-  const saveMessage = save.isError
-    ? userMessage(save.error, 'Non sono riuscito a salvare il turno. Riprova.')
-    : null;
-  const bidderMessage = update.isError
-    ? userMessage(update.error, 'Non sono riuscito a salvare il banditore. Riprova.')
-    : null;
+  function reset() {
+    setDraft(null);
+    setTimer(null);
+    setBeep(null);
+    setSaveError(null);
+  }
+
+  // Le due scritture partono insieme; ciascuna, se va, toglie la propria bozza, e
+  // quella che non va resta da salvare.
+  async function submit() {
+    setSaveError(null);
+    const writeSeats = orderDirty
+      ? save.mutateAsync(order).then(() => setDraft(null)) : null;
+    const writeBidder = bidderDirty
+      ? update.mutateAsync({ auctionId, bidder: { bidTimerSeconds: seconds, beepEnabled: beepOn } })
+        .then(() => { setTimer(null); setBeep(null); })
+      : null;
+    const [seatsResult, bidderResult] = await Promise.allSettled([writeSeats, writeBidder]);
+    setSaveError(failureMessage(seatsResult.status === 'rejected', bidderResult.status === 'rejected'));
+  }
 
   return (
     <AppShell chrome="top" trail={trail}>
       <PageFrame>
-      {/* Una colonna sola, turno sopra e banditore sotto: affiancato, il banditore
-          (tre controlli) lasciava una colonna mezza vuota accanto al turno. */}
-      <div className="mx-auto w-full max-w-3xl">
-        {/* Testata in un pannello, come nelle altre pagine. */}
-        <section className="panel flex items-center gap-4 p-5 md:p-6">
-          <div className="min-w-0">
-            <h1 className="w-exp truncate text-2xl font-semibold">{card.name}</h1>
-            <p className="text-sm text-muted-foreground">Impostazioni dell&apos;asta</p>
-          </div>
-        </section>
-        <div className="mt-4 grid gap-4">
-          <section aria-labelledby="order-title" className="panel p-6">
-            <h2 id="order-title" className="w-exp text-lg font-semibold">Turno di chiamata</h2>
+        <SettingsLayout
+          title={card.name}
+          context={CONTEXT}
+          sections={admin ? SECTIONS : READ_ONLY_SECTIONS}
+          ready
+          saveBar={admin ? (
+            <SaveBar dirty={orderDirty || bidderDirty} pending={pending} error={saveError} saveLabel="Salva"
+              onSave={() => void submit()} onReset={reset} />
+          ) : undefined}
+        >
+          <SettingsPanel id="sezione-turno" title="Turno di chiamata">
             {admin && locked ? (
               <p className="mt-2 text-sm text-muted-foreground">
                 L'asta è iniziata: si può cambiare solo il turno di chiamata.
@@ -118,16 +185,16 @@ export function AuctionSettingsRoute() {
             ) : null}
             <ol aria-label="Turno di chiamata" className="mt-4 divide-y divide-line">
               {order.map((s, i) => (
-                <li key={s.userId} className="flex flex-wrap items-center gap-3 py-2">
+                <li key={s.userId} className="flex min-h-14 flex-wrap items-center gap-3 py-2">
                   <span className="w-6 text-right font-semibold tabular-nums">{i + 1}</span>
                   {admin && !locked ? (
                     <>
                       <input aria-label={`Nome della squadra di ${nameOf(s.userId)}`} value={s.teamName}
                         onChange={(e) => edit(i, { teamName: e.target.value })}
-                        className="min-h-11 min-w-40 flex-1 rounded-lg border border-control-border bg-surface px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" />
+                        className={`min-h-11 min-w-40 flex-1 rounded-lg border border-control-border bg-surface px-3 ${FOCUS_RING}`} />
                       <input aria-label={`Iniziale di ${nameOf(s.userId)}`} value={s.initial} maxLength={1}
                         onChange={(e) => edit(i, { initial: e.target.value.toUpperCase().slice(-1) })}
-                        className="min-h-11 w-14 rounded-lg border border-control-border bg-surface text-center font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent" />
+                        className={`min-h-11 w-14 rounded-lg border border-control-border bg-surface text-center font-semibold ${FOCUS_RING}`} />
                     </>
                   ) : (
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -137,10 +204,12 @@ export function AuctionSettingsRoute() {
                   )}
                   {admin ? (
                     <span className="flex gap-2">
-                      <button type="button" className={BUTTON} disabled={i === 0} onClick={() => move(i, -1)}
-                        aria-label={`Sposta su ${s.teamName}`}>↑</button>
-                      <button type="button" className={BUTTON} disabled={i === order.length - 1}
-                        onClick={() => move(i, 1)} aria-label={`Sposta giù ${s.teamName}`}>↓</button>
+                      <button type="button" className={ARROW} disabled={i === 0} onClick={() => move(i, -1)}
+                        aria-label={`Sposta su ${s.teamName}`}><span aria-hidden="true">↑</span></button>
+                      <button type="button" className={ARROW} disabled={i === order.length - 1}
+                        onClick={() => move(i, 1)} aria-label={`Sposta giù ${s.teamName}`}>
+                        <span aria-hidden="true">↓</span>
+                      </button>
                       {!locked ? (
                         <button type="button" className={BUTTON}
                           onClick={() => change(order.filter((x) => x.userId !== s.userId))}
@@ -156,7 +225,7 @@ export function AuctionSettingsRoute() {
                 <h3 className="mt-6 text-sm font-semibold">Membri senza posto</h3>
                 <ul aria-label="Membri senza posto" className="mt-2 divide-y divide-line">
                   {missing.map((m) => (
-                    <li key={m.userId} className="flex min-h-11 items-center justify-between gap-3 py-2">
+                    <li key={m.userId} className="flex min-h-14 items-center justify-between gap-3 py-2">
                       <span>{m.teamName} <span className="text-sm text-muted-foreground">· {m.displayName}</span></span>
                       <button type="button" className={BUTTON}
                         onClick={() => change([...order, { userId: m.userId, teamName: m.teamName, initial: m.initial }])}
@@ -166,52 +235,28 @@ export function AuctionSettingsRoute() {
                 </ul>
               </>
             ) : null}
-            {admin ? (
-              <button type="button" className={`mt-6 ${PRIMARY}`} disabled={save.isPending}
-                onClick={() => save.mutate(order, { onSuccess: () => setDraft(null) })}>
-                {save.isPending ? 'Salvo…' : 'Salva il turno'}
-              </button>
-            ) : null}
-            {saveMessage ? (
-              <p role="alert" className="mt-4 text-sm font-medium text-destructive">{saveMessage}</p>
-            ) : save.isSuccess ? (
-              <p role="status" className="mt-2 text-sm">Turno salvato.</p>
-            ) : null}
-          </section>
+          </SettingsPanel>
           {admin ? (
-            <section aria-labelledby="bidder-title" className="panel p-6">
-              <h2 id="bidder-title" className="w-exp text-lg font-semibold">Banditore</h2>
-              <label htmlFor="bidder-seconds" className="mt-4 block text-sm font-medium">
-                Secondi del conto alla rovescia
-              </label>
-              <div className="mt-2 max-w-xs">
-                <StepperField id="bidder-seconds" value={seconds} min={1} max={120}
-                  onChange={(v) => { setTimer(v); update.reset(); }}
-                  decreaseLabel="Un secondo in meno" increaseLabel="Un secondo in più" />
+            <SettingsPanel id="sezione-banditore" title="Banditore">
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 sm:items-end">
+                <div>
+                  <label htmlFor="bidder-seconds" className="block text-base">
+                    Secondi del conto alla rovescia
+                  </label>
+                  <StepperField id="bidder-seconds" value={seconds} min={1} max={120}
+                    onChange={(v) => { setTimer(v); setSaveError(null); }}
+                    decreaseLabel="Un secondo in meno" increaseLabel="Un secondo in più" />
+                </div>
+                <label className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg border border-control-border px-4 text-base">
+                  <input type="checkbox" checked={beepOn}
+                    onChange={(e) => { setBeep(e.target.checked); setSaveError(null); }}
+                    className={`h-5 w-5 shrink-0 accent-accent ${FOCUS_RING}`} />
+                  Avviso sonoro allo scadere
+                </label>
               </div>
-              <label className="mt-4 flex min-h-11 items-center gap-3 text-sm font-medium">
-                <input type="checkbox" checked={beepOn}
-                  onChange={(e) => { setBeep(e.target.checked); update.reset(); }}
-                  className="size-5" />
-                Avviso sonoro allo scadere
-              </label>
-              <button type="button" className={`mt-6 ${PRIMARY}`} disabled={update.isPending}
-                onClick={() => update.mutate({ auctionId, bidder: { bidTimerSeconds: seconds, beepEnabled: beepOn } })}>
-                {update.isPending ? 'Salvo…' : 'Salva il banditore'}
-              </button>
-              {/* Un solo role="alert" per schermata: se anche il turno e' fallito, il
-                  suo avviso ha gia' parlato e questo resta visibile senza ripetersi. */}
-              {bidderMessage ? (
-                <p role={saveMessage ? undefined : 'alert'} className="mt-4 text-sm font-medium text-destructive">
-                  {bidderMessage}
-                </p>
-              ) : update.isSuccess ? (
-                <p role="status" className="mt-2 text-sm">Salvato.</p>
-              ) : null}
-            </section>
+            </SettingsPanel>
           ) : null}
-        </div>
-      </div>
+        </SettingsLayout>
       </PageFrame>
     </AppShell>
   );
