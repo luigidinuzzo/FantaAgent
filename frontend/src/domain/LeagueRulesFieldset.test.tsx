@@ -60,12 +60,11 @@ describe('LeagueRulesFieldset', () => {
     expect(screen.getByRole('spinbutton', { name: 'Posti portieri' })).toHaveAccessibleDescription(/fra 1 e 30/);
   });
 
-  /** Le tre sezioni del modulo si somigliano: cornice e titolo in evidenza. */
-  it('e una sezione con cornice e titolo, come Partecipanti e Punteggio', () => {
+  /** Cornice e titolo visibile li da' la sezione della pagina: qui solo il nome del group. */
+  it('e un group «Crediti e posti» senza una seconda cornice', () => {
     const { container } = render(<Harness />);
     const fieldset = container.querySelector('fieldset');
-    expect(fieldset?.className).toContain('border-line-strong');
-    expect(fieldset?.className).not.toContain('border-0');
-    expect(screen.getByText('Crediti e posti').tagName).toBe('LEGEND');
+    expect(fieldset?.className).toContain('border-0');
+    expect(screen.getByRole('group', { name: 'Crediti e posti' })).toBe(fieldset);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { PageFrame } from '../domain/PageFrame';
@@ -11,12 +11,17 @@ import { ScoringFieldset } from '../domain/ScoringFieldset';
 import { BidderSummary, RulesSummary, ScoringSummary } from '../domain/SettingsSummary';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
 import { StepperField } from '../domain/StepperField';
-import { useActiveSection } from '../domain/useActiveSection';
+import { SaveBar } from '../domain/SaveBar';
+import { SettingsLayout, type SettingsSection } from '../domain/SettingsLayout';
 
 const NO_ERRORS: SettingsErrors = {};
 
-/** Le sezioni del modulo, nell'ordine della pagina: ancore dell'indice a sinistra. */
-const SECTION_IDS = ['sezione-banditore', 'sezione-regole', 'sezione-punteggio'] as const;
+/** Le sezioni del modulo, nell'ordine della pagina: le voci dell'indice. */
+const SECTIONS: SettingsSection[] = [
+  { id: 'sezione-banditore', label: 'Banditore' },
+  { id: 'sezione-regole', label: 'Crediti e posti', shortLabel: 'Crediti' },
+  { id: 'sezione-punteggio', label: 'Punteggio' },
+];
 
 /** Gli stessi limiti di AuctionSettingsValidator (MIN_SECONDS, MAX_SECONDS). */
 const MIN_TIMER_SECONDS = 1;
@@ -128,10 +133,29 @@ function settingsErrorsOf(body: unknown): SettingsErrors | null {
   return Object.keys(result).length > 0 ? result : null;
 }
 
-/** Lo spazio di scorrimento delle ancore: sotto la barra sul telefono, dentro il riquadro dal tablet. */
-const ANCHOR = 'scroll-mt-[calc(var(--header-h)+1.5rem)] md:scroll-mt-6';
+/**
+ * Lo spazio sopra una sezione quando ci porta l'indice: la barra in alto e, sotto
+ * lg, la fila ferma dell'indice. Senza, il titolo finirebbe dietro di loro.
+ */
+const ANCHOR = 'scroll-mt-[calc(var(--header-h)+4rem)]';
+const SECTION = `panel ${ANCHOR} p-5 md:p-6`;
 
 const TITLE = 'Regole della lega';
+const CONTEXT = 'Valgono per le prossime aste. Quelle già create tengono le loro.';
+
+/** Una sezione del modulo: riquadro, titolo, e l'ancora dell'indice. */
+function RulesSection({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-titolo`} className={SECTION}>
+      <h2 id={`${id}-titolo`} className="mb-4 text-lg font-semibold">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function formOf(data: SaveLeagueRulesRequest): SaveLeagueRulesRequest {
+  return { bidder: data.bidder, scoring: data.scoring, rules: data.rules };
+}
 
 /**
  * Le regole della lega: banditore, crediti e posti, punteggio con cui nasceranno le
@@ -160,17 +184,10 @@ export function LeagueRulesRoute() {
   // Un problem diverso da invalid-settings (rete caduta, errore interno): non ha un
   // campo, ma va detto comunque nello stesso, unico role="alert".
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Si resta sulla pagina dopo il salvataggio: senza questa frase il bottone
-  // tornerebbe da «Salvo…» a «Salva» senza nessun segno che sia andato bene.
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  // Il corpo del modulo, che da tablet in su scorre dentro il riquadro fermo.
-  const scrollRef = useRef<HTMLDivElement>(null);
-  // La sezione che si sta leggendo, evidenziata nell'indice mentre si scorre.
-  const activeSection = useActiveSection(SECTION_IDS, form !== null, scrollRef);
 
   useEffect(() => {
     if (!rules.data || form) return;
-    setForm({ bidder: rules.data.bidder, scoring: rules.data.scoring, rules: rules.data.rules });
+    setForm(formOf(rules.data));
   }, [rules.data, form]);
 
   if (rules.isError) {
@@ -187,250 +204,158 @@ export function LeagueRulesRoute() {
   }
 
   if (!form || !rules.data) {
-    // La stessa cornice della schermata pronta — indice a sinistra, pannello alto
-    // quanto la finestra — con la frase in mezzo: un pannellino piccolo che un attimo
-    // dopo diventa quello grande fa sembrare che la pagina cambi due volte.
+    // La stessa cornice della schermata pronta — intestazione, indice, tre sezioni —
+    // con la frase nella prima: un pannellino piccolo che un attimo dopo diventa la
+    // pagina intera fa sembrare che la pagina cambi due volte.
     return (
       <AppShell chrome="top" trail={trail}>
       <PageFrame>
-        <h1 className="sr-only">{TITLE}</h1>
-        <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
-          {/* Lo scheletro dell'indice: stessa struttura di quello vero (titolo e
-              tre voci da 44px), cosi' ha anche la stessa altezza. */}
-          <div aria-hidden="true" className="panel self-start p-3 max-lg:hidden">
-            <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">&nbsp;</p>
-            <ol className="flex flex-col gap-1">
-              {SECTION_IDS.map((id) => (
-                <li key={id} className="flex min-h-11 items-center px-3">
-                  <span className="h-4 w-32 rounded-full bg-line" />
-                </li>
-              ))}
-            </ol>
-          </div>
-          <div className="panel flex min-h-[60dvh] items-center justify-center md:min-h-0">
-            <p className="text-sm text-muted-foreground">Carico le regole della lega…</p>
-          </div>
-        </div>
+        <SettingsLayout title={TITLE} context={CONTEXT} sections={SECTIONS} ready={false}>
+          <RulesSection id={SECTIONS[0].id} title={SECTIONS[0].label}>
+            <p className="flex min-h-24 items-center text-sm text-muted-foreground">Carico le regole della lega…</p>
+          </RulesSection>
+          <RulesSection id={SECTIONS[1].id} title={SECTIONS[1].label}><div className="min-h-48" /></RulesSection>
+          <RulesSection id={SECTIONS[2].id} title={SECTIONS[2].label}><div className="min-h-80" /></RulesSection>
+        </SettingsLayout>
       </PageFrame>
       </AppShell>
     );
   }
 
+  const initial = formOf(rules.data);
   const canEdit = rules.data.canEdit;
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   const summary = errorSummary(errors) ?? saveError;
   const bidTimerErrors = errorsFor(errors, 'bidTimerSeconds');
   // "bidder" e' grezza: l'intero oggetto manca dal corpo (un client rotto), non un
   // campo preciso — resta a livello di gruppo.
   const bidderGroupErrors = errorsFor(errors, 'bidder');
 
-  /** Ogni modifica toglie la conferma di prima: «Regole salvate.» non vale piu'. */
-  function edit(next: SaveLeagueRulesRequest) {
-    setForm(next);
-    setSavedMessage(null);
+  function reset() {
+    setForm(initial);
+    setErrors(NO_ERRORS);
+    setSaveError(null);
   }
 
-  const labels: Record<(typeof SECTION_IDS)[number], string> = {
-    'sezione-banditore': 'Banditore',
-    'sezione-regole': 'Crediti e posti',
-    'sezione-punteggio': 'Punteggio',
-  };
-  const sections = SECTION_IDS.map((id) => ({ id, label: labels[id] }));
-
-  const body = (
-    // Il corpo che scorre: overscroll-contain perche' arrivati in fondo la rotella
-    // non passi a far scorrere la pagina dietro. relative: i testi sr-only dentro
-    // (position:absolute) altrimenti si agganciano a un antenato fuori dal riquadro
-    // e allungano la pagina, che torna a scorrere.
-    <div ref={scrollRef} className="relative min-h-0 flex-1 space-y-8 px-5 pb-8 sm:px-8 md:overflow-y-auto md:overscroll-contain">
-      {/* Blocchi senza nome, solo ancore dell'indice: il nome ce l'hanno gia' i
-          riquadri dentro, e due regioni con lo stesso nome si confondono. */}
-      <div id="sezione-banditore" className={ANCHOR}>
-        {canEdit ? (
-          // Legend nascosta: il fieldset resta un group nominato "Banditore" per chi
-          // ascolta, ma visivamente e' solo la fila dei suoi due controlli.
-          <fieldset
-            className="m-0 grid max-w-3xl gap-4 border-0 p-0 sm:grid-cols-2 sm:items-end"
-            aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
-          >
-            <legend className="sr-only">Banditore</legend>
-
-            <div>
-              <label htmlFor={bidTimerId} className="block text-base">
-                Secondi del conto alla rovescia
-              </label>
-              {/* − e + ai lati del campo: si regola il timer senza tastiera, dentro
-                  i limiti che valgono per ogni asta. */}
-              <StepperField
-                id={bidTimerId}
-                value={form.bidder.bidTimerSeconds}
-                onChange={(bidTimerSeconds) => edit({ ...form, bidder: { ...form.bidder, bidTimerSeconds } })}
-                min={MIN_TIMER_SECONDS}
-                max={MAX_TIMER_SECONDS}
-                decreaseLabel="Un secondo in meno"
-                increaseLabel="Un secondo in più"
-                invalid={bidTimerErrors.length > 0}
-                describedBy={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
-              />
-              <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
-            </div>
-
-            <div>
-              <label className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg border border-control-border px-4 text-base">
-                <input
-                  type="checkbox"
-                  checked={form.bidder.beepEnabled}
-                  onChange={(e) => edit({ ...form, bidder: { ...form.bidder, beepEnabled: e.target.checked } })}
-                  className="h-5 w-5 shrink-0 accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                />
-                Avviso acustico allo scadere
-              </label>
-            </div>
-
-            <div className="sm:col-span-2">
-              <FieldErrors id={bidderGroupErrorId} errors={bidderGroupErrors} />
-            </div>
-          </fieldset>
-        ) : (
-          <BidderSummary bidder={form.bidder} />
-        )}
-      </div>
-
-      <div id="sezione-regole" className={ANCHOR}>
-        {canEdit ? (
-          <LeagueRulesFieldset
-            value={form.rules}
-            onChange={(next) => edit({ ...form, rules: next })}
-            errors={errors}
-            disabled={false}
-          />
-        ) : (
-          <RulesSummary rules={form.rules} />
-        )}
-      </div>
-
-      {/* Sempre aperto, non una disclosure: un <details> chiuso nascondeva anche il
-          campo invalido che bloccava il salvataggio. */}
-      <div id="sezione-punteggio" className={ANCHOR}>
-        {canEdit ? (
-          <ScoringFieldset
-            value={form.scoring}
-            onChange={(scoring) => edit({ ...form, scoring })}
-            errors={errors}
-            disabled={false}
-          />
-        ) : (
-          <ScoringSummary scoring={form.scoring} />
-        )}
-      </div>
-    </div>
-  );
+  function submit() {
+    if (!form) return;
+    setErrors(NO_ERRORS);
+    setSaveError(null);
+    save.mutate(form, {
+      // La lettura in cache diventa quella salvata: `initial` la segue, e la barra
+      // torna a «Tutto salvato».
+      onSuccess: (saved) => setForm(formOf(saved)),
+      onError: (error) => {
+        if (error instanceof ProblemError && error.slug === 'invalid-settings') {
+          const parsed = settingsErrorsOf(error.body);
+          // Un corpo che non ha la forma attesa non deve fermarsi qui in
+          // silenzio: cade nel ramo generico sotto, che dice il `detail`.
+          if (parsed) {
+            setErrors(parsed);
+            return;
+          }
+        }
+        setSaveError(userMessage(error, 'Il salvataggio non è riuscito. Riprova.'));
+      },
+    });
+  }
 
   return (
     <AppShell chrome="top" trail={trail}>
       <PageFrame>
-      {/* Due colonne da lg in su: a sinistra l'indice delle sezioni, fermo mentre il
-          modulo scorre; a destra il modulo. Da tablet in su la pagina non scorre: il
-          riquadro e' alto quanto la finestra e scorre dentro, con titolo e «Salva»
-          sempre in vista. Sul telefono scorre la pagina: un riquadro con lo
-          scorrimento interno e la tastiera aperta sopra lascerebbe una fessura. */}
-      <div className="mx-auto grid w-full max-w-7xl gap-6 md:h-[calc(100dvh-var(--header-h)-3rem)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <nav aria-label="Sezioni del modulo" className="self-start max-lg:hidden">
-          <div className="panel p-3">
-            <p className="px-3 pb-2 pt-1 text-sm font-medium text-muted-foreground">{TITLE}</p>
-            <ol className="flex flex-col gap-1">
-              {sections.map((section) => (
-                <li key={section.id}>
-                  {/* La sezione in cui ci si trova in giallo pieno, come ogni «dove sei»
-                      dell'app; per chi ascolta, aria-current="location". */}
-                  <a
-                    href={`#${section.id}`}
-                    aria-current={activeSection === section.id ? 'location' : undefined}
-                    className={`flex min-h-11 items-center rounded-lg px-3 font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                      activeSection === section.id ? 'bg-accent text-on-accent' : 'hover:bg-line'
-                    }`}
-                  >
-                    {section.label}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </nav>
-
-        {/* Un unico pannello pieno per tutto il modulo, dall'indice al bottone
-            di salvataggio. */}
-        <div className="panel flex min-h-0 min-w-0 flex-col">
-          <div className="px-5 pt-5 sm:px-8 sm:pt-8">
-            <div className="relative flex items-center justify-center">
-              <h1 className="w-exp text-xl font-semibold sm:text-2xl">{TITLE}</h1>
-            </div>
-            {/* Una volta sola, in testa: vale per tutto quello che sta sotto. */}
-            <p className="mt-4 text-center text-base text-muted-foreground">
-              Valgono per le prossime aste della lega. Quelle già create tengono le regole con cui sono nate.
-            </p>
-            {!canEdit ? (
-              <p className="mt-4 rounded-lg border border-line p-4 text-base">
-                Solo l'amministratore della lega può cambiare le regole.
-              </p>
-            ) : null}
-          </div>
-
-          {canEdit ? (
-            <form
-              className="mt-6 flex min-h-0 flex-1 flex-col"
-              onSubmit={(e) => {
-                e.preventDefault();
-                setErrors(NO_ERRORS);
-                setSaveError(null);
-                setSavedMessage(null);
-                save.mutate(form, {
-                  onSuccess: (saved) => {
-                    setForm({ bidder: saved.bidder, scoring: saved.scoring, rules: saved.rules });
-                    setSavedMessage('Regole salvate.');
-                  },
-                  onError: (error) => {
-                    if (error instanceof ProblemError && error.slug === 'invalid-settings') {
-                      const parsed = settingsErrorsOf(error.body);
-                      // Un corpo che non ha la forma attesa non deve fermarsi qui in
-                      // silenzio: cade nel ramo generico sotto, che dice il `detail`.
-                      if (parsed) {
-                        setErrors(parsed);
-                        return;
-                      }
-                    }
-                    setSaveError(userMessage(error, 'Il salvataggio non è riuscito. Riprova.'));
-                  },
-                });
-              }}
-            >
-              {body}
-
-              {/* Sempre in vista: in fondo al riquadro, che non scorre, e sul telefono
-                  ferma in fondo allo schermo. Un solo alert, col conto e il dove: piu'
-                  alert di campo che si popolano insieme se ne mangerebbero tutti tranne
-                  uno. La conferma sta in un role="status" a parte, sempre montato, cosi'
-                  che il cambio di testo venga annunciato. */}
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-6 gap-y-2 rounded-b-lg border-t border-line-strong bg-surface px-5 py-4 max-md:sticky max-md:bottom-0 max-md:z-10 sm:px-8">
-                {summary ? (
-                  <p role="alert" className="mr-auto text-sm font-medium text-destructive">{summary}</p>
-                ) : null}
-                <p role="status" className={`text-sm font-medium text-positive ${summary ? 'sr-only' : 'mr-auto'}`}>
-                  {savedMessage}
-                </p>
-                <button
-                  type="submit"
-                  disabled={save.isPending}
-                  className="min-h-12 rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground"
-                >
-                  {save.isPending ? 'Salvo…' : 'Salva le regole'}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="mt-6 flex min-h-0 flex-1 flex-col">{body}</div>
+        <SettingsLayout
+          title={TITLE}
+          context={canEdit ? CONTEXT : (
+            <>{CONTEXT} <span>Solo l'amministratore della lega può cambiare le regole.</span></>
           )}
-        </div>
-      </div>
+          sections={SECTIONS}
+          ready
+          saveBar={canEdit ? (
+            // Un solo alert, col conto e il dove: piu' alert di campo che si
+            // popolano insieme se ne mangerebbero tutti tranne uno.
+            <SaveBar dirty={dirty} pending={save.isPending} error={summary} saveLabel="Salva le regole"
+              onSave={submit} onReset={reset} />
+          ) : undefined}
+        >
+          <RulesSection id="sezione-banditore" title="Banditore">
+            {canEdit ? (
+              // Legend nascosta: il titolo visibile e' quello della sezione, ma il
+              // fieldset resta un group nominato "Banditore" per chi ascolta.
+              <fieldset
+                className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2 sm:items-end"
+                aria-describedby={bidderGroupErrors.length > 0 ? bidderGroupErrorId : undefined}
+              >
+                <legend className="sr-only">Banditore</legend>
+
+                <div>
+                  <label htmlFor={bidTimerId} className="block text-base">
+                    Secondi del conto alla rovescia
+                  </label>
+                  {/* − e + ai lati del campo: si regola il timer senza tastiera, dentro
+                      i limiti che valgono per ogni asta. */}
+                  <StepperField
+                    id={bidTimerId}
+                    value={form.bidder.bidTimerSeconds}
+                    onChange={(bidTimerSeconds) => setForm({ ...form, bidder: { ...form.bidder, bidTimerSeconds } })}
+                    min={MIN_TIMER_SECONDS}
+                    max={MAX_TIMER_SECONDS}
+                    decreaseLabel="Un secondo in meno"
+                    increaseLabel="Un secondo in più"
+                    invalid={bidTimerErrors.length > 0}
+                    describedBy={bidTimerErrors.length > 0 ? bidTimerErrorId : undefined}
+                  />
+                  <FieldErrors id={bidTimerErrorId} errors={bidTimerErrors} />
+                </div>
+
+                <div>
+                  <label className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg border border-control-border px-4 text-base">
+                    <input
+                      type="checkbox"
+                      checked={form.bidder.beepEnabled}
+                      onChange={(e) => setForm({ ...form, bidder: { ...form.bidder, beepEnabled: e.target.checked } })}
+                      className="h-5 w-5 shrink-0 accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                    />
+                    Avviso acustico allo scadere
+                  </label>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <FieldErrors id={bidderGroupErrorId} errors={bidderGroupErrors} />
+                </div>
+              </fieldset>
+            ) : (
+              <BidderSummary bidder={form.bidder} />
+            )}
+          </RulesSection>
+
+          <RulesSection id="sezione-regole" title="Crediti e posti">
+            {canEdit ? (
+              <LeagueRulesFieldset
+                value={form.rules}
+                onChange={(next) => setForm({ ...form, rules: next })}
+                errors={errors}
+                disabled={false}
+              />
+            ) : (
+              <RulesSummary rules={form.rules} />
+            )}
+          </RulesSection>
+
+          {/* Sempre aperto, non una disclosure: un <details> chiuso nascondeva anche il
+              campo invalido che bloccava il salvataggio. */}
+          <RulesSection id="sezione-punteggio" title="Punteggio">
+            {canEdit ? (
+              <ScoringFieldset
+                value={form.scoring}
+                onChange={(scoring) => setForm({ ...form, scoring })}
+                errors={errors}
+                disabled={false}
+              />
+            ) : (
+              <ScoringSummary scoring={form.scoring} />
+            )}
+          </RulesSection>
+        </SettingsLayout>
       </PageFrame>
     </AppShell>
   );

@@ -21,7 +21,9 @@ export function SaveBar({ dirty, pending, error, saveLabel, onSave, onReset }: {
   return (
     <div className={`fixed inset-x-0 bottom-0 z-20 ${SAVE_BAR_H} border-t border-panel-border bg-bar pb-[env(safe-area-inset-bottom)]`}>
       <div className="mx-auto flex h-full max-w-[96rem] items-center gap-3 px-4 md:px-6">
-        <p className="min-w-0 flex-1 truncate text-sm">
+        {/* Va a capo, al piu' su due righe: tagliata, la frase d'errore sul telefono
+            stretto si riduceva a «1 errore: …». */}
+        <p className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug">
           {error ? (
             <span role="alert" className="font-medium text-destructive">{error}</span>
           ) : (
@@ -33,8 +35,16 @@ export function SaveBar({ dirty, pending, error, saveLabel, onSave, onReset }: {
         <button type="button" disabled={!dirty || pending} onClick={onReset} className={BUTTON_SECONDARY}>
           Annulla
         </button>
-        <button type="button" disabled={!dirty || pending} onClick={onSave} className={`${BUTTON_PRIMARY} px-5`}>
-          {pending ? 'Salvo…' : saveLabel}
+        {/* Sotto sm il bottone dice solo «Salva», per lasciare spazio alla frase; il
+            nome per chi ascolta resta quello intero. */}
+        <button type="button" disabled={!dirty || pending} onClick={onSave} aria-label={pending ? undefined : saveLabel}
+          className={`${BUTTON_PRIMARY} px-5`}>
+          {pending ? 'Salvo…' : (
+            <>
+              <span className="sm:hidden">Salva</span>
+              <span className="max-sm:hidden">{saveLabel}</span>
+            </>
+          )}
         </button>
       </div>
     </div>

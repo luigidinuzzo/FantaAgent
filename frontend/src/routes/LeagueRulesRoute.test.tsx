@@ -65,6 +65,12 @@ function renderRules() {
   render(<QueryProvider><RouterProvider router={router} /></QueryProvider>);
 }
 
+/** Il salvataggio si accende solo con una modifica: un secondo in piu', poi Salva. */
+async function changeAndSave() {
+  await userEvent.click(await screen.findByRole('button', { name: 'Un secondo in più' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Salva le regole' }));
+}
+
 describe('LeagueRulesRoute', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -72,7 +78,7 @@ describe('LeagueRulesRoute', () => {
     stubRules(RULES);
     renderRules();
     expect(await screen.findByText(
-      'Valgono per le prossime aste della lega. Quelle già create tengono le regole con cui sono nate.',
+      'Valgono per le prossime aste. Quelle già create tengono le loro.',
     )).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Regole della lega' })).toBeInTheDocument();
   });
@@ -124,7 +130,8 @@ describe('LeagueRulesRoute', () => {
   it('chi non e\' amministratore vede un riepilogo, senza campi', async () => {
     stubRules({ ...RULES, canEdit: false });
     renderRules();
-    const rules = await screen.findByRole('region', { name: 'Crediti e posti' });
+    await screen.findByText('Solo l\'amministratore della lega può cambiare le regole.');
+    const rules = screen.getByRole('region', { name: 'Crediti e posti' });
     expect(within(rules).getByText('Crediti per squadra')).toBeInTheDocument();
     expect(within(rules).getByText(String(RULES.rules.budget))).toBeInTheDocument();
     const scoring = screen.getByRole('region', { name: 'Punteggio' });
@@ -139,10 +146,10 @@ describe('LeagueRulesRoute', () => {
   it('il salvataggio manda banditore, punteggio e regole, e resta qui', async () => {
     const fetchMock = stubRules(RULES);
     renderRules();
-    await userEvent.click(await screen.findByRole('button', { name: /Salva/ }));
+    await changeAndSave();
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(Object.keys(JSON.parse(put![1]!.body as string)).sort()).toEqual(['bidder', 'rules', 'scoring']);
-    expect(await screen.findByRole('status')).toHaveTextContent('Regole salvate.');
+    expect(await screen.findByText('Tutto salvato')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Regole della lega' })).toBeInTheDocument();
   });
 
@@ -153,7 +160,7 @@ describe('LeagueRulesRoute', () => {
     }));
     renderRules();
 
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
 
     expect(await screen.findByText('I crediti devono essere almeno 1.')).toBeInTheDocument();
     // Match esatto: il riassunto in fondo contiene anch'esso "riga 2".
@@ -164,14 +171,13 @@ describe('LeagueRulesRoute', () => {
     expect(alerts[0]).toHaveTextContent(/2 errori/i);
     expect(alerts[0]).toHaveTextContent(/crediti per squadra/i);
     expect(alerts[0]).toHaveTextContent(/riga 2 della tabella/i);
-    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   /** Le soglie non toccate tornano al server tali e quali, non appiattite o perse. */
   it('rispedisce le soglie del modificatore di difesa non toccate, invariate', async () => {
     const fetchMock = stubRules(RULES);
     renderRules();
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
     await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
     expect(sentBody(fetchMock).scoring.thresholds).toEqual(RULES.scoring.thresholds);
   });
@@ -201,7 +207,7 @@ describe('LeagueRulesRoute', () => {
     stubRules(RULES, problem(undefined, 'Corpo del problem inatteso.'));
     renderRules();
 
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
 
     const alerts = await screen.findAllByRole('alert');
     expect(alerts).toHaveLength(1);
@@ -215,7 +221,7 @@ describe('LeagueRulesRoute', () => {
     }));
     renderRules();
 
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
 
     expect(await screen.findByText('Primo problema sui secondi.')).toBeInTheDocument();
     expect(screen.getByText('Secondo problema sui secondi.')).toBeInTheDocument();
@@ -241,7 +247,7 @@ describe('LeagueRulesRoute', () => {
     stubRules(RULES, problem({ budget: 'boom' }));
     renderRules();
 
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
 
     const alerts = await screen.findAllByRole('alert');
     expect(alerts).toHaveLength(1);
@@ -255,7 +261,7 @@ describe('LeagueRulesRoute', () => {
     }));
     renderRules();
 
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
 
     expect(await screen.findByText('Servono crediti.')).toBeInTheDocument();
     const alerts = screen.getAllByRole('alert');
@@ -311,27 +317,87 @@ describe('LeagueRulesRoute', () => {
   it('un errore sui posti compare nel riassunto con il nome del ruolo', async () => {
     stubRules(RULES, problem({ 'slots[P]': ['Gli slot dei portieri devono essere fra 1 e 30: indicati 0.'] }));
     renderRules();
-    await userEvent.click(await screen.findByRole('button', { name: /salva/i }));
+    await changeAndSave();
     expect(await screen.findByRole('alert')).toHaveTextContent(/posti portieri/i);
   });
 
-  /** Il salvataggio resta in vista mentre si scorre il modulo. */
-  it('il bottone di salvataggio sta in una barra fissa in fondo', async () => {
+  it('usa lo schema delle impostazioni: h1, indice Sezioni, una barra di salvataggio', async () => {
     stubRules(RULES);
     renderRules();
-    const button = await screen.findByRole('button', { name: 'Salva le regole' });
-    expect(button.parentElement?.className).toContain('sticky');
-  });
-
-  it('un indice porta a ogni sezione del modulo', async () => {
-    stubRules(RULES);
-    renderRules();
-    const index = await screen.findByRole('navigation', { name: 'Sezioni del modulo' });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Regole della lega' })).toBeInTheDocument();
+    const index = screen.getByRole('navigation', { name: 'Sezioni' });
     for (const [label, id] of [
       ['Banditore', 'sezione-banditore'], ['Crediti e posti', 'sezione-regole'], ['Punteggio', 'sezione-punteggio'],
     ]) {
-      expect(within(index).getByRole('link', { name: label })).toHaveAttribute('href', `#${id}`);
-      expect(document.getElementById(id)).not.toBeNull();
+      // Due forme dell'indice, la fila del telefono e l'elenco del computer.
+      for (const link of within(index).getAllByRole('link', { name: label })) {
+        expect(link).toHaveAttribute('href', `#${id}`);
+      }
+      expect(document.getElementById(id)?.className).toContain('scroll-mt-');
     }
+    expect(await screen.findByText('Tutto salvato')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /salva/i })).toHaveLength(1);
+  });
+
+  it('cambiare un campo accende la barra; Annulla torna ai valori arrivati', async () => {
+    stubRules(RULES);
+    renderRules();
+    await userEvent.click(await screen.findByRole('button', { name: /secondo in più/i }));
+    expect(screen.getByText('Modifiche non salvate')).toBeInTheDocument();
+    expect(screen.getByLabelText(/secondi/i)).toHaveValue(6);
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+    expect(screen.getByText('Tutto salvato')).toBeInTheDocument();
+    expect(screen.getByLabelText(/secondi/i)).toHaveValue(5);
+  });
+
+  it('Salva le regole salva il modulo e torna a Tutto salvato', async () => {
+    const fetchMock = stubRules(RULES, () => Promise.resolve(jsonResponse({
+      ...RULES, bidder: { ...RULES.bidder, bidTimerSeconds: 6 },
+    })));
+    renderRules();
+    await userEvent.click(await screen.findByRole('button', { name: /secondo in più/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salva le regole' }));
+    await waitFor(() => expect(sentBody(fetchMock)).not.toBeNull());
+    expect(sentBody(fetchMock).bidder.bidTimerSeconds).toBe(6);
+    expect(await screen.findByText('Tutto salvato')).toBeInTheDocument();
+    expect(screen.getByLabelText(/secondi/i)).toHaveValue(6);
+  });
+
+  it('un errore di salvataggio e l unico alert, nella barra', async () => {
+    stubRules(RULES, problem({ budget: ['I crediti devono essere almeno 1.'] }));
+    renderRules();
+    await userEvent.click(await screen.findByRole('button', { name: 'Dieci crediti in più' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salva le regole' }));
+    expect(await screen.findByText('I crediti devono essere almeno 1.')).toBeInTheDocument();
+    const alerts = screen.getAllByRole('alert');
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent('1 errore: 1 in crediti per squadra.');
+    expect(screen.queryByText('Modifiche non salvate')).not.toBeInTheDocument();
+  });
+
+  it('il punteggio: due colonne sul telefono, quattro dal contenuto largo', async () => {
+    stubRules(RULES);
+    renderRules();
+    const grid = await screen.findByTestId('scoring-grid');
+    expect(grid.className).toContain('grid-cols-2');
+    expect(grid.className).toContain('lg:grid-cols-4');
+    expect(grid.innerHTML).not.toContain('truncate');
+  });
+
+  it('chi non puo modificare non ha la barra', async () => {
+    stubRules({ ...RULES, canEdit: false });
+    renderRules();
+    await screen.findByText('Solo l\'amministratore della lega può cambiare le regole.');
+    expect(screen.queryByText('Tutto salvato')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Annulla' })).not.toBeInTheDocument();
+  });
+
+  it('mentre carica, la stessa cornice con le tre sezioni', async () => {
+    stubRules(RULES);
+    renderRules();
+    expect(screen.getByRole('heading', { level: 1, name: 'Regole della lega' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Sezioni' })).toBeInTheDocument();
+    expect(screen.getByText('Carico le regole della lega…')).toBeInTheDocument();
+    await screen.findByText('Tutto salvato');
   });
 });

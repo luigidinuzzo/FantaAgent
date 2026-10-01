@@ -33,10 +33,10 @@ export function LeagueRulesFieldset({
     disabled ? lockId : (errors[key]?.length ?? 0) > 0 ? `${baseId}-${key}` : undefined;
 
   return (
-    // Cornice e titolo come «Partecipanti» e «Punteggio»: sono le tre sezioni del
-    // modulo, e questa si leggeva come una riga qualunque fra i campi del banditore.
-    <fieldset className="space-y-3 rounded-lg border border-line-strong p-4">
-      <legend className="px-2 text-base font-medium">Crediti e posti</legend>
+    // Senza cornice ne' titolo visibile: li da' la sezione che lo contiene. La
+    // legend resta, nascosta, come nome del group per chi ascolta.
+    <fieldset className="m-0 min-w-0 space-y-3 border-0 p-0">
+      <legend className="sr-only">Crediti e posti</legend>
       {disabled ? <p id={lockId} className="text-base text-muted-foreground">{LOCK_TEXT}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

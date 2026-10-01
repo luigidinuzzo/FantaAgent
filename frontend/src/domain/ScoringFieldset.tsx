@@ -88,12 +88,13 @@ export function ScoringFieldset({
 
   return (
     <fieldset
-      className="rounded-lg border border-line-strong p-4"
+      className="m-0 min-w-0 border-0 p-0"
       aria-describedby={generalErrors.length > 0 ? groupErrorsId : undefined}
     >
       {/* La <legend> fornisce il NOME accessibile del fieldset: e' il <fieldset>
-          stesso — un group — che supporta una descrizione, non la legend. */}
-      <legend className="px-2 text-base font-medium">Punteggio</legend>
+          stesso — un group — che supporta una descrizione, non la legend. Nascosta:
+          il titolo visibile e' quello della sezione che lo contiene. */}
+      <legend className="sr-only">Punteggio</legend>
 
       {disabled ? (
         <p id={lockId} className="mb-3 text-sm text-muted-foreground">
@@ -111,7 +112,9 @@ export function ScoringFieldset({
         <div> tiene comunque etichetta, controllo ed errori insieme nella stessa
         cella della grid.
       */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Due colonne sul telefono, quattro dal contenuto largo: le etichette vanno a
+          capo fra le parole, mai tagliate. */}
+      <div data-testid="scoring-grid" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {NUMERIC.map(({ key, label }) => (
           <div key={key}>
             <label className="block text-base">
@@ -197,7 +200,7 @@ export function ScoringFieldset({
             {/* Qui e non nella griglia sopra: quanti difensori conta e' un parametro
                 del modificatore di difesa, non un punteggio a se'. Nella griglia
                 lasciava anche l'ultimo «Gol segnato» da solo su una fila. */}
-            <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-2 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div>
                 <label className="block text-base">
                   <span className="flex min-h-6 items-center">Difensori conteggiati</span>

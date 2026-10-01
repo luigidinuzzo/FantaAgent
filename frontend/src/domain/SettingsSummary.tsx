@@ -4,7 +4,8 @@ import { ROLE_NAME_PLURAL, ROLES } from './roles';
 
 /**
  * Banditore, regole e punteggio da leggere e non da modificare: quello che vede
- * chi non e' amministratore della lega.
+ * chi non e' amministratore della lega. Solo i valori: cornice e titolo li da' la
+ * sezione della pagina che li contiene.
  *
  * <p>Prima erano gli stessi campi del modulo, spenti, con la stessa frase ripetuta
  * tre volte: sembravano un modulo rotto. Qui sono valori scritti, con la ragione
@@ -12,16 +13,15 @@ import { ROLE_NAME_PLURAL, ROLES } from './roles';
  */
 export function BidderSummary({ bidder }: { bidder: BidderSettings }) {
   return (
-    <section aria-labelledby="bidder-summary" className="rounded-lg border border-line-strong p-4">
-      <h2 id="bidder-summary" className="text-base font-medium">Banditore</h2>
-      <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
+    <div>
+      <dl className="flex flex-wrap gap-x-10 gap-y-4">
         <Value label="Secondi del conto alla rovescia" value={bidder.bidTimerSeconds} />
         <div className="flex flex-col-reverse gap-1">
           <dt className="text-sm text-muted-foreground">Avviso acustico allo scadere</dt>
           <dd className="w-exp text-2xl font-semibold">{bidder.beepEnabled ? 'Sì' : 'No'}</dd>
         </div>
       </dl>
-    </section>
+    </div>
   );
 }
 
@@ -31,9 +31,8 @@ export function BidderSummary({ bidder }: { bidder: BidderSettings }) {
  */
 export function RulesSummary({ rules, teams }: { rules: RulesSection; teams?: number }) {
   return (
-    <section aria-labelledby="rules-summary" className="rounded-lg border border-line-strong p-4">
-      <h2 id="rules-summary" className="text-base font-medium">Crediti e posti</h2>
-      <dl className="mt-3 flex flex-wrap gap-x-10 gap-y-4">
+    <div>
+      <dl className="flex flex-wrap gap-x-10 gap-y-4">
         {teams !== undefined ? <Value label="Squadre" value={teams} /> : null}
         <Value label="Crediti per squadra" value={rules.budget} />
         {ROLES.map((role: Role) => (
@@ -46,7 +45,7 @@ export function RulesSummary({ rules, teams }: { rules: RulesSection; teams?: nu
           </div>
         ))}
       </dl>
-    </section>
+    </div>
   );
 }
 
@@ -71,9 +70,8 @@ function points(n: number): string {
 
 export function ScoringSummary({ scoring }: { scoring: ScoringSection }) {
   return (
-    <section aria-labelledby="scoring-summary" className="rounded-lg border border-line-strong p-4">
-      <h2 id="scoring-summary" className="text-base font-medium">Punteggio</h2>
-      <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div>
+      <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
         {SCORING_VALUES.map(({ key, label }) => (
           <Row key={key} label={label} value={points(scoring[key] as number)} />
         ))}
@@ -94,7 +92,7 @@ export function ScoringSummary({ scoring }: { scoring: ScoringSection }) {
             + '.'
           : 'Modificatore di difesa spento.'}
       </p>
-    </section>
+    </div>
   );
 }
 
