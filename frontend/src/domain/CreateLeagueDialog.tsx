@@ -10,7 +10,7 @@ const FIELDS = ['name', 'teamName'];
 
 /**
  * Crea una lega, in una finestra sopra la home. Riuscita, porta alla lega nuova.
- * L'iniziale non si chiede: la sceglie il server (vedi {@code LeagueService.initialOr}).
+ * L'iniziale non si chiede: alla lega nuova arriva da sola, dal nome della squadra.
  */
 export function CreateLeagueDialog({ open, onClose, returnFocusRef }: {
   open: boolean;
