@@ -7,8 +7,7 @@
 // anche i moduli che Vite serve da /src/api/, e la pagina resterebbe bianca.
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { chromium, webkit } from '@playwright/test';
 
 const BASE = process.env.BASE ?? 'http://localhost:5173';
@@ -250,6 +249,10 @@ function respond(method, path, query, authed) {
 }
 
 // Le misure delle finestre: quelle di sempre, o quelle chieste con SIZES.
+// Le pagine di gestione (leghe, lega, regole, importazione, profilo, impostazioni
+// dell'asta): li' valgono un solo oro e le tendine non tagliate.
+const MANAGEMENT = /^(08|09|10|11|12|15)/;
+
 const SIZES = (process.env.SIZES ?? '1440x900,390x844').split(',').map((s) => {
   const [width, height] = s.split('x').map(Number);
   const tag = s === '1440x900' ? 'desktop' : s === '390x844' ? 'telefono' : s;
@@ -315,7 +318,7 @@ async function open(viewport, authed) {
 }
 
 /** Una cartella d'asta finta, perche' il campo della cartella accetta solo un percorso. */
-async function mkAstaDir() {
+function mkAstaDir() {
   const dir = mkdtempSync(join(tmpdir(), 'asta-'));
   writeFileSync(join(dir, 'events.jsonl'), '{}');
   return dir;
@@ -368,7 +371,7 @@ async function shot(page, name, path, after) {
   }
   // Nelle pagine di gestione una sola azione oro per schermata, barra in cima
   // compresa. Con una finestra aperta conta solo la finestra: il resto e' inerte.
-  if (/^(08|09|10|11|12|15)/.test(name)) {
+  if (MANAGEMENT.test(name)) {
     const golds = await page.evaluate(() => {
       const scope = document.querySelector('dialog[open]') ?? document;
       return [...scope.querySelectorAll('button, a, [role=button]')]
@@ -381,7 +384,7 @@ async function shot(page, name, path, after) {
   // Un menu a tendina mostra la scelta su una riga sola: se non ci sta, il nome
   // resta tagliato. Si misura il testo scelto contro lo spazio fra il margine
   // sinistro e la freccia (20px) col margine destro.
-  if (/^(08|09|10|11|12|15)/.test(name)) {
+  if (MANAGEMENT.test(name)) {
     const cut = await page.evaluate(() => {
       const ctx = document.createElement('canvas').getContext('2d');
       return [...document.querySelectorAll('select')].filter((el) => el.checkVisibility()).map((el) => {
@@ -504,7 +507,7 @@ for (const { viewport: vp, tag } of SIZES) {
     console.log(`   importa vuoto: riquadro ${Math.round((await p.getByTestId('import-box').boundingBox()).height)}px`);
   });
   await shot(user.page, `11b-importa-abbina-${tag}`, '/leghe/L1/importa', async (p) => {
-    await p.locator('#import-folder').setInputFiles(await mkAstaDir());
+    await p.locator('#import-folder').setInputFiles(mkAstaDir());
     await p.getByRole('list', { name: 'Abbinamenti' }).waitFor();
     console.log(`   importa: riquadro ${Math.round((await p.getByTestId('import-box').boundingBox()).height)}px`);
   });
