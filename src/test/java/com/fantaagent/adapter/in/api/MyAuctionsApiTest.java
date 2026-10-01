@@ -13,6 +13,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -67,6 +70,27 @@ class MyAuctionsApiTest {
                 .andExpect(jsonPath("$[0].budgetRemaining").value(490));
         f.mvc.perform(get("/api/auctions").cookie(f.anna))
                 .andExpect(jsonPath("$[0].admin").value(true));
+    }
+
+    /** Tutti i posti di tutte le squadre pieni: la stessa regola della schermata dell'asta. */
+    @Test
+    void conTuttiIPostiPieniEConclusa() throws Exception {
+        var admin = f.view(f.annaId);
+        Map<Role, Integer> slots = admin.auction().rules().slots();
+        Map<Role, Integer> next = new EnumMap<>(Role.class);
+        for (String buyer : List.of(f.annaId, f.brunoId, f.carlaId)) {
+            slots.forEach((role, count) -> {
+                for (int i = 0; i < count; i++) {
+                    int index = next.merge(role, 1, Integer::sum) - 1;
+                    admin.write(() -> admin.service().recordPurchase(f.player(role, index), buyer, 1,
+                            UUID.randomUUID().toString()));
+                }
+            });
+        }
+        f.mvc.perform(get("/api/auctions").cookie(f.bruno))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("CONCLUDED"))
+                .andExpect(jsonPath("$[0].slotsRemaining").value(0));
     }
 
     @Test
