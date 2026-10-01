@@ -110,6 +110,9 @@ type TabKey = 'fase' | 'rose';
 /** Quanto resta in vista l'avviso di un acquisto, con il suo «Annulla». */
 const SALE_TOAST_MS = 8_000;
 
+/** Quanto resta armata la conferma di «Togli dal banco» prima di tornare a riposo. */
+const CONFIRM_REMOVE_MS = 4_000;
+
 // Due schede, non due sezioni sempre in vista: la fila di card squadra basta a
 // sapere chi ha quanto, e la griglia intera delle rose — otto colonne per
 // venticinque righe — spingerebbe la card del lotto fuori dallo schermo proprio
@@ -159,7 +162,26 @@ export function AuctionRoute() {
   // si richiude, e il prossimo parte di nuovo dal conto alla rovescia.
   const [directFor, setDirectFor] = useState<string | null>(null);
   // «Togli dal banco» col conto aperto chiede conferma: vero dopo il primo clic.
+  // Torna a riposo uscendo dal bottone, ma non solo: in Safari un bottone
+  // toccato non prende il fuoco e l'uscita non arriva mai, e un tocco molto dopo
+  // toglieva il lotto senza una conferma fresca. Quindi anche da sola dopo
+  // CONFIRM_REMOVE_MS, cambiando lotto, aprendo o chiudendo il conto, e quando il
+  // tempo scade o le offerte riprendono (onExpiredChange del conto).
   const [confirmRemove, setConfirmRemove] = useState(false);
+  // Lotto e conto cambiati: la conferma era per quelli. Aggiustata durante il
+  // render, come React consiglia per lo stato che segue un altro stato, invece
+  // di un effetto che renderizzerebbe due volte.
+  const confirmScope = `${selectedId ?? ''}|${bidderOpen}`;
+  const [confirmScopeSeen, setConfirmScopeSeen] = useState(confirmScope);
+  if (confirmScopeSeen !== confirmScope) {
+    setConfirmScopeSeen(confirmScope);
+    setConfirmRemove(false);
+  }
+  useEffect(() => {
+    if (!confirmRemove) return;
+    const timer = setTimeout(() => setConfirmRemove(false), CONFIRM_REMOVE_MS);
+    return () => clearTimeout(timer);
+  }, [confirmRemove]);
   // L'ultimo acquisto confermato, mostrato in basso per qualche secondo con la
   // possibilita' di annullarlo. null quando non c'e' niente da mostrare. Porta
   // l'asta e il numero dell'acquisto: «Annulla» revoca QUELLO, non l'ultimo.
@@ -929,6 +951,7 @@ export function AuctionRoute() {
                   pending={assign.isPending}
                   onAssign={assignPlayer}
                   onClose={() => setBidderOpen(false)}
+                  onExpiredChange={() => setConfirmRemove(false)}
                 />
               ) : !valuation.data ? (
                 // Senza consigli restano i gesti del banco: chi e', di che

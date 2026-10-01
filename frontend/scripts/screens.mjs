@@ -232,6 +232,7 @@ const spilling = [];
 const scrolling = [];
 const belowFold = [];
 const splitWords = [];
+const confirmStuck = [];
 
 // I nomi che sul telefono vanno a capo — il lotto nella testata del banco, le
 // squadre a tempo scaduto — devono andarci fra le parole: una parola tagliata a
@@ -441,8 +442,26 @@ if (process.env.WEBKIT !== '0') {
     await probeNames(page, `14e-asta-togli-${tag}`);
     await page.screenshot({ path: `${OUT}/14e-asta-togli-${tag}.png`, fullPage: true });
     console.log('ok', `14e-asta-togli-${tag}`);
-    await page.evaluate(() => document.activeElement?.blur());
-    await page.waitForTimeout(6000);
+    // In Safari un bottone toccato non prende il fuoco: la conferma non puo'
+    // contare sull'uscita dal bottone per tornare a riposo. Ci torna da sola in
+    // quattro secondi (un rilancio tiene vivo il conto nel frattempo) e quando
+    // il tempo scade.
+    const confirmShown = () => page.getByRole('button', { name: 'Conferma: il lotto si perde' }).isVisible();
+    await page.waitForTimeout(1500);
+    await page.getByRole('button', { name: /Rilancia \+1/ }).click();
+    await page.waitForTimeout(2800);
+    const afterTimeout = await confirmShown();
+    const stillRunning = await page.getByRole('button', { name: /^Aggiudica a/ }).count() === 0;
+    console.log(`   conferma dopo 4s: ${afterTimeout ? 'ANCORA ARMATA' : 'a riposo'}${stillRunning ? ', conto ancora aperto' : ''}`);
+    if (afterTimeout) confirmStuck.push(`${tag}: dopo 4s`);
+    // Riarmata a ~5,4s, il tempo scade a ~7,5s: si guarda a ~8,4s, prima che
+    // scattino i quattro secondi.
+    await page.getByRole('button', { name: 'Togli dal banco' }).click();
+    await page.waitForTimeout(3000);
+    const afterExpiry = await confirmShown();
+    const expired = await page.getByRole('button', { name: /^Aggiudica a/ }).count() > 0;
+    console.log(`   conferma allo scadere: ${afterExpiry ? 'ANCORA ARMATA' : 'a riposo'}${expired ? ', tempo scaduto' : ', tempo NON scaduto'}`);
+    if (afterExpiry || !expired) confirmStuck.push(`${tag}: allo scadere`);
     await page.evaluate(() => window.scrollTo(0, 0));
     await probeNames(page, `14d-asta-scaduto-${tag}`);
     const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -459,3 +478,4 @@ console.log('traboccano:', spilling);
 console.log('scorrono:', scrolling);
 console.log('banco sotto la piega:', belowFold);
 console.log('parole spezzate:', splitWords);
+console.log('conferma rimasta armata (WebKit):', confirmStuck);

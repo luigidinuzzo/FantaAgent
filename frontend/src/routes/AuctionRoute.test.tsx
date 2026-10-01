@@ -1901,6 +1901,65 @@ describe('AuctionRoute', () => {
       .toHaveTextContent(/La tua squadra, Anna/);
   });
 
+  /**
+   * La richiesta di conferma di «Togli dal banco» non deve restare armata: in
+   * Safari un bottone toccato non prende il fuoco, l'onBlur non arriva mai, e un
+   * tocco molto dopo toglieva il lotto senza una conferma fresca. Torna a riposo
+   * da sola dopo quattro secondi, cambiando lotto e quando il tempo scade.
+   */
+  describe('la conferma di «Togli dal banco» torna a riposo da sola', () => {
+    async function armed() {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      vi.stubGlobal('fetch', fullFetchMock());
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      renderAuction();
+      await user.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await user.click(open);
+      return user;
+    }
+    const arm = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'Togli dal banco' }));
+      expect(screen.getByRole('button', { name: 'Conferma: il lotto si perde' })).toHaveFocus();
+    };
+
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('dopo quattro secondi', async () => {
+      const user = await armed();
+      await arm(user);
+      await act(async () => { vi.advanceTimersByTime(3_900); });
+      expect(screen.getByRole('button', { name: 'Conferma: il lotto si perde' })).toBeInTheDocument();
+      await act(async () => { vi.advanceTimersByTime(200); });
+      expect(screen.getByRole('button', { name: 'Togli dal banco' })).toBeInTheDocument();
+      expect(screen.getByTestId('bidder-dialog')).toBeInTheDocument();
+    });
+
+    // Mentre il conto corre la tabella e la ricerca sono ferme: il lotto non
+    // cambia senza che il conto si chiuda. Il caso da provare e' la chiusura:
+    // Esc, un gesto che non sposta il fuoco dal bottone armato.
+    it('chiudendo il conto alla rovescia', async () => {
+      const user = await armed();
+      await arm(user);
+      await user.keyboard('{Escape}');
+      expect(screen.queryByTestId('bidder-dialog')).not.toBeInTheDocument();
+      const togli = screen.getByRole('button', { name: 'Togli dal banco' });
+      expect(togli).toHaveFocus();
+    });
+
+    it('quando il tempo scade', async () => {
+      const user = await armed();
+      // Si arma tardi, a tre secondi dalla fine dei dodici: scade prima dei quattro.
+      await act(async () => { vi.advanceTimersByTime(9_000); });
+      await arm(user);
+      await act(async () => { vi.advanceTimersByTime(3_200); });
+      expect(screen.getByRole('button', { name: /^Aggiudica a/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Togli dal banco' })).toBeInTheDocument();
+    });
+  });
+
   /** La colonna a sinistra dice nome e crediti, e chi ascolta riconosce la propria riga. */
   it('la colonna delle squadre mostra i crediti rimasti, e dice a parole qual e la tua', async () => {
     setAuctionContext({ leagueId: 'default', auctionId: 'a1' });

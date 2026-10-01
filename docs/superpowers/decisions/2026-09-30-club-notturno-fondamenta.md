@@ -238,6 +238,12 @@ scaduto −344.
 11. La conferma di «Togli dal banco», sotto `sm`, va su una riga sua a tutta larghezza:
     accanto al nome lo stringeva fino a sillabarlo («Mkhita-ryan», tre righe a 360). Ora
     il nome sta su una riga, anche «Milinkovic-Savic» a 360×740.
+    La conferma torna a riposo anche da sola: dopo 4 secondi, aprendo o chiudendo il
+    conto, cambiando lotto, e quando il tempo scade o le offerte riprendono. In Safari
+    un bottone toccato non prende il fuoco, e l'uscita dal bottone — l'unico ritorno
+    a riposo che c'era, anche su `main` — non arrivava mai: un tocco molto dopo
+    toglieva il lotto senza una conferma fresca. Lo script lo verifica in WebKit
+    (`conferma rimasta armata (WebKit):` vuoto).
 12. L'avviso dell'aggiudicazione sta sopra la barra contando anche la zona sicura
     (`bottom: calc(5rem + env(safe-area-inset-bottom))`).
 

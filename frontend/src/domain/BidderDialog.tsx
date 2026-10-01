@@ -145,6 +145,7 @@ export function BidderDialog({
   hideHeader = false,
   onAssign,
   onClose,
+  onExpiredChange,
 }: {
   valuation: ValuationResponse;
   /**
@@ -196,6 +197,9 @@ export function BidderDialog({
   leader?: { name: string } | null;
   onAssign: (input: { participantId: string; price: number }) => void;
   onClose: () => void;
+  /** Il tempo scade, o le offerte riprendono: per chi deve rimettere a riposo
+   *  cio' che valeva solo per lo stato di prima. */
+  onExpiredChange?: (expired: boolean) => void;
 }) {
   const [price, setPrice] = useState(1);
   // Il campo dell'offerta diretta resta una stringa: un numero obbligherebbe a
@@ -241,7 +245,10 @@ export function BidderDialog({
   const countdown = useBidCountdown({
     seconds: timerSeconds,
     beepEnabled,
-    onExpire: () => setExpired(true),
+    onExpire: () => {
+      setExpired(true);
+      onExpiredChange?.(true);
+    },
   });
 
   // Un rilancio solo, da qualunque gesto arrivi: barra spaziatrice, i passi,
@@ -621,7 +628,7 @@ export function BidderDialog({
                 quanto «Aggiudica»: i gesti del banco, impilati, sono larghi uguali. */}
             <button
               type="button"
-              onClick={() => { setExpired(false); countdown.start(); }}
+              onClick={() => { setExpired(false); onExpiredChange?.(false); countdown.start(); }}
               className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-control-border px-6 text-lg font-medium max-sm:w-full max-sm:justify-center hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
             >
               <ReopenIcon />
