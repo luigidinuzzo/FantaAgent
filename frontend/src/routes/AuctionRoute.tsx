@@ -98,6 +98,12 @@ const ICON_LINK =
 // stessi di sempre, da lg 16px in alto e in basso invece di 24: sono i 16px che
 // la tabella sotto il banco guadagna in altezza a 1440x900.
 const PAGE_PADDING = 'p-4 md:p-6 lg:px-5 lg:py-4';
+// Gli stessi margini, ma sotto lg in fondo c'e' il posto della barra delle viste,
+// fissa in fondo allo schermo: i suoi 64px, il filo e la zona sicura, piu' i
+// soliti 16px. Scritti per lato e non sopra p-4/md:p-6: md:p-6 vincerebbe sul
+// margine in fondo fra md e lg.
+const PAGE_PADDING_WITH_BAR =
+  'px-4 pt-4 md:px-6 md:pt-6 max-lg:pb-[calc(5rem+1px+env(safe-area-inset-bottom))] lg:px-5 lg:py-4';
 
 type TabKey = 'fase' | 'rose';
 
@@ -255,6 +261,8 @@ export function AuctionRoute() {
   // battere, e la schermata diventa il riepilogo invece di restare quella della
   // serata con i tetti a zero.
   const concluded = participants.length > 0 && participants.every((p) => p.slotsRemaining === 0);
+  // La barra delle viste c'e' solo nel ramo dell'asta in corso con le viste.
+  const phoneLayout = !concluded && phoneViews;
   const board = useBoard();
   // I comprati, letti dal tabellone: alla ricerca servono per dire «e' di Diego, 80»
   // invece di «Nessun giocatore trovato» quando si cerca un nome gia' preso.
@@ -511,7 +519,7 @@ export function AuctionRoute() {
     onClick={() => setBidderOpen(true)}
     disabled={!bidderSettings.data}
     aria-describedby={!bidderSettings.data ? bidderHintId : undefined}
-    className={`${CONTROL_H} min-w-[16rem] max-w-[28rem] flex-1 rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+    className={`${CONTROL_H} min-w-[16rem] max-w-[28rem] flex-1 max-sm:w-full max-sm:max-w-none rounded-lg bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
   >
     Avvia il conto alla rovescia
   </button>
@@ -545,7 +553,7 @@ export function AuctionRoute() {
       type="button"
       aria-expanded={false}
       onClick={() => setDirectFor(lot.playerId)}
-      className={`${CONTROL_H} ${BUTTON_SECONDARY} px-5 text-muted-foreground hover:text-foreground`}
+      className={`${CONTROL_H} ${BUTTON_SECONDARY} px-5 text-muted-foreground hover:text-foreground max-sm:w-full`}
     >
       Aggiudica direttamente
     </button>
@@ -660,7 +668,8 @@ export function AuctionRoute() {
         </div>
       }
     >
-      <div className={PAGE_PADDING}>
+      {/* Con le viste del telefono l'ultima riga non deve restare sotto la barra. */}
+      <div className={phoneLayout ? PAGE_PADDING_WITH_BAR : PAGE_PADDING}>
       {/* Nascosto alla vista, non dall'albero di accessibilita': come su
           /proiezione, chi ascolta deve avere un h1 da cui partire anche se
           chi guarda il portatile non ha bisogno di leggere la parola "Asta". */}
@@ -817,9 +826,13 @@ export function AuctionRoute() {
             {lot ? (
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span id={bancoPrefixId} className="sr-only">Sul banco ·</span>
-                {/* Va a capo invece di troncarsi: sul telefono, accanto a «Togli
-                    dal banco», un nome lungo finiva in «Carnesecc…». */}
-                <h2 id={bidderPanelId} className="w-exp min-w-0 break-words text-2xl font-semibold">
+                {/* Va a capo invece di troncarsi: sul telefono un nome lungo
+                    finiva in «Carnesecc…». Va a capo fra le parole e mai dentro
+                    una parola: per una parola sola piu' lunga della riga resta
+                    la sillabazione italiana (lang qui, perche' hyphens-auto
+                    sillaba secondo la lingua dell'elemento). Sotto sm un corpo
+                    piu' piccolo, e la X di «Togli dal banco» gli lascia la riga. */}
+                <h2 id={bidderPanelId} lang="it" className="w-exp min-w-0 hyphens-auto text-xl font-semibold sm:text-2xl">
                   {lot.name}
                 </h2>
                 {/* La pillola centrata sull'altezza del nome: sulla linea di base
@@ -843,6 +856,9 @@ export function AuctionRoute() {
               // Mentre il conto corre toglierlo butta via offerta e tempo: il
               // primo clic chiede conferma, il secondo toglie. Senza il conto
               // aperto non c'e' niente da perdere, e basta un clic.
+              // Sotto sm a riposo e' la sola X, 44x44: la parola resta per chi
+              // ascolta, e la riga va al nome. La richiesta di conferma si legge
+              // per intero a ogni misura.
               <button
                 type="button"
                 onClick={() => {
@@ -856,11 +872,15 @@ export function AuctionRoute() {
                 }}
                 onBlur={() => setConfirmRemove(false)}
                 className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
-                  confirmRemove ? 'border-destructive bg-destructive text-on-accent' : 'border-control-border hover:bg-line'
+                  confirmRemove
+                    ? 'border-destructive bg-destructive text-on-accent'
+                    : 'border-control-border hover:bg-line max-sm:w-11 max-sm:justify-center max-sm:px-0'
                 }`}
               >
                 <RemoveIcon />
-                {confirmRemove ? "Conferma: il lotto si perde" : 'Togli dal banco'}
+                {confirmRemove
+                  ? "Conferma: il lotto si perde"
+                  : <span className="max-sm:sr-only">Togli dal banco</span>}
               </button>
             ) : null}
           </div>
@@ -1091,9 +1111,6 @@ export function AuctionRoute() {
 
       {phoneViews ? (
         <PhoneViewBar
-          // Da bordo a bordo e fino in fondo: i margini negativi annullano quelli
-          // della pagina (p-4, da md p-6), che la barra non deve avere.
-          className="-mx-4 -mb-4 md:-mx-6 md:-mb-6"
           view={phoneView}
           onChange={changePhoneView}
           controls={{

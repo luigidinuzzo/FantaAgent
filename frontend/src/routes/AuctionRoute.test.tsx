@@ -2110,15 +2110,15 @@ describe('AuctionRoute', () => {
       expect(ricerca.compareDocumentPosition(crediti) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('la barra delle viste va da bordo a bordo, fino in fondo alla pagina', async () => {
+    it('la barra delle viste e ferma in fondo, e la pagina le lascia il posto', async () => {
       stubApi({ state: STATE });
       renderAuction();
       const bar = (await screen.findByRole('tablist', { name: "Viste dell'asta" })).parentElement!;
-      // Annulla i margini della pagina (p-4, da md p-6) ai lati e sotto.
-      expect(bar.className).toContain('-mx-4');
-      expect(bar.className).toContain('md:-mx-6');
-      expect(bar.className).toContain('-mb-4');
-      expect(bar.className).toContain('md:-mb-6');
+      expect(bar.className).toContain('max-lg:fixed');
+      expect(bar.className).toContain('bottom-0');
+      // L'ultima riga della pagina non finisce sotto la barra.
+      const pagina = screen.getByRole('heading', { level: 1, name: 'Asta' }).parentElement!;
+      expect(pagina.className).toContain('max-lg:pb-[calc(5rem+1px+env(safe-area-inset-bottom))]');
     });
 
     it('nelle viste Giocatori e Rose nessuno spazio vuoto in cima al pannello', async () => {
@@ -2137,7 +2137,29 @@ describe('AuctionRoute', () => {
       const nome = within(banco).getByRole('heading', { level: 2, name: 'Giocatore Uno' });
       expect(nome.className).not.toContain('truncate');
       expect(nome.className).not.toContain('line-clamp');
-      expect(nome.className).toContain('break-words');
+      // Mai una parola spezzata a meta': niente break-words, solo la sillabazione
+      // italiana per una parola sola piu' lunga della riga.
+      expect(nome.className).not.toContain('break-words');
+      expect(nome.className).not.toContain('break-all');
+      expect(nome.className).toContain('hyphens-auto');
+      expect(nome.className).toMatch(/(^| )text-xl( |$)/);
+      expect(nome.className).toContain('sm:text-2xl');
+      expect(nome.closest('[lang]')).toHaveAttribute('lang', 'it');
+      // Sotto sm il bottone e' la sola X: il nome per chi ascolta resta quello.
+      const togli = within(banco).getByRole('button', { name: 'Togli dal banco' });
+      expect(togli.className).toContain('max-sm:w-11');
+      expect(within(togli).getByText('Togli dal banco').className).toContain('max-sm:sr-only');
+    });
+
+    it('sul telefono i due gesti del banco, uno sopra l\'altro, sono larghi uguali', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      await userEvent.click(await screen.findByRole('button', { name: 'Valuta Giocatore Uno' }));
+      const avvia = await screen.findByRole('button', { name: 'Avvia il conto alla rovescia' });
+      const diretta = screen.getByRole('button', { name: 'Aggiudica direttamente' });
+      expect(avvia.className).toContain('max-sm:w-full');
+      expect(avvia.className).toContain('max-sm:max-w-none');
+      expect(diretta.className).toContain('max-sm:w-full');
     });
 
     it('il banditore ha il menu «Comandi»; chi non lo e no', async () => {

@@ -22,6 +22,15 @@ function renderMenu(overrides: Partial<Parameters<typeof CommandsMenu>[0]> = {})
 }
 
 describe('CommandsMenu', () => {
+  // Sotto sm la sola icona in un quadrato di 44px: con la parola la testata non
+  // stava su una riga a 360px.
+  it('sotto sm il bottone e un quadrato di 44px, col nome per chi ascolta', () => {
+    renderMenu();
+    const button = screen.getByRole('button', { name: /Comandi/ });
+    expect(button.className).toContain('max-sm:px-0');
+    expect(button.className).toContain('min-w-11');
+  });
+
   it('apre un menu con le fasi, l annullamento, la proiezione e le impostazioni', async () => {
     renderMenu();
     const button = screen.getByRole('button', { name: /Comandi/ });

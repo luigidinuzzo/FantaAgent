@@ -23,11 +23,15 @@ describe('PhoneViewBar', () => {
     expect(screen.getByRole('tablist', { name: "Viste dell'asta" }).parentElement?.className).toContain('lg:hidden');
   });
 
-  it('chi la monta le aggiunge classi, per annullare i margini della pagina', () => {
-    render(<PhoneViewBar view="banco" onChange={() => {}} controls={CONTROLS} className="-mx-4" />);
+  // Inchiodata in basso, in ogni vista e a ogni scorrimento: sticky la lasciava
+  // sotto il contenuto quando la vista era piu' corta dello schermo.
+  it('sta ferma in fondo allo schermo, da bordo a bordo, sopra la zona sicura', () => {
+    render(<PhoneViewBar view="banco" onChange={() => {}} controls={CONTROLS} />);
     const bar = screen.getByRole('tablist', { name: "Viste dell'asta" }).parentElement!;
-    expect(bar.className).toContain('-mx-4');
-    expect(bar.className).toContain('lg:hidden');
+    for (const c of ['max-lg:fixed', 'inset-x-0', 'bottom-0', 'pb-[env(safe-area-inset-bottom)]', 'lg:hidden']) {
+      expect(bar.className).toContain(c);
+    }
+    expect(bar.className).not.toContain('sticky');
   });
 
   it('le frecce scelgono la vista vicina e ci portano il fuoco', async () => {

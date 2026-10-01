@@ -89,7 +89,9 @@ export function CommandsMenu({
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className={`${BUTTON_SECONDARY} min-w-11`}
+        // Sotto sm la sola icona, in un quadrato di 44px: la testata deve stare
+        // su una riga anche a 360px.
+        className={`${BUTTON_SECONDARY} min-w-11 max-sm:px-0`}
       >
         <DotsIcon />
         {/* Sul telefono solo i tre puntini; la parola resta per i lettori di schermo. */}
