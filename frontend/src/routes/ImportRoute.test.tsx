@@ -106,12 +106,12 @@ describe('ImportRoute', () => {
     await userEvent.upload(input, FILES);
     expect(await screen.findByText('Asta del 2025')).toBeInTheDocument();
 
-    await userEvent.upload(input, [new File(['x'], 'foto.jpg')]);
+    await userEvent.upload(screen.getByLabelText('Scegli la cartella', { selector: 'input' }), [new File(['x'], 'foto.jpg')]);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('In questa cartella non c\'è un\'asta di FantaAgent.');
     expect(screen.queryByText('Asta del 2025')).not.toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Abbinamenti' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Importa l\'asta' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Importa l\'asta' })).not.toBeInTheDocument();
   });
 
   it('se le rose non coincidono lo dice e non va avanti', async () => {
@@ -148,6 +148,15 @@ describe('ImportRoute', () => {
     stub();
     renderImport();
     expect(screen.getByTestId('import-box').className).toContain('min-h-[55rem]');
+  });
+
+  it('prima della scelta: la zona della cartella, niente abbinamenti, niente oro', () => {
+    stub();
+    renderImport();
+    expect(screen.getByText(/l'elenco dei partecipanti/)).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Abbinamenti' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Importa l\'asta' })).not.toBeInTheDocument();
+    expect(document.body.querySelectorAll('.bg-accent')).toHaveLength(0);
   });
 
   it('Importa l asta e l unico oro', async () => {

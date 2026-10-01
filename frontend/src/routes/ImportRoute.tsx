@@ -76,23 +76,32 @@ export function ImportRoute() {
       <PageFrame>
         <div className="mx-auto w-full max-w-3xl">
           <PageHeader title="Importa un'asta" context="Porta qui un'asta giocata con FantaAgent sul computer." />
-          {/* Il riquadro ha da subito l'altezza del passaggio piu' alto: scegliere la
-              cartella non sposta niente. */}
-          <section data-testid="import-box" className="panel min-h-[55rem] p-5 md:p-6">
-            <ol aria-label="Passaggi" className="space-y-8">
-              <li>
+          {/* Il riquadro ha sempre la stessa altezza: prima della scelta la occupa la
+              zona della cartella, dopo la occupano gli abbinamenti. */}
+          <section data-testid="import-box" className="panel flex min-h-[57rem] flex-col p-5 md:min-h-[55rem] md:p-6">
+            <ol aria-label="Passaggi" className="flex flex-1 flex-col gap-8">
+              <li className={ready ? '' : 'flex flex-1 flex-col'}>
                 <Step n={1} title="Scegli la cartella" />
-                <p className="mt-3 text-sm">
-                  Serve la cartella di un'asta giocata con FantaAgent sul tuo computer: dentro ci sono le
-                  mosse dell'asta e l'elenco dei partecipanti.
-                </p>
-                <div className="mt-4">
-                  <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
-                </div>
+                {ready ? (
+                  <div className="mt-3">
+                    <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 rounded-lg border-2 border-dashed border-control-border p-6 text-center">
+                    <p className="max-w-md text-sm">
+                      Serve la cartella di un'asta giocata con FantaAgent sul tuo computer. Dentro ci sono:
+                    </p>
+                    <div className="space-y-1 text-sm font-medium">
+                      <p>le mosse dell'asta</p>
+                      <p>l'elenco dei partecipanti</p>
+                    </div>
+                    <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
+                    {preview.isPending ? (
+                      <p role="status" className="text-sm text-muted-foreground">Leggo l'asta…</p>
+                    ) : null}
+                  </div>
+                )}
                 {alert ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{alert}</p> : null}
-                {preview.isPending ? (
-                  <p role="status" className="mt-4 text-sm text-muted-foreground">Leggo l'asta…</p>
-                ) : null}
                 {preview.data ? (
                   <p className="mt-4 text-sm">
                     <span className="font-medium">{preview.data.name}</span>
@@ -100,41 +109,40 @@ export function ImportRoute() {
                   </p>
                 ) : null}
               </li>
-              <li data-testid="import-step-2" aria-disabled={!ready}
-                className={ready ? '' : 'text-muted-foreground'}>
+              <li data-testid="import-step-2" aria-disabled={!ready} className={ready ? '' : 'text-muted-foreground'}>
                 <Step n={2} title="Abbina i partecipanti" />
-                {/* La zona degli abbinamenti ha la stessa altezza prima e dopo la scelta:
-                    con tanti partecipanti scorre dentro, la pagina non si sposta. */}
-                <div className="mt-3 h-[29rem] overflow-y-auto rounded-lg border border-line p-4">
-                  {ready ? (
-                    <ul aria-label="Abbinamenti" className="grid gap-x-4 gap-y-3 md:grid-cols-2">
-                      {participants.map((p) => (
-                        <li key={p.id}>
-                          <span className="mb-1 block text-sm">{p.name} <span className="text-muted-foreground">· {p.initial}</span></span>
-                          <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
-                            onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
-                            className={`${FIELD} min-h-11`}>
-                            <option value="">Scegli…</option>
-                            {members.map((m) => (
-                              <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>
-                            ))}
-                          </select>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="grid h-full place-items-center text-center text-sm">Dopo aver scelto la cartella, ogni partecipante dell'asta va a un membro della lega.</p>
-                  )}
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Ogni partecipante va a un membro diverso. Chi non è ancora nella lega va invitato prima.
-                </p>
-                <button type="button" disabled={!ready || !complete || doImport.isPending}
-                  onClick={() => doImport.mutate({ files, mapping },
-                    { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
-                  className={`${BUTTON_PRIMARY} mt-6 px-5`}>
-                  {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
-                </button>
+                {ready ? (
+                  <>
+                    <div className="mt-3 h-[29rem] overflow-y-auto rounded-lg border border-line p-4">
+                      <ul aria-label="Abbinamenti" className="grid gap-x-4 gap-y-3 md:grid-cols-2">
+                        {participants.map((p) => (
+                          <li key={p.id}>
+                            <span className="mb-1 block text-sm">{p.name} <span className="text-muted-foreground">· {p.initial}</span></span>
+                            <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
+                              onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
+                              className={`${FIELD} min-h-11`}>
+                              <option value="">Scegli…</option>
+                              {members.map((m) => (
+                                <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>
+                              ))}
+                            </select>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Ogni partecipante va a un membro diverso. Chi non è ancora nella lega va invitato prima.
+                    </p>
+                    <button type="button" disabled={!complete || doImport.isPending}
+                      onClick={() => doImport.mutate({ files, mapping },
+                        { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
+                      className={`${BUTTON_PRIMARY} mt-6 px-5`}>
+                      {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
+                    </button>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm">Dopo aver scelto la cartella, ogni partecipante dell'asta va a un membro della lega.</p>
+                )}
               </li>
             </ol>
           </section>
