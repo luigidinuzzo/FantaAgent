@@ -59,6 +59,21 @@ describe('PhoneViewBar', () => {
     expect(onChange).toHaveBeenLastCalledWith('banco');
   });
 
+  // Ogni scheda ha un id suo; aria-controls solo dove la vista e' davvero un
+  // pannello di schede. Banco e Squadre sono sezioni con un nome loro: puntarle
+  // da una scheda prometterebbe un tabpanel che non c'e'.
+  it('ogni scheda ha un id, e aria-controls solo per le viste che sono pannelli', () => {
+    render(<PhoneViewBar view="banco" onChange={() => {}} controls={{ giocatori: 'p-g', rose: 'p-r' }} />);
+    expect(screen.getByRole('tab', { name: 'Banco' })).toHaveAttribute('id', 'vista-banco');
+    expect(screen.getByRole('tab', { name: 'Giocatori' })).toHaveAttribute('id', 'vista-giocatori');
+    expect(screen.getByRole('tab', { name: 'Squadre' })).toHaveAttribute('id', 'vista-squadre');
+    expect(screen.getByRole('tab', { name: 'Rose' })).toHaveAttribute('id', 'vista-rose');
+    expect(screen.getByRole('tab', { name: 'Banco' })).not.toHaveAttribute('aria-controls');
+    expect(screen.getByRole('tab', { name: 'Squadre' })).not.toHaveAttribute('aria-controls');
+    expect(screen.getByRole('tab', { name: 'Giocatori' })).toHaveAttribute('aria-controls', 'p-g');
+    expect(screen.getByRole('tab', { name: 'Rose' })).toHaveAttribute('aria-controls', 'p-r');
+  });
+
   it('un cambio di vista da fuori non ruba il fuoco', () => {
     const { rerender } = render(
       <div>

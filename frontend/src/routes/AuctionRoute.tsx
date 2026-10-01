@@ -168,9 +168,6 @@ export function AuctionRoute() {
   const bidderHintId = useId();
   const bidderPanelId = useId();
   const bancoPrefixId = useId();
-  const bancoId = useId();
-  const searchId = useId();
-  const teamsId = useId();
   // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
   // cambia scheda: senza, la selezione si sposterebbe ma il focus della
   // tastiera resterebbe indietro sul bottone precedente, che e' esattamente il
@@ -777,7 +774,6 @@ export function AuctionRoute() {
             resta dov'e'. A riposo resta alto quanto la barra. */}
         {/* Sempre in vista, in ogni vista del telefono: si cerca da ovunque. */}
         <div
-          id={searchId}
           className={`min-h-0 lg:col-start-2 lg:row-start-1 ${
             searchActive ? 'flex flex-1 flex-col lg:row-span-2' : ''
           }`}
@@ -790,7 +786,6 @@ export function AuctionRoute() {
             decidono le classi della griglia, e la colonna non ha controlli che
             cambino l'ordine della tastiera. */}
         <ParticipantsColumn
-          id={teamsId}
           participants={participants}
           phase={state.data?.currentPhase}
           className={`lg:col-start-1 lg:row-start-1 ${seated === false ? 'lg:row-span-2' : 'lg:row-span-3'} ${shownOnPhone('squadre')}`}
@@ -806,7 +801,6 @@ export function AuctionRoute() {
             uscendo dalla ricerca si ritrova il lotto com'era. */}
         {searchActive ? null : (
         <section
-          id={bancoId}
           data-testid="banco"
           // Col lotto il nome accessibile e' «Sul banco · nome»: il prefisso e'
           // solo per chi ascolta, a chi guarda lo dice il riquadro stesso.
@@ -832,13 +826,20 @@ export function AuctionRoute() {
             {lot ? (
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span id={bancoPrefixId} className="sr-only">Sul banco ·</span>
-                {/* Va a capo invece di troncarsi: sul telefono un nome lungo
-                    finiva in «Carnesecc…». Va a capo fra le parole e mai dentro
-                    una parola: per una parola sola piu' lunga della riga resta
-                    la sillabazione italiana (lang qui, perche' hyphens-auto
-                    sillaba secondo la lingua dell'elemento). Sotto sm un corpo
-                    piu' piccolo, e la X di «Togli dal banco» gli lascia la riga. */}
-                <h2 id={bidderPanelId} lang="it" className="w-exp min-w-0 hyphens-auto text-xl font-semibold sm:text-2xl">
+                {/* Sotto lg va a capo invece di troncarsi: sul telefono un nome
+                    lungo finiva in «Carnesecc…». Va a capo fra le parole e mai
+                    dentro una parola: la sillabazione italiana (lang qui, perche'
+                    hyphens-auto sillaba secondo la lingua dell'elemento) solo per
+                    parole di almeno 12 lettere, coi limiti anche per WebKit, che
+                    hyphenate-limit-chars non lo conosce e senza sillabava
+                    «Mkhita-ryan» solo per riempire la riga. Da lg resta come
+                    sul computer e' sempre stato: una riga, troncata. Sotto sm un
+                    corpo piu' piccolo, e la X di «Togli dal banco» gli lascia la riga. */}
+                <h2
+                  id={bidderPanelId}
+                  lang="it"
+                  className="w-exp min-w-0 text-xl font-semibold sm:text-2xl lg:truncate max-lg:hyphens-auto max-lg:[hyphenate-limit-chars:12_6_6] max-lg:[-webkit-hyphenate-limit-before:6] max-lg:[-webkit-hyphenate-limit-after:6]"
+                >
                   {lot.name}
                 </h2>
                 {/* La pillola centrata sull'altezza del nome: sulla linea di base
@@ -1119,13 +1120,11 @@ export function AuctionRoute() {
         <PhoneViewBar
           view={phoneView}
           onChange={changePhoneView}
-          controls={{
-            // Mentre si cerca il banco non c'e': al suo posto i risultati.
-            banco: searchActive ? searchId : bancoId,
-            giocatori: 'tabpanel-fase',
-            squadre: teamsId,
-            rose: 'tabpanel-rose',
-          }}
+          // Solo i pannelli di schede veri: Banco e Squadre sono sezioni col
+          // loro nome, e una scheda che le controlla prometterebbe un tabpanel
+          // che non c'e'. I due pannelli restano nominati dalle schede del
+          // computer: nessun secondo nome.
+          controls={{ giocatori: 'tabpanel-fase', rose: 'tabpanel-rose' }}
         />
       ) : null}
 

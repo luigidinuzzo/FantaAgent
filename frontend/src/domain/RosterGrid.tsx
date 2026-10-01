@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { auctionExportUrl, ProblemError, userMessage } from '../api/client';
 import { useAuctionState, useBoard, useCorrectPurchase, useVoidPurchase } from '../api/hooks';
 import type { BoardColumn, Role } from '../api/types';
@@ -79,6 +79,8 @@ function useMoreToTheRight<T extends HTMLElement>() {
  * leggono: una squadra alla volta, scelta da un selettore, la tua per prima.
  */
 export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
+  // Generato: un id scritto a mano si ripeterebbe con due rose in pagina.
+  const teamSelectId = useId();
   const board = useBoard();
   const state = useAuctionState();
   // Revoca e correzione sono dell'amministratore: gli altri vedono le rose e basta.
@@ -208,9 +210,9 @@ export function RosterGrid({ fill = false }: { fill?: boolean } = {}) {
         <div className={`relative ${fill ? 'lg:flex lg:min-h-0 lg:flex-1 lg:flex-col' : ''}`}>
           {fill && columns.length > 0 ? (
             <div className="mb-3 flex flex-col gap-1 lg:hidden">
-              <label htmlFor="roster-team-select" className="text-meta font-medium text-muted-foreground">Squadra</label>
+              <label htmlFor={teamSelectId} className="text-meta font-medium text-muted-foreground">Squadra</label>
               <select
-                id="roster-team-select"
+                id={teamSelectId}
                 className={FIELD}
                 value={shownId ?? ""}
                 onChange={(e) => setChosen(e.target.value)}

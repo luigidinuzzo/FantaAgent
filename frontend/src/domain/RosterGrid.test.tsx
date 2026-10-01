@@ -467,6 +467,8 @@ describe('RosterGrid', () => {
     const board = { ...BOARD, columns: [BOARD.columns[1], BOARD.columns[0]] };
     renderRoster(undefined, STATE, board, true);
     const select = await screen.findByLabelText('Squadra');
+    // L'id e' generato (useId): uno scritto a mano si ripeterebbe con due rose in pagina.
+    expect(select.id).not.toBe('roster-team-select');
     const visibleColumns = () =>
       [...document.querySelectorAll('section[aria-labelledby^="roster-"]')]
         .filter((c) => !c.className.includes('max-lg:hidden'));

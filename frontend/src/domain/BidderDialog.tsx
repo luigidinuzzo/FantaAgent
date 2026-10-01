@@ -705,10 +705,12 @@ export function BidderDialog({
                       solo una parola piu' lunga della riga si sillaba in italiano.
                       hyphens-auto da solo sillaba anche per riempire la riga
                       («Marsi-glia»): il limite di 12 lettere lo lascia alle sole
-                      parole che nel bottone non ci starebbero. */}
+                      parole che nel bottone non ci starebbero. WebKit (Safari,
+                      iPhone) quel limite non lo conosce: i suoi due, sei lettere
+                      prima e dopo il taglio, fanno lo stesso lavoro li'. */}
                   <span
                     lang="it"
-                    className="min-w-0 truncate font-semibold max-sm:overflow-visible max-sm:whitespace-normal max-sm:hyphens-auto max-sm:[hyphenate-limit-chars:12_6_6]"
+                    className="min-w-0 truncate font-semibold max-sm:overflow-visible max-sm:whitespace-normal max-sm:hyphens-auto max-sm:[hyphenate-limit-chars:12_6_6] max-sm:[-webkit-hyphenate-limit-before:6] max-sm:[-webkit-hyphenate-limit-after:6]"
                   >
                     {p.name}
                   </span>

@@ -226,7 +226,8 @@ scaduto −344.
    legenda dice «A chi va», il resto della frase resta per chi ascolta.
 8. Tempo scaduto, nomi delle squadre: sotto `sm` non si troncano più, vanno a capo fra
    le parole; la sillabazione italiana solo per parole di almeno 12 lettere, che nel
-   bottone non ci starebbero (`hyphenate-limit-chars`). Due colonne, almeno 44px.
+   bottone non ci starebbero (`hyphenate-limit-chars`, e per WebKit i limiti
+   `-webkit-`, vedi sotto). Due colonne, almeno 44px.
 9. Lotto: sotto `lg` lo spazio riservato alla spiegazione del «Lascia» prende l'altezza
    della frase, e vuoto non c'è. Era la fascia vuota di ~80px sopra «Avvia il conto alla
    rovescia» (lotto a 390: +93 → +145). Da `lg` resta riservato, perché lì i bottoni non
@@ -240,10 +241,12 @@ scaduto −344.
 12. L'avviso dell'aggiudicazione sta sopra la barra contando anche la zona sicura
     (`bottom: calc(5rem + env(safe-area-inset-bottom))`).
 
-**Decisioni.** Con undici squadre il tempo scaduto può scorrere: «Aggiudica a …», in oro,
-sta nella prima schermata (finisce a 498px a 390×844 e a 360×740), e il gesto principale
-si vede. Lo stesso vale per la conferma di «Togli», che dura un attimo. A 360 si annota
-senza obbligo.
+**Decisioni.** Il tempo scaduto può scorrere: con undici squadre (−198 a 390×844) e
+anche con otto, dove a 390×844 esce ancora di 80px perché i nomi che ora vanno a capo
+(«Atletico Ma Non Troppo», «Borussia Porcmund») alzano la loro riga di bottoni. In tutti
+e due i casi «Aggiudica a …», in oro, sta nella prima schermata (finisce a 498px a
+390×844 e a 360×740), e il gesto principale si vede. Lo stesso vale per la conferma di
+«Togli», che dura un attimo. A 360 si annota senza obbligo.
 
 **Controlli** a 390×844 e 360×740, otto e undici squadre, ognuna delle quattro viste in
 cima e in fondo alla pagina (32 in tutto): barra in fondo allo schermo da bordo a bordo,
@@ -252,7 +255,12 @@ niente scorrimento di lato. Tutti superati. Sul computer (1440×900) le schermat
 quelle di `main`, salvo il rumore di antialiasing già accettato su 14-asta-giocatore (22
 pixel, al massimo 2/255).
 
-**Resta.** A 390×844 con otto squadre il tempo scaduto esce ancora di 80px: i nomi che
-ora vanno a capo («Atletico Ma Non Troppo», «Borussia Porcmund») alzano la loro riga di
-bottoni. «Aggiudica a …» è comunque nella prima schermata. La pagina della proiezione
-scorre di lato sul telefono (+16px), come su `main`.
+**Safari.** WebKit non conosce `hyphenate-limit-chars`: senza altro, a tempo scaduto
+spezzava «Borussia Porc-mund» e «Olympique Marsi-glia Nera» (390) e «Dinamo Spri-tz»,
+«Patetico Ma-drid», «Inter Nazio-nale» (360). Nomi delle squadre e nome del lotto hanno
+anche `-webkit-hyphenate-limit-before/after: 6`; lo script delle fotografie rifà in
+WebKit il conto in conferma e il tempo scaduto a 390×844 e 360×740 e stampa
+`parole spezzate:` — vuoto, con otto e con undici squadre. Il nome del lotto si sillaba
+solo sotto `lg`; da `lg` è troncato su una riga, come su `main`.
+
+**Resta.** La pagina della proiezione scorre di lato sul telefono (+16px), come su `main`.

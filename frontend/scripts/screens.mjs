@@ -7,7 +7,7 @@
 // anche i moduli che Vite serve da /src/api/, e la pagina resterebbe bianca.
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { chromium } from '@playwright/test';
+import { chromium, webkit } from '@playwright/test';
 
 const BASE = process.env.BASE ?? 'http://localhost:5173';
 const OUT = resolve(process.argv[2] ?? 'test-results/screens');
@@ -231,6 +231,39 @@ const wide = [];
 const spilling = [];
 const scrolling = [];
 const belowFold = [];
+const splitWords = [];
+
+// I nomi che sul telefono vanno a capo — il lotto nella testata del banco, le
+// squadre a tempo scaduto — devono andarci fra le parole: una parola tagliata a
+// meta' («Porc-mund») non si legge. Lo si misura lettera per lettera: due lettere
+// della stessa parola su righe diverse sono una parola spezzata. Dopo un trattino
+// del nome («Milinkovic-Savic») andare a capo e' lecito.
+async function probeNames(page, label) {
+  const found = await page.evaluate(() => {
+    const els = [document.querySelector('[data-testid=banco-header] h2'),
+      ...document.querySelectorAll('fieldset button span[lang=it]')].filter(Boolean);
+    return els.map((el) => {
+      const text = el.firstChild;
+      if (!text || text.nodeType !== Node.TEXT_NODE) return null;
+      const chars = [...text.textContent];
+      const tops = chars.map((_, i) => {
+        const r = document.createRange();
+        r.setStart(text, i);
+        r.setEnd(text, i + 1);
+        return Math.round(r.getBoundingClientRect().top);
+      });
+      let split = false;
+      for (let i = 1; i < tops.length; i++) {
+        if (tops[i] !== tops[i - 1] && !/[\s-]/.test(chars[i - 1]) && !/\s/.test(chars[i])) split = true;
+      }
+      return { text: text.textContent, lines: new Set(tops).size, split };
+    }).filter(Boolean);
+  });
+  const broken = found.filter((f) => f.split).map((f) => f.text);
+  const wrapped = found.filter((f) => f.lines > 1).map((f) => `${f.text} (${f.lines})`);
+  console.log(`   nomi: ${found.length}, su piu' righe ${wrapped.join(', ') || 'nessuno'}${broken.length ? `, SPEZZATI ${broken.join(', ')}` : ''}`);
+  for (const b of broken) splitWords.push(`${label}: ${b}`);
+}
 
 async function open(viewport, authed) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'it-IT' });
@@ -355,31 +388,19 @@ for (const { viewport: vp, tag } of SIZES) {
     await shot(user.page, `14e-asta-togli-${tag}`, null, async (p) => {
       await p.getByRole('button', { name: 'Togli dal banco' }).click();
       await p.waitForTimeout(200);
-      const name = await p.evaluate(() => {
-        const h2 = document.querySelector('[data-testid=banco-header] h2');
-        const text = h2.firstChild;
-        // Una parola spezzata ha lettere della stessa parola su righe diverse.
-        const tops = [...text.textContent].map((_, i) => {
-          const r = document.createRange();
-          r.setStart(text, i);
-          r.setEnd(text, i + 1);
-          return Math.round(r.getBoundingClientRect().top);
-        });
-        let split = false;
-        for (let i = 1; i < tops.length; i++) {
-          if (tops[i] !== tops[i - 1] && !/\s/.test(text.textContent[i - 1]) && !/\s/.test(text.textContent[i])) split = true;
-        }
+      await probeNames(p, `14e-asta-togli-${tag}`);
+      const over = await p.evaluate(() => {
         const header = document.querySelector('[data-testid=banco-header]');
-        return { text: text.textContent, lines: new Set(tops).size, split,
-          headerOver: header.scrollWidth - header.clientWidth };
+        return header.scrollWidth - header.clientWidth;
       });
-      console.log(`   «${name.text}» su ${name.lines} righe${name.split ? ', parola spezzata' : ''}, testata +${name.headerOver}px`);
+      if (over > 0) console.log(`   la testata del banco trabocca di ${over}px`);
     });
     // Fuori fuoco la richiesta torna «Togli dal banco», e il conto prosegue.
     await user.page.evaluate(() => document.activeElement?.blur());
   }
   await shot(user.page, `14d-asta-scaduto-${tag}`, null, async (p) => {
     await p.waitForTimeout(6000);
+    if (phone) await probeNames(p, `14d-asta-scaduto-${tag}`);
   });
   await shot(user.page, `14c-asta-rose-${tag}`, '/leghe/L1/aste/A1', async (p) => {
     if (phone) await phoneView(p, 'Rose');
@@ -389,8 +410,52 @@ for (const { viewport: vp, tag } of SIZES) {
   await user.context.close();
 }
 await browser.close();
+
+// Safari, l'unico motore dei telefoni Apple, va a capo e sillaba a modo suo: per
+// esempio non conosce hyphenate-limit-chars. Il lotto col conto in conferma e il
+// tempo scaduto si rifanno in WebKit, alle misure del telefono (WEBKIT=0 per
+// saltarli, WEBKIT_SIZES per altre misure).
+if (process.env.WEBKIT !== '0') {
+  const engine = await webkit.launch();
+  for (const s of (process.env.WEBKIT_SIZES ?? '390x844,360x740').split(',')) {
+    const [width, height] = s.split('x').map(Number);
+    const context = await engine.newContext({ viewport: { width, height }, deviceScaleFactor: 1, locale: 'it-IT' });
+    await context.addCookies([{ name: 'XSRF-TOKEN', value: 'x', url: BASE }]);
+    const page = await context.newPage();
+    page.on('pageerror', (e) => console.log('errore nella pagina:', e.message));
+    await page.route((url) => url.pathname.startsWith('/api/'), (route) => {
+      const url = new URL(route.request().url());
+      const r = respond(route.request().method(), url.pathname, url.searchParams, true);
+      return route.fulfill({ status: r.status, contentType: 'application/json', body: JSON.stringify(r.body) });
+    });
+    const tag = `webkit-${s}`;
+    await page.goto(BASE + '/leghe/L1/aste/A1', { waitUntil: 'networkidle' });
+    await phoneView(page, 'Giocatori');
+    await page.getByText(freeC[0].name, { exact: true }).filter({ visible: true }).first().click();
+    await page.waitForTimeout(600);
+    await page.getByRole('button', { name: 'Avvia il conto alla rovescia' }).click();
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: 'Togli dal banco' }).click();
+    await page.waitForTimeout(200);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await probeNames(page, `14e-asta-togli-${tag}`);
+    await page.screenshot({ path: `${OUT}/14e-asta-togli-${tag}.png`, fullPage: true });
+    console.log('ok', `14e-asta-togli-${tag}`);
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.waitForTimeout(6000);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await probeNames(page, `14d-asta-scaduto-${tag}`);
+    const extra = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    if (extra > 0) wide.push(`14d-asta-scaduto-${tag} (+${extra}px)`);
+    await page.screenshot({ path: `${OUT}/14d-asta-scaduto-${tag}.png`, fullPage: true });
+    console.log('ok', `14d-asta-scaduto-${tag}`);
+    await context.close();
+  }
+  await engine.close();
+}
 console.log('larghe:', wide);
 console.log('non gestite:', [...unknown]);
 console.log('traboccano:', spilling);
 console.log('scorrono:', scrolling);
 console.log('banco sotto la piega:', belowFold);
+console.log('parole spezzate:', splitWords);

@@ -2148,19 +2148,26 @@ describe('AuctionRoute', () => {
       expect(document.getElementById('tabpanel-rose')!.className).not.toContain('max-lg:mt-4');
     });
 
-    it('il nome del giocatore sul banco si legge intero: va a capo, non si tronca', async () => {
+    it('il nome del giocatore sul banco si legge intero sotto lg; dal computer in su come prima', async () => {
       stubApi({ state: STATE });
       renderAuction();
       await userEvent.click(await screen.findByRole('button', { name: 'Valuta Giocatore Uno' }));
       const banco = await screen.findByRole('region', { name: 'Sul banco · Giocatore Uno' });
       const nome = within(banco).getByRole('heading', { level: 2, name: 'Giocatore Uno' });
-      expect(nome.className).not.toContain('truncate');
+      // Da lg il titolo e' quello di main, troncato su una riga.
+      expect(nome.className).toMatch(/(^| )lg:truncate( |$)/);
+      expect(nome.className).not.toMatch(/(^| )truncate( |$)/);
       expect(nome.className).not.toContain('line-clamp');
-      // Mai una parola spezzata a meta': niente break-words, solo la sillabazione
-      // italiana per una parola sola piu' lunga della riga.
+      // Sotto lg mai una parola spezzata a meta': niente break-words, e la
+      // sillabazione italiana solo per parole lunghe, anche in WebKit, che
+      // hyphenate-limit-chars non lo conosce.
       expect(nome.className).not.toContain('break-words');
       expect(nome.className).not.toContain('break-all');
-      expect(nome.className).toContain('hyphens-auto');
+      expect(nome.className).toContain('max-lg:hyphens-auto');
+      expect(nome.className).not.toMatch(/(^| )hyphens-auto( |$)/);
+      expect(nome.className).toContain('max-lg:[hyphenate-limit-chars:12_6_6]');
+      expect(nome.className).toContain('max-lg:[-webkit-hyphenate-limit-before:6]');
+      expect(nome.className).toContain('max-lg:[-webkit-hyphenate-limit-after:6]');
       expect(nome.className).toMatch(/(^| )text-xl( |$)/);
       expect(nome.className).toContain('sm:text-2xl');
       expect(nome.closest('[lang]')).toHaveAttribute('lang', 'it');
@@ -2201,6 +2208,20 @@ describe('AuctionRoute', () => {
       expect(conferma.className).toContain('max-sm:w-full');
       expect(conferma.className).toContain('max-sm:justify-center');
       expect(conferma.className).not.toContain('max-sm:w-11');
+    });
+
+    // aria-controls della barra punta solo a pannelli di schede veri: le schede
+    // Giocatori e Rose ai pannelli delle sezioni, Banco e Squadre a niente.
+    it('la barra delle viste punta solo ai pannelli che esistono', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      const bar = await screen.findByRole('tablist', { name: "Viste dell'asta" });
+      expect(within(bar).getByRole('tab', { name: 'Banco' })).not.toHaveAttribute('aria-controls');
+      expect(within(bar).getByRole('tab', { name: 'Squadre' })).not.toHaveAttribute('aria-controls');
+      for (const name of ['Giocatori', 'Rose']) {
+        const target = within(bar).getByRole('tab', { name }).getAttribute('aria-controls')!;
+        expect(document.getElementById(target)).toHaveAttribute('role', 'tabpanel');
+      }
     });
 
     it('il banditore ha il menu «Comandi»; chi non lo e no', async () => {

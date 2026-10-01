@@ -716,6 +716,9 @@ describe('BidderDialog', () => {
       expect(name.className).toContain('max-sm:hyphens-auto');
       // Sillaba solo le parole lunghe, non per riempire la riga.
       expect(name.className).toContain('max-sm:[hyphenate-limit-chars:12_6_6]');
+      // WebKit (Safari, iPhone) non conosce hyphenate-limit-chars: i suoi limiti.
+      expect(name.className).toContain('max-sm:[-webkit-hyphenate-limit-before:6]');
+      expect(name.className).toContain('max-sm:[-webkit-hyphenate-limit-after:6]');
       expect(name.className).not.toContain('break-all');
       expect(name.className).not.toContain('break-words');
       expect(name).toHaveAttribute('lang', 'it');

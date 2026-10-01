@@ -21,8 +21,9 @@ export function PhoneViewBar({
 }: {
   view: PhoneView;
   onChange: (view: PhoneView) => void;
-  /** L'id dell'elemento che ogni vista mostra, per aria-controls. */
-  controls: Record<PhoneView, string>;
+  /** Per aria-controls, solo le viste che mostrano un pannello di schede vero
+   *  (role="tabpanel"): una sezione qualunque non e' cio' che una scheda controlla. */
+  controls: Partial<Record<PhoneView, string>>;
 }) {
   const listRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<PhoneView, HTMLButtonElement | null>>({
@@ -69,6 +70,9 @@ export function PhoneViewBar({
                 tabRefs.current[key] = el;
               }}
               type="button"
+              // Un id per scheda: chi ascolta sente il nome della scheda, e il
+              // pannello che ne ha uno puo' riferirsi a lei.
+              id={`vista-${key}`}
               role="tab"
               aria-selected={selected}
               aria-controls={controls[key]}
