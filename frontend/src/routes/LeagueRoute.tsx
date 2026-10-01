@@ -24,8 +24,6 @@ const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 /** Quanto resta «Copiato» sul bottone del link. */
 const COPIED_MS = 2000;
 
-const SECONDARY_BUTTON = BUTTON_SECONDARY;
-
 export function LeagueRoute() {
   const { leagueId = '' } = useParams();
   const league = useLeague(leagueId);
@@ -287,12 +285,12 @@ function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boole
                 {r.displayName}, dal {DATE.format(new Date(r.requestedAt))}
               </span>
             </span>
-            <button type="button" className={SECONDARY_BUTTON} disabled={decide.isPending}
+            <button type="button" className={BUTTON_SECONDARY} disabled={decide.isPending}
               aria-label={`Rifiuta ${r.teamName}`}
               onClick={() => decide.mutate({ userId: r.userId, accept: false })}>
               Rifiuta
             </button>
-            <button type="button" className={SECONDARY_BUTTON} disabled={decide.isPending}
+            <button type="button" className={BUTTON_SECONDARY} disabled={decide.isPending}
               aria-label={`Accetta ${r.teamName}`}
               onClick={() => decide.mutate({ userId: r.userId, accept: true })}>
               Accetta
@@ -351,7 +349,7 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
       </ul>
       {league && !league.admin && me ? (
         <div className="border-t border-line px-5 py-4 md:px-6">
-          <button type="button" className={SECONDARY_BUTTON}
+          <button type="button" className={BUTTON_SECONDARY}
             onClick={() => setLeaving({ userId: me.userId, teamName: me.teamName, self: true })}>
             Lascia la lega
           </button>
@@ -470,7 +468,7 @@ function InvitesContent({ leagueId }: { leagueId: string }) {
         Un link solo per tutto il gruppo: vale due settimane, chiunque lo apra può entrare.
       </p>
       <button type="button" disabled={create.isPending} onClick={() => create.mutate()}
-        className={`mt-4 ${SECONDARY_BUTTON}`}>
+        className={`mt-4 ${BUTTON_SECONDARY}`}>
         Crea un link d'invito
       </button>
       {link ? (
@@ -479,7 +477,7 @@ function InvitesContent({ leagueId }: { leagueId: string }) {
           <div className="mt-2 flex gap-2">
             <input id="invite-link" readOnly value={link} onFocus={(e) => e.target.select()}
               className="min-h-11 min-w-0 flex-1 rounded-lg border border-control-border bg-surface px-4 text-sm" />
-            <button type="button" className={`w-28 shrink-0 ${SECONDARY_BUTTON}`}
+            <button type="button" className={`w-28 shrink-0 ${BUTTON_SECONDARY}`}
               onClick={() => { void navigator.clipboard?.writeText(link).then(() => setCopied(true)); }}>
               {copied ? 'Copiato' : 'Copia'}
             </button>
@@ -501,7 +499,7 @@ function InvitesContent({ leagueId }: { leagueId: string }) {
             {invites.data.map((invite) => (
               <li key={invite.id} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
                 <span>Creato il {DATE.format(new Date(invite.createdAt))}, vale fino al {DATE.format(new Date(invite.expiresAt))}</span>
-                <button type="button" className={SECONDARY_BUTTON} disabled={revoke.isPending}
+                <button type="button" className={BUTTON_SECONDARY} disabled={revoke.isPending}
                   aria-label={`Ritira il link creato il ${DATE.format(new Date(invite.createdAt))}`}
                   onClick={() => revoke.mutate(invite.id)}>
                   Ritira

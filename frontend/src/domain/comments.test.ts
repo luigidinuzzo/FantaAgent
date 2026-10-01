@@ -19,13 +19,22 @@ function sources(dir: string, found: string[] = []): string[] {
   return found;
 }
 
-describe('i commenti', () => {
+describe('i sorgenti', () => {
   it('nessun nome di classe del backend', () => {
     const files = sources(SRC);
     expect(files.length).toBeGreaterThan(50);
     const offenders = files.flatMap((file) =>
       (readFileSync(file, 'utf8').match(/\b[A-Z][A-Za-z]+(?:Service|Repository|Controller|Handler)\b(?:\.\w+)?/g) ?? [])
         .map((name) => `${relative(SRC, file)}: ${name}`));
+    expect(offenders).toEqual([]);
+  });
+
+  // Un controllo si chiama come in controls.ts ovunque: un secondo nome per la
+  // stessa classe fa cercare due parole per trovare tutti i bottoni secondari.
+  it('nessun secondo nome per i controlli di controls.ts', () => {
+    const offenders = sources(SRC).flatMap((file) =>
+      (readFileSync(file, 'utf8').match(/const \w+ = (?:BUTTON_\w+|FOCUS_RING|FIELD|CONTROL_H);/g) ?? [])
+        .map((alias) => `${relative(SRC, file)}: ${alias}`));
     expect(offenders).toEqual([]);
   });
 });
