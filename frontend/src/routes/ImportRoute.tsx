@@ -34,12 +34,15 @@ export function ImportRoute() {
   const complete = participants.length > 0 && chosen.every((c) => c !== '')
     && new Set(chosen).size === chosen.length;
   const errors = fieldErrors(doImport.error ?? preview.error);
-  const alert = noAuction
-    ? 'In questa cartella non c\'è un\'asta di FantaAgent.'
-    : doImport.isError || preview.isError
-      ? [...(errors.files ?? []), ...(errors.mapping ?? [])].join(' ')
-        || userMessage(doImport.error ?? preview.error, 'L\'importazione non è riuscita. Riprova.')
-      : null;
+  const failure = doImport.isError || preview.isError
+    ? [...(errors.files ?? []), ...(errors.mapping ?? [])].join(' ')
+      || userMessage(doImport.error ?? preview.error, 'L\'importazione non è riuscita. Riprova.')
+    : null;
+  // Un alert solo: quello della cartella sotto la cartella, quello dell'importazione
+  // accanto al bottone che l'ha tentata.
+  const folderAlert = noAuction ? 'In questa cartella non c\'è un\'asta di FantaAgent.'
+    : doImport.isError ? null : failure;
+  const importAlert = !noAuction && doImport.isError ? failure : null;
 
   function choose(list: FileList) {
     const picked = Array.from(list);
@@ -82,26 +85,27 @@ export function ImportRoute() {
             <ol aria-label="Passaggi" className="flex flex-1 flex-col gap-8">
               <li className={ready ? '' : 'flex flex-1 flex-col'}>
                 <Step n={1} title="Scegli la cartella" />
-                {ready ? (
-                  <div className="mt-3">
-                    <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
-                  </div>
-                ) : (
-                  <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 rounded-lg border-2 border-dashed border-control-border p-6 text-center">
-                    <p className="max-w-md text-sm">
-                      Serve la cartella di un'asta giocata con FantaAgent sul tuo computer. Dentro ci sono:
-                    </p>
-                    <div className="space-y-1 text-sm font-medium">
-                      <p>le mosse dell'asta</p>
-                      <p>l'elenco dei partecipanti</p>
-                    </div>
-                    <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
-                    {preview.isPending ? (
-                      <p role="status" className="text-sm text-muted-foreground">Leggo l'asta…</p>
-                    ) : null}
-                  </div>
-                )}
-                {alert ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{alert}</p> : null}
+                {/* Un solo FolderPicker nei due stati, cambia solo chi lo contiene: chi
+                    sceglie un'altra cartella non perde il fuoco sul bottone. */}
+                <div className={ready ? 'mt-3'
+                  : 'mt-4 flex flex-1 flex-col items-center justify-center gap-5 rounded-lg border-2 border-dashed border-control-border p-6 text-center'}>
+                  {ready ? null : (
+                    <>
+                      <p className="max-w-md text-sm">
+                        Serve la cartella di un'asta giocata con FantaAgent sul tuo computer. Dentro ci sono:
+                      </p>
+                      <div className="space-y-1 text-sm font-medium">
+                        <p>le mosse dell'asta</p>
+                        <p>l'elenco dei partecipanti</p>
+                      </div>
+                    </>
+                  )}
+                  <FolderPicker id="import-folder" picked={folder} onPick={choose} disabled={preview.isPending} />
+                  {preview.isPending ? (
+                    <p role="status" className="text-sm text-muted-foreground">Leggo l'asta…</p>
+                  ) : null}
+                </div>
+                {folderAlert ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{folderAlert}</p> : null}
                 {preview.data ? (
                   <p className="mt-4 text-sm">
                     <span className="font-medium">{preview.data.name}</span>
@@ -135,12 +139,17 @@ export function ImportRoute() {
                     <p className="mt-3 text-sm text-muted-foreground">
                       Ogni partecipante va a un membro diverso. Chi non è ancora nella lega va invitato prima.
                     </p>
-                    <button type="button" disabled={!complete || doImport.isPending}
-                      onClick={() => doImport.mutate({ files, mapping },
-                        { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
-                      className={`${BUTTON_PRIMARY} mt-6 px-5`}>
-                      {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
-                    </button>
+                    <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <button type="button" disabled={!complete || doImport.isPending}
+                        onClick={() => doImport.mutate({ files, mapping },
+                          { onSuccess: (r) => navigate(`/leghe/${leagueId}/aste/${r.auctionId}`) })}
+                        className={`${BUTTON_PRIMARY} shrink-0 px-5`}>
+                        {doImport.isPending ? 'Importo…' : 'Importa l\'asta'}
+                      </button>
+                      {importAlert ? (
+                        <p role="alert" className="min-w-0 flex-1 basis-60 text-sm font-medium text-destructive">{importAlert}</p>
+                      ) : null}
+                    </div>
                   </>
                 ) : (
                   <p className="mt-3 text-sm">Dopo aver scelto la cartella, ogni partecipante dell'asta va a un membro della lega.</p>

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
@@ -188,5 +188,50 @@ describe('ImportRoute', () => {
     await screen.findByText('Asta del 2025');
     expect(container.querySelectorAll('.bg-accent')).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Importa l\'asta' }).className).toContain('bg-accent');
+  });
+
+  // La scelta arriva come la manda il browser, con un change sul campo: il fuoco
+  // resta sul bottone che l'ha aperta (userEvent.upload lo sposterebbe sul campo).
+  const pick = (files: File[]) => fireEvent.change(
+    screen.getByLabelText('Scegli la cartella', { selector: 'input' }), { target: { files } });
+
+  it('la scelta della cartella e\' un solo bottone nei due stati: il fuoco resta li\'', async () => {
+    stub();
+    renderImport();
+    const button = screen.getByRole('button', { name: 'Scegli la cartella' });
+    button.focus();
+    pick(FILES);
+    await screen.findByText('Asta del 2025');
+    expect(screen.getByRole('button', { name: 'Scegli la cartella' })).toBe(button);
+    expect(button).toHaveFocus();
+  });
+
+  it('mentre legge una seconda cartella dice «Leggo l\'asta…» e il bottone tiene il fuoco', async () => {
+    const fetchMock = stub();
+    renderImport();
+    pick(FILES);
+    await screen.findByText('Asta del 2025');
+    const button = screen.getByRole('button', { name: 'Scegli la cartella' });
+    button.focus();
+    fetchMock.mockImplementation((url: string) => (url.endsWith('/imports/preview')
+      ? new Promise(() => {}) : Promise.resolve(json(LEAGUE))));
+    pick(FILES);
+    expect(await screen.findByText('Leggo l\'asta…')).toBeInTheDocument();
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('l\'errore dell\'importazione sta accanto a «Importa l\'asta»', async () => {
+    stub(() => json({
+      type: 'https://fantaagent.local/problems/import-mismatch',
+      detail: 'Le rose ricostruite non coincidono con quelle dell\'asta originale: l\'importazione è stata annullata.',
+    }, 409));
+    renderImport();
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
+    await userEvent.selectOptions(await screen.findByLabelText('Membro per Io'), 'u1');
+    await userEvent.click(screen.getByRole('button', { name: 'Importa l\'asta' }));
+    const alert = await screen.findByRole('alert');
+    expect(screen.getByTestId('import-step-2')).toContainElement(alert);
+    expect(alert.parentElement).toContainElement(screen.getByRole('button', { name: 'Importa l\'asta' }));
   });
 });

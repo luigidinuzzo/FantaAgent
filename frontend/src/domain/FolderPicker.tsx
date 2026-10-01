@@ -19,8 +19,11 @@ export function FolderPicker({ id, onPick, picked, disabled = false }: {
       <input ref={input} id={id} type="file" multiple disabled={disabled} className="sr-only" tabIndex={-1}
         {...{ webkitdirectory: '', directory: '' }}
         onChange={(e) => { if (e.target.files && e.target.files.length > 0) onPick(e.target.files); }} />
-      <button type="button" disabled={disabled} onClick={() => input.current?.click()}
-        className={`${BUTTON_SECONDARY} px-5`}>
+      {/* Spento con aria-disabled, non disabled: un bottone disabled perde il fuoco,
+          e chi ha appena scelto una cartella lo ritroverebbe in cima alla pagina. */}
+      <button type="button" aria-disabled={disabled || undefined}
+        onClick={() => { if (!disabled) input.current?.click(); }}
+        className={`${BUTTON_SECONDARY} px-5 aria-disabled:cursor-not-allowed aria-disabled:opacity-50`}>
         Scegli la cartella
       </button>
       <span className="min-w-0 break-words text-sm text-muted-foreground">

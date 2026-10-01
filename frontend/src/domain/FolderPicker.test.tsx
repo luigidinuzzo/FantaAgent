@@ -31,4 +31,15 @@ describe('FolderPicker', () => {
     fireEvent.change(input, { target: { files: [file] } });
     expect(onPick).toHaveBeenCalled();
   });
+
+  it('spento resta raggiungibile ma non apre la scelta', () => {
+    render(<FolderPicker id="f" picked={null} onPick={() => {}} disabled />);
+    const button = screen.getByRole('button', { name: 'Scegli la cartella' });
+    const input = screen.getByLabelText('Scegli la cartella', { selector: 'input' }) as HTMLInputElement;
+    const click = vi.spyOn(input, 'click');
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(button);
+    expect(click).not.toHaveBeenCalled();
+  });
 });
