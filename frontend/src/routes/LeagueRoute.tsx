@@ -69,16 +69,22 @@ export function LeagueRoute() {
             <Link to={`/leghe/${leagueId}/regole`} className={HEADER_BUTTON}>Regole della lega</Link>
           }
         />
-        {/* Le aste sono la ragione per cui si apre la pagina: colonna larga. A lato le
-            persone: chi chiede di entrare, chi c'e', come invitarne altri. Sul telefono
-            lo stesso ordine, una colonna. */}
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        {/* Le aste sono la ragione per cui si apre la pagina: colonna larga. A lato,
+            per l'amministratore, le cose da fare sulle persone (richieste, inviti),
+            che sono brevi. I membri sotto, a tutta larghezza in piu' colonne: in una
+            colonna stretta allungavano la pagina e lasciavano vuoto sotto le aste.
+            Sul telefono lo stesso ordine, una colonna. */}
+        <div className={`grid grid-cols-1 items-start gap-6 ${admin ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
           <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
-          <div className="flex flex-col gap-6">
-            {admin ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
-            <MembersPanel league={loaded} />
-            {admin ? <InvitesPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
-          </div>
+          {admin ? (
+            <div className="flex flex-col gap-6">
+              <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} />
+              <InvitesPanel leagueId={leagueId} quiet={auctionsAlert} />
+            </div>
+          ) : null}
+        </div>
+        <div className="mt-6">
+          <MembersPanel league={loaded} />
         </div>
       </PageFrame>
     </AppShell>
@@ -305,9 +311,12 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
         <h2 id="members-title" className="w-exp text-xl font-bold">Membri</h2>
         {league ? <p className="text-sm text-muted-foreground">{members.length}</p> : null}
       </div>
-      <ul aria-label="Membri" className="divide-y divide-line border-t border-line">
+      {/* Righe compatte in una griglia: una colonna sul telefono, due dal tablet, tre
+          sullo schermo largo. Niente righe di separazione: una cella vuota in fondo
+          alla griglia resterebbe un riquadro a meta'. */}
+      <ul aria-label="Membri" className="grid gap-x-6 border-t border-line px-5 py-2 md:grid-cols-2 md:px-6 xl:grid-cols-3">
         {members.map((m) => (
-          <li key={m.userId} className="flex min-h-14 items-center gap-3 px-5 py-2 md:px-6">
+          <li key={m.userId} className="flex min-h-14 items-center gap-3 py-2">
             <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full border border-panel-border bg-surface-raised font-semibold">
               {m.initial}
             </span>

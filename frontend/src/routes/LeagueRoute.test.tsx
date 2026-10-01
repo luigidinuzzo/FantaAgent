@@ -330,11 +330,11 @@ describe('LeagueRoute', () => {
     expect(screen.queryByRole('heading', { name: 'Inviti' })).not.toBeInTheDocument();
   });
 
-  it('nel documento: aste, poi richieste, membri, inviti', async () => {
+  it('nel documento: aste, poi richieste, inviti, membri', async () => {
     stub(true, { 'GET /api/leagues/l1/join-requests': () => json([REQUEST]) });
     renderLeague();
     await screen.findByRole('heading', { level: 2, name: 'Richieste di ingresso' });
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(['Aste', 'Richieste di ingresso', 'Membri', 'Inviti']);
+    expect(headings).toEqual(['Aste', 'Richieste di ingresso', 'Inviti', 'Membri']);
   });
 });
