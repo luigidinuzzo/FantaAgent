@@ -43,4 +43,13 @@ describe('SettingsLayout', () => {
     expect(screen.getByTestId('settings-content').className).toContain('pb-24');
     expect(screen.getByTestId('bar')).toBeInTheDocument();
   });
+
+  it('senza barra di salvataggio non lascia lo spazio in fondo', () => {
+    render(
+      <SettingsLayout title="Profilo" sections={sections} ready>
+        <section id="s-a" aria-labelledby="h-a"><h2 id="h-a">Banditore</h2></section>
+      </SettingsLayout>,
+    );
+    expect(screen.getByTestId('settings-content').className).not.toContain('pb-24');
+  });
 });

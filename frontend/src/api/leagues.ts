@@ -85,6 +85,8 @@ export function useRenameLeague(id: string) {
     onSuccess: (league) => {
       client.setQueryData(LEAGUE_KEYS.one(id), league);
       client.invalidateQueries({ queryKey: LEAGUE_KEYS.all });
+      // Le tue aste in home portano il nome della lega.
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions });
     },
   });
 }
@@ -228,6 +230,7 @@ export function useCreateAuction(leagueId: string) {
     onSuccess: () => Promise.all([
       client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
       client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+      client.invalidateQueries({ queryKey: LEAGUE_KEYS.all, exact: true }),
     ]),
   });
 }
@@ -272,7 +275,10 @@ export function useSaveSeats(leagueId: string, auctionId: string) {
         { method: 'PUT', body: seats }),
     onSuccess: (view) => {
       client.setQueryData(LEAGUE_KEYS.seats(leagueId, auctionId), view);
-      return client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) });
+      return Promise.all([
+        client.invalidateQueries({ queryKey: LEAGUE_KEYS.auctions(leagueId) }),
+        client.invalidateQueries({ queryKey: LEAGUE_KEYS.myAuctions }),
+      ]);
     },
   });
 }

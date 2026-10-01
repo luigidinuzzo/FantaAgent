@@ -10,8 +10,8 @@ export interface SettingsSection { id: string; label: string; shortLabel?: strin
  * Lo schema comune di regole, impostazioni dell'asta e profilo. Da lg l'indice a
  * sinistra, fermo, e il contenuto largo fino a 48rem; sotto lg l'indice e' una
  * fila sotto la barra in alto, ferma, con le etichette corte: si stringe, non
- * scorre di lato. Scorre la pagina, non un riquadro. In fondo il contenuto lascia
- * lo spazio della barra di salvataggio.
+ * scorre di lato. Scorre la pagina, non un riquadro. Se c'e' la barra di
+ * salvataggio, in fondo il contenuto le lascia lo spazio.
  */
 export function SettingsLayout({ title, context, sections, ready, children, footer, saveBar }: {
   title: string;
@@ -51,7 +51,7 @@ export function SettingsLayout({ title, context, sections, ready, children, foot
         </nav>
         {/* Ogni sezione ha scroll-mt-[calc(var(--header-h)+4rem)]: il link
             dell'indice la porta sotto la barra e la fila ferma, non dietro. */}
-        <div data-testid="settings-content" className={`flex min-w-0 flex-col gap-6 ${SAVE_BAR_SPACE}`}>
+        <div data-testid="settings-content" className={`flex min-w-0 flex-col gap-6 ${saveBar ? SAVE_BAR_SPACE : ''}`}>
           {children}
           {footer}
         </div>
