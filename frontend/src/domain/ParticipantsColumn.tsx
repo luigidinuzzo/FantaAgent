@@ -20,7 +20,7 @@ import { ROLE_NAME_PLURAL, ROLE_NAME_SINGULAR } from './roles';
  * <p>Le squadre sono righe di un pannello solo a ogni misura, e il nome va su due
  * righe invece di troncarsi.
  */
-export function ParticipantsColumn({ participants, phase, className = '' }: {
+export function ParticipantsColumn({ participants, phase, className = '', id }: {
   participants: ParticipantView[];
   /**
    * Il ruolo che si sta chiamando. Assente ad asta conclusa, dove non c'e'
@@ -29,6 +29,8 @@ export function ParticipantsColumn({ participants, phase, className = '' }: {
   phase?: Role;
   /** Il posto nella griglia di chi la monta (righe e colonne dell'asta). */
   className?: string;
+  /** Per chi la indica con aria-controls (la barra delle viste del telefono). */
+  id?: string;
 }) {
   return (
     // Scorre dentro: una lega da dodici squadre non deve allungare la riga in
@@ -36,6 +38,7 @@ export function ParticipantsColumn({ participants, phase, className = '' }: {
     // scorre, dentro un contenitore flex, senza quello si allunga comunque fino
     // al proprio contenuto.
     <section
+      id={id}
       aria-label="Crediti delle squadre"
       className={`panel flex min-h-0 min-w-0 flex-col overflow-hidden ${className}`}
     >

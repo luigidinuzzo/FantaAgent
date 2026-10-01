@@ -25,10 +25,13 @@ import type { SoldPlayer } from '../domain/PlayerSearchBox';
 import { AuctionAnnouncer, phaseChangedMessage, purchaseMessage, undoMessage } from '../domain/AuctionAnnouncer';
 import { BidderDialog } from '../domain/BidderDialog';
 import { BidPanel } from '../domain/BidPanel';
+import { CommandsMenu } from '../domain/CommandsMenu';
 import { ConnectionStatus, isStale } from '../domain/ConnectionStatus';
 import { BUTTON_SECONDARY, CONTROL_H } from '../domain/controls';
 import { PhaseSwitcher } from '../domain/PhaseSwitcher';
 import { PhasePager } from '../domain/PhasePager';
+import { PhoneViewBar } from '../domain/PhoneViewBar';
+import type { PhoneView } from '../domain/PhoneViewBar';
 import { PlayerDecisionCard } from '../domain/PlayerDecisionCard';
 import { PlayerSearchBox } from '../domain/PlayerSearchBox';
 import { ParticipantsColumn } from '../domain/ParticipantsColumn';
@@ -36,7 +39,7 @@ import { PlayerTable } from '../domain/PlayerTable';
 import { RemoveIcon } from '../domain/RemoveIcon';
 import { RoleBadge } from '../domain/RoleBadge';
 import { RosterGrid } from '../domain/RosterGrid';
-import { ROLE_NAME_PLURAL } from '../domain/roles';
+import { ROLE_NAME_PLURAL, ROLE_NAME_PLURAL_CAPITALIZED } from '../domain/roles';
 import { UndoLastButton } from '../domain/UndoLastButton';
 import { useIdleHeartbeat } from './useIdleHeartbeat';
 
@@ -142,6 +145,10 @@ export function AuctionRoute() {
   const [sort, setSort] = useState<PhaseSort>('quotazione');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [activeTab, setActiveTab] = useState<TabKey>('fase');
+  // Sotto lg la pagina e' in quattro viste, una alla volta, scelte dalla barra in
+  // basso: la griglia del computer messa in colonna era alta piu' di tremila pixel.
+  // Da lg la vista non conta: ogni sezione e' sempre in vista.
+  const [phoneView, setPhoneView] = useState<PhoneView>('banco');
   // L'aggiudicazione diretta e' aperta per QUESTO giocatore: cambiando giocatore
   // si richiude, e il prossimo parte di nuovo dal conto alla rovescia.
   const [directFor, setDirectFor] = useState<string | null>(null);
@@ -155,6 +162,9 @@ export function AuctionRoute() {
   const bidderHintId = useId();
   const bidderPanelId = useId();
   const bancoPrefixId = useId();
+  const bancoId = useId();
+  const searchId = useId();
+  const teamsId = useId();
   // Un bottone per chiave, per spostare il focus DAVVERO quando la freccia
   // cambia scheda: senza, la selezione si sposterebbe ma il focus della
   // tastiera resterebbe indietro sul bottone precedente, che e' esattamente il
@@ -198,6 +208,7 @@ export function AuctionRoute() {
   // propri consigli. Finche' lo stato non e' arrivato, niente comandi: meglio un
   // istante senza pulsanti che un pulsante che risponde "non puoi".
   const admin = state.data?.admin ?? false;
+  const projectionHref = `/leghe/${leagueId}/aste/${auctionId}/proiezione`;
   const gear = admin
     ? { to: `/leghe/${leagueId}/aste/${auctionId}/impostazioni`, label: 'Impostazioni dell\'asta' }
     : { to: `/leghe/${leagueId}`, label: 'Vai alla lega' };
@@ -206,6 +217,26 @@ export function AuctionRoute() {
   // da chi un posto non ce l'ha. La frase per chi non ce l'ha aspetta anche lei.
   const seated = state.data ? state.data.myParticipantId !== null : null;
   const advised = seated === true;
+  // Le viste del telefono sono per chi ha un posto. L'amministratore senza posto
+  // ha solo squadre, ricerca e banco: restano in colonna, senza barra.
+  const phoneViews = seated !== false;
+  // La classe che nasconde, sotto lg, una sezione che non e' della vista scelta.
+  const shownOnPhone = (...views: PhoneView[]) =>
+    (!phoneViews || views.includes(phoneView) ? '' : 'max-lg:hidden');
+  // Un giocatore scelto con un gesto — dalla ricerca, dalla tabella, dai consigli —
+  // va sul banco, e sul telefono si torna a guardarlo: restare sulla tabella
+  // lascerebbe il lotto in una vista nascosta.
+  function selectPlayer(id: string) {
+    setSelectedId(id);
+    setPhoneView('banco');
+  }
+  function changePhoneView(view: PhoneView) {
+    setPhoneView(view);
+    // La barra in basso sceglie anche la scheda: sotto lg la riga delle schede
+    // non c'e'.
+    if (view === 'giocatori') setActiveTab('fase');
+    else if (view === 'rose') setActiveTab('rose');
+  }
   const currentPhase = state.data?.currentPhase;
   // Un cambio fase riparte da pagina 1: l'offset della fase precedente non ha
   // alcun significato in quella nuova, e senza questo effetto un salto a una
@@ -545,6 +576,8 @@ export function AuctionRoute() {
       chrome="top"
       trail={trail}
       bleed
+      // Sotto lg i comandi stanno nel menu «Comandi» della testata.
+      actionsFromLg
       slotActions={
         <>
           {admin ? (
@@ -568,7 +601,7 @@ export function AuctionRoute() {
                 l'indirizzo a mano. target="_blank": va aperta in una seconda
                 finestra, sul secondo schermo, non al posto di questa. */}
             <a
-              href={`/leghe/${leagueId}/aste/${auctionId}/proiezione`}
+              href={projectionHref}
               target="_blank"
               rel="noopener noreferrer"
               className={ICON_LINK}
@@ -600,11 +633,31 @@ export function AuctionRoute() {
         </>
       }
       slotStatus={
-        <ConnectionStatus
-          updatedAt={state.dataUpdatedAt || undefined}
-          isError={state.isError}
-          now={now}
-        />
+        <div className="flex items-center gap-2">
+          <ConnectionStatus
+            compact
+            updatedAt={state.dataUpdatedAt || undefined}
+            isError={state.isError}
+            now={now}
+          />
+          {admin ? (
+            // Sul telefono la barra dei comandi non c'e': fase, annullamento,
+            // proiezione e impostazioni stanno qui, con gli stessi gestori.
+            <span className="lg:hidden">
+              <CommandsMenu
+                phases={state.data?.phases ?? []}
+                current={state.data?.currentPhase ?? 'P'}
+                onChangePhase={changePhaseTo}
+                phasePending={changePhase.isPending}
+                canUndo={state.data?.canUndo ?? false}
+                onUndo={undo}
+                undoPending={undoLast.isPending}
+                projectionHref={projectionHref}
+                settingsHref={gear.to}
+              />
+            </span>
+          ) : null}
+        </div>
       }
     >
       <div className={PAGE_PADDING}>
@@ -627,8 +680,10 @@ export function AuctionRoute() {
           corrente e rose —, a destra i consigli: a riposo le occasioni della
           fase e la tua rosa, col lotto il perche' del prezzo e le alternative. Una griglia sola, i
           figli messi a posto per riga e colonna: nel documento restano
-          nell'ordine del telefono — crediti, ricerca, banco, consigli, schede —
-          che e' quello in cui sotto lg la griglia si srotola in una colonna. */}
+          nell'ordine crediti, ricerca, banco, consigli, schede. Sotto lg ogni
+          sezione appartiene a una delle viste del telefono e le altre sono
+          nascoste: si vede la ricerca, poi le sezioni della vista scelta,
+          nell'ordine del documento. */}
       {concluded ? (
         <>
           <AuctionRecap participants={participants} board={board.data} />
@@ -656,9 +711,22 @@ export function AuctionRoute() {
         </>
       ) : (
       <>
+      {me && state.data ? (
+        // Sul telefono, sempre in vista: cosa si sta chiamando e quanto ti resta.
+        // Da lg lo dicono la barra dei comandi e la colonna delle squadre.
+        <div data-testid="phone-strip" className="mb-3 flex items-center justify-between gap-3 text-sm lg:hidden">
+          <span className="flex items-center gap-2 font-semibold">
+            <RoleBadge role={state.data.currentPhase} />
+            {ROLE_NAME_PLURAL_CAPITALIZED[state.data.currentPhase]}
+          </span>
+          <span className="tnum text-muted-foreground">
+            <span className="font-semibold text-accent">{me.budgetRemaining}</span>
+            {` crediti · ${me.slotsRemaining} posti`}
+          </span>
+        </div>
+      ) : null}
       {/* grid-cols-1 e non la colonna implicita: quella si allarga fino al
-          contenuto piu' largo (la fila delle squadre sul telefono), e la pagina
-          intera scorreva di lato. */}
+          contenuto piu' largo, e la pagina intera scorreva di lato. */}
       {/* Da lg la riga e' alta quanto la finestra, decisa in anticipo e non dedotta
           dal contenuto. A 1440x900: navigazione 56 + comandi 59 + margini 32 =
           147, restano 753. Nella colonna centrale ricerca 48 + 16 + banco 384 +
@@ -679,7 +747,7 @@ export function AuctionRoute() {
           Non hai un posto in quest'asta: puoi seguirla, ma i consigli non sono disponibili.
         </p>
       ) : null}
-      {/* gap-5 sotto lg, come prima di questa griglia: il telefono ha un suo piano. */}
+      {/* gap-5 sotto lg: lo spazio fra la ricerca e le sezioni della vista. */}
       <div
         data-testid="auction-row"
         className={`grid grid-cols-1 gap-5 lg:gap-4 ${
@@ -689,13 +757,14 @@ export function AuctionRoute() {
         }`}
       >
         <ParticipantsColumn
+          id={teamsId}
           participants={participants}
           phase={state.data?.currentPhase}
-          className={`lg:col-start-1 lg:row-start-1 ${seated === false ? 'lg:row-span-2' : 'lg:row-span-3'}`}
+          className={`lg:col-start-1 lg:row-start-1 ${seated === false ? 'lg:row-span-2' : 'lg:row-span-3'} ${shownOnPhone('squadre')}`}
         />
 
         {/* La stessa selezione della tabella di fase, non un secondo percorso:
-            un giocatore scelto qui passa per setSelectedId esattamente come una
+            un giocatore scelto qui passa per selectPlayer esattamente come una
             riga cliccata, quindi valutazione, banco e aggiudicazione si
             comportano in tutto allo stesso modo.
 
@@ -704,12 +773,14 @@ export function AuctionRoute() {
         {/* Mentre si cerca i risultati prendono il posto del banco: il pannello
             occupa le righe della ricerca e del banco insieme, e la tabella
             resta dov'e'. A riposo resta alto quanto la barra. */}
+        {/* Sempre in vista, in ogni vista del telefono: si cerca da ovunque. */}
         <div
+          id={searchId}
           className={`min-h-0 lg:col-start-2 lg:row-start-1 ${
             searchActive ? 'flex flex-1 flex-col lg:row-span-2' : ''
           }`}
         >
-          <PlayerSearchBox onSelect={setSelectedId} onActiveChange={setSearchActive} sold={sold} />
+          <PlayerSearchBox onSelect={selectPlayer} onActiveChange={setSearchActive} sold={sold} />
         </div>
 
         {/* Il banco e' un posto fisso in pagina, non un riquadro che appare e
@@ -722,11 +793,12 @@ export function AuctionRoute() {
             uscendo dalla ricerca si ritrova il lotto com'era. */}
         {searchActive ? null : (
         <section
+          id={bancoId}
           data-testid="banco"
           // Col lotto il nome accessibile e' «Sul banco · nome»: il prefisso e'
           // solo per chi ascolta, a chi guarda lo dice il riquadro stesso.
           aria-labelledby={lot ? `${bancoPrefixId} ${bidderPanelId}` : bidderPanelId}
-          className="panel flex min-h-0 flex-1 flex-col p-4 lg:col-start-2 lg:row-start-2"
+          className={`panel flex min-h-0 flex-1 flex-col p-4 lg:col-start-2 lg:row-start-2 ${shownOnPhone('banco')}`}
         >
           <div data-testid="banco-header" className="flex min-h-11 items-center justify-between gap-3">
             {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
@@ -876,34 +948,35 @@ export function AuctionRoute() {
             selectedId={selectedId}
             valuation={valuation.data ?? null}
             bidderOpen={bidderOpen}
-            onSelect={setSelectedId}
+            onSelect={selectPlayer}
             me={me}
             myColumn={board.data?.columns.find((c) => c.me)}
-            className="lg:col-start-3 lg:row-span-3 lg:row-start-1"
+            className={`lg:col-start-3 lg:row-span-3 lg:row-start-1 ${shownOnPhone('banco')}`}
           />
         )}
 
         {/* Le schede, nella colonna centrale sotto il banco: prendono l'altezza che
             il banco lascia, e la tabella scorre dentro di se' con l'intestazione
-            ferma. Nell'ordine del documento vengono dopo i consigli, come sul
-            telefono, dove stanno in fondo alla pagina.
+            ferma. Nell'ordine del documento vengono dopo i consigli. Sul
+            telefono sono le viste Giocatori e Rose, e la scheda la sceglie la
+            barra in basso.
 
             Da lg il pannello e' una piccola griglia: in alto le schede, la legenda
             (da xl sulla stessa riga, sotto xl a capo) e le pagine; sotto, il filo
             e la scheda aperta. Nel documento l'ordine e' lo stesso che si vede —
             schede, legenda, pagine, tabella —: chi usa la tastiera o ascolta
             raggiunge le pagine prima di attraversare la tabella. -mt-1 sotto
-            lg: prima le schede stavano fuori dalla riga con mt-4, e 16px restano
-            invece dei 20 dello spazio della riga. */}
+            lg: 16px sotto la ricerca invece dei 20 dello spazio della riga. */}
         {seated === false ? null : (
-          <div className="panel min-h-0 max-lg:-mt-1 max-lg:p-4 lg:col-start-2 lg:row-start-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:overflow-hidden">
+          <div className={`panel min-h-0 max-lg:-mt-1 max-lg:p-4 ${shownOnPhone('giocatori', 'rose')} lg:col-start-2 lg:row-start-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:overflow-hidden`}>
             {/* Le schede sono rese sul serio, non un gruppo di bottoni che si
                 limita a somigliarci: ruolo, stato e frecce sinistra/destra per
-                spostare la selezione, come da WAI-ARIA Authoring Practices. */}
+                spostare la selezione, come da WAI-ARIA Authoring Practices.
+                Sotto lg la riga non c'e': la scheda la sceglie la barra delle viste. */}
             <div
               role="tablist"
               aria-label="Sezioni dell'asta"
-              className="flex gap-1 border-b border-line lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:px-2"
+              className="flex gap-1 max-lg:hidden border-b border-line lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:px-2"
             >
                 {TABS.map((tab) => (
                   <button
@@ -978,7 +1051,7 @@ export function AuctionRoute() {
                     onSort={(next, dir) => { setSort(next); setSortDir(dir); setPageOffset(0); }}
                     rows={phase.data?.rows ?? []}
                     selectedId={selectedId}
-                    onSelect={setSelectedId}
+                    onSelect={selectPlayer}
                     disabled={bidderOpen}
                   />
                 </>
@@ -1008,6 +1081,20 @@ export function AuctionRoute() {
         )}
       </div>
 
+      {phoneViews ? (
+        <PhoneViewBar
+          view={phoneView}
+          onChange={changePhoneView}
+          controls={{
+            // Mentre si cerca il banco non c'e': al suo posto i risultati.
+            banco: searchActive ? searchId : bancoId,
+            giocatori: 'tabpanel-fase',
+            squadre: teamsId,
+            rose: 'tabpanel-rose',
+          }}
+        />
+      ) : null}
+
       {seated === false ? (
         // Senza posto la tabella di fase non c'e' (sono consigli: il tetto e'
         // il tuo): restano le rose, che per chi batte l'asta sono il registro
@@ -1025,7 +1112,7 @@ export function AuctionRoute() {
           sbagliato, lo annulla subito. Non e' una live region: l'annuncio c'e' gia'
           (AuctionAnnouncer), e due voci si sovrapporrebbero. */}
       {sale ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 max-lg:bottom-20 z-40 flex justify-center px-4">
           <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-positive bg-surface px-5 py-3 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             <p className="text-base">
               <span className="font-medium">{sale.player}</span>

@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { setAuctionContext } from '../api/client';
 import { QueryProvider } from '../api/QueryProvider';
@@ -2062,6 +2062,53 @@ describe('AuctionRoute', () => {
     }
   });
 
+  describe('sul telefono', () => {
+    beforeEach(() => setAuctionContext({ leagueId: 'default', auctionId: 'a1' }));
+
+    it('si apre sulla vista Banco, con le altre sezioni nascoste sotto lg', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      const bar = await screen.findByRole('tablist', { name: "Viste dell'asta" });
+      expect(within(bar).getByRole('tab', { name: 'Banco' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('banco').className).not.toContain('max-lg:hidden');
+      expect(screen.getByRole('region', { name: 'Crediti delle squadre' }).className).toContain('max-lg:hidden');
+    });
+
+    it('la vista Giocatori mostra la tabella della fase, e sceglierne uno riporta al Banco', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      await userEvent.click(await screen.findByRole('tab', { name: 'Giocatori' }));
+      expect(screen.getByTestId('banco').className).toContain('max-lg:hidden');
+      await userEvent.click(await screen.findByRole('button', { name: 'Valuta Giocatore Uno' }));
+      expect(screen.getByRole('tab', { name: 'Banco' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('banco').className).not.toContain('max-lg:hidden');
+    });
+
+    it('la vista Rose mostra le rose, la vista Squadre le squadre', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      await userEvent.click(await screen.findByRole('tab', { name: 'Squadre' }));
+      expect(screen.getByRole('region', { name: 'Crediti delle squadre' }).className).not.toContain('max-lg:hidden');
+      await userEvent.click(screen.getByRole('tab', { name: 'Rose' }));
+      expect(screen.getByRole('tab', { name: 'Rose squadre' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('in alto la fase e i tuoi crediti, sempre in vista', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      const strip = await screen.findByTestId('phone-strip');
+      expect(strip).toHaveTextContent('Portieri');
+      expect(strip).toHaveTextContent('300 crediti · 25 posti');
+      expect(strip.className).toContain('lg:hidden');
+    });
+
+    it('il banditore ha il menu «Comandi»; chi non lo e no', async () => {
+      stubApi({ state: STATE });
+      renderAuction();
+      expect(await screen.findByRole('button', { name: /Comandi/ })).toBeInTheDocument();
+    });
+  });
+
   describe("per chi non e' amministratore", () => {
     it('non mostra i comandi del banco ma mostra la fase', async () => {
       setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
@@ -2071,6 +2118,15 @@ describe('AuctionRoute', () => {
       expect(await screen.findByText(/Fase:/)).toHaveTextContent('Fase: portieri');
       expect(screen.queryByRole('button', { name: /Annulla ultimo acquisto/ })).not.toBeInTheDocument();
       expect(screen.queryByRole('navigation', { name: /Fase dell'asta/ })).not.toBeInTheDocument();
+    });
+
+    it('non ha il menu «Comandi» del banditore', async () => {
+      setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+      stubApi({ state: { ...STATE, admin: false } });
+      renderAuction();
+
+      expect(await screen.findByText(/Fase:/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Comandi/ })).not.toBeInTheDocument();
     });
 
     it('l\'ingranaggio porta alla lega, non alle impostazioni dell\'asta', async () => {
