@@ -74,6 +74,26 @@ describe('Modal', () => {
     expect(opener).toHaveFocus();
   });
 
+  // Il campo da cui si comincia, non il primo bottone (Chiudi): chi la usa lo dice.
+  it('aperta, il fuoco va a initialFocusRef', () => {
+    function Opener() {
+      const [open, setOpen] = useState(false);
+      const name = useRef<HTMLInputElement>(null);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>Crea una lega</button>
+          <Modal open={open} titleId="t" title="Crea una lega" onClose={() => setOpen(false)} initialFocusRef={name}>
+            <input aria-label="Squadra" />
+            <input ref={name} aria-label="Nome" />
+          </Modal>
+        </>
+      );
+    }
+    render(<Opener />);
+    fireEvent.click(screen.getByRole('button', { name: 'Crea una lega' }));
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveFocus();
+  });
+
   // Safari non da' il fuoco a un bottone cliccato: activeElement e' il body, e la
   // finestra deve sapere da chi le dice dove tornare.
   it('con returnFocusRef il fuoco torna li anche se il clic non l ha dato al bottone', () => {
