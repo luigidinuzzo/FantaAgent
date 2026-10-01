@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Modal } from './Modal';
 
@@ -33,5 +34,34 @@ describe('Modal', () => {
     const cls = screen.getByRole('dialog').className;
     expect(cls).toContain('max-sm:h-dvh');
     expect(cls).toContain('sm:w-[32rem]');
+  });
+
+  // Chiusa, la finestra si smonta prima che il browser possa riportare il fuoco:
+  // lo riporta lei al bottone che l'ha aperta, con Esc come con «Chiudi».
+  it('chiusa, il fuoco torna al bottone che l ha aperta', async () => {
+    function Opener() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>Crea una lega</button>
+          <Modal open={open} titleId="t" title="Crea una lega" onClose={() => setOpen(false)}>
+            <input aria-label="Nome" />
+          </Modal>
+        </>
+      );
+    }
+    render(<Opener />);
+    const opener = screen.getByRole('button', { name: 'Crea una lega' });
+
+    await userEvent.click(opener);
+    screen.getByLabelText('Nome').focus();
+    await userEvent.click(screen.getByRole('button', { name: 'Chiudi' }));
+    expect(opener).toHaveFocus();
+
+    await userEvent.click(opener);
+    screen.getByLabelText('Nome').focus();
+    fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
   });
 });

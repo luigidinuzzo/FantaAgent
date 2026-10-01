@@ -5,7 +5,7 @@ import { RemoveIcon } from './RemoveIcon';
 /**
  * Una finestra sopra la pagina: {@code <dialog>} nativo con showModal(), che
  * intrappola il fuoco, rende inerte lo sfondo e trasforma Esc in cancel. Chiusa,
- * il browser riporta il fuoco a chi l'ha aperta. Sotto sm a tutto schermo; da sm
+ * il fuoco torna a chi l'ha aperta. Sotto sm a tutto schermo; da sm
  * larga 32rem. L'altezza la decide chi la usa, sul suo stato piu' alto.
  */
 export function Modal({ open, titleId, title, onClose, children, initialFocusRef, className = '' }: {
@@ -22,10 +22,15 @@ export function Modal({ open, titleId, title, onClose, children, initialFocusRef
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog || !open) return;
+    // Chi l'ha aperta, da ricordare prima che il fuoco entri nella finestra.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (!dialog.open) dialog.showModal();
     initialFocusRef?.current?.focus();
     return () => {
       if (dialog.open) dialog.close();
+      // Chiusa, la finestra e' gia' fuori dalla pagina (open=false la smonta)
+      // e il browser lascerebbe il fuoco sul body: lo si riporta a mano.
+      if (opener?.isConnected) opener.focus();
     };
   }, [open, initialFocusRef]);
 
