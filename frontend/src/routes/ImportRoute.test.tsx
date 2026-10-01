@@ -113,6 +113,19 @@ describe('ImportRoute', () => {
     expect(screen.getByRole('button', { name: 'Importa l\'asta' })).toBeDisabled();
   });
 
+  it('dice il nome della cartella scelta, dal percorso dei suoi file', async () => {
+    stub();
+    renderImport();
+    const inFolder = FILES.map((f) => {
+      const copy = new File([f], f.name);
+      Object.defineProperty(copy, 'webkitRelativePath', { value: `Asta di settembre/${f.name}` });
+      return copy;
+    });
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), inFolder);
+    await screen.findByText('Asta del 2025');
+    expect(screen.getByText('Asta di settembre')).toBeInTheDocument();
+  });
+
   it('una cartella senza asta lo dice', async () => {
     stub();
     renderImport();

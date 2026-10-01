@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { FolderPicker } from './FolderPicker';
 
@@ -23,13 +24,17 @@ describe('FolderPicker', () => {
     expect(screen.getByText('Asta 2025')).toBeInTheDocument();
   });
 
-  it('la cartella scelta arriva a onPick', () => {
+  it('la cartella scelta arriva a onPick, come FileList', async () => {
     const onPick = vi.fn();
     render(<FolderPicker id="f" picked={null} onPick={onPick} />);
     const input = screen.getByLabelText('Scegli la cartella', { selector: 'input' });
-    const file = new File(['x'], 'eventi.json');
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(onPick).toHaveBeenCalled();
+    const events = new File(['{}'], 'events.jsonl');
+    const members = new File(['x'], 'league-members.yml');
+    await userEvent.upload(input, [events, members]);
+    expect(onPick).toHaveBeenCalledTimes(1);
+    const list = onPick.mock.calls[0][0] as FileList;
+    expect(list).toBeInstanceOf(FileList);
+    expect(Array.from(list)).toEqual([events, members]);
   });
 
   it('spento resta raggiungibile ma non apre la scelta', () => {
