@@ -337,9 +337,9 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
       {/* Righe compatte in una griglia: una colonna sul telefono, due dal tablet, tre
           sullo schermo largo. Niente righe di separazione: una cella vuota in fondo
           alla griglia resterebbe un riquadro a meta'. */}
-      <ul aria-label="Membri" className="grid gap-x-6 border-t border-line px-5 py-2 md:grid-cols-2 md:px-6 xl:grid-cols-3">
+      <ul aria-label="Membri" className="gap-x-6 border-t border-line px-5 py-2 md:columns-2 md:px-6 xl:columns-3">
         {members.map((m) => (
-          <li key={m.userId} className="flex min-h-14 items-center gap-3 py-2">
+          <li key={m.userId} className="flex min-h-14 break-inside-avoid items-center gap-3 py-2">
             <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full border border-panel-border bg-surface-raised font-semibold">
               {m.initial}
             </span>

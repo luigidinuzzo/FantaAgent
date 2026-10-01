@@ -98,6 +98,21 @@ describe('LeagueRoute', () => {
 
   // L'oro e' dell'azione principale e del numero su cui si decide. Otto tondi
   // d'oro in un elenco di membri gli toglievano forza senza dire niente.
+  // Una lista che scorre in colonne dall'alto in basso, non una griglia di celle:
+  // con 11 membri l'ultima fila di una griglia a tre restava di due.
+  it('i membri sono un elenco in colonne, ogni riga intera in una colonna', async () => {
+    stub(true);
+    renderLeague();
+    const list = await screen.findByRole('list', { name: 'Membri' });
+    expect(list.className).not.toMatch(/grid-cols-/);
+    expect(list.className).toContain('md:columns-2');
+    expect(list.className).toContain('xl:columns-3');
+    for (const row of await within(list).findAllByRole('listitem')) {
+      expect(row.className).toContain('break-inside-avoid');
+      expect(row.className).toContain('min-h-14');
+    }
+  });
+
   it('le iniziali dei membri non portano l oro', async () => {
     stub(false);
     renderLeague();
