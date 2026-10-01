@@ -94,6 +94,18 @@ describe('palette Club Notturno', () => {
   );
 
   /**
+   * Il profilo, quando si e' nella pagina del profilo: testo oro sulla barra in
+   * alto, e al passaggio del puntatore il velo di `line` (bianco al 9%) steso sulla
+   * barra. La coppia e' una miscela, non un token: la si calcola.
+   */
+  it('l oro del profilo corrente si legge anche col velo del passaggio', () => {
+    const alpha = Number(LINES.line.match(/[\d.]+\)$/)![0].slice(0, -1));
+    expect(alpha).toBeCloseTo(0.09);
+    const hover = blend('#ffffff', PALETTE.bar, alpha);
+    expect(contrastRatio(PALETTE.accent, hover)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  /**
    * Le coppie qui sopra verificano i TOKEN. Ma una classe puo' smorzare un token
    * con un'opacita' — `text-destructive/80` — e quel testo non e' piu' il colore
    * verificato: e' la sua miscela col fondo. `destructive` passa a 5.59:1, all'80%
