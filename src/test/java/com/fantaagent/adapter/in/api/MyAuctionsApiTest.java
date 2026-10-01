@@ -98,6 +98,16 @@ class MyAuctionsApiTest {
     }
 
     @Test
+    void chiEToltoDallaLegaNonVedePiuLeSueAste() throws Exception {
+        buy(f.brunoId);
+        f.mvc.perform(delete("/api/leagues/" + f.leagueId + "/members/" + f.brunoId).with(csrf()).cookie(f.anna))
+                .andExpect(status().isNoContent());
+        f.mvc.perform(get("/api/auctions").cookie(f.bruno))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
     void senzaAccessoEUn401() throws Exception {
         f.mvc.perform(get("/api/auctions")).andExpect(status().isUnauthorized());
     }
