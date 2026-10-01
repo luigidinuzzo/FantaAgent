@@ -43,6 +43,11 @@ function useDebounced(value: string, ms: number): string {
   return debounced;
 }
 
+/**
+ * Il fuoco segue il gesto: «Chiedi di entrare» lo porta al nome della squadra,
+ * «Indietro» o la richiesta mandata lo riportano alla ricerca, perche' il bottone
+ * premuto non c'e' piu'.
+ */
 function JoinLeagueBody({ searchRef }: { searchRef: RefObject<HTMLInputElement | null> }) {
   const [text, setText] = useState('');
   const query = useDebounced(text, 250);
@@ -71,8 +76,8 @@ function JoinLeagueBody({ searchRef }: { searchRef: RefObject<HTMLInputElement |
         {chosen ? (
           <RequestForm
             league={chosen}
-            onCancel={() => setChosen(null)}
-            onSent={() => { setSentTo(chosen); setChosen(null); }}
+            onCancel={() => { setChosen(null); searchRef.current?.focus(); }}
+            onSent={() => { setSentTo(chosen); setChosen(null); searchRef.current?.focus(); }}
           />
         ) : (
           <SearchResults
@@ -237,6 +242,9 @@ function RequestForm({ league, onCancel, onSent }: {
 }) {
   const send = useRequestJoin();
   const [teamName, setTeamName] = useState('');
+  // Il bottone premuto sparisce col modulo: il fuoco va al campo da riempire.
+  const teamRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { teamRef.current?.focus(); }, []);
   const errors = fieldErrors(send.error);
   const message = formMessage(send.error, ['teamName'], 'Non sono riuscito a mandare la richiesta. Riprova fra poco.');
 
@@ -256,7 +264,7 @@ function RequestForm({ league, onCancel, onSent }: {
       </p>
       <div className="mt-4">
         <TextField id="join-team" label="La tua squadra" value={teamName} onChange={setTeamName}
-          errors={errors.teamName} />
+          errors={errors.teamName} ref={teamRef} />
       </div>
       {message ? <p role="alert" className="mt-3 text-sm font-medium text-destructive">{message}</p> : null}
       <div className="mt-auto flex gap-3 pt-4">

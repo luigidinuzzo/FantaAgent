@@ -128,4 +128,37 @@ describe('inviteToken', () => {
   ])('%s', (text, token) => {
     expect(inviteToken(text)).toBe(token);
   });
+
+  function cugini() {
+    vi.stubGlobal('fetch', respond({
+      'GET /api/join-requests': () => json([]),
+      'GET /api/leagues/search?q=cugini': () => json([
+        { id: 'l7', name: 'Lega dei Cugini', adminName: 'Marco', members: 7, status: 'NONE' },
+      ]),
+      'POST /api/join-requests/l7': () => new Response(null, { status: 204 }),
+    }));
+  }
+
+  it('Chiedi di entrare porta il fuoco sulla squadra; Indietro lo riporta alla ricerca', async () => {
+    cugini();
+    renderDialog();
+    const search = screen.getByRole('searchbox', { name: 'Cerca la lega' });
+    await userEvent.type(search, 'cugini');
+    await userEvent.click(await screen.findByRole('button', { name: 'Chiedi di entrare in Lega dei Cugini' }));
+    expect(screen.getByLabelText('La tua squadra', { selector: '#join-team' })).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Indietro' }));
+    expect(search).toHaveFocus();
+  });
+
+  it('mandata la richiesta, il fuoco torna alla ricerca', async () => {
+    cugini();
+    renderDialog();
+    const search = screen.getByRole('searchbox', { name: 'Cerca la lega' });
+    await userEvent.type(search, 'cugini');
+    await userEvent.click(await screen.findByRole('button', { name: 'Chiedi di entrare in Lega dei Cugini' }));
+    await userEvent.type(screen.getByLabelText('La tua squadra', { selector: '#join-team' }), 'Anna FC');
+    await userEvent.click(screen.getByRole('button', { name: 'Manda la richiesta' }));
+    expect(await screen.findByText(/Richiesta inviata a Marco/)).toBeInTheDocument();
+    expect(search).toHaveFocus();
+  });
 });
