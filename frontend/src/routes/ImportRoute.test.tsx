@@ -75,8 +75,8 @@ describe('ImportRoute', () => {
   });
 
   /**
-   * Sul telefono a 360px «Atletico Ma Non Troppo · Diego» non stava nella tendina:
-   * il riquadro degli abbinamenti perde i margini di lato e la tendina un po' del
+   * Sul telefono a 360px «Atletico Ma Non Troppo (Diego)» non stava nella tendina:
+   * il riquadro degli abbinamenti perde i margini di lato e la tendina parte del
    * suo, cosi' il nome scelto si legge intero; l'anello del fuoco va dentro il
    * bordo. Il testo resta a 16px: piu' piccolo, Safari ingrandirebbe la pagina al
    * tocco.
@@ -90,10 +90,39 @@ describe('ImportRoute', () => {
     expect(box.className).toContain('max-sm:px-0');
     expect(box.className).toContain('max-sm:border-x-0');
     const select = within(list).getByLabelText('Membro per Marco');
-    expect(select.className).toContain('max-sm:px-3');
+    expect(select.className).toContain('max-sm:px-2');
     // Senza margine di lato, l'anello del fuoco sta dentro il bordo o il riquadro lo taglia.
     expect(select.className).toContain('max-sm:-outline-offset-2');
     expect(select.className).toContain('text-base');
+  });
+
+  it('ogni membro si sceglie come «Squadra (nome)»', async () => {
+    stub();
+    renderImport();
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
+    const select = await screen.findByLabelText('Membro per Marco');
+    expect(within(select).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Scegli…', 'Anna FC (Anna)', 'Marco FC (Marco)']);
+  });
+
+  /**
+   * Una tendina non va a capo, e la sua riga e' stretta anche sul computer: una
+   * scelta oltre i 30 caratteri non ci starebbe, e resta la sola squadra, che fino a
+   * 32 caratteri ci sta.
+   */
+  it('una scelta troppo lunga per la riga mostra solo la squadra', async () => {
+    const long = { userId: 'u3', displayName: 'Elena', teamName: 'Olympique Marsiglia Nera e Rossa', initial: 'O',
+      role: 'MEMBER', me: false };
+    const fetchMock = stub();
+    const original = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => (url === '/api/leagues/l1'
+      ? Promise.resolve(json({ ...LEAGUE, members: [...LEAGUE.members, long] }))
+      : original(url, init)));
+    renderImport();
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
+    const select = await screen.findByLabelText('Membro per Marco');
+    expect(within(select).getAllByRole('option').map((o) => o.textContent))
+      .toEqual(['Scegli…', 'Anna FC (Anna)', 'Marco FC (Marco)', 'Olympique Marsiglia Nera e Rossa']);
   });
 
   it('non importa finche\' manca un abbinamento', async () => {

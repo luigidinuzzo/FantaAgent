@@ -17,6 +17,20 @@ function guess(name: string, members: MemberView[]): string {
   return hits.length === 1 ? hits[0].userId : '';
 }
 
+/**
+ * La scelta di un membro: «Squadra (nome)». Una tendina non va a capo, e la sua riga
+ * e' stretta anche sul computer (gli abbinamenti stanno in due colonne): una scelta
+ * piu' lunga di quanto ci sta nella riga piu' stretta, i 248px del telefono, resta la
+ * sola squadra, che fino a 32 caratteri ci sta. La stessa regola a ogni larghezza:
+ * la stessa scelta si legge allo stesso modo ovunque.
+ */
+const LABEL_MAX = 30;
+
+function memberLabel(m: MemberView): string {
+  const full = `${m.teamName} (${m.displayName})`;
+  return full.length > LABEL_MAX ? m.teamName : full;
+}
+
 export function ImportRoute() {
   const { leagueId = '' } = useParams();
   const league = useLeague(leagueId);
@@ -117,8 +131,8 @@ export function ImportRoute() {
                 <Step n={2} title="Abbina i partecipanti" />
                 {ready ? (
                   <>
-                    {/* Sul telefono il riquadro perde margini e bordi di lato: la tendina
-                        mostra la scelta su una riga, e «squadra · nome» deve starci. */}
+                    {/* Sul telefono il riquadro perde margini e bordi di lato e la tendina
+                        parte del suo: mostra la scelta su una riga, che deve starci. */}
                     <div className="mt-3 h-[29rem] overflow-y-auto rounded-lg border border-line p-4 max-sm:rounded-none max-sm:border-x-0 max-sm:px-0">
                       <ul aria-label="Abbinamenti" className="grid gap-x-4 gap-y-3 md:grid-cols-2">
                         {participants.map((p) => (
@@ -126,10 +140,10 @@ export function ImportRoute() {
                             <span className="mb-1 block text-sm">{p.name} <span className="text-muted-foreground">· {p.initial}</span></span>
                             <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
                               onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
-                              className={`${FIELD} min-h-11 max-sm:px-3 max-sm:-outline-offset-2`}>
+                              className={`${FIELD} min-h-11 max-sm:px-2 max-sm:-outline-offset-2`}>
                               <option value="">Scegli…</option>
                               {members.map((m) => (
-                                <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>
+                                <option key={m.userId} value={m.userId}>{memberLabel(m)}</option>
                               ))}
                             </select>
                           </li>

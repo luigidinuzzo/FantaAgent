@@ -19,11 +19,12 @@ const ROLES = ['P', 'D', 'C', 'A'];
 const SLOTS = { P: 3, D: 8, C: 8, A: 6 };
 // Quante squadre al tavolo: otto di solito, altre con TEAMS_COUNT (una lega ne ha
 // almeno due e nessun massimo). Le prime otto restano quelle di sempre, cosi' le
-// fotografie di default non cambiano; oltre la lista si numerano.
+// fotografie di default non cambiano; oltre la lista si numerano. L'undicesima ha
+// un nome da 32 caratteri: le tendine dell'importazione devono mostrarlo intero.
 const TEAMS_COUNT = Math.max(2, Number(process.env.TEAMS_COUNT ?? 8));
 const ALL_TEAMS = ['Real Colizzati', 'Atletico Ma Non Troppo', 'Borussia Porcmund', 'Longobarda',
   'AC Picchia', 'Dinamo Spritz', 'Scarsenal', 'Patetico Madrid', 'Inter Nazionale', 'Rapid Mente',
-  'Olympique Marsiglia Nera', 'Bayern Monaco di Baviera'];
+  'Olympique Marsiglia Nera e Rossa', 'Bayern Monaco di Baviera'];
 const ALL_PEOPLE = ['Luigi', 'Diego', 'Marta', 'Paolo', 'Sara', 'Andrea', 'Giulia', 'Tommaso', 'Chiara', 'Luca',
   'Elena', 'Stefano'];
 const TEAMS = Array.from({ length: TEAMS_COUNT }, (_, i) => ALL_TEAMS[i] ?? `Squadra ${i + 1}`);
