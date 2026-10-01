@@ -24,6 +24,22 @@ describe('AppShell', () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
+  // Sul telefono la barra dei comandi non c'e': i comandi del banditore stanno in
+  // un menu della testata. Da lg resta com'e'.
+  it('con actionsFromLg la barra dei comandi esiste solo da schermo largo', () => {
+    render(withRouter(
+      <AppShell chrome="top" actionsFromLg slotActions={<button type="button">azione</button>}><p>x</p></AppShell>,
+    ));
+    expect(screen.getByRole('group', { name: 'Comandi della pagina' }).className).toContain('max-lg:hidden');
+  });
+
+  it('senza actionsFromLg la barra dei comandi resta a ogni misura', () => {
+    render(withRouter(
+      <AppShell chrome="top" slotActions={<button type="button">azione</button>}><p>x</p></AppShell>,
+    ));
+    expect(screen.getByRole('group', { name: 'Comandi della pagina' }).className).not.toContain('max-lg:hidden');
+  });
+
   it('mostra il contenuto dentro un landmark main', () => {
     render(withRouter(<AppShell chrome="top"><p>contenuto</p></AppShell>));
     expect(screen.getByRole('main')).toHaveTextContent('contenuto');

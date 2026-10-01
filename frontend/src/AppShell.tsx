@@ -38,6 +38,7 @@ export function AppShell({
   slotStatus,
   slotActions,
   bleed = false,
+  actionsFromLg = false,
 }: {
   children: ReactNode;
   /** Senza margini attorno al contenuto: la pagina che va da bordo a bordo. */
@@ -49,6 +50,11 @@ export function AppShell({
   slotStatus?: ReactNode;
   /** I comandi della schermata, nella seconda barra. Resi solo con chrome="top". */
   slotActions?: ReactNode;
+  /**
+   * La barra dei comandi solo da lg: sul telefono la pagina li mette altrove
+   * (nel menu della testata). Da lg la barra resta com'e'.
+   */
+  actionsFromLg?: boolean;
 }) {
   // slotActions con chrome !== 'top' non va nascosto con CSS: non va reso affatto.
   // Un pulsante nascosto alla vista resta comunque raggiungibile da tastiera e dai
@@ -91,7 +97,9 @@ export function AppShell({
           <div
             role="group"
             aria-label="Comandi della pagina"
-            className="flex min-h-14 flex-wrap items-center gap-2 border-b border-panel-border bg-background px-4 py-1.5 text-sm"
+            className={`flex min-h-14 flex-wrap items-center gap-2 border-b border-panel-border bg-background px-4 py-1.5 text-sm ${
+              actionsFromLg ? 'max-lg:hidden' : ''
+            }`}
           >
             {actions}
           </div>

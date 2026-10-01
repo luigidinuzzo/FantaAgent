@@ -30,10 +30,17 @@ export function ConnectionStatus({
   updatedAt,
   isError,
   now,
+  compact = false,
 }: {
   updatedAt: number | undefined;
   isError: boolean;
   now: number;
+  /**
+   * Sul telefono la testata ha posto per il pallino, non per la parola: da
+   * connessione viva «In diretta» resta solo per chi ascolta. Persa, la frase
+   * resta intera a ogni misura: e' l'avviso che conta.
+   */
+  compact?: boolean;
 }) {
   const stale = isStale({ updatedAt, isError, now });
 
@@ -57,11 +64,13 @@ export function ConnectionStatus({
           stale ? 'bg-accent' : 'bg-positive'
         }`}
       />
-      {stale
-        ? `Connessione persa, ultimo dato ${
-            updatedAt === undefined ? 'mai ricevuto' : `${ago(now - updatedAt)} fa`
-          }`
-        : 'In diretta'}
+      <span className={compact && !stale ? 'max-sm:sr-only' : undefined}>
+        {stale
+          ? `Connessione persa, ultimo dato ${
+              updatedAt === undefined ? 'mai ricevuto' : `${ago(now - updatedAt)} fa`
+            }`
+          : 'In diretta'}
+      </span>
     </p>
   );
 }

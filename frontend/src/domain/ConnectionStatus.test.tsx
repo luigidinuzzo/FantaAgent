@@ -28,6 +28,18 @@ describe('ConnectionStatus', () => {
     expect(screen.getByTestId('connection-status')).toHaveTextContent('In diretta');
   });
 
+  // Sul telefono la testata ha posto per il pallino, non per la parola: chi
+  // ascolta la sente lo stesso.
+  it('compatto e in diretta: la parola c e per chi ascolta, il pallino per chi guarda', () => {
+    render(<ConnectionStatus compact updatedAt={NOW} isError={false} now={NOW} />);
+    expect(screen.getByText('In diretta').className).toContain('max-sm:sr-only');
+  });
+
+  it('compatto ma con la connessione persa: la frase resta intera', () => {
+    render(<ConnectionStatus compact updatedAt={NOW - 60_000} isError={false} now={NOW} />);
+    expect(screen.getByText(/Connessione persa/).className).not.toContain('sr-only');
+  });
+
   it('quando e stantio dice da quanto', () => {
     render(<ConnectionStatus updatedAt={NOW - 72_000} isError now={NOW} />);
     expect(screen.getByTestId('connection-status')).toHaveTextContent(
