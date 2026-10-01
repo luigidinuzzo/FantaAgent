@@ -46,7 +46,7 @@ export function ProfileRoute() {
     return (
       <AppShell chrome="top" trail={trail}>
       <PageFrame>
-        <SettingsLayout title={TITLE} context={' '} sections={SECTIONS} ready={false}>
+        <SettingsLayout title={TITLE} context={'\u00a0'} sections={SECTIONS} ready={false}>
           <ProfileSection id={SECTIONS[0].id} title={SECTIONS[0].label}><div className="min-h-20" /></ProfileSection>
           <ProfileSection id={SECTIONS[1].id} title={SECTIONS[1].label}><div className="min-h-12" /></ProfileSection>
         </SettingsLayout>
@@ -63,6 +63,17 @@ export function ProfileRoute() {
   const barError = rename.isError && !errors.displayName
     ? userMessage(rename.error, 'Non sono riuscito a salvare il nome. Riprova fra poco.')
     : null;
+  // Uscire e farsi rimandare la conferma non sono salvataggi: il loro errore sta
+  // accanto al loro bottone. Un solo alert per schermata: la barra prima, poi Esci,
+  // poi la conferma; gli altri si leggono senza annunciarsi.
+  const logoutError = logout.isError
+    ? userMessage(logout.error, 'Non sono riuscito a farti uscire. Riprova.')
+    : null;
+  const resendError = resend.isError
+    ? userMessage(resend.error, 'Non sono riuscito a mandare l\'email. Riprova fra poco.')
+    : null;
+  const alertOf = (which: 'logout' | 'resend') =>
+    (which === 'logout' ? !barError : !barError && !logoutError) ? 'alert' : undefined;
 
   function change(next: string) {
     setName(next);
@@ -97,6 +108,9 @@ export function ProfileRoute() {
                 onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/accedi', { replace: true }) })}>
                 Esci
               </button>
+              {logoutError ? (
+                <p role={alertOf('logout')} className="mt-2 text-sm font-medium text-destructive">{logoutError}</p>
+              ) : null}
             </div>
           )}
         >
@@ -117,6 +131,9 @@ export function ProfileRoute() {
                 onClick={() => resend.mutate()} className={`mt-4 ${BUTTON_SECONDARY}`}>
                 {resend.isSuccess ? 'Email inviata' : 'Mandami di nuovo la conferma'}
               </button>
+            ) : null}
+            {!me.data.emailVerified && resendError ? (
+              <p role={alertOf('resend')} className="mt-2 text-sm font-medium text-destructive">{resendError}</p>
             ) : null}
           </ProfileSection>
         </SettingsLayout>

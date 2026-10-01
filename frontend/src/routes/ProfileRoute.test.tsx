@@ -14,9 +14,11 @@ function json(body: unknown, status = 200) {
 }
 
 /** /api/me risponde con `me`; il PATCH con `patch` (per difetto, il nome salvato). */
-function stub(me = ME, patch?: (body: { displayName: string }) => Response) {
+function stub(me = ME, patch?: (body: { displayName: string }) => Response,
+  posts: Record<string, () => Response> = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const href = typeof input === 'string' ? input : input.toString();
+    if (init?.method === 'POST' && posts[href]) return Promise.resolve(posts[href]());
     if (href === '/api/me' && init?.method === 'PATCH') {
       const body = JSON.parse(init.body as string) as { displayName: string };
       return Promise.resolve(patch ? patch(body) : json({ ...me, displayName: body.displayName }));
@@ -95,5 +97,44 @@ describe('ProfileRoute', () => {
     expect(await screen.findByText('Indirizzo non ancora confermato.')).toBeInTheDocument();
     const resend = screen.getByRole('button', { name: 'Mandami di nuovo la conferma' });
     expect(resend.className).not.toContain('bg-accent');
+  });
+
+  it('mentre carica, sotto il titolo una riga vuota che tiene l\'altezza dell\'indirizzo', () => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+    renderProfile();
+    const context = screen.getByRole('heading', { level: 1, name: 'Il tuo profilo' }).nextElementSibling;
+    expect(context?.tagName).toBe('P');
+    expect(context?.textContent).toBe('\u00a0');
+  });
+
+  const FAIL = () => json({ type: 'about:blank', detail: 'x' }, 500);
+
+  it('se Esci non riesce lo dice accanto al bottone, come unico alert', async () => {
+    stub(ME, undefined, { '/api/auth/logout': FAIL });
+    renderProfile();
+    await userEvent.click(await screen.findByRole('button', { name: 'Esci' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Non sono riuscito a farti uscire. Riprova.');
+    expect(alert.closest('[data-testid="settings-footer"]')).not.toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('se la conferma non parte lo dice accanto al bottone', async () => {
+    stub({ ...ME, emailVerified: false }, undefined, { '/api/me/verification': FAIL });
+    renderProfile();
+    await userEvent.click(await screen.findByRole('button', { name: 'Mandami di nuovo la conferma' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Non sono riuscito a mandare l\'email. Riprova fra poco.');
+    expect(screen.getByRole('button', { name: 'Mandami di nuovo la conferma' })).toBeEnabled();
+  });
+
+  it('con l\'errore della barra gia\' detto, quello di Esci si legge senza annunciarsi', async () => {
+    stub(ME, () => json({ type: 'about:blank', detail: 'x' }, 500), { '/api/auth/logout': FAIL });
+    renderProfile();
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Nome' }), 'lisa');
+    await userEvent.click(screen.getByRole('button', { name: 'Salva il nome' }));
+    await screen.findByRole('alert');
+    await userEvent.click(screen.getByRole('button', { name: 'Esci' }));
+    expect(await screen.findByText('Non sono riuscito a farti uscire. Riprova.')).toBeInTheDocument();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 });
