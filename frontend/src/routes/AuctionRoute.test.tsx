@@ -2003,6 +2003,25 @@ describe('AuctionRoute', () => {
   });
 
   /**
+   * Sul telefono la barra delle viste e' alta 64px piu' il bordo e la zona sicura
+   * del sistema: l'avviso deve starle sopra anche su un telefono con la barra
+   * del sistema, non a un'altezza fissa che la zona sicura puo' superare.
+   */
+  it("sul telefono l'avviso dell'aggiudicazione sta sopra la barra delle viste, zona sicura compresa", async () => {
+    setAuctionContext({ leagueId: 'default', auctionId: 'a1' });
+    const api = saleApi();
+    vi.stubGlobal('fetch', api.fetch);
+    renderAuction();
+
+    await buyGiocatoreUno();
+    const layer = saleToast()!.closest('.fixed')!;
+    expect(layer.className).toContain('max-lg:bottom-[calc(5rem+env(safe-area-inset-bottom))]');
+    expect(layer.className).not.toContain('max-lg:bottom-20');
+    // Dal computer in su l'avviso resta dov'era.
+    expect(layer.className).toContain('bottom-6');
+  });
+
+  /**
    * L'avviso resta in basso qualche secondo; nel frattempo l'acquisto puo' essere gia'
    * stato annullato dall'intestazione. «Annulla» sull'avviso chiamava void-last, e
    * revocava cosi' l'acquisto PRECEDENTE: un evento sbagliato nel registro.
@@ -2160,6 +2179,28 @@ describe('AuctionRoute', () => {
       expect(avvia.className).toContain('max-sm:w-full');
       expect(avvia.className).toContain('max-sm:max-w-none');
       expect(diretta.className).toContain('max-sm:w-full');
+    });
+
+    // La richiesta di conferma e' la scritta piu' lunga della testata: accanto al
+    // nome, a 360px, lo stringeva fino a spezzarlo a meta' parola. Sotto sm va su
+    // una riga sua, a tutta larghezza, e il nome tiene la sua.
+    it('sotto sm la conferma di «Togli dal banco» va su una riga sua, il nome resta intero', async () => {
+      vi.stubGlobal('fetch', fullFetchMock());
+      renderAuction();
+      await userEvent.click(await screen.findByRole('button', { name: /Valuta Giocatore Uno/ }));
+      const open = await screen.findByRole('button', { name: /conto alla rovescia/i });
+      await waitFor(() => expect(open).not.toBeDisabled());
+      await userEvent.click(open);
+      const header = screen.getByTestId('banco-header');
+      // A riposo la X sta accanto al nome: niente a capo.
+      expect(header.className).not.toContain('flex-wrap');
+
+      await userEvent.click(screen.getByRole('button', { name: /Togli dal banco/ }));
+      const conferma = screen.getByRole('button', { name: 'Conferma: il lotto si perde' });
+      expect(header.className).toContain('max-sm:flex-wrap');
+      expect(conferma.className).toContain('max-sm:w-full');
+      expect(conferma.className).toContain('max-sm:justify-center');
+      expect(conferma.className).not.toContain('max-sm:w-11');
     });
 
     it('il banditore ha il menu «Comandi»; chi non lo e no', async () => {

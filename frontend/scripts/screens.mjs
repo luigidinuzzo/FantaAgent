@@ -230,6 +230,7 @@ const browser = await chromium.launch();
 const wide = [];
 const spilling = [];
 const scrolling = [];
+const belowFold = [];
 
 async function open(viewport, authed) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: 'it-IT' });
@@ -269,8 +270,34 @@ async function shot(page, name, path, after) {
     if (fit.pageExtra > 0) scrolling.push(`${name} (+${fit.pageExtra}px)`);
     if (fit.banco !== null) console.log(`   banco ${fit.banco}px, contenuto ${fit.needed}/${fit.shown}px`);
   }
+  // Sul telefono il banco deve stare tutto nella prima schermata, sopra la barra
+  // delle viste: chi batte non deve scorrere per trovare il bottone. La
+  // fotografia resta a pagina intera; la prima schermata ne sono i primi pixel
+  // alti quanto la finestra.
+  if (/^1(3-|4-|4b-|4d-|4e-)/.test(name) && page.viewportSize().width < 1024) {
+    const fold = await page.evaluate(() => {
+      const banco = document.querySelector('[data-testid=banco]');
+      const bar = document.querySelector('[role=tablist][aria-label="Viste dell\'asta"]');
+      if (!banco || !bar) return null;
+      return {
+        bottom: Math.round(banco.getBoundingClientRect().bottom),
+        barTop: Math.round(bar.parentElement.getBoundingClientRect().top),
+      };
+    });
+    if (fold) {
+      const gap = fold.barTop - fold.bottom;
+      console.log(`   banco fino a ${fold.bottom}px, barra da ${fold.barTop}px (${gap >= 0 ? 'margine' : 'manca'} ${Math.abs(gap)}px)`);
+      if (gap < 0) belowFold.push(`${name} (-${-gap}px)`);
+    }
+  }
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
   console.log('ok', name);
+}
+
+// Sul telefono le sezioni dell'asta sono quattro viste, scelte dalla barra in basso.
+async function phoneView(page, name) {
+  await page.getByRole('tablist', { name: "Viste dell'asta" }).getByRole('tab', { name }).click();
+  await page.waitForTimeout(600);
 }
 
 for (const { viewport: vp, tag } of SIZES) {
@@ -296,20 +323,67 @@ for (const { viewport: vp, tag } of SIZES) {
   await shot(user.page, `12-profilo-${tag}`, '/profilo');
   await shot(user.page, `15-impostazioni-asta-${tag}`, '/leghe/L1/aste/A1/impostazioni');
   await shot(user.page, `16-proiezione-${tag}`, '/leghe/L1/aste/A1/proiezione');
+  const phone = vp.width < 1024;
   await shot(user.page, `13-asta-riposo-${tag}`, '/leghe/L1/aste/A1');
+  if (phone) {
+    await shot(user.page, `13g-asta-giocatori-${tag}`, null, (p) => phoneView(p, 'Giocatori'));
+    await shot(user.page, `13s-asta-squadre-${tag}`, null, (p) => phoneView(p, 'Squadre'));
+    await shot(user.page, `13r-asta-rose-${tag}`, null, (p) => phoneView(p, 'Rose'));
+    await phoneView(user.page, 'Banco');
+  }
   await shot(user.page, `14-asta-giocatore-${tag}`, null, async (p) => {
-    await p.getByText(freeC[0].name, { exact: true }).first().click();
+    if (phone) {
+      // Sul telefono il giocatore si sceglie dalla vista Giocatori, e la scelta
+      // riporta al Banco.
+      await phoneView(p, 'Giocatori');
+      await p.getByText(freeC[0].name, { exact: true }).filter({ visible: true }).first().click();
+      const banco = p.getByRole('tablist', { name: "Viste dell'asta" }).getByRole('tab', { name: 'Banco' });
+      if ((await banco.getAttribute('aria-selected')) !== 'true') console.log('   la scelta non ha riportato al Banco');
+    } else {
+      await p.getByText(freeC[0].name, { exact: true }).first().click();
+    }
     await p.waitForTimeout(600);
   });
   await shot(user.page, `14b-asta-conto-${tag}`, null, async (p) => {
     await p.getByRole('button', { name: 'Avvia il conto alla rovescia' }).click();
     await p.waitForTimeout(1200);
   });
+  if (phone) {
+    // «Togli dal banco» col conto aperto chiede conferma: la richiesta e' la
+    // scritta piu' lunga della testata, e sul telefono stretto non deve
+    // spezzare il nome del lotto ne' far scorrere la pagina di lato.
+    await shot(user.page, `14e-asta-togli-${tag}`, null, async (p) => {
+      await p.getByRole('button', { name: 'Togli dal banco' }).click();
+      await p.waitForTimeout(200);
+      const name = await p.evaluate(() => {
+        const h2 = document.querySelector('[data-testid=banco-header] h2');
+        const text = h2.firstChild;
+        // Una parola spezzata ha lettere della stessa parola su righe diverse.
+        const tops = [...text.textContent].map((_, i) => {
+          const r = document.createRange();
+          r.setStart(text, i);
+          r.setEnd(text, i + 1);
+          return Math.round(r.getBoundingClientRect().top);
+        });
+        let split = false;
+        for (let i = 1; i < tops.length; i++) {
+          if (tops[i] !== tops[i - 1] && !/\s/.test(text.textContent[i - 1]) && !/\s/.test(text.textContent[i])) split = true;
+        }
+        const header = document.querySelector('[data-testid=banco-header]');
+        return { text: text.textContent, lines: new Set(tops).size, split,
+          headerOver: header.scrollWidth - header.clientWidth };
+      });
+      console.log(`   «${name.text}» su ${name.lines} righe${name.split ? ', parola spezzata' : ''}, testata +${name.headerOver}px`);
+    });
+    // Fuori fuoco la richiesta torna «Togli dal banco», e il conto prosegue.
+    await user.page.evaluate(() => document.activeElement?.blur());
+  }
   await shot(user.page, `14d-asta-scaduto-${tag}`, null, async (p) => {
     await p.waitForTimeout(6000);
   });
   await shot(user.page, `14c-asta-rose-${tag}`, '/leghe/L1/aste/A1', async (p) => {
-    await p.getByRole('tab', { name: 'Rose squadre' }).click();
+    if (phone) await phoneView(p, 'Rose');
+    else await p.getByRole('tab', { name: 'Rose squadre' }).click();
     await p.waitForTimeout(600);
   });
   await user.context.close();
@@ -319,3 +393,4 @@ console.log('larghe:', wide);
 console.log('non gestite:', [...unknown]);
 console.log('traboccano:', spilling);
 console.log('scorrono:', scrolling);
+console.log('banco sotto la piega:', belowFold);

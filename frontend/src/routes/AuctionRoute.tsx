@@ -813,7 +813,13 @@ export function AuctionRoute() {
           aria-labelledby={lot ? `${bancoPrefixId} ${bidderPanelId}` : bidderPanelId}
           className={`panel flex min-h-0 flex-1 flex-col p-4 lg:col-start-2 lg:row-start-2 ${shownOnPhone('banco')}`}
         >
-          <div data-testid="banco-header" className="flex min-h-11 items-center justify-between gap-3">
+          {/* Sotto sm, mentre «Togli dal banco» chiede conferma, la richiesta va
+              su una riga sua: accanto al nome lo stringeva fino a spezzarlo a
+              meta' parola. A riposo la X sta accanto al nome, e niente va a capo. */}
+          <div
+            data-testid="banco-header"
+            className={`flex min-h-11 items-center justify-between gap-3 ${confirmRemove ? 'max-sm:flex-wrap' : ''}`}
+          >
             {/* UN titolo solo, che dice cosa c'e' dentro adesso. A riposo dentro
                 c'e' la tua squadra, e il titolo e' il suo: chiamarlo «banco»
                 annuncerebbe — anche a chi ascolta, via aria-labelledby — una cosa
@@ -858,7 +864,7 @@ export function AuctionRoute() {
               // aperto non c'e' niente da perdere, e basta un clic.
               // Sotto sm a riposo e' la sola X, 44x44: la parola resta per chi
               // ascolta, e la riga va al nome. La richiesta di conferma si legge
-              // per intero a ogni misura.
+              // per intero a ogni misura, sotto sm a tutta larghezza sotto il nome.
               <button
                 type="button"
                 onClick={() => {
@@ -873,7 +879,7 @@ export function AuctionRoute() {
                 onBlur={() => setConfirmRemove(false)}
                 className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-4 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                   confirmRemove
-                    ? 'border-destructive bg-destructive text-on-accent'
+                    ? 'border-destructive bg-destructive text-on-accent max-sm:w-full max-sm:justify-center'
                     : 'border-control-border hover:bg-line max-sm:w-11 max-sm:justify-center max-sm:px-0'
                 }`}
               >
@@ -1138,9 +1144,12 @@ export function AuctionRoute() {
           riquadro tornava a riposo e basta, e l'unica conferma era l'annuncio per
           chi ascolta. Qui chi guarda legge cosa e' stato registrato e, se era
           sbagliato, lo annulla subito. Non e' una live region: l'annuncio c'e' gia'
-          (AuctionAnnouncer), e due voci si sovrapporrebbero. */}
+          (AuctionAnnouncer), e due voci si sovrapporrebbero.
+          Sotto lg sta sopra la barra delle viste: 5rem sono i suoi 64px, il bordo
+          e un po' d'aria, piu' la zona sicura del sistema che la barra aggiunge
+          sotto di se'. */}
       {sale ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 max-lg:bottom-20 z-40 flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 max-lg:bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4">
           <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-positive bg-surface px-5 py-3 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             <p className="text-base">
               <span className="font-medium">{sale.player}</span>

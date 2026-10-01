@@ -142,6 +142,25 @@ describe('BidderDialog', () => {
     expect(within(privateRow).getByText('Lo vedi solo tu')).toBeInTheDocument();
   });
 
+  // Sul telefono il banco deve stare nella prima schermata: le tre caselle su
+  // due righe lo allungavano di una riga intera. Restano su una riga, coi
+  // numeri piu' piccoli; da sm in su non cambia niente.
+  it('sotto sm le tre caselle restano su una riga, coi numeri piu piccoli', () => {
+    open();
+    const cells = screen.getByTestId('bidder-cells');
+    expect(cells.className).not.toMatch(/max-sm:grid-cols/);
+    expect(cells.className).toContain('grid-cols-[1fr_1.25fr_1.25fr]');
+    for (const cell of cells.querySelectorAll('[data-cell]')) {
+      expect(cell.className).not.toContain('nth-child');
+    }
+    const seconds = screen.getByTestId('bidder-remaining');
+    expect(seconds.className).toContain('max-sm:text-4xl');
+    expect(seconds.className).toContain('text-[56px]');
+    const price = screen.getByTestId('bidder-price');
+    expect(price.className).toContain('max-sm:text-5xl');
+    expect(price.className).toContain('text-[84px]');
+  });
+
   it('tre caselle mentre il conto corre, due a tempo scaduto', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -249,6 +268,15 @@ describe('BidderDialog', () => {
     const privateRow = screen.getByTestId('bidder-private');
     expect(within(privateRow).getByTestId('bidder-ceiling')).toBeInTheDocument();
     expect(privateRow).toContainElement(distance);
+  });
+
+  // Sul telefono la riga privata sta su due righe al massimo: il tetto in una,
+  // «se lo prendi a N» sotto, a tutta larghezza, invece di spezzarsi a meta'.
+  it('sotto sm «se lo prendi» va a capo sotto il tetto, su una riga sua', () => {
+    open();
+    const after = screen.getByTestId('bidder-after');
+    expect(after.className).toContain('max-sm:basis-full');
+    expect(screen.getByTestId('bidder-private')).toContainElement(after);
   });
 
   it('Esc chiude il conto alla rovescia', async () => {
@@ -608,6 +636,22 @@ describe('BidderDialog', () => {
       expect(grid.className).toContain('grid-cols-2');
       expect(grid.className).toContain('sm:grid-cols-4');
       expect(grid.className).toContain('xl:grid-cols-8');
+    });
+
+    // Sul telefono il tempo scaduto era lo stato piu' alto del banco: sotto sm i
+    // bottoni squadra perdono la seconda riga a vista (crediti, «se lo prende»),
+    // ma la tengono per chi ascolta.
+    it('a tempo scaduto sotto sm i bottoni squadra stanno su una riga, la seconda resta per chi ascolta', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+
+      const diego = screen.getByRole('button', { name: /^Diego/ });
+      const second = diego.lastElementChild as HTMLElement;
+      expect(second.className).toContain('max-sm:sr-only');
+      expect(second.className).not.toContain('max-sm:hidden');
+      expect(diego.firstElementChild!.className).not.toContain('sr-only');
     });
 
     it('a tempo scaduto il conto se ne va, invece di restare a zero', async () => {

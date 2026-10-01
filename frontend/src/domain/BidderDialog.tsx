@@ -111,7 +111,7 @@ function Cell({ label, children, note, testId, raised = false, first = false, ur
       data-cell
       data-testid={testId}
       className={`flex min-w-0 flex-col items-center justify-center gap-1.5 px-4 py-5 text-center lg:py-3 ${
-        first ? '' : 'border-l border-line max-sm:[&:nth-child(odd)]:border-l-0'
+        first ? '' : 'border-l border-line'
       } ${raised ? 'bg-surface-raised' : ''}`}
     >
       {children}
@@ -127,7 +127,9 @@ function Cell({ label, children, note, testId, raised = false, first = false, ur
 
 /** Le colonne del tabellone: tre mentre il conto corre, due a tempo scaduto (il
  *  tetto non e' mai stato una di queste, con o senza consigli). L'offerta pesa
- *  piu' delle altre due, essendo il numero eroe della riga. */
+ *  piu' delle altre due, essendo il numero eroe della riga. Su una riga sola a
+ *  ogni misura: sul telefono, su due righe, il banco usciva dalla prima
+ *  schermata; li' i numeri sono piu' piccoli invece. */
 const CELL_COLUMNS: Record<number, string> = { 2: 'grid-cols-2', 3: 'grid-cols-[1fr_1.25fr_1.25fr]' };
 
 export function BidderDialog({
@@ -489,7 +491,7 @@ export function BidderDialog({
       >
         <div
           data-testid="bidder-cells"
-          className={`grid ${CELL_COLUMNS[expired ? 2 : 3]} max-sm:grid-cols-2`}
+          className={`grid ${CELL_COLUMNS[expired ? 2 : 3]}`}
         >
           {expired ? null : (
             <Cell label={urgent ? 'ultimi secondi' : secondsLeft === 1 ? 'secondo' : 'secondi'} urgentLabel={urgent}>
@@ -505,7 +507,7 @@ export function BidderDialog({
                   non distingue il rosso ha comunque tre segnali. */}
               <span
                 data-testid="bidder-remaining"
-                className={`tnum text-[56px] font-semibold leading-none max-sm:text-5xl ${
+                className={`tnum text-[56px] font-semibold leading-none max-sm:text-4xl ${
                   urgent ? 'text-destructive' : ''
                 }`}
               >
@@ -520,7 +522,7 @@ export function BidderDialog({
           <Cell label="offerta" first={expired} raised>
             <span
               data-testid="bidder-price"
-              className={`tnum text-[84px] leading-[0.85] max-sm:text-6xl font-extrabold ${
+              className={`tnum text-[84px] leading-[0.85] max-sm:text-5xl font-extrabold ${
                 overCeiling ? 'text-destructive' : 'text-accent'
               }`}
             >
@@ -672,7 +674,8 @@ export function BidderDialog({
             piu' di otto squadre la seconda riga c'e' comunque, e scorre dentro il
             banco: per questo «Aggiudica» sta sopra. Dodici su una riga sola, a
             1440px, lasciavano una lettera per nome. I nomi lunghi si troncano, il
-            numero del tasto e i crediti restano. */}
+            numero del tasto e i crediti restano (sotto sm i crediti solo per
+            chi ascolta). */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
           {participants.map((p, i) => {
             const picked = p.id === participantId;
@@ -699,8 +702,11 @@ export function BidderDialog({
                   ) : null}
                 </span>
                 {/* Su una riga sola anche nei bottoni stretti di xl: a capo, «se
-                    lo prende» allungava il bottone scelto e con lui il banco. */}
-                <span className={`tnum w-full truncate text-meta ${picked ? '' : 'text-muted-foreground'}`}>
+                    lo prende» allungava il bottone scelto e con lui il banco.
+                    Sotto sm non si vede: sul telefono il tempo scaduto usciva
+                    dalla prima schermata, e i bottoni di una riga sola lo
+                    accorciano. Resta per chi ascolta, nel nome del bottone. */}
+                <span className={`tnum w-full truncate text-meta max-sm:sr-only ${picked ? '' : 'text-muted-foreground'}`}>
                   {picked ? 'se lo prende' : note}
                 </span>
               </button>
@@ -732,7 +738,9 @@ export function BidderDialog({
             </span>
           ) : null}
           {me ? (
-            <span data-testid="bidder-after" className="tnum text-muted-foreground">
+            // Sotto sm comincia una riga sua, sotto il tetto, invece di partire
+            // accanto alla distanza e spezzarsi a meta' fra due righe.
+            <span data-testid="bidder-after" className="tnum text-muted-foreground max-sm:basis-full">
               {`se lo prendi a ${price}: `}
               <span className="font-semibold text-foreground">{Math.max(0, me.budgetRemaining - price)}</span>
               {' crediti, '}

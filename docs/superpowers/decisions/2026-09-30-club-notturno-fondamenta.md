@@ -187,3 +187,64 @@ il conto corre, «X non può comprarlo» o un errore a tempo scaduto — aggiung
 (~28px) e il banco scorre dentro di sé, che è la valvola prevista. Nella nota sulle
 deviazioni, qui sopra, `--commands-h` è scritto 3,5625rem: era la misura di allora, ora è
 3,6875rem.
+
+## L'asta sul telefono — misure finali
+
+Misurato con le risposte finte di `scripts/screens.mjs`, otto squadre, pagina in cima:
+il fondo del banco contro il bordo superiore della barra delle viste (64px più il
+bordo, inchiodata in fondo). Positivo = margine sopra la barra, negativo = quanto del
+banco resta sotto la piega. «Togli» è la conferma di «Togli dal banco» col conto aperto.
+
+| stato del banco | 390×844 (barra da 779) | 360×780 (barra da 715) | 360×740 (barra da 675) |
+|---|---|---|---|
+| riposo (la tua squadra) | −56 | −138 | −178 |
+| lotto (scheda di decisione) | +93 | +29 | −11 |
+| conto alla rovescia | −12 | −96 | −136 |
+| conto, «Togli» in conferma | −46 | −154 | −194 |
+| tempo scaduto | −108 | −172 | −212 |
+
+Con undici squadre cambia solo il tempo scaduto: −212 a 390×844, −316 a 360×740 (sei
+righe di bottoni squadra invece di quattro).
+
+Prima dei passi, a 390×844: conto −129, «Togli» −207, scaduto −140; riposo e lotto
+come sopra.
+
+**Passi applicati (tutti `max-sm:`, niente da `sm` in su):**
+1. Conto alla rovescia: le tre caselle su una riga anche sotto `sm`, secondi
+   `max-sm:text-4xl`, offerta `max-sm:text-5xl`. Conto da −129 a −12, «Togli» da −207
+   a −90, scaduto (due caselle) invariato.
+2. Riga privata: «se lo prendi a N» su una riga sua sotto il tetto
+   (`max-sm:basis-full`). A 390 era già di due righe: nessun pixel guadagnato, la
+   riga ora non si spezza a metà. A 360 il «se lo prendi» va comunque a capo una
+   volta (tre righe in tutto).
+3. Scheda del lotto: i tre numeri in `grid-cols-3` sotto il tetto c'erano già (passo
+   del Task 5).
+4. Tempo scaduto: i bottoni squadra senza la seconda riga a vista (crediti, «se lo
+   prende»); resta per chi ascolta (`max-sm:sr-only`). Scaduto da −140 a −108.
+
+Fuori dai passi: la conferma di «Togli dal banco», sotto `sm`, va su una riga sua a
+tutta larghezza; prima, accanto al nome, lo stringeva fino a sillabarlo
+(«Mkhita-ryan», tre righe a 360). Ora il nome sta su una riga, anche
+«Milinkovic-Savic» a 360×740. Il conto in conferma resta più alto di 34px (−46).
+L'avviso dell'aggiudicazione sta sopra la barra contando anche la zona sicura del
+sistema (`bottom: calc(5rem + env(safe-area-inset-bottom))`).
+
+**Controlli** a 390×844 e 360×740, otto e undici squadre, ognuna delle quattro viste in
+cima e in fondo alla pagina: barra in fondo allo schermo da bordo a bordo, vista
+attiva in oro, testata su una riga (57px), riga della fase e dei crediti presente,
+niente scorrimento di lato. Tutti superati. Sul computer (1440×900) le schermate sono
+quelle di `main`, salvo il rumore di antialiasing già accettato su
+14-asta-giocatore (22 pixel, al massimo 2/255).
+
+**Resta.** A 390×844 il banco non sta ancora sopra la piega in quattro stati su
+cinque, e i quattro passi previsti sono finiti. Quello che resterebbe, da decidere:
+- conto alla rovescia (−12) e tempo scaduto: le scorciatoie da tastiera («Spazio
+  rilancia di uno», «Esc chiude», «1–8 a chi va») sono una riga che sul telefono
+  non serve; senza, il conto starebbe sopra la piega;
+- tempo scaduto (−108): oltre alle scorciatoie, i bottoni squadra in tre colonne o la
+  legenda «A chi va» più corta;
+- riposo (−56): l'elenco «Ultimi acquisti» della tua squadra più corto sul telefono;
+- conferma di «Togli» (−46): è uno stato di un attimo.
+Nel lotto, a 390, fra i numeri e «Avvia il conto alla rovescia» c'è una fascia vuota
+di circa 80px: la scheda distribuisce il contenuto sull'altezza del banco. La pagina
+della proiezione scorre di lato sul telefono (+16px), come su `main`.
