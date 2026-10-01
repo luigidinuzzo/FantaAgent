@@ -5,6 +5,8 @@ import { ROLE_NAME_PLURAL } from './roles';
 
 /** Quanti acquisti mostra la colonna degli ultimi: quanti ne stanno nella sua altezza. */
 const RECENT = 4;
+// Quanti ne restano a vista sotto sm.
+const MOBILE_RECENT = 2;
 
 /**
  * Il banco a riposo: dove sei tu e dove sta il tavolo, invece di una scatola vuota
@@ -152,8 +154,15 @@ export function MyTeamSummary({
           </p>
         ) : (
           <ol data-testid="recent-list" className="mt-2 flex flex-col">
-            {recent.map((p) => (
-              <li key={p.seq} className="flex items-center gap-3 border-b border-line py-2 last:border-b-0">
+            {/* Sotto sm se ne vedono due: sul telefono, con quattro, il banco a
+                riposo usciva dalla prima schermata. */}
+            {recent.map((p, i) => (
+              <li
+                key={p.seq}
+                className={`flex items-center gap-3 border-b border-line py-2 last:border-b-0 ${
+                  i === MOBILE_RECENT - 1 ? 'max-sm:border-b-0' : i >= MOBILE_RECENT ? 'max-sm:hidden' : ''
+                }`}
+              >
                 <span aria-hidden="true"><RoleBadge role={p.role} /></span>
                 <span className="flex min-w-0 flex-1 flex-col leading-tight">
                   <span className="truncate font-medium">{p.playerName}</span>

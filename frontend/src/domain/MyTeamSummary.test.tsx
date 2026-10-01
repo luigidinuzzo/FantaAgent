@@ -111,6 +111,32 @@ describe('MyTeamSummary', () => {
     expect(items[0]).toHaveTextContent('Hernandez');
   });
 
+  // Sul telefono il banco a riposo usciva dalla prima schermata: sotto sm gli
+  // ultimi acquisti a vista sono due, il piu' recente in cima.
+  it('sotto sm gli ultimi acquisti a vista sono due', () => {
+    const board = {
+      auctionId: 'a1', currentPhase: 'P' as const,
+      columns: [
+        { participantId: 'anna', participantName: 'Anna', me: true, budgetRemaining: 310, slotsRemaining: 20,
+          byRole: { P: [
+            { seq: 1, playerName: 'Maignan', price: 38 },
+            { seq: 2, playerName: 'Sommer', price: 12 },
+            { seq: 3, playerName: 'Svilar', price: 9 },
+            { seq: 4, playerName: 'Hernandez', price: 8 },
+          ], D: [], C: [], A: [] } },
+      ],
+    };
+    render(<MyTeamSummary me={ME} board={board} />);
+    const items = within(screen.getByTestId('recent-list')).getAllByRole('listitem');
+    expect(items).toHaveLength(4);
+    expect(items[0].className).not.toContain('max-sm:hidden');
+    expect(items[1].className).not.toContain('max-sm:hidden');
+    // Il secondo e' l'ultimo a vista: niente filetto sotto.
+    expect(items[1].className).toContain('max-sm:border-b-0');
+    expect(items[2].className).toContain('max-sm:hidden');
+    expect(items[3].className).toContain('max-sm:hidden');
+  });
+
   it('dice crediti, posti liberi e la media per posto arrotondata per difetto', () => {
     render(<MyTeamSummary me={ME} />);
     expect(screen.getByText('310')).toBeInTheDocument();

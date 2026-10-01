@@ -258,6 +258,27 @@ describe('BidderDialog', () => {
     expect(Array.from(keys, (k) => k.textContent)).toEqual(['Spazio', 'Esc']);
   });
 
+  // Senza tastiera i tasti non servono: sotto lg la loro riga non si vede.
+  it('mentre il conto corre sotto lg la riga dei tasti non si vede', () => {
+    open();
+    expect(screen.getByTestId('bidder-shortcuts').className).toContain('max-lg:hidden');
+  });
+
+  // Sul telefono «Rilancia +1», «+5» e «+10» stanno su una riga: +10 andava a
+  // capo da solo e allungava il banco di una riga.
+  it('sotto sm i tre rilanci stanno su una riga', () => {
+    open();
+    const raise = screen.getByRole('button', { name: /Rilancia \+1/ });
+    expect(raise.className).toContain('flex-1');
+    expect(raise.className).toContain('max-sm:basis-0');
+    for (const name of [/^\+5/, /^\+10/]) {
+      const b = screen.getByRole('button', { name });
+      expect(b.className).toContain('max-sm:w-16');
+      expect(b.className).toContain('max-sm:min-w-16');
+      expect(b.className).toContain('min-h-16');
+    }
+  });
+
   it('sotto il tetto dice quanto ne manca', async () => {
     open();
     // La distanza sta accanto al tetto, nella stessa riga privata: «il tuo
@@ -652,6 +673,54 @@ describe('BidderDialog', () => {
       expect(second.className).toContain('max-sm:sr-only');
       expect(second.className).not.toContain('max-sm:hidden');
       expect(diego.firstElementChild!.className).not.toContain('sr-only');
+    });
+
+    // Senza tastiera i tasti non servono: sotto lg la loro riga non si vede
+    // (resta nel documento, e dal computer in su si vede come prima).
+    it('a tempo scaduto sotto lg la riga dei tasti non si vede', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+      expect(screen.getByTestId('bidder-shortcuts').className).toContain('max-lg:hidden');
+    });
+
+    // I due gesti del tempo scaduto, sul telefono, larghi uguali; la legenda
+    // dice «A chi va» e basta, il resto della frase resta per chi ascolta.
+    it('a tempo scaduto sotto sm «Riprendi le offerte» e «Aggiudica» sono larghi uguali, la legenda corta', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+      const assign = screen.getByRole('button', { name: /^Aggiudica a/ });
+      const reopen = screen.getByRole('button', { name: 'Riprendi le offerte' });
+      expect(assign.className).toContain('max-sm:w-full');
+      expect(reopen.className).toContain('max-sm:w-full');
+      expect(reopen.className).toContain('max-sm:justify-center');
+      const legend = screen.getByRole('group', { name: /A chi va/ }).querySelector('legend')!;
+      expect(legend).toHaveTextContent(/A chi va — se l.ha preso un altro/);
+      const rest = within(legend).getByText(/se l.ha preso un altro/);
+      expect(rest.className).toContain('max-sm:sr-only');
+    });
+
+    // Un nome tagliato coi puntini non si legge: sotto sm il nome della squadra
+    // va a capo fra le parole, e sillaba in italiano solo una parola troppo lunga.
+    it('a tempo scaduto sotto sm i nomi delle squadre vanno a capo, non si troncano', async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      open({ participants: TEAMS });
+      await user.keyboard(' ');
+      await act(async () => { vi.advanceTimersByTime(5100); });
+      const name = within(screen.getByRole('button', { name: /^Diego/ })).getByText('Diego');
+      expect(name.className).toContain('max-sm:whitespace-normal');
+      expect(name.className).toContain('max-sm:overflow-visible');
+      expect(name.className).toContain('max-sm:hyphens-auto');
+      // Sillaba solo le parole lunghe, non per riempire la riga.
+      expect(name.className).toContain('max-sm:[hyphenate-limit-chars:12_6_6]');
+      expect(name.className).not.toContain('break-all');
+      expect(name.className).not.toContain('break-words');
+      expect(name).toHaveAttribute('lang', 'it');
+      // Da sm in su resta com'era.
+      expect(name.className).toContain('truncate');
     });
 
     it('a tempo scaduto il conto se ne va, invece di restare a zero', async () => {

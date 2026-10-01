@@ -250,8 +250,12 @@ export function PlayerDecisionCard({
               line-clamp-2 e' la garanzia che le due righe bastino comunque: una
               spiegazione piu' lunga si taglia con i puntini invece di spingere.
               Il taglio e' solo visivo — nell'albero di accessibilita' la frase
-              resta intera. */}
-          <p className="mt-3 line-clamp-2 h-10 max-w-[80ch] text-sm">
+              resta intera.
+
+              Sotto lg no: sul telefono si guarda lo schermo, non il tavolo, e
+              il posto riservato era una fascia vuota fra i numeri e il bottone.
+              Li' la frase prende l'altezza che ha, e vuota non c'e'. */}
+          <p className="mt-3 line-clamp-2 h-10 max-w-[80ch] text-sm max-lg:h-auto max-lg:empty:hidden">
             {valuation.worthPursuing ? null : valuation.walkAwayReason}
           </p>
         </div>

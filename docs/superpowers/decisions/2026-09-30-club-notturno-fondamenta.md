@@ -190,61 +190,69 @@ deviazioni, qui sopra, `--commands-h` è scritto 3,5625rem: era la misura di all
 
 ## L'asta sul telefono — misure finali
 
-Misurato con le risposte finte di `scripts/screens.mjs`, otto squadre, pagina in cima:
-il fondo del banco contro il bordo superiore della barra delle viste (64px più il
-bordo, inchiodata in fondo). Positivo = margine sopra la barra, negativo = quanto del
-banco resta sotto la piega. «Togli» è la conferma di «Togli dal banco» col conto aperto.
+Misurato con le risposte finte di `scripts/screens.mjs`, pagina in cima: il fondo del
+banco contro il bordo superiore della barra delle viste (64px più il bordo, inchiodata
+in fondo). Positivo = margine sopra la barra, negativo = quanto del banco resta sotto
+la piega. «Togli» è la conferma di «Togli dal banco» col conto aperto. Prima = all'inizio
+di questo passo; dopo = alla fine.
 
-| stato del banco | 390×844 (barra da 779) | 360×780 (barra da 715) | 360×740 (barra da 675) |
-|---|---|---|---|
-| riposo (la tua squadra) | −56 | −138 | −178 |
-| lotto (scheda di decisione) | +93 | +29 | −11 |
-| conto alla rovescia | −12 | −96 | −136 |
-| conto, «Togli» in conferma | −46 | −154 | −194 |
-| tempo scaduto | −108 | −172 | −212 |
+**Otto squadre**
 
-Con undici squadre cambia solo il tempo scaduto: −212 a 390×844, −316 a 360×740 (sei
-righe di bottoni squadra invece di quattro).
+| stato del banco | 390×844 prima → dopo | 360×780 prima → dopo |
+|---|---|---|
+| riposo (la tua squadra) | −56 → **+54** | −138 → −28 |
+| lotto (scheda di decisione) | +93 → **+145** | +29 → +81 |
+| conto alla rovescia | −129 → **+92** | −213 → +8 |
+| conto, «Togli» in conferma | −207 → **+58** | −339 → −50 |
+| tempo scaduto | −140 → **−80** | −204 → −172 |
 
-Prima dei passi, a 390×844: conto −129, «Togli» −207, scaduto −140; riposo e lotto
-come sopra.
+**Undici squadre** (dopo): a 390×844 riposo +54, lotto +145, conto +92, «Togli» +58,
+tempo scaduto −198; a 360×740 riposo −68, lotto +41, conto −32, «Togli» −66, tempo
+scaduto −344.
 
-**Passi applicati (tutti `max-sm:`, niente da `sm` in su):**
+**Cosa è cambiato, tutto sotto `sm` o sotto `lg` (dal computer in su niente):**
 1. Conto alla rovescia: le tre caselle su una riga anche sotto `sm`, secondi
-   `max-sm:text-4xl`, offerta `max-sm:text-5xl`. Conto da −129 a −12, «Togli» da −207
-   a −90, scaduto (due caselle) invariato.
-2. Riga privata: «se lo prendi a N» su una riga sua sotto il tetto
-   (`max-sm:basis-full`). A 390 era già di due righe: nessun pixel guadagnato, la
-   riga ora non si spezza a metà. A 360 il «se lo prendi» va comunque a capo una
-   volta (tre righe in tutto).
-3. Scheda del lotto: i tre numeri in `grid-cols-3` sotto il tetto c'erano già (passo
-   del Task 5).
-4. Tempo scaduto: i bottoni squadra senza la seconda riga a vista (crediti, «se lo
-   prende»); resta per chi ascolta (`max-sm:sr-only`). Scaduto da −140 a −108.
+   `max-sm:text-4xl`, offerta `max-sm:text-5xl` (conto a 390: −129 → −12).
+2. Riga privata: «se lo prendi a N» comincia una riga sua sotto il tetto
+   (`max-sm:basis-full`). A 390 era già di due righe; a 360 va a capo una volta in più.
+3. Scheda del lotto: i tre numeri in `grid-cols-3` sotto il tetto (già dal Task 5).
+4. Tempo scaduto, bottoni squadra: la seconda riga (crediti, «se lo prende») non si
+   vede sotto `sm` e resta per chi ascolta (`max-sm:sr-only`).
+5. Le scorciatoie da tastiera («Spazio», «Esc», «1–8») non si vedono sotto `lg`: senza
+   tastiera non servono. Restano nel documento.
+6. «Rilancia +1», «+5», «+10» su una riga sotto `sm`: +5 e +10 larghi 4rem,
+   «Rilancia» prende il resto.
+7. Tempo scaduto: «Riprendi le offerte» larga quanto «Aggiudica a …» sotto `sm`; la
+   legenda dice «A chi va», il resto della frase resta per chi ascolta.
+8. Tempo scaduto, nomi delle squadre: sotto `sm` non si troncano più, vanno a capo fra
+   le parole; la sillabazione italiana solo per parole di almeno 12 lettere, che nel
+   bottone non ci starebbero (`hyphenate-limit-chars`). Due colonne, almeno 44px.
+9. Lotto: sotto `lg` lo spazio riservato alla spiegazione del «Lascia» prende l'altezza
+   della frase, e vuoto non c'è. Era la fascia vuota di ~80px sopra «Avvia il conto alla
+   rovescia» (lotto a 390: +93 → +145). Da `lg` resta riservato, perché lì i bottoni non
+   devono spostarsi fra un lotto e l'altro.
+10. Riposo: sotto `sm` gli ultimi acquisti a vista sono due invece di quattro (+110px).
+    Tre starebbero a 390 con 5px di margine, che la zona sicura di un telefono con la
+    barra del sistema (34px) si mangia: due.
+11. La conferma di «Togli dal banco», sotto `sm`, va su una riga sua a tutta larghezza:
+    accanto al nome lo stringeva fino a sillabarlo («Mkhita-ryan», tre righe a 360). Ora
+    il nome sta su una riga, anche «Milinkovic-Savic» a 360×740.
+12. L'avviso dell'aggiudicazione sta sopra la barra contando anche la zona sicura
+    (`bottom: calc(5rem + env(safe-area-inset-bottom))`).
 
-Fuori dai passi: la conferma di «Togli dal banco», sotto `sm`, va su una riga sua a
-tutta larghezza; prima, accanto al nome, lo stringeva fino a sillabarlo
-(«Mkhita-ryan», tre righe a 360). Ora il nome sta su una riga, anche
-«Milinkovic-Savic» a 360×740. Il conto in conferma resta più alto di 34px (−46).
-L'avviso dell'aggiudicazione sta sopra la barra contando anche la zona sicura del
-sistema (`bottom: calc(5rem + env(safe-area-inset-bottom))`).
+**Decisioni.** Con undici squadre il tempo scaduto può scorrere: «Aggiudica a …», in oro,
+sta nella prima schermata (finisce a 498px a 390×844 e a 360×740), e il gesto principale
+si vede. Lo stesso vale per la conferma di «Togli», che dura un attimo. A 360 si annota
+senza obbligo.
 
 **Controlli** a 390×844 e 360×740, otto e undici squadre, ognuna delle quattro viste in
-cima e in fondo alla pagina: barra in fondo allo schermo da bordo a bordo, vista
-attiva in oro, testata su una riga (57px), riga della fase e dei crediti presente,
+cima e in fondo alla pagina (32 in tutto): barra in fondo allo schermo da bordo a bordo,
+vista attiva in oro, testata su una riga (57px), riga della fase e dei crediti presente,
 niente scorrimento di lato. Tutti superati. Sul computer (1440×900) le schermate sono
-quelle di `main`, salvo il rumore di antialiasing già accettato su
-14-asta-giocatore (22 pixel, al massimo 2/255).
+quelle di `main`, salvo il rumore di antialiasing già accettato su 14-asta-giocatore (22
+pixel, al massimo 2/255).
 
-**Resta.** A 390×844 il banco non sta ancora sopra la piega in quattro stati su
-cinque, e i quattro passi previsti sono finiti. Quello che resterebbe, da decidere:
-- conto alla rovescia (−12) e tempo scaduto: le scorciatoie da tastiera («Spazio
-  rilancia di uno», «Esc chiude», «1–8 a chi va») sono una riga che sul telefono
-  non serve; senza, il conto starebbe sopra la piega;
-- tempo scaduto (−108): oltre alle scorciatoie, i bottoni squadra in tre colonne o la
-  legenda «A chi va» più corta;
-- riposo (−56): l'elenco «Ultimi acquisti» della tua squadra più corto sul telefono;
-- conferma di «Togli» (−46): è uno stato di un attimo.
-Nel lotto, a 390, fra i numeri e «Avvia il conto alla rovescia» c'è una fascia vuota
-di circa 80px: la scheda distribuisce il contenuto sull'altezza del banco. La pagina
-della proiezione scorre di lato sul telefono (+16px), come su `main`.
+**Resta.** A 390×844 con otto squadre il tempo scaduto esce ancora di 80px: i nomi che
+ora vanno a capo («Atletico Ma Non Troppo», «Borussia Porcmund») alzano la loro riga di
+bottoni. «Aggiudica a …» è comunque nella prima schermata. La pagina della proiezione
+scorre di lato sul telefono (+16px), come su `main`.

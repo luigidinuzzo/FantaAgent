@@ -226,6 +226,18 @@ describe('PlayerDecisionCard', () => {
     expect(slot()).toHaveTextContent('oltre 47 il completamento perde più di quanto guadagni');
   });
 
+  // Sul telefono lo spazio riservato era una fascia vuota di circa 80px fra i
+  // numeri e «Avvia il conto alla rovescia»: li' si guarda lo schermo, non il
+  // tavolo, e il posto fisso non vale un vuoto. Sotto lg la spiegazione prende
+  // l'altezza che ha, e vuota non c'e'. Da lg in su resta riservato.
+  it('sotto lg lo spazio della spiegazione non e riservato, e vuoto non occupa posto', () => {
+    render(<PlayerDecisionCard valuation={VALUATION} stale={false} />);
+    const slot = screen.getByTestId('decision-card').querySelector('.h-10')!;
+    expect(slot.className).toContain('max-lg:h-auto');
+    expect(slot.className).toContain('max-lg:empty:hidden');
+    expect(slot).toBeEmptyDOMElement();
+  });
+
   /**
    * Il dato stantio attenua la VALUTAZIONE, non i controlli. Prima l'attenuazione
    * stava sulla card e colpiva ogni figlio diretto, compreso il piede: il bottone

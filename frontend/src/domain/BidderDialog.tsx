@@ -408,8 +408,10 @@ export function BidderDialog({
   // Le scorciatoie sono il vantaggio di questo riquadro su chi batte l'asta a
   // mano, ed erano scritte nel corpo meno leggibile dello schermo: una riga
   // grigia unita dai punti medi. Rese come tasti si trovano senza leggerle.
+  // Sotto lg non si vedono: sul telefono una tastiera non c'e', e la riga
+  // spingeva il banco sotto la barra delle viste.
   const shortcuts = (
-    <p data-testid="bidder-shortcuts" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground sm:ml-auto">
+    <p data-testid="bidder-shortcuts" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground max-lg:hidden sm:ml-auto">
       {/* Scaduto il tempo lo spazio non rilancia piu' — l'ascolto si spegne —
           e continuare a offrirlo istruirebbe a un gesto che non fa niente. */}
       {expired ? null : (
@@ -606,7 +608,7 @@ export function BidderDialog({
               type="submit"
               disabled={disabled || pending || participantId === ''}
               aria-describedby={disabledReason ? hintId : undefined}
-              className={`${BID_CONTROL_H} ${BID_RADIUS} bg-accent px-8 text-lg font-semibold text-on-accent transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+              className={`${BID_CONTROL_H} ${BID_RADIUS} bg-accent px-8 text-lg font-semibold text-on-accent max-sm:w-full transition-opacity duration-200 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
             >
               {/* «Aggiudica a 3» si leggeva «alla squadra numero 3»: i bottoni
                   squadra qui sotto sono numerati da 1 in su, e il numero del
@@ -615,11 +617,12 @@ export function BidderDialog({
               {pending ? 'Aggiudico…' : buyer ? `Aggiudica a ${buyer.name} per ${price}` : `Aggiudica per ${price}`}
             </button>
             {/* La via di ritorno: il tempo e' scaduto ma qualcuno rilancia lo
-                stesso. Riparte dal prezzo raggiunto, non da uno. */}
+                stesso. Riparte dal prezzo raggiunto, non da uno. Sotto sm larga
+                quanto «Aggiudica»: i gesti del banco, impilati, sono larghi uguali. */}
             <button
               type="button"
               onClick={() => { setExpired(false); countdown.start(); }}
-              className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-control-border px-6 text-lg font-medium hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+              className={`inline-flex ${BID_CONTROL_H} ${BID_RADIUS} items-center gap-2 border border-control-border px-6 text-lg font-medium max-sm:w-full max-sm:justify-center hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
             >
               <ReopenIcon />
               Riprendi le offerte
@@ -664,18 +667,20 @@ export function BidderDialog({
           e il lotto va al vincitore da solo. */}
       {expired ? (
       <fieldset className="m-0 min-w-0 border-0 p-0">
+        {/* Sotto sm a vista solo «A chi va»: il resto della frase, su due righe,
+            allungava il banco. Resta per chi ascolta. */}
         <legend className="mb-2 text-sm font-medium text-muted-foreground">
           A chi va
-          <span className="font-normal"> — se l’ha preso un altro, tocca la sua squadra o premi il suo numero</span>
+          <span className="font-normal max-sm:sr-only"> — se l’ha preso un altro, tocca la sua squadra o premi il suo numero</span>
         </legend>
         {/* Colonne fisse: il banco non si allunga, la sua altezza e' decisa in
             anticipo. Quattro per riga sotto xl; da xl otto, una riga sola: su due
             il tempo scaduto era lo stato piu' alto del banco e non ci stava. Con
             piu' di otto squadre la seconda riga c'e' comunque, e scorre dentro il
             banco: per questo «Aggiudica» sta sopra. Dodici su una riga sola, a
-            1440px, lasciavano una lettera per nome. I nomi lunghi si troncano, il
-            numero del tasto e i crediti restano (sotto sm i crediti solo per
-            chi ascolta). */}
+            1440px, lasciavano una lettera per nome. Da sm i nomi lunghi si
+            troncano, il numero del tasto e i crediti restano. Sotto sm il nome
+            va a capo invece, intero, e i crediti restano solo per chi ascolta. */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
           {participants.map((p, i) => {
             const picked = p.id === participantId;
@@ -696,7 +701,17 @@ export function BidderDialog({
                 }`}
               >
                 <span className="flex w-full items-baseline gap-2">
-                  <span className="truncate font-semibold">{p.name}</span>
+                  {/* Sotto sm il nome non si tronca: va a capo fra le parole, e
+                      solo una parola piu' lunga della riga si sillaba in italiano.
+                      hyphens-auto da solo sillaba anche per riempire la riga
+                      («Marsi-glia»): il limite di 12 lettere lo lascia alle sole
+                      parole che nel bottone non ci starebbero. */}
+                  <span
+                    lang="it"
+                    className="min-w-0 truncate font-semibold max-sm:overflow-visible max-sm:whitespace-normal max-sm:hyphens-auto max-sm:[hyphenate-limit-chars:12_6_6]"
+                  >
+                    {p.name}
+                  </span>
                   {i < 9 ? (
                     <span aria-hidden="true" className={`tnum ml-auto text-meta ${picked ? '' : 'text-muted-foreground'}`}>{i + 1}</span>
                   ) : null}
@@ -778,12 +793,14 @@ export function BidderDialog({
               +5, +10, o un prezzo gridato. Bersagli grandi, a larghezza fissa: non
               devono spostarsi di un pixel mentre si rilancia. Sul telefono il
               campo dell'offerta va su una riga sua: accanto ai bottoni si
-              schiacciava a zero. */}
+              schiacciava a zero. I tre rilanci invece stanno su una riga anche
+              li': +5 e +10 larghi 4rem, «Rilancia» prende il resto (basis-0,
+              altrimenti i suoi 10rem mandavano +10 a capo). */}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => raiseTo((p) => p + PRIMARY_RAISE)}
-              className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} flex-1 basis-40 bg-accent px-6 text-2xl font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+              className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} flex-1 basis-40 max-sm:basis-0 max-sm:px-2 max-sm:text-xl bg-accent px-6 text-2xl font-semibold text-on-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
             >
               Rilancia +{PRIMARY_RAISE}
               <span className="sr-only"> crediti</span>
@@ -793,7 +810,7 @@ export function BidderDialog({
                 key={step}
                 type="button"
                 onClick={() => raiseTo((p) => p + step)}
-                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} min-w-20 border border-control-border px-6 text-2xl font-semibold text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
+                className={`tnum ${BID_CONTROL_H} ${BID_RADIUS} min-w-20 max-sm:w-16 max-sm:min-w-16 max-sm:px-0 border border-control-border px-6 text-2xl font-semibold text-foreground hover:bg-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground`}
               >
                 +{step}
                 <span className="sr-only"> crediti</span>
