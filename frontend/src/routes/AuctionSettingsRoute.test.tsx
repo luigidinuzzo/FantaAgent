@@ -225,7 +225,6 @@ describe('AuctionSettingsRoute', () => {
     stub(true);
     renderSettings();
     const down = await screen.findByRole('button', { name: 'Sposta giù Anna FC' });
-    expect(down.className).toMatch(/size-11|min-h-11/);
     expect(down.className).toContain('size-11');
     expect(down.closest('li')?.className).toContain('min-h-14');
   });
