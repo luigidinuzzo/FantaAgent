@@ -21,7 +21,7 @@ export interface TrailStep {
  * tutti, e sul telefono andavano a capo su tre righe.
  *
  * <p><b>Il percorso</b> ({@code trail}) dice dove si e' e come si torna indietro, un
- * passo alla volta: «Le mie leghe › Lega del Bar › Asta estiva». Sostituisce la voce
+ * passo alla volta: «Home › Lega del Bar › Asta estiva». Sostituisce la voce
  * «Le mie leghe» e le frecce «Torna a…» che ogni pagina portava per conto suo. Sul
  * telefono resta il solo passo precedente, come freccia indietro.
  *
@@ -116,7 +116,7 @@ function Trail({ steps }: { steps: TrailStep[] }) {
   // Il passo da cui si viene: l'unico che resta sul telefono.
   const previous = steps.length - 2;
   return (
-    // Con un solo passo (la home, «Le mie leghe» senza percorso da attraversare)
+    // Con un solo passo (la home, «Home» senza percorso da attraversare)
     // ogni <li> e' max-sm:hidden: senza questo, sul telefono restava un <nav>
     // «Percorso» senza un solo elemento dentro, un landmark vuoto per chi ascolta.
     <nav aria-label="Percorso" className={`min-w-0 ${steps.length < 2 ? 'max-sm:hidden' : ''}`}>

@@ -105,7 +105,7 @@ export function AuctionSettingsRoute() {
 
   const card = auctions.data?.find((a) => a.id === auctionId);
   const trail = [
-    { label: 'Le mie leghe', to: '/' },
+    { label: 'Home', to: '/' },
     { label: league.data?.name ?? 'Lega', to: `/leghe/${leagueId}` },
     { label: card?.name ?? 'Asta', to: `/leghe/${leagueId}/aste/${auctionId}` },
     { label: 'Impostazioni' },

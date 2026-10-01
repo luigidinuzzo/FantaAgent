@@ -39,7 +39,7 @@ export function ProfileRoute() {
   const logout = useLogout();
   const navigate = useNavigate();
   const [name, setName] = useState<string | null>(null);
-  const trail = [{ label: 'Le mie leghe', to: '/' }, { label: TITLE }];
+  const trail = [{ label: 'Home', to: '/' }, { label: TITLE }];
 
   if (!me.data) {
     // La stessa cornice della schermata pronta: si riempie, non cambia forma.

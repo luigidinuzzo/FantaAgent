@@ -67,7 +67,7 @@ export function ImportRoute() {
   }
 
   const trail = [
-    { label: 'Le mie leghe', to: '/' },
+    { label: 'Home', to: '/' },
     { label: league.data?.name ?? 'Lega', to: `/leghe/${leagueId}` },
     { label: "Importa un'asta" },
   ];

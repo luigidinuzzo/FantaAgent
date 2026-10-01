@@ -53,7 +53,7 @@ export function LeaguesRoute() {
     : null;
 
   return (
-    <AppShell chrome="top" trail={[{ label: 'Le mie leghe' }]}>
+    <AppShell chrome="top" trail={[{ label: 'Home' }]}>
       <PageFrame>
         <PageHeader
           title="Le tue aste"

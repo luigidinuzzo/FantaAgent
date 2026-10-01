@@ -225,7 +225,7 @@ export function AuctionRoute() {
   const state = useAuctionState();
   const leagueName = useLeagueName(leagueId);
   const trail = [
-    { label: 'Le mie leghe', to: '/' },
+    { label: 'Home', to: '/' },
     { label: leagueName ?? 'Lega', to: `/leghe/${leagueId}` },
     { label: state.data?.auctionName ?? 'Asta' },
   ];

@@ -110,7 +110,7 @@ describe('AppShell', () => {
   });
 
   const TRAIL = [
-    { label: 'Le mie leghe', to: '/' },
+    { label: 'Home', to: '/' },
     { label: 'Lega del Bar', to: '/leghe/l1' },
     { label: 'Asta estiva' },
   ];
@@ -123,7 +123,7 @@ describe('AppShell', () => {
   it('il percorso elenca i passi: gli altri sono collegamenti, l ultimo e la pagina corrente', () => {
     render(withRouter(<AppShell chrome="top" trail={TRAIL}><p>x</p></AppShell>));
     const nav = screen.getByRole('navigation', { name: 'Percorso' });
-    expect(within(nav).getByRole('link', { name: 'Le mie leghe' })).toHaveAttribute('href', '/');
+    expect(within(nav).getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
     expect(within(nav).getByRole('link', { name: 'Lega del Bar' })).toHaveAttribute('href', '/leghe/l1');
     expect(within(nav).queryByRole('link', { name: 'Asta estiva' })).toBeNull();
     expect(within(nav).getByText('Asta estiva')).toHaveAttribute('aria-current', 'page');
@@ -134,7 +134,7 @@ describe('AppShell', () => {
     render(withRouter(<AppShell chrome="top" trail={TRAIL}><p>x</p></AppShell>));
     const nav = screen.getByRole('navigation', { name: 'Percorso' });
     const item = (text: string) => within(nav).getByText(text).closest('li');
-    expect(item('Le mie leghe')?.className).toContain('max-sm:hidden');
+    expect(item('Home')?.className).toContain('max-sm:hidden');
     expect(item('Lega del Bar')?.className).not.toContain('max-sm:hidden');
     expect(item('Asta estiva')?.className).toContain('max-sm:hidden');
   });
@@ -160,14 +160,14 @@ describe('AppShell', () => {
   });
 
   /**
-   * Con un solo passo (la home, che passa solo «Le mie leghe») ogni <li> e'
+   * Con un solo passo (la home, che passa solo «Home») ogni <li> e'
    * max-sm:hidden: sul telefono resterebbe un <nav> «Percorso» senza un solo
    * elemento dentro, un landmark vuoto per chi ascolta. Con tre passi il <nav>
    * resta visibile: c'e' davvero qualcosa da attraversare, il passo precedente.
    */
   it('col percorso di un passo solo il nav sparisce sul telefono', () => {
     const { unmount } = render(withRouter(
-      <AppShell chrome="top" trail={[{ label: 'Le mie leghe' }]}><p>x</p></AppShell>,
+      <AppShell chrome="top" trail={[{ label: 'Home' }]}><p>x</p></AppShell>,
     ));
     expect(screen.getByRole('navigation', { name: 'Percorso' }).className).toContain('max-sm:hidden');
     unmount();

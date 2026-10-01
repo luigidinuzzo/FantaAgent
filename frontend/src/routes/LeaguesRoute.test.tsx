@@ -309,6 +309,13 @@ describe('LeaguesRoute', () => {
     expect(screen.queryByRole('link', { name: "Prepara un'asta" })).not.toBeInTheDocument();
   });
 
+  it('il percorso della home e\' «Home»', async () => {
+    home();
+    renderLeagues();
+    const nav = await screen.findByRole('navigation', { name: 'Percorso' });
+    expect(within(nav).getByText('Home')).toHaveAttribute('aria-current', 'page');
+  });
+
   it('mentre le leghe arrivano, righe segnaposto alte come quelle vere', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => (url === '/api/leagues'
       ? new Promise(() => {})

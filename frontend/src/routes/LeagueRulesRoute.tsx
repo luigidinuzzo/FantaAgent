@@ -168,7 +168,7 @@ export function LeagueRulesRoute() {
   const save = useSaveLeagueRules(leagueId);
   const leagueName = useLeagueName(leagueId);
   const trail = [
-    { label: 'Le mie leghe', to: '/' },
+    { label: 'Home', to: '/' },
     { label: leagueName ?? 'Lega', to: `/leghe/${leagueId}` },
     { label: 'Regole' },
   ];

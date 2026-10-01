@@ -36,7 +36,7 @@ export function LeagueRoute() {
   const hasRequests = admin && (requests.data?.length ?? 0) > 0;
   const [inviting, setInviting] = useState(false);
   const inviteButton = useRef<HTMLButtonElement>(null);
-  const trail = [{ label: 'Le mie leghe', to: '/' }, { label: league.data?.name ?? 'Lega' }];
+  const trail = [{ label: 'Home', to: '/' }, { label: league.data?.name ?? 'Lega' }];
 
   if (league.isError) {
     return (
