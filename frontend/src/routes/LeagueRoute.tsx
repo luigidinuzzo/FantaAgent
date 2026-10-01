@@ -161,7 +161,7 @@ function AuctionsPanel({ leagueId, admin, create }: {
   }
 
   return (
-    <section aria-labelledby="auctions-title" className="panel overflow-hidden">
+    <section aria-labelledby="auctions-title" className="panel">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-5 pb-4 pt-5 md:px-6">
         <h2 id="auctions-title" className="w-exp text-xl font-bold">Aste</h2>
         {admin ? (
@@ -314,7 +314,7 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
 
   return (
     // Alto quanto i suoi membri: righe compatte, togliere qualcuno sta nel menu della riga.
-    <section aria-labelledby="members-title" className="panel overflow-hidden">
+    <section aria-labelledby="members-title" className="panel">
       <div className="flex items-baseline justify-between gap-4 px-5 pb-4 pt-5 md:px-6">
         <h2 id="members-title" className="w-exp text-xl font-bold">Membri</h2>
         {league ? <p className="text-sm text-muted-foreground">{members.length}</p> : null}

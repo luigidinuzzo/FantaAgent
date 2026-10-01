@@ -252,6 +252,7 @@ const SIZES = (process.env.SIZES ?? '1440x900,390x844').split(',').map((s) => {
 const browser = await chromium.launch();
 const wide = [];
 const spilling = [];
+const clipped = [];
 const scrolling = [];
 const belowFold = [];
 const splitWords = [];
@@ -390,6 +391,36 @@ for (const { viewport: vp, tag } of SIZES) {
     await p.getByRole('textbox', { name: "Link d'invito" }).waitFor();
   });
   await user.page.keyboard.press('Escape');
+  // I menu «⋯» dell'ultima riga non devono essere tagliati dal riquadro: ogni voce,
+  // portata nella finestra, deve essere quella che riceve il clic al suo centro.
+  for (const [name, button] of [
+    [`09d-lega-menu-asta-${tag}`, 'Azioni per Asta di riparazione'],
+    [`09e-lega-menu-membro-${tag}`, 'Azioni per Olympique Marsiglia Nera'],
+  ]) {
+    await shot(user.page, name, '/leghe/L1', async (p) => {
+      await p.getByRole('button', { name: button, exact: true }).click();
+      for (const item of await p.getByRole('menuitem').all()) {
+        // Si scorre solo la pagina: scrollIntoView scorrerebbe anche dentro un
+        // riquadro con overflow-hidden, e la voce tagliata sembrerebbe visibile.
+        const hit = await item.evaluate((el) => {
+          const before = el.getBoundingClientRect();
+          window.scrollBy(0, before.top + before.height / 2 - innerHeight / 2);
+          const r = el.getBoundingClientRect();
+          const inView = r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+          const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          // Il fuoco sulla prima voce fa scorrere un riquadro con overflow-hidden
+          // pur di mostrarla: un antenato scorso e' gia' un menu tagliato.
+          let scrolled = false;
+          for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+            if (a.scrollTop > 0 || a.scrollLeft > 0) scrolled = true;
+          }
+          return !scrolled && inView && at !== null && (at === el || el.contains(at));
+        });
+        if (!hit) clipped.push(`${name}: «${(await item.textContent()).trim()}»`);
+      }
+    });
+    await user.page.keyboard.press('Escape');
+  }
   await shot(user.page, `10-regole-lega-${tag}`, '/leghe/L1/regole');
   await shot(user.page, `11-importa-${tag}`, '/leghe/L1/importa');
   await shot(user.page, `12-profilo-${tag}`, '/profilo');
@@ -516,4 +547,5 @@ console.log('traboccano:', spilling);
 console.log('scorrono:', scrolling);
 console.log('banco sotto la piega:', belowFold);
 console.log('parole spezzate:', splitWords);
+console.log('menu tagliati:', clipped);
 console.log('conferma rimasta armata (WebKit):', confirmStuck);
