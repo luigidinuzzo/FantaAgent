@@ -119,12 +119,20 @@ Dall'alto:
 
 1. **Intestazione** (§3.1): «Le tue aste», con «Crea una lega» e «Unisciti a una
    lega».
-2. **Aste in corso e da iniziare**, in schede: nome della lega (piccolo), nome
-   dell'asta, stato («In corso» / «Da iniziare»), fase («Centrocampisti»),
-   «N crediti · M posti» e «Entra nell'asta». La prima scheda — l'asta con
-   l'attività più recente — ha il bottone oro; le altre un bottone normale. Due
-   colonne da `md`, tre da `xl`; una sotto `md`. Le schede hanno tutte la stessa
-   altezza.
+2. **Aste in corso e da iniziare**: una in evidenza, le altre in righe. Niente
+   griglia di schede: chi gioca ha di solito quattro o cinque aste aperte, e una
+   griglia a tre colonne lasciava l'ultima fila corta (deciso con l'utente il
+   2026-10-01).
+   - **In evidenza** l'asta con l'attività più recente fra le non concluse, in un
+     riquadro largo: nome della lega (piccolo), stato, nome dell'asta come titolo,
+     fase («Centrocampisti»), «N crediti · M posti» e «Entra nell'asta», l'unico
+     oro della pagina. Dal `md` il testo a sinistra e il bottone a destra, centrato
+     in altezza e largo fisso; sotto `md` uno sotto l'altro, il bottone a tutta
+     larghezza. L'altezza è decisa prima (misure finali) e non cambia col numero
+     di aste.
+   - **Altre aste**, solo se ce ne sono: un pannello come «Concluse», con righe
+     (§3.2) — nome dell'asta e «· lega» (a capo fra le parole), stato, «Entra»
+     normale.
 3. **Concluse**: un elenco compatto (§3.2) delle ultime tre, con «Mostra tutte» se
    sono di più (si allunga nell'elenco, nessuna pagina nuova). Il gesto della riga
    apre l'asta, che da conclusa mostra il riepilogo.
@@ -161,7 +169,8 @@ Il primo accesso guidato vero resta al passo 6.
     rinomina, elimina. La sezione è alta quanto il suo contenuto.
   - **Colonna laterale**, nell'ordine: richieste d'ingresso (solo se ce ne sono;
     «Accetta» e «Rifiuta» bottoni normali), membri (righe compatte, menu «…» per
-    riga con «Togli dalla lega» e conferma), inviti («Crea un link d'invito», i
+    riga con «Togli dalla lega» e conferma; un elenco che scorre in colonne
+    dall'alto in basso, non una griglia di celle con l'ultima fila corta), inviti («Crea un link d'invito», i
     link attivi con «Ritira»).
 - **Telefono:** lo stesso ordine del documento, una colonna: intestazione, aste,
   richieste, membri, inviti.

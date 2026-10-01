@@ -297,7 +297,7 @@ di 7–9 pixel larga uno, dove la barra arriva un istante prima o dopo).
 
 | riquadro | misura | cosa si è misurato per sceglierla |
 |---|---|---|
-| Scheda di un'asta in corso, home (`MyAuctionCard`) | `min-h-52` (208px); 213px a 1440 | una scheda con titolo su una riga misura 213px a 1440: il minimo tiene uguali le schede con poco contenuto e il bottone sempre in fondo |
+| Asta in evidenza, home (`FeaturedAuction`, al posto delle schede) | `md:min-h-[9.125rem]` (146px), `min-h-[12.875rem]` sotto `md` (206px) | il riquadro con un titolo su una riga misura 146px a 1440 e 1920, 206px a 390 e 360; uguale con una o cinque aste; un titolo lungo sul telefono va a capo e lo allunga (270px con 60 caratteri) |
 | Risultati di «Unisciti a una lega» | `h-[24rem]` (sei righe da 64px), `max-sm:h-[20rem]` (cinque) | lo stato con più risultati; sul telefono cinque righe perché la finestra intera, link d'invito compreso, stia in 360×740 |
 | Riquadro dell'importazione | `min-h-[55rem]` dal `md` (880px a 1440), `min-h-[57rem]` sotto (912px al telefono), uguale prima e dopo la scelta | lo stato con gli abbinamenti; prima della scelta lo spazio è dell'area della cartella, dopo degli abbinamenti — il riquadro non salta |
 | Abbinamenti dentro il riquadro | `h-[29rem]`, scorre dentro oltre | otto partecipanti in due colonne al computer; oltre si scorre nel riquadro, non la pagina |
@@ -332,8 +332,9 @@ di 7–9 pixel larga uno, dove la barra arriva un istante prima o dopo).
 - Finestre: `Modal` riceve dal bottone che la apre dove riportare il fuoco (Safari non
   dà il fuoco a un bottone cliccato); nei test Esc si simula con l'evento `cancel`
   (jsdom non lo genera).
-- Lega: al computer due righe — Aste | Richieste, poi Membri a tutta larghezza in una
-  griglia da una a tre colonne; sul telefono lo stesso ordine. «Inviti» è una finestra
+- Lega: al computer due righe — Aste | Richieste, poi Membri a tutta larghezza in un
+  elenco che scorre in una, due (`md`) o tre (`xl`) colonne dall'alto in basso (prima
+  una griglia: con 11 membri l'ultima fila restava di due); sul telefono lo stesso ordine. «Inviti» è una finestra
   aperta da «Invita» nell'intestazione (solo amministratore). Il menu dell'asta si
   chiama «Azioni per X».
 - Schema delle impostazioni: sotto `lg` la fila dell'indice resta ferma sotto la barra
