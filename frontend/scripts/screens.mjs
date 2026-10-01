@@ -263,6 +263,10 @@ const scrolling = [];
 const belowFold = [];
 const splitWords = [];
 const confirmStuck = [];
+const gold = [];
+const covered = [];
+const cutSelects = [];
+const indexWide = [];
 
 // I nomi che sul telefono vanno a capo — il lotto nella testata del banco, le
 // squadre a tempo scaduto — devono andarci fra le parole: una parola tagliata a
@@ -361,6 +365,59 @@ async function shot(page, name, path, after) {
       if (gap < 0) belowFold.push(`${name} (-${-gap}px)`);
     }
   }
+  // Nelle pagine di gestione una sola azione oro per schermata, barra in cima
+  // compresa. Con una finestra aperta conta solo la finestra: il resto e' inerte.
+  if (/^(08|09|10|11|12|15)/.test(name)) {
+    const golds = await page.evaluate(() => {
+      const scope = document.querySelector('dialog[open]') ?? document;
+      return [...scope.querySelectorAll('button, a, [role=button]')]
+        .filter((el) => el.classList.contains('bg-accent') && el.checkVisibility({ visibilityProperty: true }))
+        .map((el) => (el.getAttribute('aria-label') ?? el.textContent).trim());
+    });
+    console.log(`   oro: ${golds.length}${golds.length ? ` (${golds.join(', ')})` : ''}`);
+    if (golds.length > 1) gold.push(`${name}: ${golds.join(', ')}`);
+  }
+  // Un menu a tendina mostra la scelta su una riga sola: se non ci sta, il nome
+  // resta tagliato. Si misura il testo scelto contro lo spazio fra il margine
+  // sinistro e la freccia (20px) col margine destro.
+  if (/^(08|09|10|11|12|15)/.test(name)) {
+    const cut = await page.evaluate(() => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      return [...document.querySelectorAll('select')].filter((el) => el.checkVisibility()).map((el) => {
+        const cs = getComputedStyle(el);
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const text = el.selectedOptions[0]?.textContent ?? '';
+        const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 20;
+        return { text, over: Math.ceil(ctx.measureText(text).width - room) };
+      }).filter((x) => x.over > 0);
+    });
+    for (const c of cut) cutSelects.push(`${name}: «${c.text}» (+${c.over}px)`);
+  }
+  // Le pagine con la barra di salvataggio: in fondo alla pagina la barra non copre
+  // nessun campo ne' bottone, e sul telefono la fila dell'indice non scorre di lato.
+  if (/^(10|12|15)/.test(name)) {
+    const bar = await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      const save = [...document.querySelectorAll('button')].find((b) => /^Salva/.test(b.getAttribute('aria-label') ?? b.textContent.trim()));
+      const fixed = save?.closest('.fixed');
+      if (!fixed) return null;
+      const top = fixed.getBoundingClientRect().top;
+      const under = [...document.querySelectorAll('main input, main button, main select, main textarea, main a')]
+        .filter((el) => !fixed.contains(el) && el.checkVisibility({ visibilityProperty: true }))
+        .filter((el) => el.getBoundingClientRect().bottom > top)
+        .map((el) => el.getAttribute('aria-label') ?? (el.textContent.trim() || el.name || el.type));
+      const row = document.querySelector('[data-testid=settings-index-phone]');
+      const navOver = row && row.checkVisibility() ? Math.max(row.scrollWidth - row.clientWidth,
+        Math.round(row.lastElementChild.getBoundingClientRect().right - innerWidth)) : 0;
+      window.scrollTo(0, 0);
+      return { under, navOver, row: row?.checkVisibility() ?? false };
+    });
+    console.log(bar ? `   barra: coperti ${bar.under.length}${bar.row ? `, indice ${bar.navOver}px` : ''}` : '   barra: non trovata');
+    if (bar) {
+      if (bar.under.length) covered.push(`${name}: ${bar.under.join(', ')}`);
+      if (bar.navOver > 0) indexWide.push(`${name} (+${bar.navOver}px)`);
+    }
+  }
   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
   console.log('ok', name);
 }
@@ -406,12 +463,13 @@ for (const { viewport: vp, tag } of SIZES) {
   await user.page.keyboard.press('Escape');
   // I menu «⋯» dell'ultima riga non devono essere tagliati dal riquadro: ogni voce,
   // portata nella finestra, deve essere quella che riceve il clic al suo centro.
+  // L'ultimo membro e' l'ultima riga dell'elenco, con quante squadre ci sono.
   for (const [name, button] of [
-    [`09d-lega-menu-asta-${tag}`, 'Azioni per Asta di riparazione'],
-    [`09e-lega-menu-membro-${tag}`, 'Azioni per Olympique Marsiglia Nera'],
+    [`09d-lega-menu-asta-${tag}`, (p) => p.getByRole('button', { name: 'Azioni per Asta di riparazione', exact: true })],
+    [`09e-lega-menu-membro-${tag}`, (p) => p.getByRole('list', { name: 'Membri' }).getByRole('button', { name: /^Azioni per / }).last()],
   ]) {
     await shot(user.page, name, '/leghe/L1', async (p) => {
-      await p.getByRole('button', { name: button, exact: true }).click();
+      await button(p).click();
       for (const item of await p.getByRole('menuitem').all()) {
         // Si scorre solo la pagina: scrollIntoView scorrerebbe anche dentro un
         // riquadro con overflow-hidden, e la voce tagliata sembrerebbe visibile.
@@ -568,4 +626,8 @@ console.log('scorrono:', scrolling);
 console.log('banco sotto la piega:', belowFold);
 console.log('parole spezzate:', splitWords);
 console.log('menu tagliati:', clipped);
+console.log('oro:', gold);
+console.log('coperti dalla barra:', covered);
+console.log('tendine tagliate:', cutSelects);
+console.log('indice largo:', indexWide);
 console.log('conferma rimasta armata (WebKit):', confirmStuck);

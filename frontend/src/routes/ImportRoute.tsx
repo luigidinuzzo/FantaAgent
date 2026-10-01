@@ -113,14 +113,16 @@ export function ImportRoute() {
                 <Step n={2} title="Abbina i partecipanti" />
                 {ready ? (
                   <>
-                    <div className="mt-3 h-[29rem] overflow-y-auto rounded-lg border border-line p-4">
+                    {/* Sul telefono il riquadro perde margini e bordi di lato: la tendina
+                        mostra la scelta su una riga, e «squadra · nome» deve starci. */}
+                    <div className="mt-3 h-[29rem] overflow-y-auto rounded-lg border border-line p-4 max-sm:rounded-none max-sm:border-x-0 max-sm:px-0">
                       <ul aria-label="Abbinamenti" className="grid gap-x-4 gap-y-3 md:grid-cols-2">
                         {participants.map((p) => (
                           <li key={p.id}>
                             <span className="mb-1 block text-sm">{p.name} <span className="text-muted-foreground">· {p.initial}</span></span>
                             <select aria-label={`Membro per ${p.name}`} value={mapping[p.id] ?? ''}
                               onChange={(e) => setMapping({ ...mapping, [p.id]: e.target.value })}
-                              className={`${FIELD} min-h-11`}>
+                              className={`${FIELD} min-h-11 max-sm:px-3 max-sm:-outline-offset-2`}>
                               <option value="">Scegli…</option>
                               {members.map((m) => (
                                 <option key={m.userId} value={m.userId}>{m.teamName} · {m.displayName}</option>

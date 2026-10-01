@@ -13,6 +13,9 @@ const ITEM =
  * muovono fra le voci, Home e Fine agli estremi, Esc chiude e torna al bottone, Tab
  * chiude e prosegue, un clic fuori chiude.
  *
+ * <p>Sulla pagina del profilo il bottone ha contorno e testo oro, non il fondo pieno:
+ * l'oro pieno e' dell'unica azione della schermata, il salvataggio.
+ *
  * <p>In cima al menu nome ed email, che non sono voci: la barra non mostra piu' il
  * nome, e qui si vede con quale account si e' dentro prima di uscire.
  */
@@ -70,7 +73,7 @@ export function ProfileMenu({ me, current }: { me: Me; current: boolean }) {
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
         className={`flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-lg border font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:px-4 ${
-          current ? 'border-accent bg-accent text-on-accent' : 'border-control-border hover:bg-line'
+          current ? 'border-accent text-accent hover:bg-line' : 'border-control-border hover:bg-line'
         }`}
       >
         <PersonIcon />

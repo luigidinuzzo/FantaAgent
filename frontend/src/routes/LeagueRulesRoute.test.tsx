@@ -94,6 +94,13 @@ describe('LeagueRulesRoute', () => {
     expect(await screen.findByRole('group', { name: 'Banditore' })).toBeInTheDocument();
   });
 
+  /** Lo stesso interruttore ha lo stesso nome qui e nelle impostazioni dell'asta. */
+  it('l\'avviso allo scadere si chiama «Avviso sonoro allo scadere»', async () => {
+    stubRules(RULES);
+    renderRules();
+    expect(await screen.findByRole('checkbox', { name: 'Avviso sonoro allo scadere' })).toBeChecked();
+  });
+
   it('mostra le regole della lega', async () => {
     stubRules(RULES);
     renderRules();
@@ -138,6 +145,7 @@ describe('LeagueRulesRoute', () => {
     expect(within(scoring).getByText('Assist')).toBeInTheDocument();
     const bidder = screen.getByRole('region', { name: 'Banditore' });
     expect(within(bidder).getByText('5')).toBeInTheDocument();
+    expect(within(bidder).getByText('Avviso sonoro allo scadere')).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();

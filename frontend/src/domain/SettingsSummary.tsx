@@ -17,7 +17,7 @@ export function BidderSummary({ bidder }: { bidder: BidderSettings }) {
       <dl className="flex flex-wrap gap-x-10 gap-y-4">
         <Value label="Secondi del conto alla rovescia" value={bidder.bidTimerSeconds} />
         <div className="flex flex-col-reverse gap-1">
-          <dt className="text-sm text-muted-foreground">Avviso acustico allo scadere</dt>
+          <dt className="text-sm text-muted-foreground">Avviso sonoro allo scadere</dt>
           <dd className="w-exp text-2xl font-semibold">{bidder.beepEnabled ? 'Sì' : 'No'}</dd>
         </div>
       </dl>

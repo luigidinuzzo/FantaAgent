@@ -97,6 +97,13 @@ describe('AuctionSettingsRoute', () => {
     expect(JSON.parse(patch![1].body)).toEqual({ bidder: { bidTimerSeconds: 6, beepEnabled: true } });
   });
 
+  /** Lo stesso interruttore ha lo stesso nome qui e nelle regole della lega. */
+  it('l\'avviso allo scadere si chiama «Avviso sonoro allo scadere»', async () => {
+    stub(true);
+    renderSettings();
+    expect(await screen.findByRole('checkbox', { name: 'Avviso sonoro allo scadere' })).toBeChecked();
+  });
+
   it('chi non e\' amministratore vede il turno ma non lo cambia', async () => {
     stub(false, false);
     renderSettings();

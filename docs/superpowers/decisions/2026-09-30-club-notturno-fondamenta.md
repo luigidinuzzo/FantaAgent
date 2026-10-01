@@ -270,3 +270,85 @@ WebKit il conto in conferma e il tempo scaduto a 390×844 e 360×740 e stampa
 solo sotto `lg`; da `lg` è troncato su una riga, come su `main`.
 
 **Resta.** La pagina della proiezione scorre di lato sul telefono (+16px), come su `main`.
+
+## Le pagine di gestione — misure finali
+
+Misurato con le risposte finte di `scripts/screens.mjs` a 1440×900, 1920×1080,
+1280×720, 390×844 e 360×740, con otto e con undici squadre. Lo script ora stampa, oltre
+a `larghe:` e `parole spezzate:`, quattro controlli delle pagine di gestione (08–12, 15):
+
+- `oro:` — schermate con più di un bottone o link a fondo oro (`bg-accent`) visibile,
+  barra in cima compresa; con una finestra aperta conta solo la finestra, il resto è
+  inerte. Vuoto con otto e con undici squadre. Ogni schermata ne ha uno (l'asta più
+  recente, «Crea la lega», «Crea l'asta», «Salva …», «Importa l'asta») o nessuno (la
+  lega, «Unisciti», i menu, l'importazione prima della scelta).
+- `coperti dalla barra:` — pagina scorsa fino in fondo, nessun campo, bottone o link
+  sotto il bordo della barra di salvataggio (regole, profilo, impostazioni dell'asta).
+- `indice largo:` — sul telefono la fila dell'indice non scorre di lato.
+- `tendine tagliate:` — il testo scelto di ogni menu a tendina sta nella tendina.
+
+Tutti vuoti alla fine di questo passo. Le schermate dell'asta e della proiezione (13*,
+14*, 16*) sono quelle di `main` byte per byte, salvo il rumore già accettato:
+14-asta-giocatore a 1440 e 1920 (37 e 47 pixel, al massimo 2/255) e il bordo della
+barra del tempo nel conto alla rovescia (14b, e 14e che ha il conto aperto: una colonna
+di 7–9 pixel larga uno, dove la barra arriva un istante prima o dopo).
+
+**Altezze decise in anticipo**
+
+| riquadro | misura | cosa si è misurato per sceglierla |
+|---|---|---|
+| Scheda di un'asta in corso, home (`MyAuctionCard`) | `min-h-52` (208px); 213px a 1440 | una scheda con titolo su una riga misura 213px a 1440: il minimo tiene uguali le schede con poco contenuto e il bottone sempre in fondo |
+| Risultati di «Unisciti a una lega» | `h-[24rem]` (sei righe da 64px), `max-sm:h-[20rem]` (cinque) | lo stato con più risultati; sul telefono cinque righe perché la finestra intera, link d'invito compreso, stia in 360×740 |
+| Riquadro dell'importazione | `min-h-[55rem]` dal `md` (880px a 1440), `min-h-[57rem]` sotto (912px al telefono), uguale prima e dopo la scelta | lo stato con gli abbinamenti; prima della scelta lo spazio è dell'area della cartella, dopo degli abbinamenti — il riquadro non salta |
+| Abbinamenti dentro il riquadro | `h-[29rem]`, scorre dentro oltre | otto partecipanti in due colonne al computer; oltre si scorre nel riquadro, non la pagina |
+| Barra di salvataggio | `h-18` (72px), il contenuto lascia `pb-24` (96px) sotto di sé | ci stanno i bottoni da 44px e un errore su due righe (`line-clamp-2`); i 24px in più di `pb-24` tengono l'ultimo campo staccato dalla barra (`coperti dalla barra:` vuoto) |
+
+**Corretto in questo passo**
+
+1. «Profilo» nella barra in cima, sulla pagina del profilo, era oro pieno: con «Salva
+   il nome» faceva due ori. Ora la pagina corrente ha contorno e testo oro, fondo non
+   pieno. Solo `/profilo` usava lo stato (`current`). Il controllo `oro:` lo prende: col
+   bottone di prima stampa `12-profilo-desktop: Profilo, Salva il nome`.
+2. L'interruttore del suono si chiama «Avviso sonoro allo scadere» ovunque: regole della
+   lega (modulo e riepilogo per chi non amministra) e impostazioni dell'asta. Prima
+   nelle regole era «Avviso acustico».
+3. Lo script fotografava il menu dell'ultimo membro cercando «Olympique Marsiglia Nera»,
+   che c'è solo da undici squadre in su: ora apre il menu dell'ultima riga dell'elenco
+   dei membri, quante che siano le squadre.
+4. Importazione sul telefono: nella tendina degli abbinamenti «Atletico Ma Non Troppo ·
+   Diego» era tagliato a 360×740 (+23px), e con undici squadre «Olympique Marsiglia
+   Nera · Elena» a 390×844 (+8) e a 360×740 (+38). Sotto `sm` il riquadro degli
+   abbinamenti perde margini e bordi di lato e la tendina passa da `px-4` a `px-3`
+   (42px in più per il testo); l'anello del fuoco va dentro il bordo, altrimenti il
+   riquadro lo taglierebbe. Il testo resta a 16px: più piccolo, Safari ingrandirebbe la
+   pagina al tocco.
+
+**Decisioni prese durante il piano**
+
+- Home: le righe delle leghe non troncano nome e squadra; i bottoni dell'intestazione a
+  360px stanno su una riga con `max-sm:text-sm px-3`; il badge «N richieste» ha
+  contorno oro, non fondo, per avere un solo oro; nella finestra a tutto schermo sul
+  telefono il bottone segue i campi, senza fascia vuota.
+- Finestre: `Modal` riceve dal bottone che la apre dove riportare il fuoco (Safari non
+  dà il fuoco a un bottone cliccato); nei test Esc si simula con l'evento `cancel`
+  (jsdom non lo genera).
+- Lega: al computer due righe — Aste | Richieste, poi Membri a tutta larghezza in una
+  griglia da una a tre colonne; sul telefono lo stesso ordine. «Inviti» è una finestra
+  aperta da «Invita» nell'intestazione (solo amministratore). Il menu dell'asta si
+  chiama «Azioni per X».
+- Schema delle impostazioni: sotto `lg` la fila dell'indice resta ferma sotto la barra
+  in cima; chi non amministra vede l'indice con una voce sola. Nelle regole i fieldset
+  perdono cornice e titolo, dati dai pannelli di sezione. Sul telefono un errore che
+  nomina due o più campi può essere tagliato alla terza riga nella barra: ogni campo
+  mostra comunque il suo.
+- Profilo: il campo si chiama «Nome» sotto il titolo «Il tuo nome».
+- Importazione: il riquadro ha altezza costante e lo spazio va dove serve (area della
+  cartella prima, abbinamenti dopo); a 1440 la pagina scorre di ~150px; gli abbinamenti
+  sono un elenco, non una tabella.
+
+**Resta.** A 1920×1080 la lega e il profilo lasciano un terzo della finestra vuoto sotto
+il contenuto (~360px): due pannelli o un elenco di otto membri non riempiono uno schermo
+così alto. A 1440×900, 390×844 e 360×740, le misure con cui si giudica, il vuoto più
+grande è sotto i membri della lega a 1440 (~180px). La finestra degli inviti a tutto
+schermo sul telefono ha l'altezza fissa delle finestre, e prima di creare un link resta
+in gran parte vuota.

@@ -315,7 +315,7 @@ export function LeagueRulesRoute() {
                       onChange={(e) => setForm({ ...form, bidder: { ...form.bidder, beepEnabled: e.target.checked } })}
                       className="h-5 w-5 shrink-0 accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                     />
-                    Avviso acustico allo scadere
+                    Avviso sonoro allo scadere
                   </label>
                 </div>
 

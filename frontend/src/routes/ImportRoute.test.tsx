@@ -74,6 +74,27 @@ describe('ImportRoute', () => {
     expect(sent.map((f) => f.name).sort()).toEqual(['events.jsonl', 'league-members.yml']);
   });
 
+  /**
+   * Sul telefono a 360px «Atletico Ma Non Troppo · Diego» non stava nella tendina:
+   * il riquadro degli abbinamenti perde i margini di lato e la tendina un po' del
+   * suo, cosi' il nome scelto si legge intero; l'anello del fuoco va dentro il bordo. Il testo resta a 16px: piu'
+   * piccolo, Safari ingrandirebbe la pagina al tocco.
+   */
+  it('sul telefono la tendina ha tutta la larghezza del riquadro', async () => {
+    stub();
+    renderImport();
+    await userEvent.upload(await screen.findByLabelText('Scegli la cartella', { selector: 'input' }), FILES);
+    const list = await screen.findByRole('list', { name: 'Abbinamenti' });
+    const box = list.parentElement!;
+    expect(box.className).toContain('max-sm:px-0');
+    expect(box.className).toContain('max-sm:border-x-0');
+    const select = within(list).getByLabelText('Membro per Marco');
+    expect(select.className).toContain('max-sm:px-3');
+    // Senza margine di lato, l'anello del fuoco sta dentro il bordo o il riquadro lo taglia.
+    expect(select.className).toContain('max-sm:-outline-offset-2');
+    expect(select.className).toContain('text-base');
+  });
+
   it('non importa finche\' manca un abbinamento', async () => {
     stub();
     renderImport();
