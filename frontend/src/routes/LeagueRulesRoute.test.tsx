@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { focusManager } from '@tanstack/react-query';
 import { QueryProvider } from '../api/QueryProvider';
 import type { LeagueRulesResponse } from '../api/types';
 import { LeagueRulesRoute } from './LeagueRulesRoute';
@@ -356,6 +357,52 @@ describe('LeagueRulesRoute', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
     expect(screen.getByText('Tutto salvato')).toBeInTheDocument();
     expect(screen.getByLabelText(/secondi/i)).toHaveValue(5);
+  });
+
+  // Una rilettura in sottofondo (tornando sulla scheda) porta le regole salvate da
+  // un'altra finestra: il modulo resta quello digitato, e Annulla torna a cio' con
+  // cui il modulo era stato riempito, non alla rilettura.
+  it('una rilettura in sottofondo non cambia i valori a cui torna Annulla', async () => {
+    let served = RULES;
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const href = typeof input === 'string' ? input : input.toString();
+      if (href === '/api/leagues/l1/rules') return Promise.resolve(jsonResponse(served));
+      return Promise.resolve(jsonResponse({ type: 'about:blank' }, 404));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderRules();
+    await userEvent.click(await screen.findByRole('button', { name: /secondo in più/i }));
+    expect(screen.getByLabelText(/secondi/i)).toHaveValue(6);
+
+    served = { ...RULES, bidder: { ...RULES.bidder, bidTimerSeconds: 9 } };
+    const reads = () => fetchMock.mock.calls.filter(([url]) => url === '/api/leagues/l1/rules').length;
+    const before = reads();
+    const now = Date.now();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now + 60_000);
+    focusManager.setFocused(false);
+    focusManager.setFocused(true);
+    await waitFor(() => expect(reads()).toBe(before + 1));
+    clock.mockRestore();
+    focusManager.setFocused(undefined);
+
+    expect(screen.getByLabelText(/secondi/i)).toHaveValue(6);
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+    expect(screen.getByLabelText(/secondi/i)).toHaveValue(5);
+    expect(screen.getByText('Tutto salvato')).toBeInTheDocument();
+  });
+
+  it('Annulla toglie gli errori dei campi e quello della barra', async () => {
+    stubRules(RULES, problem({ budget: ['I crediti devono essere almeno 1.'] }));
+    renderRules();
+    await userEvent.click(await screen.findByRole('button', { name: 'Dieci crediti in più' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Salva le regole' }));
+    expect(await screen.findByText('I crediti devono essere almeno 1.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+    expect(screen.queryByText('I crediti devono essere almeno 1.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Tutto salvato')).toBeInTheDocument();
   });
 
   it('Salva le regole salva il modulo e torna a Tutto salvato', async () => {

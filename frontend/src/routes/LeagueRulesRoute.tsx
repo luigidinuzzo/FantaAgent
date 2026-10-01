@@ -180,6 +180,10 @@ export function LeagueRulesRoute() {
   // e' quella digitata, non quella arrivata. Per questo `form` e' stato del client e
   // si riempie una volta sola.
   const [form, setForm] = useState<SaveLeagueRulesRequest | null>(null);
+  // Cio' a cui torna Annulla e contro cui si misura «Modifiche non salvate»: i
+  // valori con cui il modulo e' stato riempito, poi gli ultimi salvati. Non la
+  // lettura in cache, che una rilettura in sottofondo puo' cambiare sotto le mani.
+  const [initial, setInitial] = useState<SaveLeagueRulesRequest | null>(null);
   const [errors, setErrors] = useState<SettingsErrors>(NO_ERRORS);
   // Un problem diverso da invalid-settings (rete caduta, errore interno): non ha un
   // campo, ma va detto comunque nello stesso, unico role="alert".
@@ -188,6 +192,7 @@ export function LeagueRulesRoute() {
   useEffect(() => {
     if (!rules.data || form) return;
     setForm(formOf(rules.data));
+    setInitial(formOf(rules.data));
   }, [rules.data, form]);
 
   if (rules.isError) {
@@ -203,7 +208,7 @@ export function LeagueRulesRoute() {
     );
   }
 
-  if (!form || !rules.data) {
+  if (!form || !initial || !rules.data) {
     // La stessa cornice della schermata pronta — intestazione, indice, tre sezioni —
     // con la frase nella prima: un pannellino piccolo che un attimo dopo diventa la
     // pagina intera fa sembrare che la pagina cambi due volte.
@@ -222,7 +227,6 @@ export function LeagueRulesRoute() {
     );
   }
 
-  const initial = formOf(rules.data);
   const canEdit = rules.data.canEdit;
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   const summary = errorSummary(errors) ?? saveError;
@@ -242,9 +246,12 @@ export function LeagueRulesRoute() {
     setErrors(NO_ERRORS);
     setSaveError(null);
     save.mutate(form, {
-      // La lettura in cache diventa quella salvata: `initial` la segue, e la barra
-      // torna a «Tutto salvato».
-      onSuccess: (saved) => setForm(formOf(saved)),
+      // Salvate, le regole sono il nuovo punto di partenza: la barra torna a «Tutto
+      // salvato».
+      onSuccess: (saved) => {
+        setForm(formOf(saved));
+        setInitial(formOf(saved));
+      },
       onError: (error) => {
         if (error instanceof ProblemError && error.slug === 'invalid-settings') {
           const parsed = settingsErrorsOf(error.body);
