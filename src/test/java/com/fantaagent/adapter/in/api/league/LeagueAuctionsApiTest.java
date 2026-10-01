@@ -189,6 +189,16 @@ class LeagueAuctionsApiTest {
     }
 
     @Test
+    void unTurnoConUnaSquadraSolaDiceCheNeServonoDue() throws Exception {
+        f.mvc.perform(put(f.url("/seats")).with(csrf()).cookie(f.anna).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                [{"userId":"%s","teamName":"Anna FC","initial":"A"}]""".formatted(f.annaId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.type").value(PROBLEMS + "not-enough-seats"))
+                .andExpect(jsonPath("$.detail").value("Servono almeno due squadre nel turno."));
+    }
+
+    @Test
     void chiEsceNonVedePiuLaLega() throws Exception {
         f.mvc.perform(delete("/api/leagues/" + f.leagueId + "/members/" + f.carlaId).with(csrf()).cookie(f.carla))
                 .andExpect(status().isNoContent());

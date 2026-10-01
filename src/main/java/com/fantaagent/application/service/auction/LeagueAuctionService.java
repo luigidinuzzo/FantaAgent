@@ -207,8 +207,8 @@ public class LeagueAuctionService {
             }
             wanted.add(new Seat(r.userId(), r.teamName().trim(), initial, wanted.size() + 1));
         }
-        if (wanted.size() < 2) {
-            throw new NotEnoughMembersException();
+        if (wanted.size() < MIN_SEATS) {
+            throw new NotEnoughSeatsException();
         }
         // Il controllo "posti bloccati" e la scrittura vanno dietro lo stesso lock di riga
         // che AuctionWriteLock usa per gli acquisti: senza, un acquisto in corso potrebbe

@@ -144,6 +144,15 @@ class LeagueAuctionServiceTest {
     }
 
     @Test
+    void unTurnoDaUnaSquadraNonSiSalva() {
+        AuctionRecord auction = world.auctions.create(admin, "Asta");
+        assertThatThrownBy(() -> world.auctions.replaceSeats(admin, auction.id(), List.of(
+                new SeatRequest(admin.userId(), "anna FC", "A"))))
+                .isInstanceOf(NotEnoughSeatsException.class)
+                .hasMessage("Servono almeno due squadre nel turno.");
+    }
+
+    @Test
     void unPostoPerChiNonEMembroNonSiDa() {
         AuctionRecord auction = world.auctions.create(admin, "Asta");
         UUID stranger = world.user("sconosciuto");

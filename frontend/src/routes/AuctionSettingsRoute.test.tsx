@@ -232,8 +232,8 @@ describe('AuctionSettingsRoute', () => {
 
   const P = 'https://fantaagent.local/problems/';
   it.each([
-    ['meno di due posti', 409, { type: `${P}not-enough-members`, detail: 'Servono almeno 2 membri nella lega.' },
-      'Servono almeno 2 membri nella lega.'],
+    ['meno di due posti', 409, { type: `${P}not-enough-seats`, detail: 'Servono almeno due squadre nel turno.' },
+      'Servono almeno due squadre nel turno.'],
     ['posti bloccati', 409, { type: `${P}seats-locked`, detail: "L'asta è iniziata: i posti non si cambiano più." },
       "L'asta è iniziata: i posti non si cambiano più."],
     ['scrittura concorrente', 409, { type: `${P}concurrent-write`, detail: 'Qualcun altro ha scritto nello stesso istante: riprova.' },

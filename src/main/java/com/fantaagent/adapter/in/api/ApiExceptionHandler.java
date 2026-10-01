@@ -12,6 +12,7 @@ import com.fantaagent.application.service.account.TooManyAttemptsException;
 import com.fantaagent.application.service.auction.AuctionNotFoundException;
 import com.fantaagent.application.service.auction.NoSeatException;
 import com.fantaagent.application.service.auction.NotEnoughMembersException;
+import com.fantaagent.application.service.auction.NotEnoughSeatsException;
 import com.fantaagent.application.service.auction.SeatsLockedException;
 import com.fantaagent.application.service.importing.ImportMismatchException;
 import com.fantaagent.application.service.importing.InvalidImportException;
@@ -249,6 +250,11 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(NotEnoughMembersException.class)
     ProblemDetail notEnoughMembers(NotEnoughMembersException e) {
         return problem(HttpStatus.CONFLICT, "not-enough-members", e.getMessage());
+    }
+
+    @ExceptionHandler(NotEnoughSeatsException.class)
+    ProblemDetail notEnoughSeats(NotEnoughSeatsException e) {
+        return problem(HttpStatus.CONFLICT, "not-enough-seats", e.getMessage());
     }
 
     @ExceptionHandler(AdminCannotLeaveException.class)

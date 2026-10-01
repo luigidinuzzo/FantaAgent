@@ -58,6 +58,7 @@ const USER_FACING_PROBLEMS = new Set([
   'join-request-gone',
   'admin-cannot-leave',
   'not-enough-members',
+  'not-enough-seats',
   'no-seat',
   'seats-locked',
   'concurrent-write',
