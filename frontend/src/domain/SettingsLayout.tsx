@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { FOCUS_RING } from './controls';
 import { PageHeader } from './PageHeader';
-import { SAVE_BAR_SPACE } from './SaveBar';
+import { SAVE_BAR_SPACE, SETTINGS_W } from './SaveBar';
 import { useActiveSection } from './useActiveSection';
 
 export interface SettingsSection { id: string; label: string; shortLabel?: string }
@@ -33,7 +33,7 @@ export function SettingsLayout({ title, context, sections, ready, children, foot
   );
 
   return (
-    <div className="mx-auto w-full max-w-[66rem]">
+    <div className={`mx-auto w-full ${SETTINGS_W}`}>
       <PageHeader title={title} context={context} />
       <div className="lg:grid lg:grid-cols-[14rem_minmax(0,48rem)] lg:gap-x-8">
         {/* Un solo punto di riferimento «Sezioni» con le due forme dell'indice: la

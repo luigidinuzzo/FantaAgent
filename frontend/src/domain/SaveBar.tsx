@@ -3,6 +3,11 @@ import { BUTTON_PRIMARY, BUTTON_SECONDARY } from './controls';
 /** L'altezza della barra e lo spazio che il contenuto lascia sotto di se'. */
 export const SAVE_BAR_H = 'h-18';
 export const SAVE_BAR_SPACE = 'pb-24';
+/**
+ * La larghezza del contenuto delle impostazioni: la pagina ({@code SettingsLayout})
+ * e il contenuto della barra, che cosi' ha i bottoni al bordo destro della pagina.
+ */
+export const SETTINGS_W = 'max-w-[66rem]';
 
 /**
  * L'unica barra di salvataggio delle impostazioni: ferma in fondo alla finestra,
@@ -20,7 +25,7 @@ export function SaveBar({ dirty, pending, error, saveLabel, onSave, onReset }: {
 }) {
   return (
     <div className={`fixed inset-x-0 bottom-0 z-20 ${SAVE_BAR_H} border-t border-panel-border bg-bar pb-[env(safe-area-inset-bottom)]`}>
-      <div className="mx-auto flex h-full max-w-[96rem] items-center gap-3 px-4 md:px-6">
+      <div className={`mx-auto box-content flex h-full ${SETTINGS_W} items-center gap-3 px-4 md:px-6`}>
         {/* Va a capo, al piu' su due righe: tagliata, la frase d'errore sul telefono
             stretto si riduceva a «1 errore: …». */}
         <p className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug">

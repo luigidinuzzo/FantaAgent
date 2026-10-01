@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { SaveBar } from './SaveBar';
+import { SaveBar, SETTINGS_W } from './SaveBar';
 
 const base = { pending: false, error: null, saveLabel: 'Salva le regole', onSave: () => {}, onReset: () => {} };
 
@@ -40,6 +40,18 @@ describe('SaveBar', () => {
     expect(bar.className).toContain('fixed');
     expect(bar.className).toContain('bottom-0');
     expect(bar.className).toContain('h-18');
+  });
+
+  // Sugli schermi larghi i bottoni stanno al bordo destro del contenuto delle
+  // impostazioni (66rem), non a quello di una pagina da 96rem: la larghezza e'
+  // quella del contenuto, il margine ai lati fuori (box-content), come la pagina.
+  it('il contenuto della barra e\' largo quanto quello delle impostazioni', () => {
+    const { container } = render(<SaveBar {...base} dirty={false} />);
+    const inner = container.firstElementChild!.firstElementChild as HTMLElement;
+    expect(SETTINGS_W).toBe('max-w-[66rem]');
+    expect(inner.className).toContain(SETTINGS_W);
+    expect(inner.className).toContain('box-content');
+    expect(inner.className).toContain('md:px-6');
   });
 
   // Sul telefono stretto la frase non si taglia: va a capo, al piu' su due righe,

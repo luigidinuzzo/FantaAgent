@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { SETTINGS_W } from './SaveBar';
 import { SettingsLayout } from './SettingsLayout';
 
 const sections = [
@@ -18,6 +19,11 @@ function renderLayout() {
 }
 
 describe('SettingsLayout', () => {
+  it('e\' larga quanto il contenuto della barra di salvataggio', () => {
+    const { container } = renderLayout();
+    expect((container.firstElementChild as HTMLElement).className).toContain(SETTINGS_W);
+  });
+
   it('ha l intestazione con h1', () => {
     renderLayout();
     expect(screen.getByRole('heading', { level: 1, name: 'Regole della lega' })).toBeInTheDocument();
