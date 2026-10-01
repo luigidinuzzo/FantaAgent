@@ -20,7 +20,7 @@ export function CreateLeagueDialog({ open, onClose, returnFocusRef }: {
   const nameRef = useRef<HTMLInputElement>(null);
   return (
     <Modal open={open} titleId="create-league-title" title="Crea una lega" onClose={onClose} initialFocusRef={nameRef}
-      returnFocusRef={returnFocusRef}>
+      returnFocusRef={returnFocusRef} phone="sheet" className="max-sm:min-h-[30.5rem]">
       <CreateLeagueForm nameRef={nameRef} onCreated={onClose} />
     </Modal>
   );
@@ -30,10 +30,10 @@ export function CreateLeagueDialog({ open, onClose, returnFocusRef }: {
  * Il modulo vive dentro la finestra: chiusa, la finestra non c'e' e il modulo con
  * lei, e riaprendola si ricomincia da campi vuoti e senza l'errore di prima.
  *
- * <p>Da sm alto quanto il suo stato piu' alto (min-h-[22rem]): un errore sotto i
- * campi occupa lo spazio che c'era gia', il bottone resta in fondo e la finestra
- * non cresce. Sul telefono la finestra e' tutto lo schermo e il bottone segue i
- * campi: in fondo lascerebbe una fascia vuota fra loro.
+ * <p>Alto quanto il suo stato piu' alto, quello con la riga d'errore: da sm
+ * min-h-[22rem], sul telefono la finestra ancorata in basso e' alta 30.5rem (la
+ * misura di quello stato a 390 e 360 di larghezza). Un errore sotto i campi occupa
+ * lo spazio che c'era gia', il bottone resta in fondo e la finestra non cresce.
  */
 function CreateLeagueForm({ nameRef, onCreated }: {
   nameRef: RefObject<HTMLInputElement | null>;
@@ -48,7 +48,7 @@ function CreateLeagueForm({ nameRef, onCreated }: {
 
   return (
     <form
-      className="flex flex-col sm:min-h-[22rem] sm:flex-1"
+      className="flex flex-1 flex-col sm:min-h-[22rem]"
       onSubmit={(e) => {
         e.preventDefault();
         create.mutate({ name, teamName }, {
@@ -64,7 +64,7 @@ function CreateLeagueForm({ nameRef, onCreated }: {
       <TextField id="league-team" label="La tua squadra" value={teamName} onChange={setTeamName}
         errors={errors.teamName} />
       {message ? <p role="alert" className="mt-4 text-sm font-medium text-destructive">{message}</p> : null}
-      <div className="pt-6 sm:mt-auto">
+      <div className="mt-auto pt-6">
         <button type="submit" disabled={create.isPending} className={`w-full ${BUTTON_PRIMARY}`}>
           {create.isPending ? 'Creo…' : 'Crea la lega'}
         </button>

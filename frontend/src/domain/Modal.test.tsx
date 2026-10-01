@@ -36,6 +36,15 @@ describe('Modal', () => {
     expect(cls).toContain('sm:w-[32rem]');
   });
 
+  it('phone="sheet": sotto sm ancorata in basso, alta quanto il contenuto', () => {
+    render(<Modal open titleId="t" title="T" onClose={() => {}} phone="sheet">x</Modal>);
+    const cls = screen.getByRole('dialog').className.split(/\s+/);
+    for (const c of ['max-sm:mt-auto', 'max-sm:mb-0', 'max-sm:h-fit', 'max-sm:w-screen', 'max-sm:max-w-none',
+      'max-sm:rounded-b-none', 'sm:w-[32rem]']) expect(cls).toContain(c);
+    expect(cls).not.toContain('max-sm:h-dvh');
+    expect(cls).not.toContain('max-sm:rounded-none');
+  });
+
   // Chiusa, la finestra si smonta prima che il browser possa riportare il fuoco:
   // lo riporta lei al bottone che l'ha aperta, con Esc come con «Chiudi».
   it('chiusa, il fuoco torna al bottone che l ha aperta', async () => {

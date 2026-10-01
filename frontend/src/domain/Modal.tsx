@@ -2,14 +2,22 @@ import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { FOCUS_RING } from './controls';
 import { RemoveIcon } from './RemoveIcon';
 
+const PHONE = {
+  full: 'max-sm:h-dvh max-sm:max-h-none max-sm:w-screen max-sm:max-w-none max-sm:rounded-none',
+  sheet: 'max-sm:mt-auto max-sm:mb-0 max-sm:h-fit max-sm:w-screen max-sm:max-w-none max-sm:rounded-b-none',
+} as const;
+
 /**
  * Una finestra sopra la pagina: {@code <dialog>} nativo con showModal(), che
  * intrappola il fuoco, rende inerte lo sfondo e trasforma Esc in cancel. Chiusa,
- * il fuoco torna a chi l'ha aperta. Sotto sm a tutto schermo; da sm
- * larga 32rem. L'altezza la decide chi la usa, sul suo stato piu' alto.
+ * il fuoco torna a chi l'ha aperta. Da sm larga 32rem. Sotto sm, phone='full'
+ * (di serie) la fa a tutto schermo, per chi ha bisogno di tutto lo spazio; 'sheet'
+ * la ancora in basso, larga quanto lo schermo e alta quanto il contenuto, per chi
+ * a tutto schermo lascerebbe una gran fascia vuota. L'altezza la decide chi la
+ * usa, sul suo stato piu' alto.
  */
 export function Modal({
-  open, titleId, title, onClose, children, initialFocusRef, returnFocusRef, className = '',
+  open, titleId, title, onClose, children, initialFocusRef, returnFocusRef, className = '', phone = 'full',
 }: {
   open: boolean;
   titleId: string;
@@ -24,6 +32,7 @@ export function Modal({
    */
   returnFocusRef?: RefObject<HTMLElement | null>;
   className?: string;
+  phone?: keyof typeof PHONE;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -51,7 +60,7 @@ export function Modal({
       ref={ref}
       aria-labelledby={titleId}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
-      className={`panel m-auto flex flex-col p-0 text-foreground backdrop:bg-black/60 max-sm:h-dvh max-sm:max-h-none max-sm:w-screen max-sm:max-w-none max-sm:rounded-none sm:w-[32rem] ${className}`}
+      className={`panel m-auto flex flex-col p-0 text-foreground backdrop:bg-black/60 ${PHONE[phone]} sm:w-[32rem] ${className}`}
     >
       <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
         <h2 id={titleId} className="w-exp text-xl font-bold">{title}</h2>

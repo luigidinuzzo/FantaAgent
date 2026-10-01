@@ -5,17 +5,19 @@ import { QueryProvider } from '../api/QueryProvider';
 import { CreateLeagueDialog } from './CreateLeagueDialog';
 
 describe('CreateLeagueDialog', () => {
-  // Sul telefono la finestra e' tutto lo schermo: il bottone segue i campi invece
-  // di stare in fondo, e fra loro non resta una fascia vuota.
-  it('sotto sm il bottone segue i campi; da sm sta in fondo all altezza riservata', () => {
+  // Sul telefono la finestra e' ancorata in basso, alta quanto il suo stato piu'
+  // alto (con la riga d'errore): niente fascia vuota a tutto schermo, e niente che
+  // salti quando l'errore compare. Il bottone sta in fondo all'altezza riservata.
+  it('sotto sm ancorata in basso, alta quanto lo stato con l errore; il bottone in fondo', () => {
     render(<QueryProvider><MemoryRouter><CreateLeagueDialog open onClose={() => {}} /></MemoryRouter></QueryProvider>);
-    const form = screen.getByRole('button', { name: 'Crea la lega' }).closest('form')!;
-    const classes = form.className.split(/\s+/);
-    expect(classes).toContain('sm:min-h-[22rem]');
-    expect(classes).not.toContain('min-h-[22rem]');
-    expect(classes).not.toContain('flex-1');
+    const dialog = screen.getByRole('dialog', { name: 'Crea una lega' }).className.split(/\s+/);
+    expect(dialog).toContain('max-sm:mt-auto');
+    expect(dialog).toContain('max-sm:min-h-[30.5rem]');
+    expect(dialog).not.toContain('max-sm:h-dvh');
+    const form = screen.getByRole('button', { name: 'Crea la lega' }).closest('form')!.className.split(/\s+/);
+    expect(form).toContain('sm:min-h-[22rem]');
+    expect(form).toContain('flex-1');
     const footer = screen.getByRole('button', { name: 'Crea la lega' }).parentElement!.className.split(/\s+/);
-    expect(footer).toContain('sm:mt-auto');
-    expect(footer).not.toContain('mt-auto');
+    expect(footer).toContain('mt-auto');
   });
 });

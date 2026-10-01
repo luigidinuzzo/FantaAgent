@@ -437,11 +437,13 @@ function InvitesDialog({ leagueId, open, onClose, returnFocusRef }: {
   onClose: () => void;
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
-  // Alta quanto il suo stato piu' alto (link appena creato e link attivi): crearne
-  // uno non la fa crescere sotto il dito.
+  // Alta quanto il suo stato piu' alto (link appena creato e un link attivo):
+  // crearne uno non la fa crescere sotto il dito. Sul telefono e' ancorata in basso,
+  // alta 27.75rem, la misura di quello stato a 390 e 360 di larghezza: a tutto
+  // schermo resterebbe vuota per meta'.
   return (
     <Modal open={open} titleId="invites-title" title="Inviti" onClose={onClose}
-      returnFocusRef={returnFocusRef} className="sm:min-h-[30rem]">
+      returnFocusRef={returnFocusRef} phone="sheet" className="max-sm:min-h-[27.75rem] sm:min-h-[30rem]">
       <InvitesContent leagueId={leagueId} />
     </Modal>
   );

@@ -396,4 +396,14 @@ describe('LeagueRoute', () => {
     expect(dialogAlert).toHaveTextContent('Il servizio non risponde');
     expect(screen.getAllByRole('alert', { hidden: true })).toEqual([dialogAlert]);
   });
+
+  it('sul telefono la finestra degli inviti e\' ancorata in basso, alta quanto il suo stato piu\' alto', async () => {
+    stub(true);
+    renderLeague();
+    await userEvent.click(await screen.findByRole('button', { name: 'Invita' }));
+    const cls = screen.getByRole('dialog', { name: 'Inviti' }).className.split(/\s+/);
+    expect(cls).toContain('max-sm:mt-auto');
+    expect(cls).toContain('max-sm:min-h-[27.75rem]');
+    expect(cls).not.toContain('max-sm:h-dvh');
+  });
 });

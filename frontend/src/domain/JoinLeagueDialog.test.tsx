@@ -43,6 +43,12 @@ describe('JoinLeagueDialog', () => {
     expect(screen.getByRole('dialog', { name: 'Unisciti a una lega' })).toBeInTheDocument();
   });
 
+  it('sul telefono resta a tutto schermo: i risultati ne usano lo spazio', () => {
+    vi.stubGlobal('fetch', respond({}));
+    renderDialog();
+    expect(screen.getByRole('dialog', { name: 'Unisciti a una lega' }).className).toContain('max-sm:h-dvh');
+  });
+
   it('cerca una lega e chiede di entrare', async () => {
     let requested = false;
     const fetchMock = respond({
