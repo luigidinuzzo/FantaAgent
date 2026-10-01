@@ -193,6 +193,9 @@ function respond(method, path, query, authed) {
   if (!m) { unknown.add(`${method} ${path}`); return J({ detail: 'x' }, 404); }
   const rest = m[2] ?? '';
   if (rest === '') return J({ id: 'L1', name: 'Lega dei Colizzati', admin: true, members });
+  if (rest === '/invites' && method === 'POST') {
+    return J({ id: 'I2', link: 'https://fantaagent.it/invito/k3Xp9Qa7Lm2vT8', expiresAt: '2026-10-15T10:00:00Z' }, 201);
+  }
   if (rest === '/invites') return J([{ id: 'I1', createdAt: '2026-09-25T10:00:00Z', expiresAt: '2026-10-09T10:00:00Z' }]);
   if (rest === '/join-requests') {
     return J([
@@ -381,6 +384,12 @@ for (const { viewport: vp, tag } of SIZES) {
   await shot(user.page, `09b-lega-nuova-asta-${tag}`, null, async (p) => {
     await p.getByRole('button', { name: 'Nuova asta' }).click();
   });
+  await shot(user.page, `09c-lega-inviti-${tag}`, '/leghe/L1', async (p) => {
+    await p.getByRole('button', { name: 'Invita' }).click();
+    await p.getByRole('button', { name: "Crea un link d'invito" }).click();
+    await p.getByRole('textbox', { name: "Link d'invito" }).waitFor();
+  });
+  await user.page.keyboard.press('Escape');
   await shot(user.page, `10-regole-lega-${tag}`, '/leghe/L1/regole');
   await shot(user.page, `11-importa-${tag}`, '/leghe/L1/importa');
   await shot(user.page, `12-profilo-${tag}`, '/profilo');

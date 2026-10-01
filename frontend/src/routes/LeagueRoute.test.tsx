@@ -119,6 +119,7 @@ describe('LeagueRoute', () => {
     renderLeague();
     await screen.findByRole('list', { name: 'Membri' });
     expect(screen.queryByRole('button', { name: 'Crea un link d\'invito' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invita' })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/leagues/l1/invites')).toBe(false);
   });
 
@@ -130,10 +131,31 @@ describe('LeagueRoute', () => {
     });
     renderLeague();
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Crea un link d\'invito' }));
+    const invite = await screen.findByRole('button', { name: 'Invita' });
+    expect(invite.className).not.toContain('bg-accent');
+    expect(invite.className).toContain('max-sm:text-sm');
+    expect(screen.queryByRole('button', { name: 'Crea un link d\'invito' })).not.toBeInTheDocument();
+    await userEvent.click(invite);
+    const dialog = screen.getByRole('dialog', { name: 'Inviti' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Crea un link d\'invito' }));
 
-    expect(await screen.findByRole('textbox', { name: 'Link d\'invito' }))
+    expect(await within(dialog).findByRole('textbox', { name: 'Link d\'invito' }))
       .toHaveValue('https://fanta.example/invito/abc');
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Chiudi' }));
+    expect(screen.queryByRole('dialog', { name: 'Inviti' })).not.toBeInTheDocument();
+    expect(invite).toHaveFocus();
+  });
+
+  it('la finestra degli inviti elenca i link attivi, ognuno con Ritira', async () => {
+    stub(true, {
+      'GET /api/leagues/l1/invites': () => json([{ id: 'i1', createdAt: '2026-09-25T10:00:00Z', expiresAt: '2026-10-09T10:00:00Z' }]),
+    });
+    renderLeague();
+    await userEvent.click(await screen.findByRole('button', { name: 'Invita' }));
+    const dialog = screen.getByRole('dialog', { name: 'Inviti' });
+    expect(await within(dialog).findByText('Creato il 25 settembre, vale fino al 9 ottobre')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Ritira' })).toBeInTheDocument();
   });
 
   it('elenca le aste con lo stato, la fase e i crediti che restano', async () => {
@@ -327,14 +349,14 @@ describe('LeagueRoute', () => {
     expect(screen.queryByRole('button', { name: 'Azioni per Asta estiva 2026' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Azioni per Longobarda' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Richieste di ingresso' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Inviti' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Invita' })).not.toBeInTheDocument();
   });
 
-  it('nel documento: aste, poi richieste, inviti, membri', async () => {
+  it('nel documento: aste, poi richieste, membri', async () => {
     stub(true, { 'GET /api/leagues/l1/join-requests': () => json([REQUEST]) });
     renderLeague();
     await screen.findByRole('heading', { level: 2, name: 'Richieste di ingresso' });
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual(['Aste', 'Richieste di ingresso', 'Inviti', 'Membri']);
+    expect(headings).toEqual(['Aste', 'Richieste di ingresso', 'Membri']);
   });
 });

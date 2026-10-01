@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../AppShell';
 import { fieldErrors, userMessage } from '../api/client';
@@ -16,6 +16,7 @@ import { PageFrame } from '../domain/PageFrame';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
 import { BUTTON_PRIMARY, BUTTON_SECONDARY } from '../domain/controls';
 import { MemberMenu } from '../domain/MemberMenu';
+import { Modal } from '../domain/Modal';
 import { PageHeader } from '../domain/PageHeader';
 
 const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
@@ -28,6 +29,10 @@ export function LeagueRoute() {
   const auctions = useLeagueAuctions(leagueId);
   const createAuction = useCreateAuction(leagueId);
   const admin = league.data?.admin ?? false;
+  const requests = useJoinRequests(leagueId, admin);
+  const hasRequests = admin && (requests.data?.length ?? 0) > 0;
+  const [inviting, setInviting] = useState(false);
+  const inviteButton = useRef<HTMLButtonElement>(null);
   const trail = [{ label: 'Le mie leghe', to: '/' }, { label: league.data?.name ?? 'Lega' }];
 
   if (league.isError) {
@@ -65,33 +70,36 @@ export function LeagueRoute() {
             ? <Crest id={leagueId} name={league.data.name} size="lg" />
             : <span className="size-14 shrink-0" />}
           context={facts(admin, loaded?.members.length, auctions.data?.length)}
-          actions={
+          actions={<>
             <Link to={`/leghe/${leagueId}/regole`} className={HEADER_BUTTON}>Regole della lega</Link>
-          }
+            {admin ? (
+              <button ref={inviteButton} type="button" onClick={() => setInviting(true)} className={HEADER_BUTTON}>
+                Invita
+              </button>
+            ) : null}
+          </>}
         />
-        {/* Le aste sono la ragione per cui si apre la pagina: colonna larga. A lato,
-            per l'amministratore, le cose da fare sulle persone (richieste, inviti),
-            che sono brevi. I membri sotto, a tutta larghezza in piu' colonne: in una
-            colonna stretta allungavano la pagina e lasciavano vuoto sotto le aste.
-            Sul telefono lo stesso ordine, una colonna. */}
-        <div className={`grid grid-cols-1 items-start gap-6 ${admin ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
+        {/* Le aste sono la ragione per cui si apre la pagina. Accanto, solo quando ci
+            sono, le richieste d'ingresso: una cosa da decidere. Senza, le aste vanno a
+            tutta larghezza. I membri sotto, a tutta larghezza in piu' colonne; gli
+            inviti in una finestra dall'intestazione. Sul telefono lo stesso ordine. */}
+        <div className={`grid grid-cols-1 items-start gap-6 ${hasRequests ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
           <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
-          {admin ? (
-            <div className="flex flex-col gap-6">
-              <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} />
-              <InvitesPanel leagueId={leagueId} quiet={auctionsAlert} />
-            </div>
-          ) : null}
+          {hasRequests ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
         </div>
         <div className="mt-6">
           <MembersPanel league={loaded} />
         </div>
+        {admin ? (
+          <InvitesDialog leagueId={leagueId} open={inviting} onClose={() => setInviting(false)}
+            returnFocusRef={inviteButton} quiet={auctionsAlert} />
+        ) : null}
       </PageFrame>
     </AppShell>
   );
 }
 
-/** Sul telefono il bottone sta su una riga anche a 360px: testo piu' piccolo. */
+/** Sul telefono i due bottoni stanno su una riga anche a 360px: testo piu' piccolo. */
 const HEADER_BUTTON = `${BUTTON_SECONDARY} max-sm:px-3 max-sm:text-sm`;
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
@@ -243,8 +251,8 @@ function AuctionsPanel({ leagueId, admin, create }: {
 
 /**
  * Chi ha cercato la lega per nome e chiede di entrare. Solo per l'amministratore, e
- * solo quando c'e' qualcuno da decidere: e' una cosa da fare, e sta in cima alla
- * colonna delle persone; senza richieste non occupa posto.
+ * solo quando c'e' qualcuno da decidere: e' una cosa da fare, e sta accanto alle
+ * aste; senza richieste non occupa posto.
  */
 function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean }) {
   const requests = useJoinRequests(leagueId, true);
@@ -415,16 +423,33 @@ function LeaveLeagueDialog({ leagueName, leaving, pending, error, onConfirm, onC
  * un'impronta. Chi l'ha perso ne crea un altro, e ritira il vecchio se teme che sia
  * finito a chi non doveva.
  */
-function InvitesPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean }) {
+function InvitesDialog({ leagueId, open, onClose, returnFocusRef, quiet }: {
+  leagueId: string;
+  open: boolean;
+  onClose: () => void;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
+  quiet: boolean;
+}) {
+  // Alta quanto il suo stato piu' alto (link appena creato e link attivi): crearne
+  // uno non la fa crescere sotto il dito.
+  return (
+    <Modal open={open} titleId="invites-title" title="Inviti" onClose={onClose}
+      returnFocusRef={returnFocusRef} className="sm:min-h-[30rem]">
+      <InvitesContent leagueId={leagueId} quiet={quiet} />
+    </Modal>
+  );
+}
+
+/** Il contenuto della finestra degli inviti: si monta, e chiede gli inviti, solo quando si apre. */
+function InvitesContent({ leagueId, quiet }: { leagueId: string; quiet: boolean }) {
   const invites = useInvites(leagueId, true);
   const create = useCreateInvite(leagueId);
   const revoke = useRevokeInvite(leagueId);
   const link = create.data?.link;
 
   return (
-    <section aria-labelledby="invites-title" className="panel p-5 md:p-6">
-      <h2 id="invites-title" className="w-exp text-xl font-bold">Inviti</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+    <div>
+      <p className="text-sm text-muted-foreground">
         Un link solo per tutto il gruppo: vale due settimane, chiunque lo apra può entrare.
       </p>
       <button type="button" disabled={create.isPending} onClick={() => create.mutate()}
@@ -468,6 +493,6 @@ function InvitesPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean })
           </ul>
         </>
       ) : null}
-    </section>
+    </div>
   );
 }
