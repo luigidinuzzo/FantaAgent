@@ -11,6 +11,17 @@ const MEMBERS = [
   { userId: 'u2', displayName: 'Bruno', teamName: 'Bruno FC', initial: 'B', role: 'MEMBER', me: false },
 ];
 
+const AUCTION = {
+  id: 'a1', name: 'Asta estiva 2026', createdAt: '2026-09-28T20:00:00Z', lastWritten: '2026-09-28T21:00:00Z',
+  purchases: 12, phase: 'D', teams: 8, budget: 500, totalSlots: 200, myBudgetRemaining: 320,
+  bidder: { bidTimerSeconds: 5, beepEnabled: true },
+};
+const REQUEST = { userId: 'u3', displayName: 'Francesca', teamName: 'Hellas Madonna', requestedAt: '2026-09-28T10:00:00Z' };
+const WITH_LONGOBARDA = [
+  ...MEMBERS,
+  { userId: 'u4', displayName: 'Oronzo', teamName: 'Longobarda', initial: 'L', role: 'MEMBER', me: false },
+];
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 }
@@ -125,19 +136,34 @@ describe('LeagueRoute', () => {
       .toHaveValue('https://fanta.example/invito/abc');
   });
 
-  it('elenca le aste con il punto a cui sono e i crediti che restano', async () => {
+  it('elenca le aste con lo stato, la fase e i crediti che restano', async () => {
     stub(false, {
-      'GET /api/leagues/l1/auctions': () => json([{
-        id: 'a1', name: 'Asta d\'estate', createdAt: '2026-09-28T20:00:00Z', lastWritten: '2026-09-28T21:00:00Z',
-        purchases: 12, phase: 'D', teams: 8, budget: 500, totalSlots: 200, myBudgetRemaining: 320,
-        bidder: { bidTimerSeconds: 5, beepEnabled: true },
-      }]),
+      'GET /api/leagues/l1/auctions': () => json([
+        AUCTION,
+        { ...AUCTION, id: 'a2', name: 'Asta nuova', purchases: 0, phase: 'P' },
+        { ...AUCTION, id: 'a3', name: 'Asta vecchia', purchases: 200, phase: 'A', myBudgetRemaining: 3 },
+      ]),
     });
     renderLeague();
-    const link = await screen.findByRole('link', { name: /Asta d'estate/ });
-    expect(link).toHaveAttribute('href', '/leghe/l1/aste/a1');
-    expect(link).toHaveTextContent('12 di 200 giocatori');
-    expect(link).toHaveTextContent('320 crediti');
+    const list = await screen.findByRole('list', { name: 'Aste' });
+    const [running, fresh, done] = within(list).getAllByRole('listitem');
+    expect(running).toHaveTextContent('In corso · difensori · ti restano 320 crediti');
+    expect(fresh).toHaveTextContent('Da iniziare · portieri · ti restano 320 crediti');
+    expect(done).toHaveTextContent('Conclusa · ti restano 3 crediti');
+  });
+
+  it('ogni asta ha Entra e il menu', async () => {
+    stub(true, { 'GET /api/leagues/l1/auctions': () => json([AUCTION]) });
+    renderLeague();
+    expect(await screen.findByRole('link', { name: 'Entra in Asta estiva 2026' }))
+      .toHaveAttribute('href', '/leghe/l1/aste/a1');
+    expect(screen.getByRole('button', { name: 'Azioni per Asta estiva 2026' })).toHaveAttribute('aria-haspopup', 'menu');
+  });
+
+  it('senza aste, una riga che dice cosa fare', async () => {
+    stub(true);
+    renderLeague();
+    expect(await screen.findByText('Nessuna asta ancora.')).toBeInTheDocument();
   });
 
   it('l\'amministratore crea un\'asta e ci entra', async () => {
@@ -150,7 +176,8 @@ describe('LeagueRoute', () => {
       }, 201),
     });
     const router = renderLeagueWithAuctionRoute();
-    await userEvent.type(await screen.findByLabelText('Nome della nuova asta'), 'Riparazione');
+    await userEvent.click(await screen.findByRole('button', { name: 'Nuova asta' }));
+    await userEvent.type(screen.getByLabelText('Nome della nuova asta'), 'Riparazione');
     await userEvent.click(screen.getByRole('button', { name: 'Crea l\'asta' }));
     expect(await screen.findByText('pagina dell\'asta')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/leghe/l1/aste/a2');
@@ -167,9 +194,10 @@ describe('LeagueRoute', () => {
       'DELETE /api/leagues/l1/members/u2': () => new Response(null, { status: 204 }),
     });
     renderLeague();
-    await userEvent.click(await screen.findByRole('button', { name: 'Togli Bruno FC' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Azioni per Bruno FC' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Togli dalla lega' }));
     expect(screen.queryByRole('button', { name: 'Lascia la lega' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Togli Anna FC' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Azioni per Anna FC' })).not.toBeInTheDocument();
 
     const dialog = screen.getByRole('dialog', { name: /Togliere «Bruno FC»/ });
     expect(dialog).toHaveTextContent('Sei sicuro? L\'azione è irreversibile.');
@@ -203,7 +231,7 @@ describe('LeagueRoute', () => {
       }]),
     });
     renderLeague();
-    await userEvent.click(await screen.findByRole('button', { name: 'Altre azioni per Asta' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Azioni per Asta' }));
     expect(screen.getByRole('menuitem', { name: 'Impostazioni dell\'asta' }))
       .toHaveAttribute('href', '/leghe/l1/aste/a1/impostazioni');
     expect(screen.getByRole('menuitem', { name: 'Rinomina' })).toBeInTheDocument();
@@ -219,9 +247,94 @@ describe('LeagueRoute', () => {
       }]),
     });
     renderLeague();
-    const link = await screen.findByRole('link', { name: /Asta/ });
-    expect(link).not.toHaveTextContent('crediti');
-    expect(screen.queryByRole('button', { name: 'Altre azioni per Asta' })).not.toBeInTheDocument();
+    const list = await screen.findByRole('list', { name: 'Aste' });
+    expect(list).not.toHaveTextContent('crediti');
+    expect(screen.getByRole('link', { name: 'Entra in Asta' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Azioni per Asta' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Nome della nuova asta')).not.toBeInTheDocument();
+  });
+  it('l intestazione ha h1, il contesto e Regole della lega come bottone normale', async () => {
+    stub(true, { 'GET /api/leagues/l1/auctions': () => json([AUCTION]) });
+    renderLeague();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Lega del Bar' })).toBeInTheDocument();
+    expect(await screen.findByText('Amministri tu · 2 membri · 1 asta')).toBeInTheDocument();
+    const group = screen.getByRole('group', { name: 'Azioni della pagina' });
+    const rules = within(group).getByRole('link', { name: 'Regole della lega' });
+    expect(rules).toHaveAttribute('href', '/leghe/l1/regole');
+    expect(rules.className).not.toContain('bg-accent');
+    expect(rules.className).toContain('max-sm:text-sm');
+  });
+
+  it('Nuova asta apre il campo del nome in cima all elenco; Crea l asta e l unico oro', async () => {
+    stub(true, { 'GET /api/leagues/l1/auctions': () => json([AUCTION]) });
+    renderLeague();
+    await screen.findByRole('link', { name: 'Entra in Asta estiva 2026' });
+    expect(screen.queryByRole('textbox', { name: 'Nome della nuova asta' })).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.bg-accent')).toHaveLength(0);
+
+    const open = screen.getByRole('button', { name: 'Nuova asta' });
+    expect(open.className).not.toContain('bg-accent');
+    await userEvent.click(open);
+    const field = screen.getByRole('textbox', { name: 'Nome della nuova asta' });
+    expect(field).toHaveFocus();
+    // In cima all'elenco: il campo viene prima della prima asta.
+    const first = screen.getByRole('link', { name: 'Entra in Asta estiva 2026' });
+    expect(field.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Crea l\'asta' }).className).toContain('bg-accent');
+    expect(document.querySelectorAll('.bg-accent')).toHaveLength(1);
+
+    await userEvent.type(field, 'Riparazione');
+    await userEvent.click(screen.getByRole('button', { name: 'Annulla' }));
+    expect(screen.queryByRole('textbox', { name: 'Nome della nuova asta' })).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.bg-accent')).toHaveLength(0);
+    // Riaperto, il campo riparte vuoto.
+    await userEvent.click(screen.getByRole('button', { name: 'Nuova asta' }));
+    expect(screen.getByRole('textbox', { name: 'Nome della nuova asta' })).toHaveValue('');
+  });
+
+  it('Accetta e Rifiuta sono bottoni normali', async () => {
+    stub(true, { 'GET /api/leagues/l1/join-requests': () => json([REQUEST]) });
+    renderLeague();
+    const accept = await screen.findByRole('button', { name: 'Accetta Hellas Madonna' });
+    expect(accept.className).not.toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Rifiuta Hellas Madonna' }).className).not.toContain('bg-accent');
+  });
+
+  it('togliere un membro passa dal menu e chiede conferma', async () => {
+    stub(true, {
+      'GET /api/leagues/l1': () => json({ id: 'l1', name: 'Lega del Bar', admin: true, members: WITH_LONGOBARDA }),
+    });
+    renderLeague();
+    const members = await screen.findByRole('list', { name: 'Membri' });
+    await within(members).findByText('Longobarda');
+    expect(screen.queryByRole('button', { name: /^Togli / })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Azioni per Longobarda' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Togli dalla lega' }));
+    expect(screen.getByRole('dialog', { name: 'Togliere «Longobarda» dalla lega?' })).toBeInTheDocument();
+  });
+
+  it('chi non amministra non vede Nuova asta, Importa, menu, richieste, inviti', async () => {
+    stub(false, {
+      'GET /api/leagues/l1': () => json({ id: 'l1', name: 'Lega del Bar', admin: false, members: WITH_LONGOBARDA }),
+      'GET /api/leagues/l1/auctions': () => json([AUCTION]),
+    });
+    renderLeague();
+    await screen.findByRole('link', { name: 'Entra in Asta estiva 2026' });
+    await within(screen.getByRole('list', { name: 'Membri' })).findByText('Longobarda');
+    expect(screen.getByText('3 membri · 1 asta')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nuova asta' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Importa un\'asta' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Azioni per Asta estiva 2026' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Azioni per Longobarda' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Richieste di ingresso' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Inviti' })).not.toBeInTheDocument();
+  });
+
+  it('nel documento: aste, poi richieste, membri, inviti', async () => {
+    stub(true, { 'GET /api/leagues/l1/join-requests': () => json([REQUEST]) });
+    renderLeague();
+    await screen.findByRole('heading', { level: 2, name: 'Richieste di ingresso' });
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(['Aste', 'Richieste di ingresso', 'Membri', 'Inviti']);
   });
 });

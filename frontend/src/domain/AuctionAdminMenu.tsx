@@ -73,7 +73,7 @@ export function AuctionAdminMenu({
       <button
         ref={buttonRef}
         type="button"
-        aria-label={`Altre azioni per ${label}`}
+        aria-label={`Azioni per ${label}`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}

@@ -378,6 +378,9 @@ for (const { viewport: vp, tag } of SIZES) {
   });
   await user.page.keyboard.press('Escape');
   await shot(user.page, `09-lega-${tag}`, '/leghe/L1');
+  await shot(user.page, `09b-lega-nuova-asta-${tag}`, null, async (p) => {
+    await p.getByRole('button', { name: 'Nuova asta' }).click();
+  });
   await shot(user.page, `10-regole-lega-${tag}`, '/leghe/L1/regole');
   await shot(user.page, `11-importa-${tag}`, '/leghe/L1/importa');
   await shot(user.page, `12-profilo-${tag}`, '/profilo');

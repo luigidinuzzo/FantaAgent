@@ -6,7 +6,7 @@ import {
   useCreateAuction, useCreateInvite, useDecideJoin, useDeleteAuction, useInvites, useJoinRequests, useLeague,
   useLeagueAuctions, useRemoveMember, useRevokeInvite, useUpdateAuction,
 } from '../api/leagues';
-import type { LeagueDetail } from '../api/types';
+import type { LeagueAuctionCard, LeagueDetail } from '../api/types';
 import { AuctionAdminMenu } from '../domain/AuctionAdminMenu';
 import { TextField } from '../domain/AuthForm';
 import { DeleteAuctionDialog } from '../domain/DeleteAuctionDialog';
@@ -14,7 +14,9 @@ import { RenameAuctionDialog } from '../domain/RenameAuctionDialog';
 import { Crest } from '../domain/Crest';
 import { PageFrame } from '../domain/PageFrame';
 import { ROLE_NAME_PLURAL } from '../domain/roles';
-import { BUTTON_SECONDARY } from '../domain/controls';
+import { BUTTON_PRIMARY, BUTTON_SECONDARY } from '../domain/controls';
+import { MemberMenu } from '../domain/MemberMenu';
+import { PageHeader } from '../domain/PageHeader';
 
 const DATE = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
 
@@ -56,16 +58,22 @@ export function LeagueRoute() {
   return (
     <AppShell chrome="top" trail={trail}>
       <PageFrame>
-        <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Colonna sinistra: la lega e le sue aste, la ragione per cui si apre
-              la pagina. */}
-          <div className="flex flex-col gap-6">
-            <LeagueHeader leagueId={leagueId} name={league.data?.name ?? ''} admin={admin}
-              members={loaded?.members.length} auctions={auctions.data?.length} />
-            <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
-          </div>
-          {/* Colonna destra: le persone. Chi chiede di entrare, chi c'e', come
-              invitarne altri. */}
+        <PageHeader
+          title={league.data?.name || '\u00a0'}
+          titleId="league-title"
+          leading={league.data?.name
+            ? <Crest id={leagueId} name={league.data.name} size="lg" />
+            : <span className="size-14 shrink-0" />}
+          context={facts(admin, loaded?.members.length, auctions.data?.length)}
+          actions={
+            <Link to={`/leghe/${leagueId}/regole`} className={HEADER_BUTTON}>Regole della lega</Link>
+          }
+        />
+        {/* Le aste sono la ragione per cui si apre la pagina: colonna larga. A lato le
+            persone: chi chiede di entrare, chi c'e', come invitarne altri. Sul telefono
+            lo stesso ordine, una colonna. */}
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <AuctionsPanel leagueId={leagueId} admin={admin} create={createAuction} />
           <div className="flex flex-col gap-6">
             {admin ? <JoinRequestsPanel leagueId={leagueId} quiet={auctionsAlert} /> : null}
             <MembersPanel league={loaded} />
@@ -77,42 +85,34 @@ export function LeagueRoute() {
   );
 }
 
-/**
- * La testata: stemma, nome, e in una riga cosa c'e' nella lega. Accanto le regole,
- * che valgono per tutte le aste che la lega fara' e le legge chiunque ne faccia parte.
- * I numeri compaiono quando arrivano, senza spostare niente: la riga c'e' gia'.
- */
-function LeagueHeader({ leagueId, name, admin, members, auctions }: {
-  leagueId: string;
-  name: string;
-  admin: boolean;
-  members: number | undefined;
-  auctions: number | undefined;
-}) {
-  const facts = members === undefined || auctions === undefined
-    ? '\u00a0'
-    : [admin ? 'Amministri tu' : null,
-      members === 1 ? '1 membro' : `${members} membri`,
-      auctions === 1 ? '1 asta' : `${auctions} aste`].filter(Boolean).join(', ');
-  return (
-    <section aria-labelledby="league-title" className="panel flex flex-wrap items-center gap-4 p-5 md:p-6">
-      {name ? <Crest id={leagueId} name={name} size="lg" /> : <span className="size-14 shrink-0" />}
-      {/* Largo almeno 12rem: sul telefono le regole vanno a capo invece di tagliare il nome. */}
-      <div className="min-w-0 flex-1 basis-48">
-        <h1 id="league-title" className="w-exp truncate text-2xl font-bold md:text-3xl">{name || '\u00a0'}</h1>
-        <p className="truncate text-sm text-muted-foreground">{facts}</p>
-      </div>
-      <Link to={`/leghe/${leagueId}/regole`} className={`inline-flex items-center ${SECONDARY_BUTTON}`}>
-        Regole della lega
-      </Link>
-    </section>
-  );
-}
+/** Sul telefono il bottone sta su una riga anche a 360px: testo piu' piccolo. */
+const HEADER_BUTTON = `${BUTTON_SECONDARY} max-sm:px-3 max-sm:text-sm`;
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 
 /**
- * Le aste della lega, in un elenco che prende l'altezza della colonna. Ogni riga
- * porta all'asta; accanto, per l'amministratore, il menu con impostazioni, rinomina
- * ed elimina. In cima, sempre per lui, il campo per crearne una nuova.
+ * La riga sotto il nome: cosa c'e' nella lega. Finche' i numeri non arrivano e' uno
+ * spazio, cosi' la riga c'e' gia' e niente si sposta quando arrivano.
+ */
+function facts(admin: boolean, members: number | undefined, auctions: number | undefined) {
+  if (members === undefined || auctions === undefined) return '\u00a0';
+  return [admin ? 'Amministri tu' : null, plural(members, 'membro', 'membri'), plural(auctions, 'asta', 'aste')]
+    .filter(Boolean).join(' · ');
+}
+
+/** Lo stato di un'asta dai giocatori comprati: nessuno, alcuni, tutte le rose piene. */
+function auctionStatus(a: LeagueAuctionCard) {
+  if (a.purchases === 0) return 'Da iniziare';
+  return a.purchases >= a.totalSlots ? 'Conclusa' : 'In corso';
+}
+
+const ROW = 'flex min-h-16 items-center gap-3 px-5 py-3 md:px-6';
+
+/**
+ * Le aste della lega, alte quanto il loro elenco. Ogni riga ha «Entra» a destra e,
+ * per l'amministratore, il menu con impostazioni, rinomina ed elimina. In testa, per
+ * lui, «Nuova asta» apre il campo del nome in cima all'elenco: l'unico oro della
+ * pagina, e solo mentre il campo e' aperto.
  */
 function AuctionsPanel({ leagueId, admin, create }: {
   leagueId: string;
@@ -123,7 +123,9 @@ function AuctionsPanel({ leagueId, admin, create }: {
   const update = useUpdateAuction(leagueId);
   const remove = useDeleteAuction(leagueId);
   const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+  const nameRef = useRef<HTMLInputElement>(null);
   const [renaming, setRenaming] = useState<{ id: string; label: string } | null>(null);
   const [deleting, setDeleting] = useState<{ id: string; label: string } | null>(null);
   const errors = fieldErrors(create.error);
@@ -134,57 +136,78 @@ function AuctionsPanel({ leagueId, admin, create }: {
     ? userMessage(auctions.error, 'Non riesco a caricare le aste della lega. Riprova fra poco.')
     : null;
 
+  useEffect(() => {
+    if (creating) nameRef.current?.focus();
+  }, [creating]);
+
+  function stopCreating() {
+    setCreating(false);
+    setName('');
+    create.reset();
+  }
+
   return (
-    <section aria-labelledby="auctions-title" className="panel flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-baseline justify-between gap-4 px-5 pb-4 pt-5 md:px-6">
+    <section aria-labelledby="auctions-title" className="panel overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-5 pb-4 pt-5 md:px-6">
         <h2 id="auctions-title" className="w-exp text-xl font-bold">Aste</h2>
         {admin ? (
-          <Link to={`/leghe/${leagueId}/importa`} className={`inline-flex items-center ${SECONDARY_BUTTON}`}>
-            Importa un&apos;asta
-          </Link>
+          <div className="flex gap-3">
+            <button type="button" aria-expanded={creating} className={HEADER_BUTTON}
+              onClick={() => (creating ? stopCreating() : setCreating(true))}>
+              Nuova asta
+            </button>
+            <Link to={`/leghe/${leagueId}/importa`} className={HEADER_BUTTON}>Importa un&apos;asta</Link>
+          </div>
         ) : null}
       </div>
       {createMessage || listMessage ? (
         <p role="alert" className="px-5 pb-4 text-sm font-medium text-destructive md:px-6">{createMessage ?? listMessage}</p>
       ) : null}
-      {/* La nuova asta in cima, subito sotto il titolo: e' il gesto con cui la pagina
-          si comincia, e in fondo a un elenco lungo si perdeva. */}
-      {admin ? (
+      {admin && creating ? (
         <form className="flex flex-wrap items-end gap-3 border-t border-line px-5 pb-5 pt-4 md:px-6"
           onSubmit={(e) => {
             e.preventDefault();
             create.mutate(name, { onSuccess: (a) => navigate(`/leghe/${leagueId}/aste/${a.id}`) });
           }}>
           <div className="min-w-48 flex-1">
-            <TextField id="new-auction-name" label="Nome della nuova asta" value={name} onChange={setName}
-              errors={errors.name} />
+            <TextField ref={nameRef} id="new-auction-name" label="Nome della nuova asta" value={name}
+              onChange={setName} errors={errors.name} />
           </div>
-          <button type="submit" disabled={create.isPending || name.trim() === ''}
-            className="min-h-11 rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
-            Crea l'asta
-          </button>
+          <div className="flex gap-3 max-sm:w-full max-sm:[&>*]:flex-1">
+            <button type="button" onClick={stopCreating} className={`min-h-12 ${BUTTON_SECONDARY}`}>Annulla</button>
+            <button type="submit" disabled={create.isPending || name.trim() === ''}
+              className={`min-h-12 px-5 ${BUTTON_PRIMARY}`}>
+              Crea l&apos;asta
+            </button>
+          </div>
         </form>
       ) : null}
-      <div className="min-h-40 flex-1 border-t border-line">
-        {auctions.data && auctions.data.length === 0 ? (
-          <div className="grid h-full content-center justify-items-center gap-1 px-6 py-8 text-center">
-            <p className="font-medium">Nessuna asta ancora.</p>
-            <p className="text-sm text-muted-foreground">
-              {admin ? 'Creane una qui sopra: parte con le regole della lega.' : 'La crea l\'amministratore: la trovi qui.'}
-            </p>
-          </div>
-        ) : null}
-        {auctions.data && auctions.data.length > 0 ? (
-          <ul aria-label="Aste" className="divide-y divide-line">
-            {auctions.data.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 pr-5 md:pr-6">
-                <Link to={`/leghe/${leagueId}/aste/${a.id}`}
-                  className="flex min-h-18 min-w-0 flex-1 flex-col justify-center py-3 pl-5 hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent md:pl-6">
-                  <span className="truncate font-semibold">{a.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {a.purchases} di {a.totalSlots} giocatori · {ROLE_NAME_PLURAL[a.phase]}
-                    {a.myBudgetRemaining !== null ? ` · ti restano ${a.myBudgetRemaining} crediti` : ''}
-                  </span>
+      {auctions.data && auctions.data.length === 0 && !creating ? (
+        <p className={`${ROW} flex-wrap gap-x-2 gap-y-0 border-t border-line text-sm`}>
+          <span className="font-medium">Nessuna asta ancora.</span>
+          <span className="text-muted-foreground">
+            {admin ? 'Creane una con «Nuova asta»: parte con le regole della lega.' : 'La crea l\'amministratore: la trovi qui.'}
+          </span>
+        </p>
+      ) : null}
+      {auctions.data && auctions.data.length > 0 ? (
+        <ul aria-label="Aste" className="divide-y divide-line border-t border-line">
+          {auctions.data.map((a) => {
+            const status = auctionStatus(a);
+            const detail = [
+              status,
+              status === 'Conclusa' ? null : ROLE_NAME_PLURAL[a.phase],
+              a.myBudgetRemaining !== null ? `ti restano ${a.myBudgetRemaining} crediti` : null,
+            ].filter(Boolean).join(' · ');
+            return (
+              <li key={a.id} className={ROW}>
+                <span className="min-w-0 flex-1">
+                  <span className="block break-words font-semibold">{a.name}</span>
+                  <span className="block text-sm text-muted-foreground">{detail}</span>
+                </span>
+                <Link to={`/leghe/${leagueId}/aste/${a.id}`} aria-label={`Entra in ${a.name}`}
+                  className={`shrink-0 ${BUTTON_SECONDARY}`}>
+                  Entra
                 </Link>
                 {admin ? (
                   <AuctionAdminMenu
@@ -195,10 +218,10 @@ function AuctionsPanel({ leagueId, admin, create }: {
                   />
                 ) : null}
               </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+            );
+          })}
+        </ul>
+      ) : null}
       <RenameAuctionDialog auction={renaming} pending={update.isPending}
         error={update.isError ? userMessage(update.error, 'Non sono riuscito a rinominarla. Riprova.') : null}
         onConfirm={(id, newName) => update.mutate({ auctionId: id, name: newName },
@@ -235,9 +258,9 @@ function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boole
       ) : null}
       <ul aria-label="Richieste di ingresso" className="mt-4 divide-y divide-line">
         {requests.data.map((r) => (
-          <li key={r.userId} className="flex min-h-11 flex-wrap items-center gap-3 py-2">
+          <li key={r.userId} className="flex min-h-16 flex-wrap items-center gap-3 py-2">
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="font-medium">{r.teamName}</span>
+              <span className="break-words font-medium">{r.teamName}</span>
               <span className="text-sm text-muted-foreground">
                 {r.displayName}, dal {DATE.format(new Date(r.requestedAt))}
               </span>
@@ -247,10 +270,9 @@ function JoinRequestsPanel({ leagueId, quiet }: { leagueId: string; quiet: boole
               onClick={() => decide.mutate({ userId: r.userId, accept: false })}>
               Rifiuta
             </button>
-            <button type="button" disabled={decide.isPending}
+            <button type="button" className={SECONDARY_BUTTON} disabled={decide.isPending}
               aria-label={`Accetta ${r.teamName}`}
-              onClick={() => decide.mutate({ userId: r.userId, accept: true })}
-              className="min-h-11 rounded-lg bg-accent px-5 font-semibold text-on-accent disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-foreground">
+              onClick={() => decide.mutate({ userId: r.userId, accept: true })}>
               Accetta
             </button>
           </li>
@@ -277,30 +299,27 @@ function MembersPanel({ league }: { league: LeagueDetail | null }) {
   const me = members.find((m) => m.me);
 
   return (
-    // Prende l'altezza che resta nella colonna: con molti membri si allunga la
-    // pagina, con pochi il pannello resta pieno fino in fondo.
-    <section aria-labelledby="members-title" className="panel flex flex-1 flex-col overflow-hidden">
+    // Alto quanto i suoi membri: righe compatte, togliere qualcuno sta nel menu della riga.
+    <section aria-labelledby="members-title" className="panel overflow-hidden">
       <div className="flex items-baseline justify-between gap-4 px-5 pb-4 pt-5 md:px-6">
         <h2 id="members-title" className="w-exp text-xl font-bold">Membri</h2>
         {league ? <p className="text-sm text-muted-foreground">{members.length}</p> : null}
       </div>
-      <ul aria-label="Membri" className="flex-1 divide-y divide-line border-t border-line">
+      <ul aria-label="Membri" className="divide-y divide-line border-t border-line">
         {members.map((m) => (
-          <li key={m.userId} className="flex min-h-16 items-center gap-3 px-5 py-2 md:px-6">
+          <li key={m.userId} className="flex min-h-14 items-center gap-3 px-5 py-2 md:px-6">
             <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full border border-panel-border bg-surface-raised font-semibold">
               {m.initial}
             </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate font-medium">{m.teamName}</span>
-              <span className="truncate text-sm text-muted-foreground">
+            <span className="min-w-0 flex-1">
+              <span className="block break-words font-medium">{m.teamName}</span>
+              <span className="block break-words text-sm text-muted-foreground">
                 {m.displayName}{m.role === 'ADMIN' ? ' · Amministratore' : ''}{m.me ? ' · Tu' : ''}
               </span>
             </span>
             {league?.admin && !m.me ? (
-              <button type="button" className={SECONDARY_BUTTON} aria-label={`Togli ${m.teamName}`}
-                onClick={() => setLeaving({ userId: m.userId, teamName: m.teamName, self: false })}>
-                Togli
-              </button>
+              <MemberMenu teamName={m.teamName}
+                onRemove={() => setLeaving({ userId: m.userId, teamName: m.teamName, self: false })} />
             ) : null}
           </li>
         ))}
@@ -394,7 +413,7 @@ function InvitesPanel({ leagueId, quiet }: { leagueId: string; quiet: boolean })
   const link = create.data?.link;
 
   return (
-    <section aria-labelledby="invites-title" className="panel shrink-0 p-5 md:p-6">
+    <section aria-labelledby="invites-title" className="panel p-5 md:p-6">
       <h2 id="invites-title" className="w-exp text-xl font-bold">Inviti</h2>
       <p className="mt-2 text-sm text-muted-foreground">
         Un link solo per tutto il gruppo: vale due settimane, chiunque lo apra può entrare.
